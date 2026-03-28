@@ -1,0 +1,9 @@
+/_build/
+/deps/
+erl_crash.dump
+*.ez
+doc/
+.mcp.json
+CLAUDE.local.md
+.claude/
+*.log
