@@ -79,83 +79,129 @@
               </.link>
             </div>
           <% else %>
-            <div class="overflow-x-auto">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Invoice #</th>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                    <th>Due Date</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <%= for invoice <- @invoices do %>
-                    <tr
-                      class="hover cursor-pointer"
-                      phx-click="view_invoice"
-                      phx-value-uuid={invoice.uuid}
-                    >
-                      <td class="font-mono">{invoice.invoice_number}</td>
-                      <td class="font-mono text-sm text-base-content/60">
-                        <%= if invoice.order do %>
-                          {invoice.order.order_number}
-                        <% else %>
-                          <span class="text-base-content/40">-</span>
-                        <% end %>
-                      </td>
-                      <td>
-                        <%= if invoice.user do %>
-                          <div class="flex items-center gap-2">
-                            <.user_avatar user={invoice.user} size="sm" />
-                            <div class="font-medium text-sm">{invoice.user.email}</div>
-                          </div>
-                        <% else %>
-                          <span class="text-base-content/50">-</span>
-                        <% end %>
-                      </td>
-                      <td><.invoice_status_badge status={invoice.status} /></td>
-                      <td>
-                        <.currency_compact amount={invoice.total} currency={invoice.currency} />
-                      </td>
-                      <td class="text-sm">
-                        <%= if invoice.due_date do %>
-                          <% is_overdue =
-                            Date.compare(invoice.due_date, Date.utc_today()) == :lt and
-                              invoice.status != "paid" %>
-                          <span class={
-                            if is_overdue,
-                              do: "text-error font-medium",
-                              else: "text-base-content/60"
-                          }>
-                            {Calendar.strftime(invoice.due_date, "%b %d, %Y")}
-                          </span>
-                        <% else %>
-                          <span class="text-base-content/40">-</span>
-                        <% end %>
-                      </td>
-                      <td>
-                        <.link
-                          navigate={
-                            PhoenixKit.Utils.Routes.path(
-                              "/admin/billing/invoices/#{invoice.uuid}"
-                            )
-                          }
-                          class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
-                          data-tip={gettext("View")}
-                        >
-                          <.icon name="hero-eye" class="w-4 h-4 hidden sm:inline" />
-                          <span class="sm:hidden whitespace-nowrap">{gettext("View")}</span>
-                        </.link>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
+            <.table_default
+              id="invoices-table"
+              variant="zebra"
+              class="w-full"
+              toggleable={true}
+              items={@invoices}
+              card_fields={
+                fn invoice ->
+                  [
+                    %{
+                      label: "Order #",
+                      value: if(invoice.order, do: invoice.order.order_number, else: "-")
+                    },
+                    %{
+                      label: "Customer",
+                      value: if(invoice.user, do: invoice.user.email, else: "-")
+                    },
+                    %{
+                      label: "Due Date",
+                      value:
+                        if(invoice.due_date,
+                          do: Calendar.strftime(invoice.due_date, "%b %d, %Y"),
+                          else: "-"
+                        )
+                    }
+                  ]
+                end
+              }
+            >
+              <:card_header :let={invoice}>
+                <div class="flex items-center justify-between">
+                  <span class="font-mono font-medium">{invoice.invoice_number}</span>
+                  <.invoice_status_badge status={invoice.status} />
+                </div>
+              </:card_header>
+              <:card_actions :let={invoice}>
+                <.link
+                  navigate={
+                    PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{invoice.uuid}")
+                  }
+                  class="btn btn-xs btn-outline btn-info"
+                >
+                  <.icon name="hero-eye" class="w-3 h-3" /> {gettext("View")}
+                </.link>
+              </:card_actions>
+              <.table_default_header>
+                <.table_default_row>
+                  <.table_default_header_cell>Invoice #</.table_default_header_cell>
+                  <.table_default_header_cell>Order #</.table_default_header_cell>
+                  <.table_default_header_cell>Customer</.table_default_header_cell>
+                  <.table_default_header_cell>Status</.table_default_header_cell>
+                  <.table_default_header_cell>Total</.table_default_header_cell>
+                  <.table_default_header_cell>Due Date</.table_default_header_cell>
+                  <.table_default_header_cell></.table_default_header_cell>
+                </.table_default_row>
+              </.table_default_header>
+              <.table_default_body>
+                <%= for invoice <- @invoices do %>
+                  <.table_default_row
+                    class="hover cursor-pointer"
+                    phx-click="view_invoice"
+                    phx-value-uuid={invoice.uuid}
+                  >
+                    <.table_default_cell class="font-mono">
+                      {invoice.invoice_number}
+                    </.table_default_cell>
+                    <.table_default_cell class="font-mono text-sm text-base-content/60">
+                      <%= if invoice.order do %>
+                        {invoice.order.order_number}
+                      <% else %>
+                        <span class="text-base-content/40">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <%= if invoice.user do %>
+                        <div class="flex items-center gap-2">
+                          <.user_avatar user={invoice.user} size="sm" />
+                          <div class="font-medium text-sm">{invoice.user.email}</div>
+                        </div>
+                      <% else %>
+                        <span class="text-base-content/50">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.invoice_status_badge status={invoice.status} />
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.currency_compact amount={invoice.total} currency={invoice.currency} />
+                    </.table_default_cell>
+                    <.table_default_cell class="text-sm">
+                      <%= if invoice.due_date do %>
+                        <% is_overdue =
+                          Date.compare(invoice.due_date, Date.utc_today()) == :lt and
+                            invoice.status != "paid" %>
+                        <span class={
+                          if is_overdue,
+                            do: "text-error font-medium",
+                            else: "text-base-content/60"
+                        }>
+                          {Calendar.strftime(invoice.due_date, "%b %d, %Y")}
+                        </span>
+                      <% else %>
+                        <span class="text-base-content/40">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.link
+                        navigate={
+                          PhoenixKit.Utils.Routes.path(
+                            "/admin/billing/invoices/#{invoice.uuid}"
+                          )
+                        }
+                        class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
+                        data-tip={gettext("View")}
+                      >
+                        <.icon name="hero-eye" class="w-4 h-4 hidden sm:inline" />
+                        <span class="sm:hidden whitespace-nowrap">{gettext("View")}</span>
+                      </.link>
+                    </.table_default_cell>
+                  </.table_default_row>
+                <% end %>
+              </.table_default_body>
+            </.table_default>
 
             <%!-- Pagination --%>
             <%= if @total_pages > 1 do %>

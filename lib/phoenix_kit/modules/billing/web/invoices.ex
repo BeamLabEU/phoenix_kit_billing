@@ -14,6 +14,7 @@ defmodule PhoenixKit.Modules.Billing.Web.Invoices do
   import PhoenixKitWeb.Components.Core.Pagination
   import PhoenixKit.Modules.Billing.Web.Components.CurrencyDisplay
   import PhoenixKit.Modules.Billing.Web.Components.InvoiceStatusBadge
+  import PhoenixKitWeb.Components.Core.TableDefault
 
   alias PhoenixKit.Modules.Billing
   alias PhoenixKit.Modules.Billing.Events

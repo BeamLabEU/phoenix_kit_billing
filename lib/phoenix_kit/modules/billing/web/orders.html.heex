@@ -90,72 +90,111 @@
               </.link>
             </div>
           <% else %>
-            <div class="overflow-x-auto">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Status</th>
-                    <th>Payment</th>
-                    <th>Total</th>
-                    <th>Date</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <%= for order <- @orders do %>
-                    <tr
-                      class="hover cursor-pointer"
-                      phx-click="view_order"
-                      phx-value-uuid={order.uuid}
-                    >
-                      <td class="font-mono">{order.order_number}</td>
-                      <td>
-                        <%= if order.user do %>
-                          <div class="flex items-center gap-2">
-                            <.user_avatar user={order.user} size="sm" />
-                            <div>
-                              <div class="font-medium text-sm">{order.user.email}</div>
-                            </div>
+            <.table_default
+              id="orders-table"
+              variant="zebra"
+              class="w-full"
+              toggleable={true}
+              items={@orders}
+              card_fields={
+                fn order ->
+                  [
+                    %{
+                      label: "Customer",
+                      value: if(order.user, do: order.user.email, else: "-")
+                    },
+                    %{
+                      label: "Payment",
+                      value:
+                        if(order.payment_method,
+                          do: String.upcase(order.payment_method),
+                          else: "-"
+                        )
+                    },
+                    %{label: "Date", value: order.inserted_at}
+                  ]
+                end
+              }
+            >
+              <:card_header :let={order}>
+                <div class="flex items-center justify-between">
+                  <span class="font-mono font-medium">{order.order_number}</span>
+                  <.order_status_badge status={order.status} />
+                </div>
+              </:card_header>
+              <:card_actions :let={order}>
+                <.link
+                  navigate={PhoenixKit.Utils.Routes.path("/admin/billing/orders/#{order.uuid}")}
+                  class="btn btn-xs btn-outline btn-info"
+                >
+                  <.icon name="hero-eye" class="w-3 h-3" /> {gettext("View")}
+                </.link>
+              </:card_actions>
+              <.table_default_header>
+                <.table_default_row>
+                  <.table_default_header_cell>Order #</.table_default_header_cell>
+                  <.table_default_header_cell>Customer</.table_default_header_cell>
+                  <.table_default_header_cell>Status</.table_default_header_cell>
+                  <.table_default_header_cell>Payment</.table_default_header_cell>
+                  <.table_default_header_cell>Total</.table_default_header_cell>
+                  <.table_default_header_cell>Date</.table_default_header_cell>
+                  <.table_default_header_cell></.table_default_header_cell>
+                </.table_default_row>
+              </.table_default_header>
+              <.table_default_body>
+                <%= for order <- @orders do %>
+                  <.table_default_row
+                    class="hover cursor-pointer"
+                    phx-click="view_order"
+                    phx-value-uuid={order.uuid}
+                  >
+                    <.table_default_cell class="font-mono">{order.order_number}</.table_default_cell>
+                    <.table_default_cell>
+                      <%= if order.user do %>
+                        <div class="flex items-center gap-2">
+                          <.user_avatar user={order.user} size="sm" />
+                          <div>
+                            <div class="font-medium text-sm">{order.user.email}</div>
                           </div>
-                        <% else %>
-                          <span class="text-base-content/50">-</span>
-                        <% end %>
-                      </td>
-                      <td><.order_status_badge status={order.status} /></td>
-                      <td>
-                        <%= if order.payment_method do %>
-                          <span class="badge badge-outline badge-sm h-auto">
-                            {String.upcase(order.payment_method)}
-                          </span>
-                        <% else %>
-                          <span class="text-base-content/40">-</span>
-                        <% end %>
-                      </td>
-                      <td>
-                        <.currency_compact amount={order.total} currency={order.currency} />
-                      </td>
-                      <td class="text-sm text-base-content/60">
-                        <.time_ago datetime={order.inserted_at} />
-                      </td>
-                      <td>
-                        <.link
-                          navigate={
-                            PhoenixKit.Utils.Routes.path("/admin/billing/orders/#{order.uuid}")
-                          }
-                          class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
-                          data-tip={gettext("View")}
-                        >
-                          <.icon name="hero-eye" class="w-4 h-4 hidden sm:inline" />
-                          <span class="sm:hidden whitespace-nowrap">{gettext("View")}</span>
-                        </.link>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      <% else %>
+                        <span class="text-base-content/50">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.order_status_badge status={order.status} />
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <%= if order.payment_method do %>
+                        <span class="badge badge-outline badge-sm h-auto">
+                          {String.upcase(order.payment_method)}
+                        </span>
+                      <% else %>
+                        <span class="text-base-content/40">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.currency_compact amount={order.total} currency={order.currency} />
+                    </.table_default_cell>
+                    <.table_default_cell class="text-sm text-base-content/60">
+                      <.time_ago datetime={order.inserted_at} />
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.link
+                        navigate={
+                          PhoenixKit.Utils.Routes.path("/admin/billing/orders/#{order.uuid}")
+                        }
+                        class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
+                        data-tip={gettext("View")}
+                      >
+                        <.icon name="hero-eye" class="w-4 h-4 hidden sm:inline" />
+                        <span class="sm:hidden whitespace-nowrap">{gettext("View")}</span>
+                      </.link>
+                    </.table_default_cell>
+                  </.table_default_row>
+                <% end %>
+              </.table_default_body>
+            </.table_default>
 
             <%!-- Pagination --%>
             <%= if @total_pages > 1 do %>

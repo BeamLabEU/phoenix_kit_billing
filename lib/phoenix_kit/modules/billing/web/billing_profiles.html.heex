@@ -77,88 +77,140 @@
               </p>
             </div>
           <% else %>
-            <div class="overflow-x-auto">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Type</th>
-                    <th>Name / Company</th>
-                    <th>Location</th>
-                    <th>Default</th>
-                    <th>Created</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <%= for profile <- @profiles do %>
-                    <tr class="hover">
-                      <td>
-                        <%= if profile.user do %>
-                          <div class="flex items-center gap-2">
-                            <.user_avatar user={profile.user} size="sm" />
-                            <div class="text-sm">{profile.user.email}</div>
+            <.table_default
+              id="billing-profiles-table"
+              variant="zebra"
+              class="w-full"
+              toggleable={true}
+              items={@profiles}
+              card_fields={
+                fn profile ->
+                  [
+                    %{
+                      label: "User",
+                      value: if(profile.user, do: profile.user.email, else: "-")
+                    },
+                    %{
+                      label: "Location",
+                      value:
+                        if(profile.city,
+                          do: "#{profile.city}, #{profile.country}",
+                          else: profile.country || "-"
+                        )
+                    },
+                    %{
+                      label: "Default",
+                      value: if(profile.is_default, do: "Yes", else: "No")
+                    }
+                  ]
+                end
+              }
+            >
+              <:card_header :let={profile}>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">
+                    <%= if profile.type == "company" do %>
+                      {profile.company_name}
+                    <% else %>
+                      {profile.first_name} {profile.last_name}
+                    <% end %>
+                  </span>
+                  <span class={"badge badge-sm #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
+                    {String.capitalize(profile.type)}
+                  </span>
+                </div>
+              </:card_header>
+              <:card_actions :let={profile}>
+                <.link
+                  navigate={
+                    PhoenixKit.Utils.Routes.path(
+                      "/admin/billing/profiles/#{profile.uuid}/edit"
+                    )
+                  }
+                  class="btn btn-xs btn-outline btn-info"
+                >
+                  <.icon name="hero-pencil" class="w-3 h-3" /> {gettext("Edit")}
+                </.link>
+              </:card_actions>
+              <.table_default_header>
+                <.table_default_row>
+                  <.table_default_header_cell>User</.table_default_header_cell>
+                  <.table_default_header_cell>Type</.table_default_header_cell>
+                  <.table_default_header_cell>Name / Company</.table_default_header_cell>
+                  <.table_default_header_cell>Location</.table_default_header_cell>
+                  <.table_default_header_cell>Default</.table_default_header_cell>
+                  <.table_default_header_cell>Created</.table_default_header_cell>
+                  <.table_default_header_cell></.table_default_header_cell>
+                </.table_default_row>
+              </.table_default_header>
+              <.table_default_body>
+                <%= for profile <- @profiles do %>
+                  <.table_default_row class="hover">
+                    <.table_default_cell>
+                      <%= if profile.user do %>
+                        <div class="flex items-center gap-2">
+                          <.user_avatar user={profile.user} size="sm" />
+                          <div class="text-sm">{profile.user.email}</div>
+                        </div>
+                      <% else %>
+                        <span class="text-base-content/50">-</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <span class={"badge badge-sm #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
+                        {String.capitalize(profile.type)}
+                      </span>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <%= if profile.type == "company" do %>
+                        <div class="font-medium">{profile.company_name}</div>
+                        <%= if profile.company_vat_number do %>
+                          <div class="text-xs text-base-content/60">
+                            VAT: {profile.company_vat_number}
                           </div>
-                        <% else %>
-                          <span class="text-base-content/50">-</span>
                         <% end %>
-                      </td>
-                      <td>
-                        <span class={"badge badge-sm #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
-                          {String.capitalize(profile.type)}
-                        </span>
-                      </td>
-                      <td>
-                        <%= if profile.type == "company" do %>
-                          <div class="font-medium">{profile.company_name}</div>
-                          <%= if profile.company_vat_number do %>
-                            <div class="text-xs text-base-content/60">
-                              VAT: {profile.company_vat_number}
-                            </div>
-                          <% end %>
-                        <% else %>
-                          <div class="font-medium">
-                            {profile.first_name} {profile.last_name}
-                          </div>
-                          <%= if profile.email do %>
-                            <div class="text-xs text-base-content/60">{profile.email}</div>
-                          <% end %>
+                      <% else %>
+                        <div class="font-medium">
+                          {profile.first_name} {profile.last_name}
+                        </div>
+                        <%= if profile.email do %>
+                          <div class="text-xs text-base-content/60">{profile.email}</div>
                         <% end %>
-                      </td>
-                      <td class="text-sm text-base-content/60">
-                        <%= if profile.city do %>
-                          {profile.city}, {profile.country}
-                        <% else %>
-                          {profile.country || "-"}
-                        <% end %>
-                      </td>
-                      <td>
-                        <%= if profile.is_default do %>
-                          <span class="badge badge-success badge-sm h-auto">Default</span>
-                        <% end %>
-                      </td>
-                      <td class="text-sm text-base-content/60">
-                        <.time_ago datetime={profile.inserted_at} />
-                      </td>
-                      <td>
-                        <.link
-                          navigate={
-                            PhoenixKit.Utils.Routes.path(
-                              "/admin/billing/profiles/#{profile.uuid}/edit"
-                            )
-                          }
-                          class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
-                          data-tip={gettext("Edit")}
-                        >
-                          <.icon name="hero-pencil" class="w-4 h-4 hidden sm:inline" />
-                          <span class="sm:hidden whitespace-nowrap">{gettext("Edit")}</span>
-                        </.link>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell class="text-sm text-base-content/60">
+                      <%= if profile.city do %>
+                        {profile.city}, {profile.country}
+                      <% else %>
+                        {profile.country || "-"}
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <%= if profile.is_default do %>
+                        <span class="badge badge-success badge-sm h-auto">Default</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell class="text-sm text-base-content/60">
+                      <.time_ago datetime={profile.inserted_at} />
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.link
+                        navigate={
+                          PhoenixKit.Utils.Routes.path(
+                            "/admin/billing/profiles/#{profile.uuid}/edit"
+                          )
+                        }
+                        class="btn btn-xs btn-outline btn-info tooltip tooltip-bottom"
+                        data-tip={gettext("Edit")}
+                      >
+                        <.icon name="hero-pencil" class="w-4 h-4 hidden sm:inline" />
+                        <span class="sm:hidden whitespace-nowrap">{gettext("Edit")}</span>
+                      </.link>
+                    </.table_default_cell>
+                  </.table_default_row>
+                <% end %>
+              </.table_default_body>
+            </.table_default>
 
             <%!-- Pagination --%>
             <%= if @total_pages > 1 do %>

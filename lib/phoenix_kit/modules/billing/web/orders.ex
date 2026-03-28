@@ -15,6 +15,7 @@ defmodule PhoenixKit.Modules.Billing.Web.Orders do
   import PhoenixKitWeb.Components.Core.TimeDisplay
   import PhoenixKit.Modules.Billing.Web.Components.CurrencyDisplay
   import PhoenixKit.Modules.Billing.Web.Components.OrderStatusBadge
+  import PhoenixKitWeb.Components.Core.TableDefault
 
   alias PhoenixKit.Modules.Billing
   alias PhoenixKit.Modules.Billing.Events

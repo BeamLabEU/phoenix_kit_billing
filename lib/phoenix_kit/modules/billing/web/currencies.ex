@@ -11,6 +11,7 @@ defmodule PhoenixKit.Modules.Billing.Web.Currencies do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitWeb.Components.Core.TableDefault
 
   alias PhoenixKit.Modules.Billing
   alias PhoenixKit.Modules.Billing.Currency
