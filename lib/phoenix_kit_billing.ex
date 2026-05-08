@@ -159,7 +159,9 @@ defmodule PhoenixKitBilling do
         group: :admin_modules,
         subtab_display: :when_active,
         highlight_with_subtabs: false,
-        live_view: {PhoenixKitBilling.Web.Index, :index}
+        live_view: {PhoenixKitBilling.Web.Index, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_dashboard,
@@ -171,7 +173,9 @@ defmodule PhoenixKitBilling do
         permission: "billing",
         parent: :admin_billing,
         match: :exact,
-        live_view: {PhoenixKitBilling.Web.Index, :index}
+        live_view: {PhoenixKitBilling.Web.Index, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_orders,
@@ -182,7 +186,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.Orders, :index}
+        live_view: {PhoenixKitBilling.Web.Orders, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_invoices,
@@ -193,7 +199,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.Invoices, :index}
+        live_view: {PhoenixKitBilling.Web.Invoices, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_transactions,
@@ -204,7 +212,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.Transactions, :index}
+        live_view: {PhoenixKitBilling.Web.Transactions, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_subscriptions,
@@ -215,7 +225,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.Subscriptions, :index}
+        live_view: {PhoenixKitBilling.Web.Subscriptions, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_subscription_types,
@@ -226,7 +238,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.SubscriptionTypes, :index}
+        live_view: {PhoenixKitBilling.Web.SubscriptionTypes, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_profiles,
@@ -237,7 +251,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.BillingProfiles, :index}
+        live_view: {PhoenixKitBilling.Web.BillingProfiles, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_currencies,
@@ -248,7 +264,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.Currencies, :index}
+        live_view: {PhoenixKitBilling.Web.Currencies, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :admin_billing_providers,
@@ -259,7 +277,9 @@ defmodule PhoenixKitBilling do
         level: :admin,
         permission: "billing",
         parent: :admin_billing,
-        live_view: {PhoenixKitBilling.Web.ProviderSettings, :index}
+        live_view: {PhoenixKitBilling.Web.ProviderSettings, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       )
     ]
   end
@@ -277,7 +297,9 @@ defmodule PhoenixKitBilling do
         parent: :admin_settings,
         permission: "billing",
         match: :exact,
-        live_view: {PhoenixKitBilling.Web.Settings, :index}
+        live_view: {PhoenixKitBilling.Web.Settings, :index},
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       )
     ]
   end
@@ -292,7 +314,9 @@ defmodule PhoenixKitBilling do
         path: "orders",
         priority: 200,
         match: :prefix,
-        group: :main
+        group: :main,
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       ),
       Tab.new!(
         id: :dashboard_billing_profiles,
@@ -301,7 +325,9 @@ defmodule PhoenixKitBilling do
         path: "billing-profiles",
         priority: 850,
         match: :prefix,
-        group: :account
+        group: :account,
+        gettext_backend: PhoenixKitBilling.Gettext,
+        gettext_domain: "default"
       )
     ]
   end

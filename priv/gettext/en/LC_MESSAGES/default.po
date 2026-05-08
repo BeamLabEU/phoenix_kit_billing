@@ -1,0 +1,55 @@
+## "msgid"s in this file come from POT (.pot) files.
+##
+## Do not add, change, or remove `msgid`s manually here as
+## they're tied to the ones in the corresponding POT file
+## (with the same domain).
+##
+## Use `mix gettext.extract --merge` or `mix gettext.merge`
+## to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Billing"
+msgstr "Billing"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Orders"
+msgstr "Orders"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Invoices"
+msgstr "Invoices"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Transactions"
+msgstr "Transactions"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Subscriptions"
+msgstr "Subscriptions"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Subscription Types"
+msgstr "Subscription Types"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Billing Profiles"
+msgstr "Billing Profiles"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Currencies"
+msgstr "Currencies"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Payment Providers"
+msgstr "Payment Providers"
+
+#: lib/phoenix_kit_billing.ex
+msgid "My Orders"
+msgstr "My Orders"

@@ -1,0 +1,57 @@
+## This file is the .pot template for the phoenix_kit_billing
+## "default" Gettext domain. msgids here are tab/group labels and
+## tooltips registered with `gettext_backend: PhoenixKitBilling.Gettext`.
+##
+## Tab labels are not extracted automatically by `mix gettext.extract`
+## (they live as plain strings in `Tab.new!(label: ...)`, not in a
+## `dgettext` macro call), so this template is maintained manually.
+## When you add a new translatable label, add the msgid here and run
+## `mix gettext.merge priv/gettext` to propagate to every locale's
+## `default.po`.
+
+msgid ""
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Billing"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Dashboard"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Orders"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Invoices"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Transactions"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Subscriptions"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Subscription Types"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Billing Profiles"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Currencies"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "Payment Providers"
+msgstr ""
+
+#: lib/phoenix_kit_billing.ex
+msgid "My Orders"
+msgstr ""

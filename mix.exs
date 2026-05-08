@@ -1,7 +1,7 @@
 defmodule PhoenixKitBilling.MixProject do
   use Mix.Project
 
-  @version "0.1.4"
+  @version "0.1.5"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_billing"
 
   def project do
@@ -32,7 +32,7 @@ defmodule PhoenixKitBilling.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger, :gettext]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -50,6 +50,9 @@ defmodule PhoenixKitBilling.MixProject do
     [
       # PhoenixKit provides the Module behaviour and Settings API.
       {:phoenix_kit, "~> 1.7"},
+
+      # Gettext for per-module i18n of sidebar tab labels.
+      {:gettext, "~> 1.0"},
 
       # LiveView is needed for the admin pages.
       {:phoenix_live_view, "~> 1.1"},
@@ -88,7 +91,7 @@ defmodule PhoenixKitBilling.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      files: ~w(lib priv .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 
