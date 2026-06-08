@@ -81,10 +81,15 @@ defmodule PhoenixKitBilling.MixProject do
   defp pk_dep(app, requirement, opts \\ []) do
     env_var = String.upcase(Atom.to_string(app)) <> "_PATH"
 
+    # An exported-but-empty var (e.g. `export PHOENIX_KIT_PATH=` in a script or
+    # CI step) returns "" from get_env, not nil — treat it like unset rather
+    # than building a broken `path: ""` dep.
     case System.get_env(env_var) do
-      nil when opts == [] -> {app, requirement}
-      nil -> {app, requirement, opts}
-      path -> {app, [path: path, override: true] ++ opts}
+      path when is_binary(path) and path != "" ->
+        {app, [path: path, override: true] ++ opts}
+
+      _ ->
+        {app, requirement, opts}
     end
   end
 
