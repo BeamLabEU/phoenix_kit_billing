@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2026-06-08
+
+No consumer-facing changes — the published surface (declared `{:phoenix_kit, "~> 1.7"}` and behaviour) is identical to 0.5.0. This release refreshes dependencies and adds local-development tooling.
+
+### Changed
+- **Dependencies refreshed** (`mix.lock`): `phoenix_kit` 1.7.131 → 1.7.133, plus transitive bumps (`bandit` 1.11.1 → 1.12.0, `req` 0.5.18 → 0.6.1, `tesla` 1.18.3 → 1.20.0, `etcher` 0.6.5 → 0.6.6, `fresco` 0.6.3 → 0.7.1, `spitfire` 0.3.12 → 0.3.13). No declared requirement changed; `mix.lock` is not part of the published package.
+
+### Added
+- **Local cross-repo development tooling.** A `pk_dep/3` helper in `mix.exs` lets `phoenix_kit*` deps resolve to a local checkout via `<APP>_PATH` (e.g. `PHOENIX_KIT_PATH=../phoenix_kit mix test`) without altering the published Hex pin — unset resolves exactly as before. An exported-but-empty var falls back to the published pin rather than building a broken `path: ""` dep. Documented in `AGENTS.md`.
+
 ## [0.5.0] - 2026-06-05
 
 ### Security
