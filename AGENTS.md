@@ -362,6 +362,19 @@ were initially deferred.
   migration. This is a **core `phoenix_kit` defect**, not a billing-module
   bug; flagged here for Max to schedule the core fix + pin bump.
 
+## Research & Design Notes
+
+Non-PR research / strategic-assessment docs live flat under `dev_docs/`:
+
+- **`dev_docs/agentic_commerce_payments.md`** — Agentic Commerce payment leg
+  (2026-06-14). Triggered by the "Visa plugs into ChatGPT" news. Covers Stripe's
+  **Shared Payment Token (SPT)** / ACP Delegated Payments and how the payment leg
+  maps onto this module's `Providers.Provider` behaviour + the Stripe provider
+  (`charge_payment_method` / webhook idempotency). Finding: **the payment leg is
+  the cheapest part — we already run on Stripe.** Verdict: watch-item, no build
+  yet. Full context (feed + checkout endpoints, which live in ecommerce / a
+  proposed bridge plugin): `phoenix_kit_ecommerce/dev_docs/agentic_commerce_acp_research.md`.
+
 ## Pull Requests
 
 ### Commit Message Rules
