@@ -110,16 +110,12 @@
 
             <div class="grid grid-cols-2 gap-4 items-end">
               <div class="form-control">
-                <label class="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    name="tax_enabled"
-                    value="true"
-                    checked={@tax_enabled}
-                    class="checkbox checkbox-primary checkbox-sm"
-                  />
-                  <span class="label-text">{gettext("Enable Tax")}</span>
-                </label>
+                <.checkbox
+                  name="tax_enabled"
+                  checked={@tax_enabled}
+                  label={gettext("Enable Tax")}
+                  class="checkbox-sm"
+                />
               </div>
               <div class="form-control">
                 <label class="label">

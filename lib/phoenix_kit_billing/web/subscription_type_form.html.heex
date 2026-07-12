@@ -172,21 +172,11 @@
                 </div>
 
                 <div class="form-control">
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <input
-                      type="checkbox"
-                      name="subscription_type[active]"
-                      value="true"
-                      checked={@form[:active].value == true}
-                      class="checkbox checkbox-primary"
-                    />
-                    <span class="label-text">{gettext("Active")}</span>
-                  </label>
-                  <label class="label">
-                    <span class="label-text-alt">
+                  <.checkbox field={@form[:active]} label={gettext("Active")}>
+                    <:description>
                       {gettext("Only active plans are shown to customers")}
-                    </span>
-                  </label>
+                    </:description>
+                  </.checkbox>
                 </div>
               </div>
             </div>

@@ -100,7 +100,9 @@ defmodule PhoenixKitBilling.MixProject do
   defp deps do
     [
       # PhoenixKit provides the Module behaviour and Settings API.
-      pk_dep(:phoenix_kit, "~> 1.7"),
+      # >= 1.7.184 needed for the Core.Checkbox `:description` slot + `disabled`/
+      # `title`/`wrapper_class` attrs used by the checkbox-toggle migration.
+      pk_dep(:phoenix_kit, "~> 1.7 and >= 1.7.184"),
 
       # Gettext for per-module i18n of sidebar tab labels.
       {:gettext, "~> 1.0"},

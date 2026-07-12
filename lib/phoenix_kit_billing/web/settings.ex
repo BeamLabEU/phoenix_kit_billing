@@ -9,6 +9,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
+  import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
 
   alias PhoenixKit.Settings

@@ -145,18 +145,13 @@
             <%!-- Trial Period (create mode only) --%>
             <%= if @live_action != :edit do %>
               <div class="form-control mt-4">
-                <label class="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    name="enable"
-                    value="true"
-                    checked={@enable_trial}
-                    phx-click="toggle_trial"
-                    phx-value-enable={if @enable_trial, do: "false", else: "true"}
-                    class="checkbox checkbox-primary"
-                  />
-                  <span class="label-text">{gettext("Start with trial period")}</span>
-                </label>
+                <.checkbox
+                  name="enable"
+                  checked={@enable_trial}
+                  label={gettext("Start with trial period")}
+                  phx-click="toggle_trial"
+                  phx-value-enable={if @enable_trial, do: "false", else: "true"}
+                />
               </div>
 
               <%= if @enable_trial do %>

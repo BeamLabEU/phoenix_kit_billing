@@ -14,6 +14,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
+  import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.UserInfo
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitBilling.Web.Components.CurrencyDisplay

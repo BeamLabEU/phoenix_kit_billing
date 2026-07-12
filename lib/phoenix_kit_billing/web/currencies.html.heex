@@ -378,17 +378,7 @@
 
             <%!-- Enabled --%>
             <div class="form-control">
-              <label class="label cursor-pointer justify-start gap-3">
-                <input type="hidden" name="currency[enabled]" value="false" />
-                <input
-                  type="checkbox"
-                  name="currency[enabled]"
-                  value="true"
-                  checked={to_string(@form[:enabled].value) == "true"}
-                  class="checkbox checkbox-primary"
-                />
-                <span class="label-text">{gettext("Enabled")}</span>
-              </label>
+              <.checkbox field={@form[:enabled]} label={gettext("Enabled")} />
             </div>
           </div>
 

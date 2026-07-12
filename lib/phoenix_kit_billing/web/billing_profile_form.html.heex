@@ -312,21 +312,11 @@
           </h2>
 
           <div class="form-control">
-            <label class="cursor-pointer label justify-start gap-4">
-              <input
-                type="checkbox"
-                name="billing_profile[is_default]"
-                value="true"
-                class="checkbox checkbox-primary"
-                checked={@form[:is_default].value == true || @form[:is_default].value == "true"}
-              />
-              <div>
-                <span class="label-text font-medium">{gettext("Set as default profile")}</span>
-                <span class="label-text-alt block">
-                  {gettext("This profile will be used by default for new orders")}
-                </span>
-              </div>
-            </label>
+            <.checkbox field={@form[:is_default]} label={gettext("Set as default profile")}>
+              <:description>
+                {gettext("This profile will be used by default for new orders")}
+              </:description>
+            </.checkbox>
           </div>
 
           <div class="form-control mt-4">

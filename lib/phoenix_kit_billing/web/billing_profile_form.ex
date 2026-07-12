@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Input
   import PhoenixKitWeb.Components.Core.Select
