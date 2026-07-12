@@ -19,6 +19,7 @@ defmodule PhoenixKitBilling.PaymentOption do
   """
 
   use Ecto.Schema
+  use PhoenixKit.SchemaPrefix
   import Ecto.Changeset
 
   @types ~w(offline online)

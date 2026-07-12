@@ -23,6 +23,7 @@ defmodule PhoenixKitBilling.WebhookEvent do
   """
 
   use Ecto.Schema
+  use PhoenixKit.SchemaPrefix
   import Ecto.Changeset
 
   alias PhoenixKit.Utils.Date, as: UtilsDate

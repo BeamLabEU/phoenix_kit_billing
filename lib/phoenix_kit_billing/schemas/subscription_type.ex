@@ -36,6 +36,7 @@ defmodule PhoenixKitBilling.SubscriptionType do
   """
 
   use Ecto.Schema
+  use PhoenixKit.SchemaPrefix
   import Ecto.Changeset
 
   alias PhoenixKit.RepoHelper
