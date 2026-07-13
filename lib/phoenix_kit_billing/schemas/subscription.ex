@@ -39,6 +39,7 @@ defmodule PhoenixKitBilling.Subscription do
   """
 
   use Ecto.Schema
+  use PhoenixKit.SchemaPrefix
   import Ecto.Changeset
 
   alias PhoenixKit.Utils.Date, as: UtilsDate

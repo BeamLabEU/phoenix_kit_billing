@@ -28,6 +28,7 @@ defmodule PhoenixKitBilling.PaymentMethod do
   """
 
   use Ecto.Schema
+  use PhoenixKit.SchemaPrefix
   import Ecto.Changeset
 
   @types ~w(card bank_account wallet paypal)
