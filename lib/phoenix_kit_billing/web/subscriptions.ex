@@ -116,12 +116,16 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
   end
 
   @impl true
+  # `replace: true` because the box is debounced: without it a typed-out query
+  # leaves one history entry per pause, and Back walks the search string
+  # backwards a few characters at a time instead of leaving the page.
   def handle_event("search", %{"search" => search}, socket) do
     {:noreply,
      push_patch(socket,
        to:
          Routes.path("/admin/billing/subscriptions") <>
-           build_query_string(socket.assigns.status_filter, search)
+           build_query_string(socket.assigns.status_filter, search),
+       replace: true
      )}
   end
 
