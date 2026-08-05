@@ -113,9 +113,9 @@ The rest are pre-existing and want their own PR. Highest severity first:
 
 ## Cross-module integration sweep (2026-08-05)
 
-Verified clean: the V161 migration runs whether or not billing is
+Verified clean: the V162 migration runs whether or not billing is
 installed (both tables belong to core's chain); ecommerce's runtime-marker
-guard degrades correctly on a host below V161; no key collisions between
+guard degrades correctly on a host below V162; no key collisions between
 the two modules or against core (permission keys, notification types,
 action strings, settings prefixes); and no audit action collides with a
 registered notify action in either module.
@@ -128,7 +128,7 @@ One LOW finding left open:
   (an admin order form, a context function) passing the key against an
   un-migrated host would hit the missing column. Worth pushing the guard
   down into billing so the contract is not owned by one consumer. Moot once
-  the pin floors on the release containing V161.
+  the pin floors on the release containing V162.
 
 ## Parity work not done in this pass
 

@@ -3,7 +3,7 @@
 **Base:** `BeamLabEU/phoenix_kit_billing` `main` ← **Head:** `mdon:main`
 **Commits:** 6 · **286 tests, 0 failures** · `mix precommit` exit 0
 
-> ⚠️ **Depends on core PR (V161)** — `payment_option_uuid` on
+> ⚠️ **Depends on core PR (V162)** — `payment_option_uuid` on
 > `phoenix_kit_orders`. Merge and release core first, then bump the pin
 > here. The code guards the column's absence, so it degrades rather than
 > crashes on an older core.
@@ -71,7 +71,7 @@ core auto-derives notifications from registered actions.
 
 ## Also here
 
-- `Order.payment_option_uuid` (core V161): the operator-configured option
+- `Order.payment_option_uuid` (core V162): the operator-configured option
   the customer chose, distinct from `payment_method`'s closed vocabulary
 - `billing_snapshot_policy`: `pending_only` (default — refresh while
   draft/pending, freeze once money has changed hands), `never`, or

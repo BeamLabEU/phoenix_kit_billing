@@ -134,7 +134,7 @@ defmodule PhoenixKitBilling.Order do
     # from `payment_method`, which is the small closed vocabulary above:
     # several options can share one method ("Bank transfer (EU)" and
     # "(UK)" are both `bank`), and an option can be renamed or deactivated
-    # after the order is placed. ON DELETE SET NULL (core V161) so removing
+    # after the order is placed. ON DELETE SET NULL (core V162) so removing
     # an option neither fails nor rewrites history.
     belongs_to(:payment_option, PhoenixKitBilling.PaymentOption,
       foreign_key: :payment_option_uuid,
