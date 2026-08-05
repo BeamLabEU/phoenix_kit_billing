@@ -77,6 +77,40 @@ line, regardless of the module's tax settings.
 `paid_amount == 0`. An invoice paid €40 of €100 and refunded €40 is voided
 by one rule and shown as not-fully-refunded by the other.
 
+## Subscription and invoice lifecycle (a later sweep, 2026-08-05)
+
+A second adversarial sweep focused on subscriptions and the invoice
+lifecycle — areas this PR does not touch — and found 19 items. Two were
+this PR's own and are FIXED here (the subscription form's
+pause/resume/cancel/extend handlers were the one lifecycle group the authz
+sweep missed; and the new overpay cap read the balance outside the
+transaction, so two overlapping payments could both pass — now re-checked
+on a locked invoice row).
+
+The rest are pre-existing and want their own PR. Highest severity first:
+
+1. **`cancel_at_period_end` never flips status to `cancelled`** — the flag
+   is set but nothing reconciles it when the period ends, so a cancelled
+   subscription keeps renewing.
+2. **Dunning charges the card with no invoice and no ledger row** — money
+   taken with nothing to reconcile it against.
+3. **"Resume" after cancel-at-period-end does not clear the flag** — the
+   subscription resumes and then cancels anyway at period end.
+4. **Trial math delays the first charge by a full billing period** — a
+   14-day trial on a monthly plan bills at day 44.
+5. **No status-transition guards** — `resume` on a `cancelled` row
+   resurrects it with no payment; `pause` works on `cancelled`/`past_due`.
+6. **Order "mark paid" does not pay (or create) invoices**, and
+   **multiple invoices per order each carry the full total**.
+7. Renewal bills the LIVE plan price rather than the subscription's
+   snapshot, never sets `subscription_uuid` on the invoice, and a failed
+   renewal leaves an orphan `sent` invoice that dunning ignores.
+8. Invoice/receipt numbering is `count + 1` with no serialization —
+   collisions under concurrency.
+9. `void_invoice` is allowed on a `sent`/`overdue` invoice that already has
+   `paid_amount > 0`; partial refunds leave `status: "paid"` with a balance
+   due, while full refunds void.
+
 ## Parity work not done in this pass
 
 - Activity logging exists on admin mutations but not on their ERROR

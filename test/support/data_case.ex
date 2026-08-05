@@ -81,4 +81,14 @@ defmodule PhoenixKitBilling.DataCase do
 
     user
   end
+
+  @doc """
+  Lets a spawned process use the test's sandbox connection.
+
+  Needed by tests that exercise real DB CONCURRENCY (two tasks racing for
+  the same row lock) rather than simulating it.
+  """
+  def allow_sandbox(pid) do
+    Sandbox.allow(TestRepo, self(), pid)
+  end
 end

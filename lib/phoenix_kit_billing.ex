@@ -2700,6 +2700,19 @@ defmodule PhoenixKitBilling do
 
   # The ledger row's shape, lifted out so do_record_transaction/4 stays
   # readable.
+  # SELECT ... FOR UPDATE on the invoice row: serializes concurrent payment
+  # recording for the SAME invoice so the balance check cannot be raced.
+  defp lock_invoice_for_update(%Invoice{uuid: uuid} = invoice) do
+    Invoice
+    |> where([i], i.uuid == ^uuid)
+    |> lock("FOR UPDATE")
+    |> repo().one()
+    |> case do
+      nil -> invoice
+      locked -> locked
+    end
+  end
+
   defp build_transaction_attrs(invoice, amount, attrs, admin_user) do
     %{
       transaction_number: generate_transaction_number(),
@@ -2760,6 +2773,18 @@ defmodule PhoenixKitBilling do
     transaction_attrs = build_transaction_attrs(invoice, amount, attrs, admin_user)
 
     repo().transaction(fn ->
+      # Re-check the balance on the LOCKED invoice. The caller's check runs
+      # on an invoice read before the transaction, so two concurrent
+      # payments could each see the same remaining balance and both pass -
+      # check-then-act on money. A positive amount that no longer fits
+      # rolls the whole thing back.
+      locked = lock_invoice_for_update(invoice)
+
+      if Decimal.positive?(amount) and
+           Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt do
+        repo().rollback(:exceeds_remaining)
+      end
+
       # Create transaction
       case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
         {:ok, transaction} ->

@@ -158,4 +158,37 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
     assert Decimal.equal?(invoice.paid_amount, invoice.total)
     assert Decimal.equal?(PhoenixKitBilling.Invoice.remaining_amount(invoice), Decimal.new("0"))
   end
+
+  test "two overlapping payment attempts cannot together exceed the balance" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    # The caller's cap reads `remaining` from an invoice fetched BEFORE the
+    # transaction, so two attempts holding the same stale invoice both saw
+    # the full balance. The in-transaction re-check on the locked row is
+    # what rejects the second.
+    #
+    # ⚠️ This pins the OUTCOME, not true parallelism: the sandbox shares one
+    # connection, so the two tasks serialize rather than racing. The
+    # SELECT ... FOR UPDATE it exercises is what makes the real concurrent
+    # case safe; proving that needs a non-sandboxed database.
+    task = fn ->
+      Task.async(fn ->
+        PhoenixKitBilling.DataCase.allow_sandbox(self())
+
+        Billing.record_payment(
+          Billing.get_invoice(invoice.uuid),
+          %{amount: Decimal.new("100.00"), payment_method: "bank"},
+          nil
+        )
+      end)
+    end
+
+    results = [task.(), task.()] |> Enum.map(&Task.await(&1, 15_000))
+
+    assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+    assert Enum.count(results, &match?({:error, :exceeds_remaining}, &1)) == 1
+
+    assert Decimal.equal?(Billing.get_invoice(invoice.uuid).paid_amount, Decimal.new("100.00"))
+  end
 end
