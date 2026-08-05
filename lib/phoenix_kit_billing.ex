@@ -2726,7 +2726,18 @@ defmodule PhoenixKitBilling do
       payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
       description: attrs[:description] || attrs["description"],
       invoice_uuid: invoice.uuid,
-      user_uuid: extract_user_uuid(admin_user)
+      # A webhook- or worker-driven payment has NO admin actor, and
+      # user_uuid is required - so every provider-confirmed payment failed
+      # to insert: the customer was charged, the invoice stayed unpaid with
+      # paid_amount 0, and there was no ledger row to reconcile against.
+      # The invoice's own user is the right attribution for those.
+      user_uuid: extract_user_uuid(admin_user) || invoice.user_uuid,
+      # Carried, not dropped: callers already pass these, and
+      # find_transaction_by_provider_id/1 needs them to match a later
+      # refund webhook to the charge it reverses.
+      provider_transaction_id:
+        attrs[:provider_transaction_id] || attrs["provider_transaction_id"],
+      provider_data: attrs[:provider_data] || attrs["provider_data"] || %{}
     }
 
     repo().transaction(fn ->
