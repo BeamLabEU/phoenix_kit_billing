@@ -187,7 +187,6 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
             actor_role: Activity.actor_role(socket),
             resource_type: "invoice",
             resource_uuid: invoice.uuid,
-            target_uuid: socket.assigns.order.uuid,
             metadata: %{
               "invoice_number" => invoice.invoice_number,
               "status" => invoice.status,

@@ -111,6 +111,25 @@ The rest are pre-existing and want their own PR. Highest severity first:
    `paid_amount > 0`; partial refunds leave `status: "paid"` with a balance
    due, while full refunds void.
 
+## Cross-module integration sweep (2026-08-05)
+
+Verified clean: the V161 migration runs whether or not billing is
+installed (both tables belong to core's chain); ecommerce's runtime-marker
+guard degrades correctly on a host below V161; no key collisions between
+the two modules or against core (permission keys, notification types,
+action strings, settings prefixes); and no audit action collides with a
+registered notify action in either module.
+
+One LOW finding left open:
+
+- **Billing's schema casts `payment_option_uuid` unconditionally.** Today
+  only ecommerce writes it, and it gates on the migration version — but the
+  guard therefore lives in the CONSUMER. A future billing-internal caller
+  (an admin order form, a context function) passing the key against an
+  un-migrated host would hit the missing column. Worth pushing the guard
+  down into billing so the contract is not owned by one consumer. Moot once
+  the pin floors on the release containing V161.
+
 ## Parity work not done in this pass
 
 - Activity logging exists on admin mutations but not on their ERROR

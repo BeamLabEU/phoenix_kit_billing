@@ -1098,12 +1098,15 @@ defmodule PhoenixKitBilling do
       |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
-    result =
-      %Order{}
-      |> Order.changeset(attrs)
-      |> repo().insert()
+    with %{} = attrs <- attrs do
+      insert_order(attrs)
+    end
+  end
 
-    case result do
+  # `maybe_set_billing_snapshot/1` returns an error tuple when the chosen
+  # billing profile has vanished; passing that to a changeset would raise.
+  defp insert_order(attrs) do
+    case %Order{} |> Order.changeset(attrs) |> repo().insert() do
       {:ok, order} ->
         Events.broadcast_order_created(order)
         {:ok, order}
@@ -1129,18 +1132,8 @@ defmodule PhoenixKitBilling do
       |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
-    result =
-      %Order{}
-      |> Order.changeset(attrs)
-      |> repo().insert()
-
-    case result do
-      {:ok, order} ->
-        Events.broadcast_order_created(order)
-        {:ok, order}
-
-      error ->
-        error
+    with %{} = attrs <- attrs do
+      insert_order(attrs)
     end
   end
 
@@ -1331,11 +1324,23 @@ defmodule PhoenixKitBilling do
         attrs
 
       uuid ->
-        profile = get_billing_profile!(uuid)
+        # NON-raising: this runs inside create_order/2, itself inside the
+        # shop's conversion transaction. A raise here escapes the caller's
+        # `with`/`else` (exceptions are not matched by else), propagates out
+        # of the transaction and takes the checkout LiveView down - a
+        # disconnect on the money path rather than a handled error. The
+        # window is small (an admin deleting a profile between the shop's
+        # ownership check and this lookup) but the failure mode is the worst
+        # kind.
+        case get_billing_profile(uuid) do
+          nil ->
+            {:error, :billing_profile_not_found}
 
-        attrs
-        |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
-        |> Map.put("billing_profile_uuid", profile.uuid)
+          profile ->
+            attrs
+            |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
+            |> Map.put("billing_profile_uuid", profile.uuid)
+        end
     end
   end
 
@@ -1357,11 +1362,17 @@ defmodule PhoenixKitBilling do
 
       # Profile UUID present - update snapshot if changed or empty
       true ->
-        profile = get_billing_profile!(new_profile_uuid)
+        profile = get_billing_profile(new_profile_uuid)
 
         snapshot_empty? = is_nil(order.billing_snapshot) || order.billing_snapshot == %{}
 
         cond do
+          # The profile vanished between the caller reading it and this
+          # lookup - leave the attrs alone rather than raising out of the
+          # caller's transaction.
+          is_nil(profile) ->
+            attrs
+
           # An empty snapshot is always filled: there is no history to
           # protect, and rendering nothing is worse than rendering the
           # profile.

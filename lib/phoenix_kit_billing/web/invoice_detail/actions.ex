@@ -36,7 +36,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           actor_role: actor_role(socket),
           resource_type: "transaction",
           resource_uuid: transaction.uuid,
-          target_uuid: invoice.uuid,
           metadata: %{
             "invoice_number" => invoice.invoice_number,
             "amount" => to_string(amount),
@@ -136,7 +135,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
             actor_role: actor_role(socket),
             resource_type: "transaction",
             resource_uuid: transaction.uuid,
-            target_uuid: invoice.uuid,
             metadata: %{
               "invoice_number" => invoice.invoice_number,
               "amount" => to_string(amount),
@@ -253,7 +251,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         actor_role: actor_role(socket),
         resource_type: "transaction",
         resource_uuid: updated_transaction.uuid,
-        target_uuid: invoice.uuid,
         metadata: %{"invoice_number" => invoice.invoice_number}
       )
 
@@ -301,7 +298,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         actor_role: actor_role(socket),
         resource_type: "transaction",
         resource_uuid: updated_transaction.uuid,
-        target_uuid: invoice.uuid,
         metadata: %{"invoice_number" => invoice.invoice_number}
       )
 
