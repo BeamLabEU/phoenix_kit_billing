@@ -43,7 +43,16 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
       })
 
     {:ok, invoice} = Billing.create_invoice_from_order(order)
-    invoice
+
+    # An invoice must be ISSUED before it can take money - record_payment/3
+    # refuses a draft. Transition directly rather than through
+    # send_invoice/1, which also delivers mail.
+    {:ok, sent} =
+      invoice
+      |> Ecto.Changeset.change(%{status: "sent"})
+      |> RepoHelper.repo().update()
+
+    sent
   end
 
   test "a payment with no admin actor is attributed to the invoice's user" do
@@ -142,14 +151,6 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
     user = user_fixture()
     invoice = invoice_fixture(user)
 
-    # An invoice must be issued before it can be settled. Transition the
-    # status directly - send_invoice/1 also delivers mail, which is not
-    # what this test is about.
-    {:ok, invoice} =
-      invoice
-      |> Ecto.Changeset.change(%{status: "sent"})
-      |> RepoHelper.repo().update()
-
     {:ok, invoice} = Billing.mark_invoice_paid(invoice)
 
     assert invoice.status == "paid"
@@ -190,5 +191,46 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
     assert Enum.count(results, &match?({:error, :exceeds_remaining}, &1)) == 1
 
     assert Decimal.equal?(Billing.get_invoice(invoice.uuid).paid_amount, Decimal.new("100.00"))
+  end
+
+  test "marking paid writes a ledger row, so the invoice can still be refunded" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    {:ok, invoice} = Billing.mark_invoice_paid(invoice)
+
+    # Without a transaction, a later refund recalculates paid_amount from
+    # transactions summing to -60 and the update is rolled back: an invoice
+    # the system says was paid that nobody can refund.
+    assert {:ok, _refund} =
+             Billing.record_refund(
+               invoice,
+               %{amount: Decimal.new("60.00"), description: "partial"},
+               nil
+             )
+
+    refreshed = Billing.get_invoice(invoice.uuid)
+    assert Decimal.equal?(refreshed.paid_amount, Decimal.new("40.00"))
+  end
+
+  test "money cannot be recorded against an invoice that was never issued" do
+    user = user_fixture()
+
+    {:ok, order} =
+      Billing.create_order(user, %{
+        "total" => Decimal.new("10.00"),
+        "currency" => "EUR",
+        "billing_snapshot" => %{"email" => user.email}
+      })
+
+    {:ok, draft} = Billing.create_invoice_from_order(order)
+    assert draft.status == "draft"
+
+    assert {:error, :not_payable} =
+             Billing.record_payment(
+               draft,
+               %{amount: Decimal.new("10.00"), payment_method: "bank"},
+               nil
+             )
   end
 end

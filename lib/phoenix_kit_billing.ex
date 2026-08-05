@@ -2232,15 +2232,25 @@ defmodule PhoenixKitBilling do
   @doc """
   Marks an invoice as paid (generates receipt).
   """
-  def mark_invoice_paid(%Invoice{} = invoice) do
+  def mark_invoice_paid(%Invoice{} = invoice, admin_user \\ nil) do
     if Invoice.payable?(invoice) do
       config = get_config()
       receipt_number = generate_receipt_number(config.receipt_prefix)
 
       result =
-        invoice
-        |> Invoice.paid_changeset(receipt_number)
-        |> repo().update()
+        repo().transaction(fn ->
+          # A settlement needs a LEDGER ROW, not just a status and a number.
+          # Without one the invoice reads paid while its transactions sum to
+          # zero, and a later refund recalculates paid_amount from those
+          # transactions - producing a NEGATIVE amount that rolls the refund
+          # back. The operator is left unable to refund an invoice the
+          # system says was paid.
+          _ = record_settlement_transaction(invoice, admin_user)
+
+          invoice
+          |> Invoice.paid_changeset(receipt_number)
+          |> repo().update!()
+        end)
 
       # Also mark the order as paid if linked
       case result do
@@ -2254,6 +2264,26 @@ defmodule PhoenixKitBilling do
       end
     else
       {:error, :invoice_not_payable}
+    end
+  end
+
+  # The outstanding balance, recorded as an offline payment so the ledger
+  # matches the invoice. Nothing to record when it is already settled.
+  defp record_settlement_transaction(%Invoice{} = invoice, admin_user) do
+    outstanding = Invoice.remaining_amount(invoice)
+
+    if Decimal.positive?(outstanding) do
+      attrs = %{
+        amount: outstanding,
+        payment_method: "bank",
+        description: "Marked as paid"
+      }
+
+      %Transaction{}
+      |> Transaction.changeset(build_transaction_attrs(invoice, outstanding, attrs, admin_user))
+      |> repo().insert()
+    else
+      :ok
     end
   end
 
@@ -2678,6 +2708,13 @@ defmodule PhoenixKitBilling do
     remaining = Invoice.remaining_amount(invoice)
 
     cond do
+      # The UI already handles :not_payable; the context never returned it,
+      # so a crafted event or a library caller could record money against a
+      # draft or voided invoice - money in the ledger against a document
+      # that was never issued.
+      not Invoice.payable?(invoice) ->
+        {:error, :not_payable}
+
       Decimal.compare(amount, Decimal.new(0)) != :gt ->
         {:error, :invalid_amount}
 
