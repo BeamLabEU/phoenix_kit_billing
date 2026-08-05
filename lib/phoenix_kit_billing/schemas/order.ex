@@ -130,6 +130,18 @@ defmodule PhoenixKitBilling.Order do
       define_field: false
     )
 
+    # The operator-configured method the customer actually chose. Distinct
+    # from `payment_method`, which is the small closed vocabulary above:
+    # several options can share one method ("Bank transfer (EU)" and
+    # "(UK)" are both `bank`), and an option can be renamed or deactivated
+    # after the order is placed. ON DELETE SET NULL (core V161) so removing
+    # an option neither fails nor rewrites history.
+    belongs_to(:payment_option, PhoenixKitBilling.PaymentOption,
+      foreign_key: :payment_option_uuid,
+      references: :uuid,
+      type: UUIDv7
+    )
+
     belongs_to(:billing_profile, BillingProfile,
       foreign_key: :billing_profile_uuid,
       references: :uuid,
@@ -155,6 +167,7 @@ defmodule PhoenixKitBilling.Order do
       :order_number,
       :status,
       :payment_method,
+      :payment_option_uuid,
       :line_items,
       :subtotal,
       :tax_amount,

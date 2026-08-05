@@ -1280,14 +1280,63 @@ defmodule PhoenixKitBilling do
 
         snapshot_empty? = is_nil(order.billing_snapshot) || order.billing_snapshot == %{}
 
-        if profile.uuid != order.billing_profile_uuid || snapshot_empty? do
-          attrs
-          |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
-          |> Map.put("billing_profile_uuid", profile.uuid)
-        else
-          attrs
+        cond do
+          # An empty snapshot is always filled: there is no history to
+          # protect, and rendering nothing is worse than rendering the
+          # profile.
+          snapshot_empty? ->
+            put_snapshot(attrs, profile)
+
+          profile.uuid != order.billing_profile_uuid and snapshot_refreshable?(order) ->
+            put_snapshot(attrs, profile)
+
+          true ->
+            # Frozen: keep the address the order was billed to, and do not
+            # let a later profile switch rewrite it.
+            Map.delete(attrs, "billing_snapshot")
         end
     end
+  end
+
+  defp put_snapshot(attrs, profile) do
+    attrs
+    |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
+    |> Map.put("billing_profile_uuid", profile.uuid)
+  end
+
+  @doc """
+  Whether an order's billing snapshot may still be refreshed from the live
+  profile.
+
+  The snapshot is the record of who an order was billed to, so rewriting it
+  after the fact makes history mutable — but while an order is still being
+  prepared, a customer fixing a typo in their address SHOULD see it on the
+  order. The line is drawn at money changing hands:
+
+    * `"draft"` / `"pending"` — refreshable
+    * `"confirmed"` / `"paid"` / `"refunded"` / `"cancelled"` — frozen
+
+  Operators who want the stricter or looser rule set
+  `billing_snapshot_policy` to `"never"` (freeze from creation) or
+  `"always"` (the pre-2026-08 behaviour, refresh whenever the profile
+  changes). Fails closed to the default on a settings-layer error.
+  """
+  def snapshot_refreshable?(%Order{status: status}) do
+    case snapshot_policy() do
+      "never" -> false
+      "always" -> true
+      _pending_only -> status in ["draft", "pending"]
+    end
+  end
+
+  @doc "The configured snapshot-refresh policy: pending_only | never | always."
+  def snapshot_policy do
+    case PhoenixKit.Settings.get_setting_cached("billing_snapshot_policy", "pending_only") do
+      value when value in ["pending_only", "never", "always"] -> value
+      _ -> "pending_only"
+    end
+  rescue
+    _ -> "pending_only"
   end
 
   # ============================================
