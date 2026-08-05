@@ -2675,12 +2675,52 @@ defmodule PhoenixKitBilling do
   """
   def record_payment(%Invoice{} = invoice, attrs, admin_user) do
     amount = parse_decimal(attrs[:amount] || attrs["amount"])
+    remaining = Invoice.remaining_amount(invoice)
 
-    if Decimal.compare(amount, Decimal.new(0)) != :gt do
-      {:error, :invalid_amount}
-    else
-      do_record_transaction(invoice, amount, attrs, admin_user)
+    cond do
+      Decimal.compare(amount, Decimal.new(0)) != :gt ->
+        {:error, :invalid_amount}
+
+      # An invoice cannot take more than it is owed. The admin UI already
+      # renders an :exceeds_remaining error the context never returned, so
+      # a mistyped amount silently overstated cash: paid_amount ran past
+      # total, remaining_amount/1 went negative, and the invoice flipped to
+      # "paid" carrying more money than it billed.
+      #
+      # Overpayment IS a real business event, but it belongs in a credit or
+      # a separate transaction an operator chooses deliberately - not as a
+      # side effect of a typo.
+      Decimal.compare(amount, remaining) == :gt ->
+        {:error, :exceeds_remaining}
+
+      true ->
+        do_record_transaction(invoice, amount, attrs, admin_user)
     end
+  end
+
+  # The ledger row's shape, lifted out so do_record_transaction/4 stays
+  # readable.
+  defp build_transaction_attrs(invoice, amount, attrs, admin_user) do
+    %{
+      transaction_number: generate_transaction_number(),
+      amount: amount,
+      currency: invoice.currency,
+      payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
+      description: attrs[:description] || attrs["description"],
+      invoice_uuid: invoice.uuid,
+      # A webhook- or worker-driven payment has NO admin actor, and
+      # user_uuid is required - so every provider-confirmed payment failed
+      # to insert: the customer was charged, the invoice stayed unpaid with
+      # paid_amount 0, and there was no ledger row to reconcile against.
+      # The invoice's own user is the right attribution for those.
+      user_uuid: extract_user_uuid(admin_user) || invoice.user_uuid,
+      # Carried, not dropped: callers already pass these, and
+      # find_transaction_by_provider_id/1 needs them to match a later
+      # refund webhook to the charge it reverses.
+      provider_transaction_id:
+        attrs[:provider_transaction_id] || attrs["provider_transaction_id"],
+      provider_data: attrs[:provider_data] || attrs["provider_data"] || %{}
+    }
   end
 
   @doc """
@@ -2717,28 +2757,7 @@ defmodule PhoenixKitBilling do
   end
 
   defp do_record_transaction(invoice, amount, attrs, admin_user) do
-    transaction_number = generate_transaction_number()
-
-    transaction_attrs = %{
-      transaction_number: transaction_number,
-      amount: amount,
-      currency: invoice.currency,
-      payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
-      description: attrs[:description] || attrs["description"],
-      invoice_uuid: invoice.uuid,
-      # A webhook- or worker-driven payment has NO admin actor, and
-      # user_uuid is required - so every provider-confirmed payment failed
-      # to insert: the customer was charged, the invoice stayed unpaid with
-      # paid_amount 0, and there was no ledger row to reconcile against.
-      # The invoice's own user is the right attribution for those.
-      user_uuid: extract_user_uuid(admin_user) || invoice.user_uuid,
-      # Carried, not dropped: callers already pass these, and
-      # find_transaction_by_provider_id/1 needs them to match a later
-      # refund webhook to the charge it reverses.
-      provider_transaction_id:
-        attrs[:provider_transaction_id] || attrs["provider_transaction_id"],
-      provider_data: attrs[:provider_data] || attrs["provider_data"] || %{}
-    }
+    transaction_attrs = build_transaction_attrs(invoice, amount, attrs, admin_user)
 
     repo().transaction(fn ->
       # Create transaction

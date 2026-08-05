@@ -248,15 +248,24 @@ defmodule PhoenixKitBilling.Invoice do
   def paid_changeset(invoice, receipt_number) do
     now = UtilsDate.utc_now()
 
+    # "Mark as paid" is an operator asserting the money arrived outside the
+    # ledger (a bank transfer they can see in their account). It must move
+    # paid_amount too: without that the invoice said PAID while the ledger
+    # said nothing had been received, the receipt claimed the full total,
+    # and remaining_amount/1 still showed a balance owed. Any amount
+    # already recorded stays - this tops up, it does not overwrite.
+    settled_amount = Decimal.max(invoice.paid_amount || Decimal.new("0"), invoice.total)
+
     invoice
     |> change(%{
       status: "paid",
       paid_at: now,
+      paid_amount: settled_amount,
       receipt_number: receipt_number,
       receipt_generated_at: now,
       receipt_data: %{
         generated_at: DateTime.to_iso8601(now),
-        amount_paid: Decimal.to_string(invoice.total),
+        amount_paid: Decimal.to_string(settled_amount),
         currency: invoice.currency
       }
     })

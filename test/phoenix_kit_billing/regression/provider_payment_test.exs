@@ -12,11 +12,13 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
 
   use PhoenixKitBilling.DataCase, async: false
 
+  alias PhoenixKit.RepoHelper
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitBilling, as: Billing
 
   defp user_fixture do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(
+      Auth.register_user(
         %{
           email: "payer-#{System.unique_integer([:positive])}@example.com",
           password: "hello world!123"
@@ -102,5 +104,58 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
       )
 
     assert transaction.user_uuid == admin.uuid
+  end
+
+  test "an invoice cannot be paid more than it is owed" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    {:ok, _} =
+      Billing.record_payment(
+        invoice,
+        %{amount: Decimal.new("40.00"), payment_method: "bank"},
+        nil
+      )
+
+    invoice = Billing.get_invoice(invoice.uuid)
+
+    # The admin UI already rendered this error; the context never returned
+    # it, so a mistyped amount pushed paid_amount past total and flipped
+    # the invoice to "paid" holding more money than it billed.
+    assert {:error, :exceeds_remaining} =
+             Billing.record_payment(
+               invoice,
+               %{amount: Decimal.new("100.00"), payment_method: "bank"},
+               nil
+             )
+
+    # Exactly the remaining balance is still accepted.
+    assert {:ok, _} =
+             Billing.record_payment(
+               invoice,
+               %{amount: Decimal.new("60.00"), payment_method: "bank"},
+               nil
+             )
+  end
+
+  test "marking an invoice paid settles the ledger, not just the status" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    # An invoice must be issued before it can be settled. Transition the
+    # status directly - send_invoice/1 also delivers mail, which is not
+    # what this test is about.
+    {:ok, invoice} =
+      invoice
+      |> Ecto.Changeset.change(%{status: "sent"})
+      |> RepoHelper.repo().update()
+
+    {:ok, invoice} = Billing.mark_invoice_paid(invoice)
+
+    assert invoice.status == "paid"
+    # Without this the invoice read PAID while the ledger said nothing had
+    # arrived, and the receipt claimed the full total anyway.
+    assert Decimal.equal?(invoice.paid_amount, invoice.total)
+    assert Decimal.equal?(PhoenixKitBilling.Invoice.remaining_amount(invoice), Decimal.new("0"))
   end
 end
