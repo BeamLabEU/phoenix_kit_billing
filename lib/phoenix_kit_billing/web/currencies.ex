@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.TableDefault
@@ -64,51 +65,15 @@ defmodule PhoenixKitBilling.Web.Currencies do
   # --- Toggle / Default / Refresh ---
 
   @impl true
-  def handle_event("toggle_enabled", %{"uuid" => uuid}, socket) do
-    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
-
-    case Billing.update_currency(currency, %{enabled: !currency.enabled}) do
-      {:ok, updated} ->
-        Activity.log("billing.currency_updated",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "currency",
-          resource_uuid: updated.uuid,
-          metadata: %{"code" => updated.code, "enabled" => updated.enabled}
-        )
-
-        {:noreply,
-         socket
-         |> load_currencies()
-         |> put_flash(:info, gettext("Currency updated"))}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to update currency"))}
-    end
+  def handle_event("toggle_enabled", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("toggle_enabled", params, socket)
+    end)
   end
 
   @impl true
-  def handle_event("set_default", %{"uuid" => uuid}, socket) do
-    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
-
-    case Billing.set_default_currency(currency) do
-      {:ok, updated} ->
-        Activity.log("billing.currency_set_default",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "currency",
-          resource_uuid: updated.uuid,
-          metadata: %{"code" => updated.code}
-        )
-
-        {:noreply,
-         socket
-         |> load_currencies()
-         |> put_flash(:info, gettext("%{code} set as default currency", code: currency.code))}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to set default currency"))}
-    end
+  def handle_event("set_default", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn -> gated_event("set_default", params, socket) end)
   end
 
   @impl true
@@ -161,81 +126,17 @@ defmodule PhoenixKitBilling.Web.Currencies do
   end
 
   @impl true
-  def handle_event("save", %{"currency" => params}, socket) do
-    result =
-      case socket.assigns.editing_currency do
-        nil -> Billing.create_currency(params)
-        currency -> Billing.update_currency(currency, params)
-      end
-
-    case result do
-      {:ok, currency} ->
-        action =
-          if socket.assigns.editing_currency,
-            do: "billing.currency_updated",
-            else: "billing.currency_created"
-
-        Activity.log(action,
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "currency",
-          resource_uuid: currency.uuid,
-          metadata: %{"code" => currency.code}
-        )
-
-        message =
-          if socket.assigns.editing_currency,
-            do: gettext("Currency updated successfully"),
-            else: gettext("Currency created successfully")
-
-        {:noreply,
-         socket
-         |> load_currencies()
-         |> assign(:show_form, false)
-         |> assign(:editing_currency, nil)
-         |> assign(:form, nil)
-         |> put_flash(:info, message)}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset))}
-    end
+  def handle_event("save", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn -> gated_event("save", params, socket) end)
   end
 
   # --- Delete ---
 
   @impl true
-  def handle_event("delete_currency", %{"uuid" => uuid}, socket) do
-    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
-
-    case Billing.delete_currency(currency) do
-      {:ok, _currency} ->
-        Activity.log("billing.currency_deleted",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "currency",
-          resource_uuid: currency.uuid,
-          metadata: %{"code" => currency.code}
-        )
-
-        {:noreply,
-         socket
-         |> load_currencies()
-         |> put_flash(:info, gettext("%{code} deleted", code: currency.code))}
-
-      {:error, :is_default} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot delete the default currency"))}
-
-      {:error, :currency_in_use} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Cannot delete currency — it is used by existing orders")
-         )}
-
-      {:error, _other} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to delete currency"))}
-    end
+  def handle_event("delete_currency", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("delete_currency", params, socket)
+    end)
   end
 
   # --- Import from BeamLabCountries ---
@@ -296,52 +197,10 @@ defmodule PhoenixKitBilling.Web.Currencies do
   end
 
   @impl true
-  def handle_event("import_selected", _params, socket) do
-    selected = socket.assigns.selected_imports
-
-    to_import =
-      Enum.filter(socket.assigns.available_currencies, &MapSet.member?(selected, &1.code))
-
-    {ok_count, fail_count} =
-      Enum.reduce(to_import, {0, 0}, fn cur, {ok, fail} ->
-        attrs = %{
-          code: cur.code,
-          name: cur.name,
-          symbol: cur.symbol_native,
-          decimal_places: cur.decimal_digits,
-          exchange_rate: "1.0",
-          enabled: false
-        }
-
-        case Billing.create_currency(attrs) do
-          {:ok, _} -> {ok + 1, fail}
-          {:error, _} -> {ok, fail + 1}
-        end
-      end)
-
-    if ok_count > 0 do
-      Activity.log("billing.currency_imported",
-        actor_uuid: Activity.actor_uuid(socket),
-        actor_role: Activity.actor_role(socket),
-        resource_type: "currency",
-        metadata: %{"imported_count" => ok_count, "failed_count" => fail_count}
-      )
-    end
-
-    message =
-      case {ok_count, fail_count} do
-        {ok, 0} -> gettext("%{count} currencies imported", count: ok)
-        {0, fail} -> gettext("Import failed for %{count} currencies", count: fail)
-        {ok, fail} -> gettext("%{ok} imported, %{fail} failed", ok: ok, fail: fail)
-      end
-
-    {:noreply,
-     socket
-     |> load_currencies()
-     |> assign(:show_import, false)
-     |> assign(:available_currencies, [])
-     |> assign(:selected_imports, MapSet.new())
-     |> put_flash(:info, message)}
+  def handle_event("import_selected", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("import_selected", params, socket)
+    end)
   end
 
   # --- Helpers ---
@@ -391,5 +250,173 @@ defmodule PhoenixKitBilling.Web.Currencies do
       end)
 
     sorted_priority ++ Enum.sort_by(rest, & &1.code)
+  end
+
+  defp gated_event("toggle_enabled", %{"uuid" => uuid}, socket) do
+    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
+
+    case Billing.update_currency(currency, %{enabled: !currency.enabled}) do
+      {:ok, updated} ->
+        Activity.log("billing.currency_updated",
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "currency",
+          resource_uuid: updated.uuid,
+          metadata: %{"code" => updated.code, "enabled" => updated.enabled}
+        )
+
+        {:noreply,
+         socket
+         |> load_currencies()
+         |> put_flash(:info, gettext("Currency updated"))}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to update currency"))}
+    end
+  end
+
+  defp gated_event("set_default", %{"uuid" => uuid}, socket) do
+    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
+
+    case Billing.set_default_currency(currency) do
+      {:ok, updated} ->
+        Activity.log("billing.currency_set_default",
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "currency",
+          resource_uuid: updated.uuid,
+          metadata: %{"code" => updated.code}
+        )
+
+        {:noreply,
+         socket
+         |> load_currencies()
+         |> put_flash(:info, gettext("%{code} set as default currency", code: currency.code))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to set default currency"))}
+    end
+  end
+
+  defp gated_event("save", %{"currency" => params}, socket) do
+    result =
+      case socket.assigns.editing_currency do
+        nil -> Billing.create_currency(params)
+        currency -> Billing.update_currency(currency, params)
+      end
+
+    case result do
+      {:ok, currency} ->
+        action =
+          if socket.assigns.editing_currency,
+            do: "billing.currency_updated",
+            else: "billing.currency_created"
+
+        Activity.log(action,
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "currency",
+          resource_uuid: currency.uuid,
+          metadata: %{"code" => currency.code}
+        )
+
+        message =
+          if socket.assigns.editing_currency,
+            do: gettext("Currency updated successfully"),
+            else: gettext("Currency created successfully")
+
+        {:noreply,
+         socket
+         |> load_currencies()
+         |> assign(:show_form, false)
+         |> assign(:editing_currency, nil)
+         |> assign(:form, nil)
+         |> put_flash(:info, message)}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :form, to_form(changeset))}
+    end
+  end
+
+  defp gated_event("delete_currency", %{"uuid" => uuid}, socket) do
+    currency = Enum.find(socket.assigns.currencies, &(&1.uuid == uuid))
+
+    case Billing.delete_currency(currency) do
+      {:ok, _currency} ->
+        Activity.log("billing.currency_deleted",
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "currency",
+          resource_uuid: currency.uuid,
+          metadata: %{"code" => currency.code}
+        )
+
+        {:noreply,
+         socket
+         |> load_currencies()
+         |> put_flash(:info, gettext("%{code} deleted", code: currency.code))}
+
+      {:error, :is_default} ->
+        {:noreply, put_flash(socket, :error, gettext("Cannot delete the default currency"))}
+
+      {:error, :currency_in_use} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Cannot delete currency — it is used by existing orders")
+         )}
+
+      {:error, _other} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to delete currency"))}
+    end
+  end
+
+  defp gated_event("import_selected", _params, socket) do
+    selected = socket.assigns.selected_imports
+
+    to_import =
+      Enum.filter(socket.assigns.available_currencies, &MapSet.member?(selected, &1.code))
+
+    {ok_count, fail_count} =
+      Enum.reduce(to_import, {0, 0}, fn cur, {ok, fail} ->
+        attrs = %{
+          code: cur.code,
+          name: cur.name,
+          symbol: cur.symbol_native,
+          decimal_places: cur.decimal_digits,
+          exchange_rate: "1.0",
+          enabled: false
+        }
+
+        case Billing.create_currency(attrs) do
+          {:ok, _} -> {ok + 1, fail}
+          {:error, _} -> {ok, fail + 1}
+        end
+      end)
+
+    if ok_count > 0 do
+      Activity.log("billing.currency_imported",
+        actor_uuid: Activity.actor_uuid(socket),
+        actor_role: Activity.actor_role(socket),
+        resource_type: "currency",
+        metadata: %{"imported_count" => ok_count, "failed_count" => fail_count}
+      )
+    end
+
+    message =
+      case {ok_count, fail_count} do
+        {ok, 0} -> gettext("%{count} currencies imported", count: ok)
+        {0, fail} -> gettext("Import failed for %{count} currencies", count: fail)
+        {ok, fail} -> gettext("%{ok} imported, %{fail} failed", ok: ok, fail: fail)
+      end
+
+    {:noreply,
+     socket
+     |> load_currencies()
+     |> assign(:show_import, false)
+     |> assign(:available_currencies, [])
+     |> assign(:selected_imports, MapSet.new())
+     |> put_flash(:info, message)}
   end
 end

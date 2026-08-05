@@ -42,6 +42,11 @@ defmodule PhoenixKitBilling.DataCase do
 
     on_exit(fn -> Sandbox.stop_owner(pid) end)
 
+    # Sub-permission checks resolve through the module registry, which asks
+    # the module whether it is ENABLED - so the suite runs with billing on,
+    # the same state every exercised path assumes in production.
+    PhoenixKit.Settings.update_setting("billing_enabled", "true")
+
     :ok
   end
 
@@ -75,5 +80,15 @@ defmodule PhoenixKitBilling.DataCase do
       })
 
     user
+  end
+
+  @doc """
+  Lets a spawned process use the test's sandbox connection.
+
+  Needed by tests that exercise real DB CONCURRENCY (two tasks racing for
+  the same row lock) rather than simulating it.
+  """
+  def allow_sandbox(pid) do
+    Sandbox.allow(TestRepo, self(), pid)
   end
 end

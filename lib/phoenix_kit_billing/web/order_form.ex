@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Select
   import PhoenixKitWeb.Components.Core.Textarea
@@ -224,48 +225,51 @@ defmodule PhoenixKitBilling.Web.OrderForm do
 
   @impl true
   def handle_event("save", %{"order" => order_params}, socket) do
-    # Get tax rate - prefer country-based rate from billing profile, fallback to config
-    tax_rate =
-      case socket.assigns.country_tax_rate do
-        %Decimal{} = rate ->
-          rate
+    Authz.authorize(socket, :manage_orders, fn ->
+      # Get tax rate - prefer country-based rate from billing profile, fallback to config
+      tax_rate =
+        case socket.assigns.country_tax_rate do
+          %Decimal{} = rate ->
+            rate
 
-        _ ->
-          config = Billing.get_config()
-          get_tax_rate_decimal(config)
-      end
+          _ ->
+            config = Billing.get_config()
+            get_tax_rate_decimal(config)
+        end
 
-    line_items =
-      socket.assigns.line_items
-      |> Enum.filter(&(&1.name != ""))
-      |> Enum.map(fn item ->
-        quantity = parse_number(item.quantity, 1)
-        unit_price = parse_decimal(item.unit_price)
-        total = Decimal.mult(unit_price, quantity)
+      line_items =
+        socket.assigns.line_items
+        |> Enum.filter(&(&1.name != ""))
+        |> Enum.map(fn item ->
+          quantity = parse_number(item.quantity, 1)
+          unit_price = parse_decimal(item.unit_price)
+          total = Decimal.mult(unit_price, quantity)
 
-        %{
-          "name" => item.name,
-          "description" => item.description,
-          "quantity" => quantity,
-          "unit_price" => Decimal.to_string(unit_price),
-          "total" => Decimal.to_string(total)
-        }
-      end)
+          %{
+            "name" => item.name,
+            "description" => item.description,
+            "quantity" => quantity,
+            "unit_price" => Decimal.to_string(unit_price),
+            "total" => Decimal.to_string(total)
+          }
+        end)
 
-    # Calculate totals with tax using Order.calculate_totals
-    {subtotal, tax_amount, total} = Order.calculate_totals(line_items, tax_rate, Decimal.new("0"))
+      # Calculate totals with tax using Order.calculate_totals
+      {subtotal, tax_amount, total} =
+        Order.calculate_totals(line_items, tax_rate, Decimal.new("0"))
 
-    order_params =
-      order_params
-      |> Map.put("line_items", line_items)
-      |> Map.put("subtotal", Decimal.to_string(subtotal))
-      |> Map.put("tax_rate", Decimal.to_string(tax_rate))
-      |> Map.put("tax_amount", Decimal.to_string(tax_amount))
-      |> Map.put("total", Decimal.to_string(total))
-      |> Map.put("user_uuid", socket.assigns.selected_user_uuid)
-      |> Map.put("billing_profile_uuid", socket.assigns.selected_billing_profile_uuid)
+      order_params =
+        order_params
+        |> Map.put("line_items", line_items)
+        |> Map.put("subtotal", Decimal.to_string(subtotal))
+        |> Map.put("tax_rate", Decimal.to_string(tax_rate))
+        |> Map.put("tax_amount", Decimal.to_string(tax_amount))
+        |> Map.put("total", Decimal.to_string(total))
+        |> Map.put("user_uuid", socket.assigns.selected_user_uuid)
+        |> Map.put("billing_profile_uuid", socket.assigns.selected_billing_profile_uuid)
 
-    save_order(socket, order_params)
+      save_order(socket, order_params)
+    end)
   end
 
   defp save_order(socket, params) do

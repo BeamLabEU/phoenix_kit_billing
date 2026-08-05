@@ -28,6 +28,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.SubscriptionType
+  alias PhoenixKitBilling.Web.Authz
 
   @impl true
   def mount(_params, _session, socket) do
@@ -182,155 +183,167 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
 
   @impl true
   def handle_event("save", _params, %{assigns: %{live_action: :edit}} = socket) do
-    subscription = socket.assigns.subscription
-    new_type_uuid = socket.assigns.selected_subscription_type_uuid
-    new_pm_uuid = socket.assigns.selected_payment_method_uuid
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      subscription = socket.assigns.subscription
+      new_type_uuid = socket.assigns.selected_subscription_type_uuid
+      new_pm_uuid = socket.assigns.selected_payment_method_uuid
 
-    type_changed? = to_string(subscription.subscription_type_uuid) != new_type_uuid
+      type_changed? = to_string(subscription.subscription_type_uuid) != new_type_uuid
 
-    pm_changed? =
-      normalize_uuid(subscription.payment_method_uuid) != normalize_uuid(new_pm_uuid)
+      pm_changed? =
+        normalize_uuid(subscription.payment_method_uuid) != normalize_uuid(new_pm_uuid)
 
-    if not type_changed? and not pm_changed? do
-      {:noreply,
-       socket
-       |> put_flash(:info, gettext("No changes to save"))
-       |> push_navigate(to: Routes.path("/admin/billing/subscriptions/#{subscription.uuid}"))}
-    else
-      save_subscription_edits(socket, subscription, %{
-        type_changed?: type_changed?,
-        new_type_uuid: new_type_uuid,
-        pm_changed?: pm_changed?,
-        new_pm_uuid: new_pm_uuid
-      })
-    end
+      if not type_changed? and not pm_changed? do
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("No changes to save"))
+         |> push_navigate(to: Routes.path("/admin/billing/subscriptions/#{subscription.uuid}"))}
+      else
+        save_subscription_edits(socket, subscription, %{
+          type_changed?: type_changed?,
+          new_type_uuid: new_type_uuid,
+          pm_changed?: pm_changed?,
+          new_pm_uuid: new_pm_uuid
+        })
+      end
+    end)
   end
 
   @impl true
   def handle_event("save", _params, socket) do
-    %{
-      selected_user: user,
-      selected_subscription_type_uuid: type_uuid,
-      selected_payment_method_uuid: pm_uuid,
-      enable_trial: enable_trial,
-      trial_days: trial_days
-    } = socket.assigns
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      %{
+        selected_user: user,
+        selected_subscription_type_uuid: type_uuid,
+        selected_payment_method_uuid: pm_uuid,
+        enable_trial: enable_trial,
+        trial_days: trial_days
+      } = socket.assigns
 
-    pm_uuid = normalize_uuid(pm_uuid)
+      pm_uuid = normalize_uuid(pm_uuid)
 
-    cond do
-      is_nil(user) ->
-        {:noreply, assign(socket, :error, gettext("Please select a customer"))}
+      cond do
+        is_nil(user) ->
+          {:noreply, assign(socket, :error, gettext("Please select a customer"))}
 
-      is_nil(type_uuid) ->
-        {:noreply, assign(socket, :error, gettext("Please select a subscription type"))}
+        is_nil(type_uuid) ->
+          {:noreply, assign(socket, :error, gettext("Please select a subscription type"))}
 
-      # Fast UX pre-check (create_subscription/2 enforces this too): the
-      # selector only renders the user's own active methods, but
-      # selected_payment_method_uuid comes from a client event. Reject a
-      # crafted/stale UUID up front with a clear message.
-      match?({:error, _}, validate_payment_method(user.uuid, pm_uuid)) ->
-        {:noreply, assign(socket, :error, gettext("Selected payment method is not available"))}
+        # Fast UX pre-check (create_subscription/2 enforces this too): the
+        # selector only renders the user's own active methods, but
+        # selected_payment_method_uuid comes from a client event. Reject a
+        # crafted/stale UUID up front with a clear message.
+        match?({:error, _}, validate_payment_method(user.uuid, pm_uuid)) ->
+          {:noreply, assign(socket, :error, gettext("Selected payment method is not available"))}
 
-      true ->
-        attrs = %{
-          subscription_type_uuid: type_uuid,
-          payment_method_uuid: pm_uuid,
-          trial_days:
-            if(enable_trial && trial_days != "", do: String.to_integer(trial_days), else: 0)
-        }
+        true ->
+          attrs = %{
+            subscription_type_uuid: type_uuid,
+            payment_method_uuid: pm_uuid,
+            trial_days:
+              if(enable_trial && trial_days != "", do: String.to_integer(trial_days), else: 0)
+          }
 
-        case Billing.create_subscription(user.uuid, attrs) do
-          {:ok, subscription} ->
-            log_subscription(socket, "billing.subscription_created", subscription, %{
-              "subscription_type_uuid" => subscription.subscription_type_uuid
-            })
+          case Billing.create_subscription(user.uuid, attrs) do
+            {:ok, subscription} ->
+              log_subscription(socket, "billing.subscription_created", subscription, %{
+                "subscription_type_uuid" => subscription.subscription_type_uuid
+              })
 
-            {:noreply,
-             socket
-             |> put_flash(:info, gettext("Subscription created successfully"))
-             |> push_navigate(
-               to: Routes.path("/admin/billing/subscriptions/#{subscription.uuid}")
-             )}
+              {:noreply,
+               socket
+               |> put_flash(:info, gettext("Subscription created successfully"))
+               |> push_navigate(
+                 to: Routes.path("/admin/billing/subscriptions/#{subscription.uuid}")
+               )}
 
-          {:error, %Ecto.Changeset{} = changeset} ->
-            error_msg = format_changeset_errors(changeset)
-            {:noreply, assign(socket, :error, error_msg)}
+            {:error, %Ecto.Changeset{} = changeset} ->
+              error_msg = format_changeset_errors(changeset)
+              {:noreply, assign(socket, :error, error_msg)}
 
-          {:error, reason} ->
-            {:noreply,
-             assign(
-               socket,
-               :error,
-               gettext("Failed to create subscription: %{reason}", reason: Errors.message(reason))
-             )}
-        end
-    end
+            {:error, reason} ->
+              {:noreply,
+               assign(
+                 socket,
+                 :error,
+                 gettext("Failed to create subscription: %{reason}",
+                   reason: Errors.message(reason)
+                 )
+               )}
+          end
+      end
+    end)
   end
 
   @impl true
   def handle_event("pause_subscription", _params, socket) do
-    case Billing.pause_subscription(socket.assigns.subscription) do
-      {:ok, updated} ->
-        log_subscription(socket, "billing.subscription_paused", updated)
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      case Billing.pause_subscription(socket.assigns.subscription) do
+        {:ok, updated} ->
+          log_subscription(socket, "billing.subscription_paused", updated)
 
-        {:noreply,
-         socket
-         |> reassign_subscription(updated)
-         |> put_flash(:info, gettext("Subscription paused"))}
+          {:noreply,
+           socket
+           |> reassign_subscription(updated)
+           |> put_flash(:info, gettext("Subscription paused"))}
 
-      {:error, reason} ->
-        {:noreply,
-         assign(
-           socket,
-           :error,
-           gettext("Failed to pause: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+        {:error, reason} ->
+          {:noreply,
+           assign(
+             socket,
+             :error,
+             gettext("Failed to pause: %{reason}", reason: Errors.message(reason))
+           )}
+      end
+    end)
   end
 
   @impl true
   def handle_event("resume_subscription", _params, socket) do
-    case Billing.resume_subscription(socket.assigns.subscription) do
-      {:ok, updated} ->
-        log_subscription(socket, "billing.subscription_resumed", updated)
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      case Billing.resume_subscription(socket.assigns.subscription) do
+        {:ok, updated} ->
+          log_subscription(socket, "billing.subscription_resumed", updated)
 
-        {:noreply,
-         socket
-         |> reassign_subscription(updated)
-         |> put_flash(:info, gettext("Subscription resumed"))}
+          {:noreply,
+           socket
+           |> reassign_subscription(updated)
+           |> put_flash(:info, gettext("Subscription resumed"))}
 
-      {:error, reason} ->
-        {:noreply,
-         assign(
-           socket,
-           :error,
-           gettext("Failed to resume: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+        {:error, reason} ->
+          {:noreply,
+           assign(
+             socket,
+             :error,
+             gettext("Failed to resume: %{reason}", reason: Errors.message(reason))
+           )}
+      end
+    end)
   end
 
   @impl true
   def handle_event("cancel_subscription", _params, socket) do
-    case Billing.cancel_subscription(socket.assigns.subscription) do
-      {:ok, updated} ->
-        log_subscription(socket, "billing.subscription_cancelled", updated, %{
-          "immediately" => false
-        })
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      case Billing.cancel_subscription(socket.assigns.subscription) do
+        {:ok, updated} ->
+          log_subscription(socket, "billing.subscription_cancelled", updated, %{
+            "immediately" => false
+          })
 
-        {:noreply,
-         socket
-         |> reassign_subscription(updated)
-         |> put_flash(:info, gettext("Subscription will be cancelled at period end"))}
+          {:noreply,
+           socket
+           |> reassign_subscription(updated)
+           |> put_flash(:info, gettext("Subscription will be cancelled at period end"))}
 
-      {:error, reason} ->
-        {:noreply,
-         assign(
-           socket,
-           :error,
-           gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+        {:error, reason} ->
+          {:noreply,
+           assign(
+             socket,
+             :error,
+             gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
+           )}
+      end
+    end)
   end
 
   @impl true
@@ -348,30 +361,32 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
   end
 
   def handle_event("extend_subscription", _params, socket) do
-    sub = socket.assigns.subscription
-    days = extension_days(sub)
-    new_end = DateTime.add(sub.current_period_end, days, :day)
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      sub = socket.assigns.subscription
+      days = extension_days(sub)
+      new_end = DateTime.add(sub.current_period_end, days, :day)
 
-    case Billing.update_subscription(sub, %{current_period_end: new_end}) do
-      {:ok, updated} ->
-        log_subscription(socket, "billing.subscription_extended", updated)
+      case Billing.update_subscription(sub, %{current_period_end: new_end}) do
+        {:ok, updated} ->
+          log_subscription(socket, "billing.subscription_extended", updated)
 
-        {:noreply,
-         socket
-         |> reassign_subscription(updated)
-         |> put_flash(
-           :info,
-           gettext("Subscription extended by %{days} days", days: days)
-         )}
+          {:noreply,
+           socket
+           |> reassign_subscription(updated)
+           |> put_flash(
+             :info,
+             gettext("Subscription extended by %{days} days", days: days)
+           )}
 
-      {:error, reason} ->
-        {:noreply,
-         assign(
-           socket,
-           :error,
-           gettext("Failed to extend: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+        {:error, reason} ->
+          {:noreply,
+           assign(
+             socket,
+             :error,
+             gettext("Failed to extend: %{reason}", reason: Errors.message(reason))
+           )}
+      end
+    end)
   end
 
   # Private helpers

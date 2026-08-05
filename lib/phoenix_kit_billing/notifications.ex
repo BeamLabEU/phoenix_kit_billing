@@ -1,0 +1,200 @@
+defmodule PhoenixKitBilling.Notifications do
+  @moduledoc """
+  Billing notifications: who hears about an invoice or a payment, and when.
+
+  Sends go through core's notification layer, so each recipient's own
+  per-type preferences and delivery channels (in-app inbox, email,
+  Telegram, digest cadence) apply. This module only decides the audience
+  and the copy.
+
+  ## Recipients
+
+  `admin_recipients/1` unions three sources, because no single one is
+  complete:
+
+    * holders of the relevant permission key (`users_with_permission/1`)
+    * **Owner-role holders**, whose access is implicit and who therefore
+      have no permission rows at all
+    * holders of the `"*"` superadmin key, likewise absent from a
+      key-specific query
+
+  A resolver that queried only the first would miss the primary operator
+  of a default install — the person most likely to want the notification.
+
+  ## Money copy carries no PII
+
+  Notification text names an invoice or order NUMBER and an amount, never
+  a customer name, address or email: a notification lands in someone's
+  inbox and can be routed onward to email or Telegram.
+
+  ## Failure is never fatal
+
+  Every send is wrapped. A notification reports a committed fact — a
+  payment that has been recorded, an invoice that has been issued — and
+  must never be able to undo it.
+  """
+
+  require Logger
+
+  alias PhoenixKit.Notifications
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Permissions
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
+
+  @invoice_issued_action "billing.invoice_issued"
+  @payment_received_action "billing.payment_received"
+  @payment_failed_action "billing.payment_failed"
+  @customer_invoice_action "billing.your_invoice_issued"
+  @customer_payment_action "billing.your_payment_received"
+
+  @doc """
+  An invoice was issued: tells billing operators, and the customer.
+
+  Separate sub-types, so an operator muting the invoice firehose does not
+  also silence their own receipts.
+  """
+  def invoice_issued(invoice) do
+    safely(fn ->
+      notify_admins(
+        "billing.manage_invoices",
+        @invoice_issued_action,
+        "Invoice #{number(invoice)} issued — #{amount(invoice)}",
+        "hero-document-text",
+        Routes.path("/admin/billing/invoices")
+      )
+
+      notify_customer(
+        invoice,
+        @customer_invoice_action,
+        "Invoice #{number(invoice)} is ready — #{amount(invoice)}",
+        "hero-document-text"
+      )
+    end)
+  end
+
+  @doc "A payment was recorded against an invoice."
+  def payment_received(invoice) do
+    safely(fn ->
+      notify_admins(
+        "billing.manage_invoices",
+        @payment_received_action,
+        "Payment received for #{number(invoice)} — #{amount(invoice)}",
+        "hero-banknotes",
+        Routes.path("/admin/billing/invoices")
+      )
+
+      notify_customer(
+        invoice,
+        @customer_payment_action,
+        "We received your payment for #{number(invoice)}",
+        "hero-check-circle"
+      )
+    end)
+  end
+
+  @doc """
+  A payment attempt failed.
+
+  Admin-only: the customer already saw the failure in the checkout flow,
+  and a second channel telling them their card was declined is noise at
+  best. Operators need it, because a failed payment is work.
+  """
+  def payment_failed(invoice, reason) do
+    safely(fn ->
+      notify_admins(
+        "billing.manage_invoices",
+        @payment_failed_action,
+        "Payment failed for #{number(invoice)}: #{truncate(to_string(reason), 100)}",
+        "hero-exclamation-triangle",
+        Routes.path("/admin/billing/invoices")
+      )
+    end)
+  end
+
+  defp notify_admins(permission_key, action, text, icon, link) do
+    Notifications.create_many(admin_recipients(permission_key), %{
+      action: action,
+      text: text,
+      icon: icon,
+      link: link
+    })
+  end
+
+  # Only a real, confirmed account gets an in-app notification: a guest
+  # placeholder user's channel is the transactional email, and sending both
+  # would double-message someone who has not confirmed an address.
+  defp notify_customer(%{user_uuid: nil}, _action, _text, _icon), do: :ok
+
+  defp notify_customer(%{user_uuid: user_uuid} = record, action, text, icon) do
+    case Auth.get_user(user_uuid) do
+      %{confirmed_at: confirmed} when not is_nil(confirmed) ->
+        Notifications.create(%{
+          recipient_uuid: user_uuid,
+          action: action,
+          text: text,
+          icon: icon,
+          link: customer_link(record)
+        })
+
+      _unconfirmed_or_missing ->
+        :ok
+    end
+  end
+
+  defp notify_customer(_record, _action, _text, _icon), do: :ok
+
+  defp customer_link(%{uuid: uuid}) when is_binary(uuid),
+    do: Routes.path("/dashboard/invoices/#{uuid}")
+
+  defp customer_link(_), do: Routes.path("/dashboard")
+
+  @doc """
+  Everyone who should hear about billing operations: holders of `key`,
+  unioned with Owner-role holders and `"*"` superadmins.
+  """
+  def admin_recipients(key) do
+    (Permissions.users_with_permission(key) ++
+       Permissions.users_with_permission("*") ++
+       Roles.users_with_role("Owner"))
+    |> Enum.map(&user_uuid/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  rescue
+    error ->
+      Logger.warning("[Billing] could not resolve notification recipients: #{inspect(error)}")
+      []
+  end
+
+  defp user_uuid(%{uuid: uuid}), do: uuid
+  defp user_uuid(%{user_uuid: uuid}), do: uuid
+  defp user_uuid(uuid) when is_binary(uuid), do: uuid
+  defp user_uuid(_), do: nil
+
+  defp number(%{invoice_number: n}) when is_binary(n), do: n
+  defp number(%{order_number: n}) when is_binary(n), do: n
+  defp number(_), do: ""
+
+  defp amount(%{total: total, currency: currency}) when not is_nil(total) do
+    "#{Decimal.round(total, 2)} #{currency}"
+  end
+
+  defp amount(_), do: ""
+
+  defp truncate(text, max) when byte_size(text) > max, do: binary_part(text, 0, max) <> "…"
+  defp truncate(text, _max), do: text
+
+  # A notification must never take down the thing it is reporting on.
+  defp safely(fun) do
+    fun.()
+    :ok
+  rescue
+    error ->
+      Logger.warning("[Billing] notification failed: #{inspect(error)}")
+      :ok
+  catch
+    kind, value ->
+      Logger.warning("[Billing] notification failed: #{inspect(kind)} #{inspect(value)}")
+      :ok
+  end
+end

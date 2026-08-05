@@ -20,6 +20,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.Subscription
+  alias PhoenixKitBilling.Web.Authz
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -60,91 +61,27 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
   end
 
   @impl true
-  def handle_event("cancel_now", _params, socket) do
-    case Billing.cancel_subscription(socket.assigns.subscription, immediately: true) do
-      {:ok, subscription} ->
-        log_subscription(socket, "billing.subscription_cancelled", subscription, %{
-          "immediately" => true
-        })
-
-        {:noreply,
-         socket
-         |> assign(:subscription, reload_subscription(subscription.uuid))
-         |> put_flash(:info, gettext("Subscription cancelled immediately"))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+  def handle_event("cancel_now", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("cancel_now", params, socket)
+    end)
   end
 
   @impl true
-  def handle_event("cancel_at_period_end", _params, socket) do
-    case Billing.cancel_subscription(socket.assigns.subscription, immediately: false) do
-      {:ok, subscription} ->
-        log_subscription(socket, "billing.subscription_cancelled", subscription, %{
-          "immediately" => false
-        })
-
-        {:noreply,
-         socket
-         |> assign(:subscription, reload_subscription(subscription.uuid))
-         |> put_flash(:info, gettext("Subscription will cancel at period end"))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+  def handle_event("cancel_at_period_end", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("cancel_at_period_end", params, socket)
+    end)
   end
 
   @impl true
-  def handle_event("resume", _params, socket) do
-    case Billing.resume_subscription(socket.assigns.subscription) do
-      {:ok, subscription} ->
-        log_subscription(socket, "billing.subscription_resumed", subscription)
-
-        {:noreply,
-         socket
-         |> assign(:subscription, reload_subscription(subscription.uuid))
-         |> put_flash(:info, gettext("Subscription resumed"))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Failed to resume: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+  def handle_event("resume", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn -> gated_event("resume", params, socket) end)
   end
 
   @impl true
-  def handle_event("pause", _params, socket) do
-    case Billing.pause_subscription(socket.assigns.subscription) do
-      {:ok, subscription} ->
-        log_subscription(socket, "billing.subscription_paused", subscription)
-
-        {:noreply,
-         socket
-         |> assign(:subscription, reload_subscription(subscription.uuid))
-         |> put_flash(:info, gettext("Subscription paused"))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Failed to pause: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+  def handle_event("pause", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn -> gated_event("pause", params, socket) end)
   end
 
   @impl true
@@ -171,7 +108,125 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
   end
 
   @impl true
-  def handle_event("change_subscription_type", _params, socket) do
+  def handle_event("change_subscription_type", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("change_subscription_type", params, socket)
+    end)
+  end
+
+  defp reload_subscription(id) do
+    Billing.get_subscription(id, preload: [:subscription_type, :payment_method, :user])
+  end
+
+  defp log_subscription(socket, action, subscription, extra \\ %{}) do
+    Activity.log(action,
+      actor_uuid: Activity.actor_uuid(socket),
+      actor_role: Activity.actor_role(socket),
+      resource_type: "subscription",
+      resource_uuid: subscription.uuid,
+      metadata: Map.merge(%{"status" => subscription.status}, extra)
+    )
+  end
+
+  # Helper functions for template
+
+  def days_until_renewal(%Subscription{current_period_end: nil}), do: nil
+
+  def days_until_renewal(%Subscription{current_period_end: period_end}) do
+    Date.diff(DateTime.to_date(period_end), Date.utc_today())
+  end
+
+  def grace_period_remaining(%Subscription{grace_period_end: nil}), do: nil
+
+  def grace_period_remaining(%Subscription{grace_period_end: grace_end}) do
+    Date.diff(DateTime.to_date(grace_end), Date.utc_today())
+  end
+
+  defp gated_event("cancel_now", _params, socket) do
+    case Billing.cancel_subscription(socket.assigns.subscription, immediately: true) do
+      {:ok, subscription} ->
+        log_subscription(socket, "billing.subscription_cancelled", subscription, %{
+          "immediately" => true
+        })
+
+        {:noreply,
+         socket
+         |> assign(:subscription, reload_subscription(subscription.uuid))
+         |> put_flash(:info, gettext("Subscription cancelled immediately"))}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
+  defp gated_event("cancel_at_period_end", _params, socket) do
+    case Billing.cancel_subscription(socket.assigns.subscription, immediately: false) do
+      {:ok, subscription} ->
+        log_subscription(socket, "billing.subscription_cancelled", subscription, %{
+          "immediately" => false
+        })
+
+        {:noreply,
+         socket
+         |> assign(:subscription, reload_subscription(subscription.uuid))
+         |> put_flash(:info, gettext("Subscription will cancel at period end"))}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
+  defp gated_event("resume", _params, socket) do
+    case Billing.resume_subscription(socket.assigns.subscription) do
+      {:ok, subscription} ->
+        log_subscription(socket, "billing.subscription_resumed", subscription)
+
+        {:noreply,
+         socket
+         |> assign(:subscription, reload_subscription(subscription.uuid))
+         |> put_flash(:info, gettext("Subscription resumed"))}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to resume: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
+  defp gated_event("pause", _params, socket) do
+    case Billing.pause_subscription(socket.assigns.subscription) do
+      {:ok, subscription} ->
+        log_subscription(socket, "billing.subscription_paused", subscription)
+
+        {:noreply,
+         socket
+         |> assign(:subscription, reload_subscription(subscription.uuid))
+         |> put_flash(:info, gettext("Subscription paused"))}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to pause: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
+  defp gated_event("change_subscription_type", _params, socket) do
     %{subscription: subscription, selected_new_subscription_type_uuid: new_type_uuid} =
       socket.assigns
 
@@ -205,33 +260,5 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
       {:noreply,
        put_flash(socket, :error, gettext("Please select a different subscription type"))}
     end
-  end
-
-  defp reload_subscription(id) do
-    Billing.get_subscription(id, preload: [:subscription_type, :payment_method, :user])
-  end
-
-  defp log_subscription(socket, action, subscription, extra \\ %{}) do
-    Activity.log(action,
-      actor_uuid: Activity.actor_uuid(socket),
-      actor_role: Activity.actor_role(socket),
-      resource_type: "subscription",
-      resource_uuid: subscription.uuid,
-      metadata: Map.merge(%{"status" => subscription.status}, extra)
-    )
-  end
-
-  # Helper functions for template
-
-  def days_until_renewal(%Subscription{current_period_end: nil}), do: nil
-
-  def days_until_renewal(%Subscription{current_period_end: period_end}) do
-    Date.diff(DateTime.to_date(period_end), Date.utc_today())
-  end
-
-  def grace_period_remaining(%Subscription{grace_period_end: nil}), do: nil
-
-  def grace_period_remaining(%Subscription{grace_period_end: grace_end}) do
-    Date.diff(DateTime.to_date(grace_end), Date.utc_today())
   end
 end

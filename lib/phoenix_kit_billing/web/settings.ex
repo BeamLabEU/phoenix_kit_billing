@@ -15,6 +15,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitWeb.Live.Settings.Organization
 
   @impl true
@@ -76,27 +77,9 @@ defmodule PhoenixKitBilling.Web.Settings do
 
   @impl true
   def handle_event("save_general", params, socket) do
-    # Convert checkbox value to "true"/"false" string
-    tax_enabled = if params["tax_enabled"] == "true", do: "true", else: "false"
-
-    settings = [
-      {"billing_default_currency", params["default_currency"]},
-      {"billing_invoice_prefix", params["invoice_prefix"]},
-      {"billing_order_prefix", params["order_prefix"]},
-      {"billing_receipt_prefix", params["receipt_prefix"]},
-      {"billing_invoice_due_days", params["invoice_due_days"]},
-      {"billing_tax_enabled", tax_enabled},
-      {"billing_default_tax_rate", params["tax_rate"]}
-    ]
-
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("save_general", params, socket)
     end)
-
-    {:noreply,
-     socket
-     |> load_settings()
-     |> put_flash(:info, gettext("General settings saved"))}
   end
 
   @impl true
@@ -119,17 +102,10 @@ defmodule PhoenixKitBilling.Web.Settings do
   end
 
   @impl true
-  def handle_event("apply_suggested_tax", _params, socket) do
-    case socket.assigns.suggested_tax_rate do
-      nil ->
-        {:noreply, socket}
-
-      rate ->
-        {:noreply,
-         socket
-         |> assign(:tax_rate, to_string(rate))
-         |> assign(:suggested_tax_rate, nil)}
-    end
+  def handle_event("apply_suggested_tax", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("apply_suggested_tax", params, socket)
+    end)
   end
 
   # Suggested tax rate helper
@@ -159,4 +135,41 @@ defmodule PhoenixKitBilling.Web.Settings do
 
   defp parse_tax_rate(rate) when is_number(rate), do: rate
   defp parse_tax_rate(_), do: 0
+
+  defp gated_event("save_general", params, socket) do
+    # Convert checkbox value to "true"/"false" string
+    tax_enabled = if params["tax_enabled"] == "true", do: "true", else: "false"
+
+    settings = [
+      {"billing_default_currency", params["default_currency"]},
+      {"billing_invoice_prefix", params["invoice_prefix"]},
+      {"billing_order_prefix", params["order_prefix"]},
+      {"billing_receipt_prefix", params["receipt_prefix"]},
+      {"billing_invoice_due_days", params["invoice_due_days"]},
+      {"billing_tax_enabled", tax_enabled},
+      {"billing_default_tax_rate", params["tax_rate"]}
+    ]
+
+    Enum.each(settings, fn {key, value} ->
+      Settings.update_setting(key, value)
+    end)
+
+    {:noreply,
+     socket
+     |> load_settings()
+     |> put_flash(:info, gettext("General settings saved"))}
+  end
+
+  defp gated_event("apply_suggested_tax", _params, socket) do
+    case socket.assigns.suggested_tax_rate do
+      nil ->
+        {:noreply, socket}
+
+      rate ->
+        {:noreply,
+         socket
+         |> assign(:tax_rate, to_string(rate))
+         |> assign(:suggested_tax_rate, nil)}
+    end
+  end
 end

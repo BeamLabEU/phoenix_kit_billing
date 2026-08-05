@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
 
   alias PhoenixKit.Settings
@@ -84,137 +85,55 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
   end
 
   @impl true
-  def handle_event("toggle_stripe", _params, socket) do
-    new_enabled = !socket.assigns.stripe_enabled
-    Settings.update_setting("billing_stripe_enabled", to_string(new_enabled))
-
-    {:noreply,
-     socket
-     |> assign(:stripe_enabled, new_enabled)
-     |> assign(:available_providers, Providers.list_available_providers())
-     |> put_flash(
-       :info,
-       if(new_enabled, do: gettext("Stripe enabled"), else: gettext("Stripe disabled"))
-     )}
+  def handle_event("toggle_stripe", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("toggle_stripe", params, socket)
+    end)
   end
 
   @impl true
   def handle_event("save_stripe", params, socket) do
-    settings = [
-      {"billing_stripe_secret_key", params["secret_key"] || ""},
-      {"billing_stripe_publishable_key", params["publishable_key"] || ""},
-      {"billing_stripe_webhook_secret", params["webhook_secret"] || ""}
-    ]
-
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
-    end)
-
-    {:noreply,
-     socket
-     |> load_provider_settings()
-     |> put_flash(:info, gettext("Stripe settings saved"))}
+    Authz.authorize(socket, :manage_settings, fn -> gated_event("save_stripe", params, socket) end)
   end
 
   @impl true
-  def handle_event("toggle_paypal", _params, socket) do
-    new_enabled = !socket.assigns.paypal_enabled
-    Settings.update_setting("billing_paypal_enabled", to_string(new_enabled))
-
-    {:noreply,
-     socket
-     |> assign(:paypal_enabled, new_enabled)
-     |> assign(:available_providers, Providers.list_available_providers())
-     |> put_flash(
-       :info,
-       if(new_enabled, do: gettext("PayPal enabled"), else: gettext("PayPal disabled"))
-     )}
+  def handle_event("toggle_paypal", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("toggle_paypal", params, socket)
+    end)
   end
 
   @impl true
   def handle_event("save_paypal", params, socket) do
-    settings = [
-      {"billing_paypal_client_id", params["client_id"] || ""},
-      {"billing_paypal_client_secret", params["client_secret"] || ""},
-      {"billing_paypal_webhook_id", params["webhook_id"] || ""},
-      {"billing_paypal_mode", params["mode"] || "sandbox"}
-    ]
-
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
-    end)
-
-    {:noreply,
-     socket
-     |> load_provider_settings()
-     |> put_flash(:info, gettext("PayPal settings saved"))}
+    Authz.authorize(socket, :manage_settings, fn -> gated_event("save_paypal", params, socket) end)
   end
 
   @impl true
-  def handle_event("toggle_razorpay", _params, socket) do
-    new_enabled = !socket.assigns.razorpay_enabled
-    Settings.update_setting("billing_razorpay_enabled", to_string(new_enabled))
-
-    {:noreply,
-     socket
-     |> assign(:razorpay_enabled, new_enabled)
-     |> assign(:available_providers, Providers.list_available_providers())
-     |> put_flash(
-       :info,
-       if(new_enabled, do: gettext("Razorpay enabled"), else: gettext("Razorpay disabled"))
-     )}
+  def handle_event("toggle_razorpay", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("toggle_razorpay", params, socket)
+    end)
   end
 
   @impl true
   def handle_event("save_razorpay", params, socket) do
-    settings = [
-      {"billing_razorpay_key_id", params["key_id"] || ""},
-      {"billing_razorpay_key_secret", params["key_secret"] || ""},
-      {"billing_razorpay_webhook_secret", params["webhook_secret"] || ""}
-    ]
-
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("save_razorpay", params, socket)
     end)
-
-    {:noreply,
-     socket
-     |> load_provider_settings()
-     |> put_flash(:info, gettext("Razorpay settings saved"))}
   end
 
   @impl true
-  def handle_event("toggle_everypay", _params, socket) do
-    new_enabled = !socket.assigns.everypay_enabled
-    Settings.update_setting("billing_everypay_enabled", to_string(new_enabled))
-
-    {:noreply,
-     socket
-     |> assign(:everypay_enabled, new_enabled)
-     |> assign(:available_providers, Providers.list_available_providers())
-     |> put_flash(
-       :info,
-       if(new_enabled, do: gettext("EveryPay enabled"), else: gettext("EveryPay disabled"))
-     )}
+  def handle_event("toggle_everypay", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("toggle_everypay", params, socket)
+    end)
   end
 
   @impl true
   def handle_event("save_everypay", params, socket) do
-    settings = [
-      {"billing_everypay_api_username", params["api_username"] || ""},
-      {"billing_everypay_api_secret", params["api_secret"] || ""},
-      {"billing_everypay_account_name", params["account_name"] || ""},
-      {"billing_everypay_mode", params["mode"] || "test"}
-    ]
-
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("save_everypay", params, socket)
     end)
-
-    {:noreply,
-     socket
-     |> load_provider_settings()
-     |> put_flash(:info, gettext("EveryPay settings saved"))}
   end
 
   # Helper to mask sensitive keys
@@ -233,4 +152,130 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
 
   def has_credentials?(key) when is_binary(key), do: key != ""
   def has_credentials?(_), do: false
+
+  defp gated_event("toggle_stripe", _params, socket) do
+    new_enabled = !socket.assigns.stripe_enabled
+    Settings.update_setting("billing_stripe_enabled", to_string(new_enabled))
+
+    {:noreply,
+     socket
+     |> assign(:stripe_enabled, new_enabled)
+     |> assign(:available_providers, Providers.list_available_providers())
+     |> put_flash(
+       :info,
+       if(new_enabled, do: gettext("Stripe enabled"), else: gettext("Stripe disabled"))
+     )}
+  end
+
+  defp gated_event("save_stripe", params, socket) do
+    settings = [
+      {"billing_stripe_secret_key", params["secret_key"] || ""},
+      {"billing_stripe_publishable_key", params["publishable_key"] || ""},
+      {"billing_stripe_webhook_secret", params["webhook_secret"] || ""}
+    ]
+
+    Enum.each(settings, fn {key, value} ->
+      Settings.update_setting(key, value)
+    end)
+
+    {:noreply,
+     socket
+     |> load_provider_settings()
+     |> put_flash(:info, gettext("Stripe settings saved"))}
+  end
+
+  defp gated_event("toggle_paypal", _params, socket) do
+    new_enabled = !socket.assigns.paypal_enabled
+    Settings.update_setting("billing_paypal_enabled", to_string(new_enabled))
+
+    {:noreply,
+     socket
+     |> assign(:paypal_enabled, new_enabled)
+     |> assign(:available_providers, Providers.list_available_providers())
+     |> put_flash(
+       :info,
+       if(new_enabled, do: gettext("PayPal enabled"), else: gettext("PayPal disabled"))
+     )}
+  end
+
+  defp gated_event("save_paypal", params, socket) do
+    settings = [
+      {"billing_paypal_client_id", params["client_id"] || ""},
+      {"billing_paypal_client_secret", params["client_secret"] || ""},
+      {"billing_paypal_webhook_id", params["webhook_id"] || ""},
+      {"billing_paypal_mode", params["mode"] || "sandbox"}
+    ]
+
+    Enum.each(settings, fn {key, value} ->
+      Settings.update_setting(key, value)
+    end)
+
+    {:noreply,
+     socket
+     |> load_provider_settings()
+     |> put_flash(:info, gettext("PayPal settings saved"))}
+  end
+
+  defp gated_event("toggle_razorpay", _params, socket) do
+    new_enabled = !socket.assigns.razorpay_enabled
+    Settings.update_setting("billing_razorpay_enabled", to_string(new_enabled))
+
+    {:noreply,
+     socket
+     |> assign(:razorpay_enabled, new_enabled)
+     |> assign(:available_providers, Providers.list_available_providers())
+     |> put_flash(
+       :info,
+       if(new_enabled, do: gettext("Razorpay enabled"), else: gettext("Razorpay disabled"))
+     )}
+  end
+
+  defp gated_event("save_razorpay", params, socket) do
+    settings = [
+      {"billing_razorpay_key_id", params["key_id"] || ""},
+      {"billing_razorpay_key_secret", params["key_secret"] || ""},
+      {"billing_razorpay_webhook_secret", params["webhook_secret"] || ""}
+    ]
+
+    Enum.each(settings, fn {key, value} ->
+      Settings.update_setting(key, value)
+    end)
+
+    {:noreply,
+     socket
+     |> load_provider_settings()
+     |> put_flash(:info, gettext("Razorpay settings saved"))}
+  end
+
+  defp gated_event("toggle_everypay", _params, socket) do
+    new_enabled = !socket.assigns.everypay_enabled
+    Settings.update_setting("billing_everypay_enabled", to_string(new_enabled))
+
+    {:noreply,
+     socket
+     |> assign(:everypay_enabled, new_enabled)
+     |> assign(:available_providers, Providers.list_available_providers())
+     |> put_flash(
+       :info,
+       if(new_enabled, do: gettext("EveryPay enabled"), else: gettext("EveryPay disabled"))
+     )}
+  end
+
+  defp gated_event("save_everypay", params, socket) do
+    settings = [
+      {"billing_everypay_api_username", params["api_username"] || ""},
+      {"billing_everypay_api_secret", params["api_secret"] || ""},
+      {"billing_everypay_account_name", params["account_name"] || ""},
+      {"billing_everypay_mode", params["mode"] || "test"}
+    ]
+
+    Enum.each(settings, fn {key, value} ->
+      Settings.update_setting(key, value)
+    end)
+
+    {:noreply,
+     socket
+     |> load_provider_settings()
+     |> put_flash(:info, gettext("EveryPay settings saved"))}
+  end
 end

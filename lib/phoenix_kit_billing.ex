@@ -130,7 +130,41 @@ defmodule PhoenixKitBilling do
       key: "billing",
       label: gettext("Billing"),
       icon: "hero-banknotes",
-      description: gettext("Orders, invoices, billing profiles and multi-currency support")
+      description: gettext("Orders, invoices, billing profiles and multi-currency support"),
+      # Base "billing" is admin-area READ access. Each sub-permission is a
+      # capability this module checks itself (core enforces sub-implies-base).
+      #
+      # The split follows what an operator would actually delegate: someone
+      # who chases invoices is not someone who rotates a payment provider's
+      # API keys, and neither is necessarily allowed to refund an order.
+      #
+      # ⚠️ Upgrade: core auto-grants new sub-permissions to the Admin system
+      # role only, so a CUSTOM role holding base "billing" keeps its reads
+      # but loses mutations until an operator re-grants. Secure by default,
+      # but a breaking authorization change - see AGENTS.md.
+      sub_permissions: [
+        %{
+          key: "manage_orders",
+          label: gettext("Manage orders"),
+          description: gettext("Create, edit and cancel orders and their transactions")
+        },
+        %{
+          key: "manage_invoices",
+          label: gettext("Manage invoices"),
+          description: gettext("Issue, edit and void invoices and credit notes")
+        },
+        %{
+          key: "manage_subscriptions",
+          label: gettext("Manage subscriptions"),
+          description: gettext("Subscriptions and subscription types")
+        },
+        %{
+          key: "manage_settings",
+          label: gettext("Manage billing settings"),
+          description:
+            gettext("Payment providers and their credentials, currencies and tax settings")
+        }
+      ]
     }
   end
 
@@ -148,6 +182,53 @@ defmodule PhoenixKitBilling do
       %{label: gettext("Orders"), value: config[:orders_count] || 0},
       %{label: gettext("Invoices"), value: config[:invoices_count] || 0},
       %{label: gettext("Currencies"), value: config[:currencies_count] || 0}
+    ]
+  end
+
+  @doc """
+  Notification types this module contributes (duck-typed, discovered by
+  core's `Notifications.Types`).
+
+  Admin and customer audiences are separate sub-types on purpose: an
+  operator muting the invoice firehose must not also silence their own
+  receipts, and a customer's invoice notice must not be governed by an
+  admin-facing preference.
+
+  ⚠️ These are the NOTIFY actions. Audit rows use DIFFERENT action strings
+  (`billing.invoice_issued_audit` and friends): `Activity.log/1`
+  auto-derives notifications from registered actions, so an audit row
+  written with a notify action delivers a duplicate on top of the explicit
+  fan-out.
+  """
+  def notification_types do
+    [
+      %{
+        key: "billing",
+        label: "Billing",
+        description: "Invoices, payments and subscriptions",
+        actions: [],
+        default: true,
+        sub_types: [
+          %{
+            key: "invoices",
+            label: "Invoices and payments",
+            description: "An invoice was issued, paid, or a payment failed",
+            actions: [
+              "billing.invoice_issued",
+              "billing.payment_received",
+              "billing.payment_failed"
+            ],
+            default: true
+          },
+          %{
+            key: "your_billing",
+            label: "Your invoices and payments",
+            description: "Confirmation of invoices and payments on your own account",
+            actions: ["billing.your_invoice_issued", "billing.your_payment_received"],
+            default: true
+          }
+        ]
+      }
     ]
   end
 
@@ -187,7 +268,7 @@ defmodule PhoenixKitBilling do
         path: "billing/orders",
         priority: 522,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Orders, :index}
       ),
@@ -198,7 +279,7 @@ defmodule PhoenixKitBilling do
         path: "billing/invoices",
         priority: 523,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_invoices",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Invoices, :index}
       ),
@@ -209,7 +290,7 @@ defmodule PhoenixKitBilling do
         path: "billing/transactions",
         priority: 524,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Transactions, :index}
       ),
@@ -220,7 +301,7 @@ defmodule PhoenixKitBilling do
         path: "billing/subscriptions",
         priority: 525,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_subscriptions",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Subscriptions, :index}
       ),
@@ -231,7 +312,7 @@ defmodule PhoenixKitBilling do
         path: "billing/subscription-types",
         priority: 526,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_subscriptions",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.SubscriptionTypes, :index}
       ),
@@ -242,7 +323,7 @@ defmodule PhoenixKitBilling do
         path: "billing/profiles",
         priority: 527,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.BillingProfiles, :index}
       ),
@@ -253,7 +334,7 @@ defmodule PhoenixKitBilling do
         path: "billing/currencies",
         priority: 528,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_settings",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Currencies, :index}
       ),
@@ -264,7 +345,7 @@ defmodule PhoenixKitBilling do
         path: "settings/billing/providers",
         priority: 529,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_settings",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.ProviderSettings, :index}
       )
@@ -282,7 +363,7 @@ defmodule PhoenixKitBilling do
         priority: 926,
         level: :admin,
         parent: :admin_settings,
-        permission: "billing",
+        permission: "billing.manage_settings",
         match: :exact,
         live_view: {PhoenixKitBilling.Web.Settings, :index}
       )
@@ -1017,12 +1098,15 @@ defmodule PhoenixKitBilling do
       |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
-    result =
-      %Order{}
-      |> Order.changeset(attrs)
-      |> repo().insert()
+    with %{} = attrs <- attrs do
+      insert_order(attrs)
+    end
+  end
 
-    case result do
+  # `maybe_set_billing_snapshot/1` returns an error tuple when the chosen
+  # billing profile has vanished; passing that to a changeset would raise.
+  defp insert_order(attrs) do
+    case %Order{} |> Order.changeset(attrs) |> repo().insert() do
       {:ok, order} ->
         Events.broadcast_order_created(order)
         {:ok, order}
@@ -1048,18 +1132,8 @@ defmodule PhoenixKitBilling do
       |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
-    result =
-      %Order{}
-      |> Order.changeset(attrs)
-      |> repo().insert()
-
-    case result do
-      {:ok, order} ->
-        Events.broadcast_order_created(order)
-        {:ok, order}
-
-      error ->
-        error
+    with %{} = attrs <- attrs do
+      insert_order(attrs)
     end
   end
 
@@ -1250,11 +1324,23 @@ defmodule PhoenixKitBilling do
         attrs
 
       uuid ->
-        profile = get_billing_profile!(uuid)
+        # NON-raising: this runs inside create_order/2, itself inside the
+        # shop's conversion transaction. A raise here escapes the caller's
+        # `with`/`else` (exceptions are not matched by else), propagates out
+        # of the transaction and takes the checkout LiveView down - a
+        # disconnect on the money path rather than a handled error. The
+        # window is small (an admin deleting a profile between the shop's
+        # ownership check and this lookup) but the failure mode is the worst
+        # kind.
+        case get_billing_profile(uuid) do
+          nil ->
+            {:error, :billing_profile_not_found}
 
-        attrs
-        |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
-        |> Map.put("billing_profile_uuid", profile.uuid)
+          profile ->
+            attrs
+            |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
+            |> Map.put("billing_profile_uuid", profile.uuid)
+        end
     end
   end
 
@@ -1276,18 +1362,73 @@ defmodule PhoenixKitBilling do
 
       # Profile UUID present - update snapshot if changed or empty
       true ->
-        profile = get_billing_profile!(new_profile_uuid)
+        profile = get_billing_profile(new_profile_uuid)
 
         snapshot_empty? = is_nil(order.billing_snapshot) || order.billing_snapshot == %{}
 
-        if profile.uuid != order.billing_profile_uuid || snapshot_empty? do
-          attrs
-          |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
-          |> Map.put("billing_profile_uuid", profile.uuid)
-        else
-          attrs
+        cond do
+          # The profile vanished between the caller reading it and this
+          # lookup - leave the attrs alone rather than raising out of the
+          # caller's transaction.
+          is_nil(profile) ->
+            attrs
+
+          # An empty snapshot is always filled: there is no history to
+          # protect, and rendering nothing is worse than rendering the
+          # profile.
+          snapshot_empty? ->
+            put_snapshot(attrs, profile)
+
+          profile.uuid != order.billing_profile_uuid and snapshot_refreshable?(order) ->
+            put_snapshot(attrs, profile)
+
+          true ->
+            # Frozen: keep the address the order was billed to, and do not
+            # let a later profile switch rewrite it.
+            Map.delete(attrs, "billing_snapshot")
         end
     end
+  end
+
+  defp put_snapshot(attrs, profile) do
+    attrs
+    |> Map.put("billing_snapshot", BillingProfile.to_snapshot(profile))
+    |> Map.put("billing_profile_uuid", profile.uuid)
+  end
+
+  @doc """
+  Whether an order's billing snapshot may still be refreshed from the live
+  profile.
+
+  The snapshot is the record of who an order was billed to, so rewriting it
+  after the fact makes history mutable — but while an order is still being
+  prepared, a customer fixing a typo in their address SHOULD see it on the
+  order. The line is drawn at money changing hands:
+
+    * `"draft"` / `"pending"` — refreshable
+    * `"confirmed"` / `"paid"` / `"refunded"` / `"cancelled"` — frozen
+
+  Operators who want the stricter or looser rule set
+  `billing_snapshot_policy` to `"never"` (freeze from creation) or
+  `"always"` (the pre-2026-08 behaviour, refresh whenever the profile
+  changes). Fails closed to the default on a settings-layer error.
+  """
+  def snapshot_refreshable?(%Order{status: status}) do
+    case snapshot_policy() do
+      "never" -> false
+      "always" -> true
+      _pending_only -> status in ["draft", "pending"]
+    end
+  end
+
+  @doc "The configured snapshot-refresh policy: pending_only | never | always."
+  def snapshot_policy do
+    case PhoenixKit.Settings.get_setting_cached("billing_snapshot_policy", "pending_only") do
+      value when value in ["pending_only", "never", "always"] -> value
+      _ -> "pending_only"
+    end
+  rescue
+    _ -> "pending_only"
   end
 
   # ============================================
@@ -2102,15 +2243,25 @@ defmodule PhoenixKitBilling do
   @doc """
   Marks an invoice as paid (generates receipt).
   """
-  def mark_invoice_paid(%Invoice{} = invoice) do
+  def mark_invoice_paid(%Invoice{} = invoice, admin_user \\ nil) do
     if Invoice.payable?(invoice) do
       config = get_config()
       receipt_number = generate_receipt_number(config.receipt_prefix)
 
       result =
-        invoice
-        |> Invoice.paid_changeset(receipt_number)
-        |> repo().update()
+        repo().transaction(fn ->
+          # A settlement needs a LEDGER ROW, not just a status and a number.
+          # Without one the invoice reads paid while its transactions sum to
+          # zero, and a later refund recalculates paid_amount from those
+          # transactions - producing a NEGATIVE amount that rolls the refund
+          # back. The operator is left unable to refund an invoice the
+          # system says was paid.
+          _ = record_settlement_transaction(invoice, admin_user)
+
+          invoice
+          |> Invoice.paid_changeset(receipt_number)
+          |> repo().update!()
+        end)
 
       # Also mark the order as paid if linked
       case result do
@@ -2124,6 +2275,26 @@ defmodule PhoenixKitBilling do
       end
     else
       {:error, :invoice_not_payable}
+    end
+  end
+
+  # The outstanding balance, recorded as an offline payment so the ledger
+  # matches the invoice. Nothing to record when it is already settled.
+  defp record_settlement_transaction(%Invoice{} = invoice, admin_user) do
+    outstanding = Invoice.remaining_amount(invoice)
+
+    if Decimal.positive?(outstanding) do
+      attrs = %{
+        amount: outstanding,
+        payment_method: "bank",
+        description: "Marked as paid"
+      }
+
+      %Transaction{}
+      |> Transaction.changeset(build_transaction_attrs(invoice, outstanding, attrs, admin_user))
+      |> repo().insert()
+    else
+      :ok
     end
   end
 
@@ -2545,12 +2716,72 @@ defmodule PhoenixKitBilling do
   """
   def record_payment(%Invoice{} = invoice, attrs, admin_user) do
     amount = parse_decimal(attrs[:amount] || attrs["amount"])
+    remaining = Invoice.remaining_amount(invoice)
 
-    if Decimal.compare(amount, Decimal.new(0)) != :gt do
-      {:error, :invalid_amount}
-    else
-      do_record_transaction(invoice, amount, attrs, admin_user)
+    cond do
+      # The UI already handles :not_payable; the context never returned it,
+      # so a crafted event or a library caller could record money against a
+      # draft or voided invoice - money in the ledger against a document
+      # that was never issued.
+      not Invoice.payable?(invoice) ->
+        {:error, :not_payable}
+
+      Decimal.compare(amount, Decimal.new(0)) != :gt ->
+        {:error, :invalid_amount}
+
+      # An invoice cannot take more than it is owed. The admin UI already
+      # renders an :exceeds_remaining error the context never returned, so
+      # a mistyped amount silently overstated cash: paid_amount ran past
+      # total, remaining_amount/1 went negative, and the invoice flipped to
+      # "paid" carrying more money than it billed.
+      #
+      # Overpayment IS a real business event, but it belongs in a credit or
+      # a separate transaction an operator chooses deliberately - not as a
+      # side effect of a typo.
+      Decimal.compare(amount, remaining) == :gt ->
+        {:error, :exceeds_remaining}
+
+      true ->
+        do_record_transaction(invoice, amount, attrs, admin_user)
     end
+  end
+
+  # The ledger row's shape, lifted out so do_record_transaction/4 stays
+  # readable.
+  # SELECT ... FOR UPDATE on the invoice row: serializes concurrent payment
+  # recording for the SAME invoice so the balance check cannot be raced.
+  defp lock_invoice_for_update(%Invoice{uuid: uuid} = invoice) do
+    Invoice
+    |> where([i], i.uuid == ^uuid)
+    |> lock("FOR UPDATE")
+    |> repo().one()
+    |> case do
+      nil -> invoice
+      locked -> locked
+    end
+  end
+
+  defp build_transaction_attrs(invoice, amount, attrs, admin_user) do
+    %{
+      transaction_number: generate_transaction_number(),
+      amount: amount,
+      currency: invoice.currency,
+      payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
+      description: attrs[:description] || attrs["description"],
+      invoice_uuid: invoice.uuid,
+      # A webhook- or worker-driven payment has NO admin actor, and
+      # user_uuid is required - so every provider-confirmed payment failed
+      # to insert: the customer was charged, the invoice stayed unpaid with
+      # paid_amount 0, and there was no ledger row to reconcile against.
+      # The invoice's own user is the right attribution for those.
+      user_uuid: extract_user_uuid(admin_user) || invoice.user_uuid,
+      # Carried, not dropped: callers already pass these, and
+      # find_transaction_by_provider_id/1 needs them to match a later
+      # refund webhook to the charge it reverses.
+      provider_transaction_id:
+        attrs[:provider_transaction_id] || attrs["provider_transaction_id"],
+      provider_data: attrs[:provider_data] || attrs["provider_data"] || %{}
+    }
   end
 
   @doc """
@@ -2587,19 +2818,21 @@ defmodule PhoenixKitBilling do
   end
 
   defp do_record_transaction(invoice, amount, attrs, admin_user) do
-    transaction_number = generate_transaction_number()
-
-    transaction_attrs = %{
-      transaction_number: transaction_number,
-      amount: amount,
-      currency: invoice.currency,
-      payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
-      description: attrs[:description] || attrs["description"],
-      invoice_uuid: invoice.uuid,
-      user_uuid: extract_user_uuid(admin_user)
-    }
+    transaction_attrs = build_transaction_attrs(invoice, amount, attrs, admin_user)
 
     repo().transaction(fn ->
+      # Re-check the balance on the LOCKED invoice. The caller's check runs
+      # on an invoice read before the transaction, so two concurrent
+      # payments could each see the same remaining balance and both pass -
+      # check-then-act on money. A positive amount that no longer fits
+      # rolls the whole thing back.
+      locked = lock_invoice_for_update(invoice)
+
+      if Decimal.positive?(amount) and
+           Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt do
+        repo().rollback(:exceeds_remaining)
+      end
+
       # Create transaction
       case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
         {:ok, transaction} ->

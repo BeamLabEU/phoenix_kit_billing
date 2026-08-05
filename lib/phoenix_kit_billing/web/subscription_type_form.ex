@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Input
@@ -95,46 +96,8 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   end
 
   @impl true
-  def handle_event("save", %{"subscription_type" => params}, socket) do
-    params = process_params(params, socket.assigns.features_input)
-
-    result =
-      case socket.assigns.mode do
-        :new -> Billing.create_subscription_type(params)
-        :edit -> Billing.update_subscription_type(socket.assigns.subscription_type, params)
-      end
-
-    case result do
-      {:ok, type} ->
-        action =
-          if socket.assigns.mode == :new,
-            do: "billing.subscription_type_created",
-            else: "billing.subscription_type_updated"
-
-        Activity.log(action,
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "subscription_type",
-          resource_uuid: type.uuid,
-          metadata: %{"active" => type.active}
-        )
-
-        {:noreply,
-         socket
-         |> put_flash(:info, type_saved_message(socket.assigns.mode))
-         |> push_navigate(to: Routes.path("/admin/billing/subscription-types"))}
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset))}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Failed to save subscription type: %{reason}", reason: Errors.message(reason))
-         )}
-    end
+  def handle_event("save", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn -> gated_event("save", params, socket) end)
   end
 
   defp process_params(params, features_input) do
@@ -202,4 +165,46 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   end
 
   def normalize_count(_), do: 1
+
+  defp gated_event("save", %{"subscription_type" => params}, socket) do
+    params = process_params(params, socket.assigns.features_input)
+
+    result =
+      case socket.assigns.mode do
+        :new -> Billing.create_subscription_type(params)
+        :edit -> Billing.update_subscription_type(socket.assigns.subscription_type, params)
+      end
+
+    case result do
+      {:ok, type} ->
+        action =
+          if socket.assigns.mode == :new,
+            do: "billing.subscription_type_created",
+            else: "billing.subscription_type_updated"
+
+        Activity.log(action,
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "subscription_type",
+          resource_uuid: type.uuid,
+          metadata: %{"active" => type.active}
+        )
+
+        {:noreply,
+         socket
+         |> put_flash(:info, type_saved_message(socket.assigns.mode))
+         |> push_navigate(to: Routes.path("/admin/billing/subscription-types"))}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :form, to_form(changeset))}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to save subscription type: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
 end

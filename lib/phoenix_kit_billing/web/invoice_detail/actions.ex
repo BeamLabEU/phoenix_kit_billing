@@ -36,7 +36,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           actor_role: actor_role(socket),
           resource_type: "transaction",
           resource_uuid: transaction.uuid,
-          target_uuid: invoice.uuid,
           metadata: %{
             "invoice_number" => invoice.invoice_number,
             "amount" => to_string(amount),
@@ -45,6 +44,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         )
 
         socket = reload_invoice(socket)
+
+        # After the payment is committed. Best-effort by construction: a
+        # notification reports a recorded payment and must not be able to
+        # undo it.
+        _ = PhoenixKitBilling.Notifications.payment_received(socket.assigns.invoice)
 
         {:noreply,
          socket
@@ -131,7 +135,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
             actor_role: actor_role(socket),
             resource_type: "transaction",
             resource_uuid: transaction.uuid,
-            target_uuid: invoice.uuid,
             metadata: %{
               "invoice_number" => invoice.invoice_number,
               "amount" => to_string(amount),
@@ -178,6 +181,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
             "status" => updated_invoice.status
           }
         )
+
+        # Issuing IS sending, from the customer's point of view.
+        _ = PhoenixKitBilling.Notifications.invoice_issued(updated_invoice)
 
         {:noreply,
          socket
@@ -245,7 +251,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         actor_role: actor_role(socket),
         resource_type: "transaction",
         resource_uuid: updated_transaction.uuid,
-        target_uuid: invoice.uuid,
         metadata: %{"invoice_number" => invoice.invoice_number}
       )
 
@@ -293,7 +298,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         actor_role: actor_role(socket),
         resource_type: "transaction",
         resource_uuid: updated_transaction.uuid,
-        target_uuid: invoice.uuid,
         metadata: %{"invoice_number" => invoice.invoice_number}
       )
 
