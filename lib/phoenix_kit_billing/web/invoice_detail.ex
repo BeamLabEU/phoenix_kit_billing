@@ -11,6 +11,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.UserInfo
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.TimeDisplay
   import PhoenixKitBilling.Web.Components.CurrencyDisplay
@@ -291,32 +292,89 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
 
   # Action Delegators
 
-  @impl true
-  def handle_event("record_payment", _params, socket), do: Actions.record_payment(socket)
+  # Every money action re-checks the capability: these send emails,
+  # record payments and void invoices.
 
   @impl true
-  def handle_event("pay_with_provider", %{"provider" => provider}, socket),
+  def handle_event("record_payment", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("record_payment", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("pay_with_provider", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("pay_with_provider", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("record_refund", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("record_refund", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("send_invoice", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("send_invoice", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("send_receipt", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("send_receipt", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("send_credit_note", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("send_credit_note", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("send_payment_confirmation", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("send_payment_confirmation", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("void_invoice", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("void_invoice", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("generate_receipt", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("generate_receipt", params, socket)
+    end)
+  end
+
+  defp gated_event("record_payment", _params, socket), do: Actions.record_payment(socket)
+
+  defp gated_event("pay_with_provider", %{"provider" => provider}, socket),
     do: Actions.pay_with_provider(socket, provider)
 
-  @impl true
-  def handle_event("record_refund", _params, socket), do: Actions.record_refund(socket)
+  defp gated_event("record_refund", _params, socket), do: Actions.record_refund(socket)
 
-  @impl true
-  def handle_event("send_invoice", _params, socket), do: Actions.send_invoice(socket)
+  defp gated_event("send_invoice", _params, socket), do: Actions.send_invoice(socket)
 
-  @impl true
-  def handle_event("send_receipt", _params, socket), do: Actions.send_receipt(socket)
+  defp gated_event("send_receipt", _params, socket), do: Actions.send_receipt(socket)
 
-  @impl true
-  def handle_event("send_credit_note", _params, socket), do: Actions.send_credit_note(socket)
+  defp gated_event("send_credit_note", _params, socket), do: Actions.send_credit_note(socket)
 
-  @impl true
-  def handle_event("send_payment_confirmation", _params, socket),
+  defp gated_event("send_payment_confirmation", _params, socket),
     do: Actions.send_payment_confirmation(socket)
 
-  @impl true
-  def handle_event("void_invoice", _params, socket), do: Actions.void_invoice(socket)
+  defp gated_event("void_invoice", _params, socket), do: Actions.void_invoice(socket)
 
-  @impl true
-  def handle_event("generate_receipt", _params, socket), do: Actions.generate_receipt(socket)
+  defp gated_event("generate_receipt", _params, socket), do: Actions.generate_receipt(socket)
 end

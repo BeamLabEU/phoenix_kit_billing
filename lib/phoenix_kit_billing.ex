@@ -130,7 +130,41 @@ defmodule PhoenixKitBilling do
       key: "billing",
       label: gettext("Billing"),
       icon: "hero-banknotes",
-      description: gettext("Orders, invoices, billing profiles and multi-currency support")
+      description: gettext("Orders, invoices, billing profiles and multi-currency support"),
+      # Base "billing" is admin-area READ access. Each sub-permission is a
+      # capability this module checks itself (core enforces sub-implies-base).
+      #
+      # The split follows what an operator would actually delegate: someone
+      # who chases invoices is not someone who rotates a payment provider's
+      # API keys, and neither is necessarily allowed to refund an order.
+      #
+      # ⚠️ Upgrade: core auto-grants new sub-permissions to the Admin system
+      # role only, so a CUSTOM role holding base "billing" keeps its reads
+      # but loses mutations until an operator re-grants. Secure by default,
+      # but a breaking authorization change - see AGENTS.md.
+      sub_permissions: [
+        %{
+          key: "manage_orders",
+          label: gettext("Manage orders"),
+          description: gettext("Create, edit and cancel orders and their transactions")
+        },
+        %{
+          key: "manage_invoices",
+          label: gettext("Manage invoices"),
+          description: gettext("Issue, edit and void invoices and credit notes")
+        },
+        %{
+          key: "manage_subscriptions",
+          label: gettext("Manage subscriptions"),
+          description: gettext("Subscriptions and subscription types")
+        },
+        %{
+          key: "manage_settings",
+          label: gettext("Manage billing settings"),
+          description:
+            gettext("Payment providers and their credentials, currencies and tax settings")
+        }
+      ]
     }
   end
 
@@ -148,6 +182,53 @@ defmodule PhoenixKitBilling do
       %{label: gettext("Orders"), value: config[:orders_count] || 0},
       %{label: gettext("Invoices"), value: config[:invoices_count] || 0},
       %{label: gettext("Currencies"), value: config[:currencies_count] || 0}
+    ]
+  end
+
+  @doc """
+  Notification types this module contributes (duck-typed, discovered by
+  core's `Notifications.Types`).
+
+  Admin and customer audiences are separate sub-types on purpose: an
+  operator muting the invoice firehose must not also silence their own
+  receipts, and a customer's invoice notice must not be governed by an
+  admin-facing preference.
+
+  ⚠️ These are the NOTIFY actions. Audit rows use DIFFERENT action strings
+  (`billing.invoice_issued_audit` and friends): `Activity.log/1`
+  auto-derives notifications from registered actions, so an audit row
+  written with a notify action delivers a duplicate on top of the explicit
+  fan-out.
+  """
+  def notification_types do
+    [
+      %{
+        key: "billing",
+        label: "Billing",
+        description: "Invoices, payments and subscriptions",
+        actions: [],
+        default: true,
+        sub_types: [
+          %{
+            key: "invoices",
+            label: "Invoices and payments",
+            description: "An invoice was issued, paid, or a payment failed",
+            actions: [
+              "billing.invoice_issued",
+              "billing.payment_received",
+              "billing.payment_failed"
+            ],
+            default: true
+          },
+          %{
+            key: "your_billing",
+            label: "Your invoices and payments",
+            description: "Confirmation of invoices and payments on your own account",
+            actions: ["billing.your_invoice_issued", "billing.your_payment_received"],
+            default: true
+          }
+        ]
+      }
     ]
   end
 
@@ -187,7 +268,7 @@ defmodule PhoenixKitBilling do
         path: "billing/orders",
         priority: 522,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Orders, :index}
       ),
@@ -198,7 +279,7 @@ defmodule PhoenixKitBilling do
         path: "billing/invoices",
         priority: 523,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_invoices",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Invoices, :index}
       ),
@@ -209,7 +290,7 @@ defmodule PhoenixKitBilling do
         path: "billing/transactions",
         priority: 524,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Transactions, :index}
       ),
@@ -220,7 +301,7 @@ defmodule PhoenixKitBilling do
         path: "billing/subscriptions",
         priority: 525,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_subscriptions",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Subscriptions, :index}
       ),
@@ -231,7 +312,7 @@ defmodule PhoenixKitBilling do
         path: "billing/subscription-types",
         priority: 526,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_subscriptions",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.SubscriptionTypes, :index}
       ),
@@ -242,7 +323,7 @@ defmodule PhoenixKitBilling do
         path: "billing/profiles",
         priority: 527,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_orders",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.BillingProfiles, :index}
       ),
@@ -253,7 +334,7 @@ defmodule PhoenixKitBilling do
         path: "billing/currencies",
         priority: 528,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_settings",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.Currencies, :index}
       ),
@@ -264,7 +345,7 @@ defmodule PhoenixKitBilling do
         path: "settings/billing/providers",
         priority: 529,
         level: :admin,
-        permission: "billing",
+        permission: "billing.manage_settings",
         parent: :admin_billing,
         live_view: {PhoenixKitBilling.Web.ProviderSettings, :index}
       )
@@ -282,7 +363,7 @@ defmodule PhoenixKitBilling do
         priority: 926,
         level: :admin,
         parent: :admin_settings,
-        permission: "billing",
+        permission: "billing.manage_settings",
         match: :exact,
         live_view: {PhoenixKitBilling.Web.Settings, :index}
       )

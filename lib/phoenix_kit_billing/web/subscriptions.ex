@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.UserInfo
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.TableDefault
   import PhoenixKitWeb.Components.Core.TableRowMenu
@@ -125,36 +126,10 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
   end
 
   @impl true
-  def handle_event("cancel_subscription", %{"uuid" => uuid}, socket) do
-    subscription = Enum.find(socket.assigns.subscriptions, &(&1.uuid == uuid))
-
-    if subscription do
-      case Billing.cancel_subscription(subscription, immediately: false) do
-        {:ok, updated} ->
-          Activity.log("billing.subscription_cancelled",
-            actor_uuid: Activity.actor_uuid(socket),
-            actor_role: Activity.actor_role(socket),
-            resource_type: "subscription",
-            resource_uuid: updated.uuid,
-            metadata: %{"status" => updated.status, "immediately" => false}
-          )
-
-          {:noreply,
-           socket
-           |> load_subscriptions()
-           |> put_flash(:info, gettext("Subscription will be cancelled at period end"))}
-
-        {:error, reason} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
-           )}
-      end
-    else
-      {:noreply, put_flash(socket, :error, gettext("Subscription not found"))}
-    end
+  def handle_event("cancel_subscription", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("cancel_subscription", params, socket)
+    end)
   end
 
   # PubSub event handlers
@@ -192,6 +167,38 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
     case params do
       [] -> ""
       _ -> "?" <> URI.encode_query(params)
+    end
+  end
+
+  defp gated_event("cancel_subscription", %{"uuid" => uuid}, socket) do
+    subscription = Enum.find(socket.assigns.subscriptions, &(&1.uuid == uuid))
+
+    if subscription do
+      case Billing.cancel_subscription(subscription, immediately: false) do
+        {:ok, updated} ->
+          Activity.log("billing.subscription_cancelled",
+            actor_uuid: Activity.actor_uuid(socket),
+            actor_role: Activity.actor_role(socket),
+            resource_type: "subscription",
+            resource_uuid: updated.uuid,
+            metadata: %{"status" => updated.status, "immediately" => false}
+          )
+
+          {:noreply,
+           socket
+           |> load_subscriptions()
+           |> put_flash(:info, gettext("Subscription will be cancelled at period end"))}
+
+        {:error, reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("Failed to cancel: %{reason}", reason: Errors.message(reason))
+           )}
+      end
+    else
+      {:noreply, put_flash(socket, :error, gettext("Subscription not found"))}
     end
   end
 end

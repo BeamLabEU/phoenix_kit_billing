@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Input
@@ -121,12 +122,14 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
 
   @impl true
   def handle_event("save", %{"billing_profile" => params}, socket) do
-    params =
-      params
-      |> Map.put("user_uuid", socket.assigns.selected_user_uuid)
-      |> Map.put("type", socket.assigns.profile_type)
+    Authz.authorize(socket, :manage_orders, fn ->
+      params =
+        params
+        |> Map.put("user_uuid", socket.assigns.selected_user_uuid)
+        |> Map.put("type", socket.assigns.profile_type)
 
-    save_profile(socket, params)
+      save_profile(socket, params)
+    end)
   end
 
   defp save_profile(socket, params) do

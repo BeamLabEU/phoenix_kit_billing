@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.UserInfo
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.TableDefault
   import PhoenixKitWeb.Components.Core.TimeDisplay
@@ -99,103 +100,122 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
 
   @impl true
   def handle_event("confirm_order", _params, socket) do
-    case Billing.confirm_order(socket.assigns.order) do
-      {:ok, order} ->
-        Activity.log("billing.order_confirmed",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "order",
-          resource_uuid: order.uuid,
-          metadata: %{"order_number" => order.order_number, "status" => order.status}
-        )
+    Authz.authorize(socket, :manage_orders, fn ->
+      case Billing.confirm_order(socket.assigns.order) do
+        {:ok, order} ->
+          Activity.log("billing.order_confirmed",
+            actor_uuid: Activity.actor_uuid(socket),
+            actor_role: Activity.actor_role(socket),
+            resource_type: "order",
+            resource_uuid: order.uuid,
+            metadata: %{"order_number" => order.order_number, "status" => order.status}
+          )
 
-        {:noreply,
-         socket
-         |> assign(:order, order)
-         |> put_flash(:info, gettext("Order confirmed successfully"))}
+          {:noreply,
+           socket
+           |> assign(:order, order)
+           |> put_flash(:info, gettext("Order confirmed successfully"))}
 
-      {:error, reason} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Failed to confirm order: %{reason}", reason: reason))}
-    end
+        {:error, reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("Failed to confirm order: %{reason}", reason: reason)
+           )}
+      end
+    end)
   end
 
   @impl true
   def handle_event("mark_paid", _params, socket) do
-    case Billing.mark_order_paid(socket.assigns.order) do
-      {:ok, order} ->
-        Activity.log("billing.order_marked_paid",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "order",
-          resource_uuid: order.uuid,
-          metadata: %{"order_number" => order.order_number, "status" => order.status}
-        )
+    Authz.authorize(socket, :manage_orders, fn ->
+      case Billing.mark_order_paid(socket.assigns.order) do
+        {:ok, order} ->
+          Activity.log("billing.order_marked_paid",
+            actor_uuid: Activity.actor_uuid(socket),
+            actor_role: Activity.actor_role(socket),
+            resource_type: "order",
+            resource_uuid: order.uuid,
+            metadata: %{"order_number" => order.order_number, "status" => order.status}
+          )
 
-        {:noreply,
-         socket
-         |> assign(:order, order)
-         |> put_flash(:info, gettext("Order marked as paid"))}
+          {:noreply,
+           socket
+           |> assign(:order, order)
+           |> put_flash(:info, gettext("Order marked as paid"))}
 
-      {:error, reason} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Failed to mark as paid: %{reason}", reason: reason))}
-    end
+        {:error, reason} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Failed to mark as paid: %{reason}", reason: reason))}
+      end
+    end)
   end
 
   @impl true
   def handle_event("cancel_order", _params, socket) do
-    case Billing.cancel_order(socket.assigns.order) do
-      {:ok, order} ->
-        Activity.log("billing.order_cancelled",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "order",
-          resource_uuid: order.uuid,
-          metadata: %{"order_number" => order.order_number, "status" => order.status}
-        )
+    Authz.authorize(socket, :manage_orders, fn ->
+      case Billing.cancel_order(socket.assigns.order) do
+        {:ok, order} ->
+          Activity.log("billing.order_cancelled",
+            actor_uuid: Activity.actor_uuid(socket),
+            actor_role: Activity.actor_role(socket),
+            resource_type: "order",
+            resource_uuid: order.uuid,
+            metadata: %{"order_number" => order.order_number, "status" => order.status}
+          )
 
-        {:noreply,
-         socket
-         |> assign(:order, order)
-         |> put_flash(:info, gettext("Order cancelled"))}
+          {:noreply,
+           socket
+           |> assign(:order, order)
+           |> put_flash(:info, gettext("Order cancelled"))}
 
-      {:error, reason} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Failed to cancel order: %{reason}", reason: reason))}
-    end
+        {:error, reason} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Failed to cancel order: %{reason}", reason: reason))}
+      end
+    end)
   end
 
   @impl true
   def handle_event("generate_invoice", _params, socket) do
-    case Billing.create_invoice_from_order(socket.assigns.order) do
-      {:ok, invoice} ->
-        Activity.log("billing.invoice_created",
-          actor_uuid: Activity.actor_uuid(socket),
-          actor_role: Activity.actor_role(socket),
-          resource_type: "invoice",
-          resource_uuid: invoice.uuid,
-          target_uuid: socket.assigns.order.uuid,
-          metadata: %{
-            "invoice_number" => invoice.invoice_number,
-            "status" => invoice.status,
-            "order_uuid" => socket.assigns.order.uuid
-          }
-        )
+    Authz.authorize(socket, :manage_orders, fn ->
+      case Billing.create_invoice_from_order(socket.assigns.order) do
+        {:ok, invoice} ->
+          Activity.log("billing.invoice_created",
+            actor_uuid: Activity.actor_uuid(socket),
+            actor_role: Activity.actor_role(socket),
+            resource_type: "invoice",
+            resource_uuid: invoice.uuid,
+            target_uuid: socket.assigns.order.uuid,
+            metadata: %{
+              "invoice_number" => invoice.invoice_number,
+              "status" => invoice.status,
+              "order_uuid" => socket.assigns.order.uuid
+            }
+          )
 
-        invoices = Billing.list_invoices_for_order(socket.assigns.order.uuid)
+          invoices = Billing.list_invoices_for_order(socket.assigns.order.uuid)
 
-        {:noreply,
-         socket
-         |> assign(:invoices, invoices)
-         |> put_flash(:info, gettext("Invoice %{number} created", number: invoice.invoice_number))}
+          {:noreply,
+           socket
+           |> assign(:invoices, invoices)
+           |> put_flash(
+             :info,
+             gettext("Invoice %{number} created", number: invoice.invoice_number)
+           )}
 
-      {:error, changeset} ->
-        errors = format_changeset_errors(changeset)
+        {:error, changeset} ->
+          errors = format_changeset_errors(changeset)
 
-        {:noreply,
-         put_flash(socket, :error, gettext("Failed to create invoice: %{errors}", errors: errors))}
-    end
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("Failed to create invoice: %{errors}", errors: errors)
+           )}
+      end
+    end)
   end
 
   @impl true

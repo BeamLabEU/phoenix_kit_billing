@@ -46,6 +46,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
         socket = reload_invoice(socket)
 
+        # After the payment is committed. Best-effort by construction: a
+        # notification reports a recorded payment and must not be able to
+        # undo it.
+        _ = PhoenixKitBilling.Notifications.payment_received(socket.assigns.invoice)
+
         {:noreply,
          socket
          |> Phoenix.Component.assign(:show_payment_modal, false)
@@ -178,6 +183,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
             "status" => updated_invoice.status
           }
         )
+
+        # Issuing IS sending, from the customer's point of view.
+        _ = PhoenixKitBilling.Notifications.invoice_issued(updated_invoice)
 
         {:noreply,
          socket

@@ -18,6 +18,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypes do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
+  alias PhoenixKitBilling.Web.Authz
 
   @impl true
   def mount(_params, _session, socket) do
@@ -50,7 +51,20 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypes do
   end
 
   @impl true
-  def handle_event("toggle_active", %{"uuid" => uuid}, socket) do
+  def handle_event("toggle_active", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("toggle_active", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("delete_subscription_type", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("delete_subscription_type", params, socket)
+    end)
+  end
+
+  defp gated_event("toggle_active", %{"uuid" => uuid}, socket) do
     type = Enum.find(socket.assigns.subscription_types, &(&1.uuid == uuid))
 
     if type do
@@ -90,8 +104,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypes do
     end
   end
 
-  @impl true
-  def handle_event("delete_subscription_type", %{"uuid" => uuid}, socket) do
+  defp gated_event("delete_subscription_type", %{"uuid" => uuid}, socket) do
     type = Enum.find(socket.assigns.subscription_types, &(&1.uuid == uuid))
 
     if type do

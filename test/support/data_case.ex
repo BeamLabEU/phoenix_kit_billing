@@ -42,6 +42,11 @@ defmodule PhoenixKitBilling.DataCase do
 
     on_exit(fn -> Sandbox.stop_owner(pid) end)
 
+    # Sub-permission checks resolve through the module registry, which asks
+    # the module whether it is ENABLED - so the suite runs with billing on,
+    # the same state every exercised path assumes in production.
+    PhoenixKit.Settings.update_setting("billing_enabled", "true")
+
     :ok
   end
 
