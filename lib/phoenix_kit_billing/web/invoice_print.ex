@@ -11,9 +11,20 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Transaction
+  alias PhoenixKitBilling.Web.Authz
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(params, session, socket) do
+    # These render a customer's invoice - name, address, line items. The
+    # route only requires the base "billing" key, so without this an
+    # operator who may only touch provider settings could open any
+    # customer's paperwork by URL.
+    Authz.authorize_mount(socket, :manage_invoices, fn ->
+      do_mount(params, session, socket)
+    end)
+  end
+
+  defp do_mount(%{"id" => id}, _session, socket) do
     if Billing.enabled?() do
       case Billing.get_invoice(id, preload: [:order, :transactions]) do
         nil ->
