@@ -3,6 +3,7 @@ defmodule PhoenixKitBilling.Paths do
   alias PhoenixKit.Utils.Routes
 
   @base "/admin/billing"
+  @user_base "/dashboard"
 
   def billing_index, do: Routes.path(@base)
   def orders, do: Routes.path("#{@base}/orders")
@@ -33,4 +34,9 @@ defmodule PhoenixKitBilling.Paths do
   def currencies, do: Routes.path("#{@base}/currencies")
   def settings, do: Routes.path("/admin/settings/billing")
   def provider_settings, do: Routes.path("/admin/settings/billing/providers")
+
+  # Customer-facing pages. These mirror `user_dashboard_tabs/0` — the tabs
+  # this module registers are the only customer routes guaranteed to exist.
+  def user_orders, do: Routes.path("#{@user_base}/orders")
+  def user_billing_profiles, do: Routes.path("#{@user_base}/billing-profiles")
 end

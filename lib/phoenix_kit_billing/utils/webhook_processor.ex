@@ -28,7 +28,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   alias PhoenixKit.RepoHelper
   alias PhoenixKitBilling, as: Billing
-  alias PhoenixKitBilling.{PaymentMethod, Transaction, WebhookEvent}
+  alias PhoenixKitBilling.{Invoice, Notifications, PaymentMethod, Transaction, WebhookEvent}
 
   require Logger
 
@@ -179,19 +179,30 @@ defmodule PhoenixKitBilling.WebhookProcessor do
       }
 
       # Pass nil for admin_user - system/webhook initiated payment
+      #
+      # `record_payment/3` returns the recorded `%Transaction{}`, NOT the
+      # invoice - and a transaction has no `:status`, so reading one raised
+      # KeyError on the success path. Until provider payments started
+      # inserting at all this branch was never reached, which is why the
+      # mismatch went unnoticed: the payment committed, the webhook 500'd,
+      # and the provider retried a charge that had already been recorded.
       case Billing.record_payment(invoice, payment_attrs, nil) do
-        {:ok, updated_invoice} ->
-          Logger.info("Invoice #{invoice.invoice_number} marked as paid")
+        {:ok, %Transaction{}} ->
+          updated_invoice = Billing.get_invoice!(invoice.uuid)
+          Logger.info("Payment recorded for invoice #{updated_invoice.invoice_number}")
 
           # Generate receipt if fully paid
           if updated_invoice.status == "paid" do
             maybe_generate_and_send_receipt(updated_invoice)
           end
 
+          _ = Notifications.payment_received(updated_invoice, amount)
+
           {:ok, updated_invoice}
 
         {:error, reason} ->
           Logger.error("Failed to record payment for invoice #{invoice_uuid}: #{inspect(reason)}")
+          _ = Notifications.payment_failed(invoice, reason)
           {:error, reason}
       end
     else
@@ -471,12 +482,19 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
-  defp validate_invoice_status(%{status: status}) when status in ["draft", "sent", "overdue"] do
-    :ok
-  end
-
   defp validate_invoice_status(%{status: "paid"}) do
     {:error, :already_paid}
+  end
+
+  # Delegates to `Invoice.payable?/1` rather than repeating the status list.
+  # The two drifted: this gate admitted "draft", which `record_payment/3` now
+  # rejects as `:not_payable` - so a draft invoice passed here only to have
+  # its payment dropped downstream and the webhook retried forever. One
+  # authority on what may take money, not two.
+  defp validate_invoice_status(%Invoice{} = invoice) do
+    if Invoice.payable?(invoice),
+      do: :ok,
+      else: {:error, {:invalid_status, invoice.status}}
   end
 
   defp validate_invoice_status(%{status: status}) do

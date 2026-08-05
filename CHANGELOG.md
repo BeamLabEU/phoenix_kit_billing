@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.2] - 2026-08-05
+
+Post-merge review of PR #15 (permissions, notifications, provider payments) and PR #16 (live subscriptions search). PR #15 fixed `record_payment/3` so provider-driven payments finally insert — which meant both of its production callers executed their success paths for the first time, and neither survived it. Full findings in `dev_docs/pull_requests/2026/15-permissions-notifications-payment-fixes/CLAUDE_REVIEW.md` and `.../16-subscriptions-live-search/CLAUDE_REVIEW.md`.
+
+### Fixed
+- **Subscription renewals could charge a customer up to three times.** `SubscriptionRenewalWorker` passes the provider's `%ChargeResult{}` struct as `provider_data`, and Ecto lets a struct through both `cast` and `dump` on a `:map` column — the failure only surfaces in the JSON encoder, as a **raise** from inside the repo transaction, i.e. *after* the card has been charged. The exception escaped `attempt_renewal/2`'s `with` (an `else` clause does not match exceptions), so the Oban job crashed instead of moving the subscription to `past_due`, and each retry created another invoice and charged the card again. `provider_data` is now sanitized to a plain, JSON-safe map at the context boundary, where providers' result structs arrive.
+- **Every successful provider webhook payment raised `KeyError`.** `WebhookProcessor` read `.status` off `record_payment/3`'s return value, which is a `%Transaction{}` — a schema with no `:status` field. The payment committed, the webhook then 500'd, no receipt was generated, and the provider retried a charge that had already been recorded. Unreachable until provider payments started inserting at all.
+- **The webhook status gate and `Invoice.payable?/1` disagreed.** `validate_invoice_status/1` admitted `"draft"`, which `record_payment/3` now rejects as `:not_payable`, so a draft invoice passed the processor's gate only to have its payment dropped downstream. It now delegates to `Invoice.payable?/1` so the two cannot drift.
+- **`mark_invoice_paid/2` could commit a paid status without its ledger row.** A failed settlement insert was discarded with `_ =` rather than rolling the transaction back — the exact inconsistency that transaction exists to close. It now also takes the same `FOR UPDATE` row lock `record_payment/3` relies on, without which a concurrent mark-paid and payment could together record more than the invoice bills.
+- **Every customer notification linked to a route that does not exist.** `/dashboard/invoices/<uuid>` is registered nowhere; `user_dashboard_tabs/0` exposes `orders` and `billing-profiles`. Customer invoice and payment notices now link via `Paths.user_orders/0`.
+- **`billing.payment_failed` was a registered notification nothing could emit.** Notification sends stopped at the admin LiveView, so the provider paths recorded payments and failures silently. `payment_received/2` and `payment_failed/2` are now emitted from the webhook processor and the renewal worker.
+- **A partial payment was announced as the invoice total** — `payment_received` formatted `invoice.total`, so 50-of-500 read as *"Payment received — 500.00 EUR"*. It now reports the amount actually recorded.
+- **A decline reason could be truncated mid-codepoint.** `binary_part/3` cuts at a byte offset; a localized provider message split that way is invalid UTF-8 and is rejected by both Postgres and the JSON encoder, so the notification reporting a failed payment failed itself.
+- **Back-button behaviour on the orders, invoices and transactions lists.** All three have debounced live search but pushed a history entry per typing pause, so Back walked the query backwards a few characters at a time. They now use the `replace: true` that PR #16 applied to subscriptions.
+
+### Changed
+- `Web.Authz`'s moduledoc described the e-commerce module (`"shop"` key, "carts carry customer contact details"); it now describes billing.
+- `snapshot_refreshable?/1`'s doc claimed an in-place billing-profile edit refreshes a draft order's snapshot. It does not — only a profile *switch* is reconsidered, at any status or policy. The doc now states the actual scope.
+- `mix.lock` pruned of eight unused entries (`igniter`, `sourceror`, `spitfire` and friends) left behind by the dependency refresh in `19525d0`, which had `mix precommit` failing on `deps.unlock --check-unused`.
+
+### Added
+- Regression coverage for the two defects above that a DB-backed test could reach: a provider result **struct** recorded as `provider_data`, and mark-paid keeping status and ledger row in one transaction.
+- `test/phoenix_kit_billing/notification_contracts_test.exs` — DB-free contract tests: every registered notification action has a producer, every customer link resolves to a tab `user_dashboard_tabs/0` registers, and decline reasons truncate on a character boundary.
+- `Paths.user_orders/0` and `Paths.user_billing_profiles/0` for the customer-facing routes this module registers.
+
 ## [0.5.1] - 2026-06-08
 
 No consumer-facing changes — the published surface (declared `{:phoenix_kit, "~> 1.7"}` and behaviour) is identical to 0.5.0. This release refreshes dependencies and adds local-development tooling.

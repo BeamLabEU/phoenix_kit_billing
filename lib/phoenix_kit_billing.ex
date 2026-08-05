@@ -1401,17 +1401,26 @@ defmodule PhoenixKitBilling do
   profile.
 
   The snapshot is the record of who an order was billed to, so rewriting it
-  after the fact makes history mutable — but while an order is still being
-  prepared, a customer fixing a typo in their address SHOULD see it on the
-  order. The line is drawn at money changing hands:
+  after the fact makes history mutable. The line is drawn at money changing
+  hands:
 
     * `"draft"` / `"pending"` — refreshable
     * `"confirmed"` / `"paid"` / `"refunded"` / `"cancelled"` — frozen
 
   Operators who want the stricter or looser rule set
   `billing_snapshot_policy` to `"never"` (freeze from creation) or
-  `"always"` (the pre-2026-08 behaviour, refresh whenever the profile
+  `"always"` (the pre-2026-08 behaviour, refresh whenever the order's profile
   changes). Fails closed to the default on a settings-layer error.
+
+  > #### Scope {: .info}
+  >
+  > This governs a **profile SWITCH** — the order pointing at a different
+  > billing profile than before. Editing the fields of the profile an order
+  > already points at never refreshes the snapshot, at any status or policy;
+  > `maybe_update_billing_snapshot/2` only reconsiders when the incoming
+  > `billing_profile_uuid` differs (or the snapshot is empty). Refreshing on
+  > in-place profile edits would need the snapshot compared field by field,
+  > which is not implemented.
   """
   def snapshot_refreshable?(%Order{status: status}) do
     case snapshot_policy() do
@@ -2250,17 +2259,33 @@ defmodule PhoenixKitBilling do
 
       result =
         repo().transaction(fn ->
+          # Same FOR UPDATE row lock record_payment/3 takes. Without it a
+          # concurrent payment and a mark-paid each compute the outstanding
+          # balance from their own pre-transaction read and both record it,
+          # putting more in the ledger than the invoice bills - the very
+          # overpayment the balance check exists to prevent.
+          locked = lock_invoice_for_update(invoice)
+
           # A settlement needs a LEDGER ROW, not just a status and a number.
           # Without one the invoice reads paid while its transactions sum to
           # zero, and a later refund recalculates paid_amount from those
           # transactions - producing a NEGATIVE amount that rolls the refund
           # back. The operator is left unable to refund an invoice the
           # system says was paid.
-          _ = record_settlement_transaction(invoice, admin_user)
+          #
+          # A failed insert ROLLS BACK rather than being discarded: committing
+          # the status without the row is exactly the inconsistency this
+          # transaction exists to close, and swallowing the error would let it
+          # come back silently.
+          case record_settlement_transaction(locked, admin_user) do
+            {:error, reason} ->
+              repo().rollback(reason)
 
-          invoice
-          |> Invoice.paid_changeset(receipt_number)
-          |> repo().update!()
+            _recorded_or_nothing_to_record ->
+              locked
+              |> Invoice.paid_changeset(receipt_number)
+              |> repo().update!()
+          end
         end)
 
       # Also mark the order as paid if linked
@@ -2780,9 +2805,40 @@ defmodule PhoenixKitBilling do
       # refund webhook to the charge it reverses.
       provider_transaction_id:
         attrs[:provider_transaction_id] || attrs["provider_transaction_id"],
-      provider_data: attrs[:provider_data] || attrs["provider_data"] || %{}
+      provider_data: jsonable(attrs[:provider_data] || attrs["provider_data"] || %{})
     }
   end
+
+  # `provider_data` is a `:map` column, and Ecto passes a struct through cast
+  # AND dump untouched - the failure only surfaces at the JSON encoder, as a
+  # raise from inside the repo transaction. That is the worst place for it:
+  # the card has already been charged, the raise escapes the caller's `with`
+  # (exceptions are not matched by `else`), and Oban retries the whole
+  # renewal - charging the customer again.
+  #
+  # Providers hand us `%ChargeResult{}` / `%RefundResult{}` structs, so the
+  # sanitizing belongs here at the library boundary rather than at each call
+  # site: a host recording a payment from its own controller passes whatever
+  # its provider client returned.
+  defp jsonable(%Decimal{} = value), do: value
+  defp jsonable(%Date{} = value), do: value
+  defp jsonable(%Time{} = value), do: value
+  defp jsonable(%DateTime{} = value), do: value
+  defp jsonable(%NaiveDateTime{} = value), do: value
+
+  defp jsonable(%_{} = struct), do: struct |> Map.from_struct() |> jsonable()
+
+  defp jsonable(%{} = map) do
+    Map.new(map, fn {key, value} -> {jsonable_key(key), jsonable(value)} end)
+  end
+
+  defp jsonable(list) when is_list(list), do: Enum.map(list, &jsonable/1)
+  defp jsonable(tuple) when is_tuple(tuple), do: tuple |> Tuple.to_list() |> jsonable()
+  defp jsonable(value) when is_pid(value) or is_reference(value), do: inspect(value)
+  defp jsonable(value), do: value
+
+  defp jsonable_key(key) when is_atom(key) or is_binary(key), do: key
+  defp jsonable_key(key), do: to_string(key)
 
   @doc """
   Records a refund for an invoice.

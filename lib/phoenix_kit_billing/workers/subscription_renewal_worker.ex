@@ -56,7 +56,15 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKitBilling, as: Billing
-  alias PhoenixKitBilling.{PaymentMethod, Providers, Subscription, SubscriptionType}
+
+  alias PhoenixKitBilling.{
+    Notifications,
+    PaymentMethod,
+    Providers,
+    Subscription,
+    SubscriptionType
+  }
+
   alias PhoenixKitBilling.Workers.SubscriptionDunningWorker
 
   require Logger
@@ -245,7 +253,10 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
              }
            ) do
         {:ok, charge_result} ->
-          # Record payment on invoice
+          # Record payment on invoice. `charge_result` is a `%ChargeResult{}`
+          # struct and `provider_data` is a `:map` column - the context
+          # sanitizes it, because a struct survives Ecto's cast and dump and
+          # only blows up in the JSON encoder, i.e. after the card is charged.
           payment_attrs = %{
             amount: invoice.total,
             payment_method: pm.provider,
@@ -254,9 +265,25 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
             provider_data: charge_result
           }
 
-          Billing.record_payment(invoice, payment_attrs, nil)
+          case Billing.record_payment(invoice, payment_attrs, nil) do
+            {:ok, txn} ->
+              _ = Notifications.payment_received(invoice, invoice.total)
+              {:ok, txn}
+
+            {:error, reason} ->
+              # The money LEFT the customer's account and we could not write
+              # the ledger row: an operator has to reconcile this by hand.
+              Logger.error(
+                "Charged #{invoice.total} #{invoice.currency} for invoice " <>
+                  "#{invoice.invoice_number} but failed to record it: #{inspect(reason)}"
+              )
+
+              _ = Notifications.payment_failed(invoice, reason)
+              {:error, reason}
+          end
 
         {:error, reason} ->
+          _ = Notifications.payment_failed(invoice, reason)
           {:error, reason}
       end
     else

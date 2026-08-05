@@ -125,9 +125,18 @@ defmodule PhoenixKitBilling.Web.Invoices do
   end
 
   @impl true
+  # `replace: true` because the search box is debounced: without it a
+  # typed-out query leaves one history entry per pause, and Back walks the
+  # search string backwards a few characters at a time instead of leaving
+  # the page. Matches the subscriptions list.
   def handle_event("filter", params, socket) do
     new_params = build_url_params(socket.assigns, params)
-    {:noreply, push_patch(socket, to: Routes.path("/admin/billing/invoices?#{new_params}"))}
+
+    {:noreply,
+     push_patch(socket,
+       to: Routes.path("/admin/billing/invoices?#{new_params}"),
+       replace: true
+     )}
   end
 
   @impl true

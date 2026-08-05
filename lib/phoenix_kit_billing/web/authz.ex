@@ -2,7 +2,7 @@ defmodule PhoenixKitBilling.Web.Authz do
   @moduledoc """
   Sub-permission checks for the bundled admin LiveViews.
 
-  Core's route gate admits anyone holding the base `"shop"` key (or a sub,
+  Core's route gate admits anyone holding the base `"billing"` key (or a sub,
   which implies the base). That is the right granularity for *reaching* the
   admin area, but not for acting inside it: someone who chases invoices
   is not necessarily allowed to rotate a payment provider's API keys, and
@@ -60,8 +60,9 @@ defmodule PhoenixKitBilling.Web.Authz do
   end
 
   @doc """
-  Mount-time guard for pages whose mere CONTENT is privileged (carts carry
-  customer contact details). Redirects to the shop admin dashboard.
+  Mount-time guard for pages whose mere CONTENT is privileged (an invoice or
+  receipt carries the customer's name, address and tax ID). Redirects to the
+  billing admin dashboard.
   """
   def authorize_mount(socket, capability, fun) when is_function(fun, 0) do
     if can?(socket, capability) do
