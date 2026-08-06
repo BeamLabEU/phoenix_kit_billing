@@ -192,8 +192,8 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
-  Notification types this module contributes (duck-typed, discovered by
-  core's `Notifications.Types`).
+  Notification types this module contributes, collected by core's
+  `Notifications.Types` via `function_exported?/3`.
 
   Admin and customer audiences are separate sub-types on purpose: an
   operator muting the invoice firehose must not also silence their own
@@ -206,6 +206,7 @@ defmodule PhoenixKitBilling do
   written with a notify action delivers a duplicate on top of the explicit
   fan-out.
   """
+  @impl PhoenixKit.Module
   def notification_types do
     [
       %{

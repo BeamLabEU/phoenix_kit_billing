@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.3] - 2026-08-06
+
+PR #17 plus its post-merge review. The PR fixed a callback whose absence is
+completely silent; the review found the same callback still missing on the
+module's other public face, and a drift test structurally unable to catch either.
+Full findings in `dev_docs/pull_requests/2026/17-css-sources-callback/CLAUDE_REVIEW.md`.
+
+### Fixed
+- **Tailwind purged every class used only in billing's templates from host builds.** This module never implemented `css_sources/0`, so core's `:phoenix_kit_css_sources` compiler — which guards on `function_exported?/3` and emits nothing for a module that doesn't export it — wrote no `@source` line for the package. Nothing errored; the admin billing pages simply rendered without their responsive and variant utilities. Billing was the only PhoenixKit module missing the callback (PR #17).
+- **The `PhoenixKit.Modules.Billing` compat shim still had the bug.** The shim re-exports the module surface under the pre-migration namespace, and a host can register it: `ModuleDiscovery` merges beam-scanned modules with `config :phoenix_kit, modules: [...]` — the very fallback core's zero-sources error message recommends. `css_sources/0` was not delegated, so hosts on that path kept the purged bundle. `notification_types/0` was missing for the same reason, which silently dropped billing's whole notification tree (`billing`, `invoices`, `your_billing`) from the registry.
+
+### Changed
+- The compat drift test now guards **both** directions. It previously asserted only that nothing the shim delegates has vanished from the target, so a callback *added* to `PhoenixKitBilling` and not re-exported — exactly the two above — could never be flagged. Closes the "no compat-module drift tests" item deferred in AGENTS.md.
+- `css_sources/0`'s regression test now also asserts against `Application.get_application/1` rather than only a repeated literal, so a package rename fails the test instead of quietly emitting an `@source` for a directory that isn't there.
+- `notification_types/0` carries `@impl PhoenixKit.Module`; it is a declared optional callback, not the duck-typed hook its doc described.
+- AGENTS.md's "Tailwind CSS Scanning" section asserted this module implemented `css_sources/0` from the initial scaffolding commit onward, while the code never did — the doc confirmed the callback to anyone who checked it instead of exposing the gap. Rewritten with the real mechanism (a Mix compiler regenerating `assets/css/_phoenix_kit_sources.css`, not the installer writing `app.css`), an explicit note that the callback fails open, and a warning not to copy core's `@source_root` path-dep example here — this module's callback lives one directory shallower, so `Path.join(__DIR__, "../..")` would resolve to `deps/` and emit an `@source` over the entire dependency tree.
+
 ## [0.5.2] - 2026-08-05
 
 Post-merge review of PR #15 (permissions, notifications, provider payments) and PR #16 (live subscriptions search). PR #15 fixed `record_payment/3` so provider-driven payments finally insert — which meant both of its production callers executed their success paths for the first time, and neither survived it. Full findings in `dev_docs/pull_requests/2026/15-permissions-notifications-payment-fixes/CLAUDE_REVIEW.md` and `.../16-subscriptions-live-search/CLAUDE_REVIEW.md`.

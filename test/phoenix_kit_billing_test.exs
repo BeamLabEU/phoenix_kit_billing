@@ -21,6 +21,11 @@ defmodule PhoenixKitBillingTest do
   # surfaces far away, as Tailwind purging every billing class from a host
   # build.
   test "css_sources/0 returns the billing app, so hosts scan its templates" do
+    # Compared against the real OTP app name rather than a repeated literal:
+    # the compiler resolves the atom against the host's deps by app name, so
+    # the two must be the same value, and a package rename must fail here
+    # instead of quietly emitting an @source for a directory that isn't there.
+    assert Billing.css_sources() == [Application.get_application(Billing)]
     assert Billing.css_sources() == [:phoenix_kit_billing]
   end
 
