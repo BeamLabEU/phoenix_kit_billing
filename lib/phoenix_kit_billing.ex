@@ -124,6 +124,12 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def route_module, do: PhoenixKitBilling.Web.Routes
 
+  # Without this the host's `:phoenix_kit_css_sources` compiler emits no
+  # `@source` line for this package, so Tailwind never scans the billing
+  # templates and purges every class they use out of the host's build.
+  @impl PhoenixKit.Module
+  def css_sources, do: [:phoenix_kit_billing]
+
   @impl PhoenixKit.Module
   def permission_metadata do
     %{
