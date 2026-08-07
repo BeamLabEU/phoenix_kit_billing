@@ -116,6 +116,27 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def module_name, do: "Billing"
 
+  @doc """
+  Tailwind source roots contributed to the host's CSS build.
+
+  `AGENTS.md` claimed this was implemented; it was not, and the
+  `use PhoenixKit.Module` default returns `[]`. Core's
+  `:phoenix_kit_css_sources` compiler collects this from every discovered
+  module and writes `assets/css/_phoenix_kit_sources.css`, so with billing
+  contributing nothing, Tailwind purged every class used only by this
+  module's admin and print templates from the host build.
+
+  It stays hidden rather than failing loudly, because the compiler only
+  warns when the TOTAL source list is empty — any other installed module
+  masks the absence. A host reported it as invoices and receipts rendering
+  unstyled.
+
+  `phoenix_kit_ecommerce` carried the identical defect and was fixed the
+  same way; a shop install hit both at once.
+  """
+  @impl PhoenixKit.Module
+  def css_sources, do: [:phoenix_kit_billing]
+
   @impl PhoenixKit.Module
   def version do
     Application.spec(:phoenix_kit_billing, :vsn) |> to_string()
