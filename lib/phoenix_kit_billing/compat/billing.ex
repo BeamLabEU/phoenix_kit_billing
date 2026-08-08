@@ -24,6 +24,13 @@ defmodule PhoenixKit.Modules.Billing do
   defdelegate user_dashboard_tabs(), to: PhoenixKitBilling
   defdelegate get_config(), to: PhoenixKitBilling
 
+  # Core resolves these with `function_exported?/3` against whichever module is
+  # registered, so a gap here is silent: a host registering the legacy namespace
+  # loses its Tailwind @source line and its notification types with no error
+  # anywhere. (`module_stats/0`, resolved the same way, is under "Utilities".)
+  defdelegate css_sources(), to: PhoenixKitBilling
+  defdelegate notification_types(), to: PhoenixKitBilling
+
   # Tax
   defdelegate tax_enabled?(), to: PhoenixKitBilling
   defdelegate get_tax_rate(), to: PhoenixKitBilling

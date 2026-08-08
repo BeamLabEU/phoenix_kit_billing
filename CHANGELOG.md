@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.3] - 2026-08-06
+
+PR #17 plus its post-merge review. The PR fixed a callback whose absence is
+completely silent; the review found the same callback still missing on the
+module's other public face, and a drift test structurally unable to catch either.
+Full findings in `dev_docs/pull_requests/2026/17-css-sources-callback/CLAUDE_REVIEW.md`.
+
+### Fixed
+- **Tailwind purged every class used only in billing's templates from host builds.** This module never implemented `css_sources/0`, so core's `:phoenix_kit_css_sources` compiler — which guards on `function_exported?/3` and emits nothing for a module that doesn't export it — wrote no `@source` line for the package. Nothing errored; the admin billing pages simply rendered without their responsive and variant utilities. Billing was the only PhoenixKit module missing the callback (PR #17).
+- **The `PhoenixKit.Modules.Billing` compat shim still had the bug.** The shim re-exports the module surface under the pre-migration namespace, and a host can register it: `ModuleDiscovery` merges beam-scanned modules with `config :phoenix_kit, modules: [...]` — the very fallback core's zero-sources error message recommends. `css_sources/0` was not delegated, so hosts on that path kept the purged bundle. `notification_types/0` was missing for the same reason, which silently dropped billing's whole notification tree (`billing`, `invoices`, `your_billing`) from the registry.
+
+### Changed
+- The compat drift test now guards **both** directions. It previously asserted only that nothing the shim delegates has vanished from the target, so a callback *added* to `PhoenixKitBilling` and not re-exported — exactly the two above — could never be flagged. Closes the "no compat-module drift tests" item deferred in AGENTS.md.
+- `css_sources/0`'s regression test now also asserts against `Application.get_application/1` rather than only a repeated literal, so a package rename fails the test instead of quietly emitting an `@source` for a directory that isn't there.
+- `notification_types/0` carries `@impl PhoenixKit.Module`; it is a declared optional callback, not the duck-typed hook its doc described.
+- AGENTS.md's "Tailwind CSS Scanning" section asserted this module implemented `css_sources/0` from the initial scaffolding commit onward, while the code never did — the doc confirmed the callback to anyone who checked it instead of exposing the gap. Rewritten with the real mechanism (a Mix compiler regenerating `assets/css/_phoenix_kit_sources.css`, not the installer writing `app.css`), an explicit note that the callback fails open, and a warning not to copy core's `@source_root` path-dep example here — this module's callback lives one directory shallower, so `Path.join(__DIR__, "../..")` would resolve to `deps/` and emit an `@source` over the entire dependency tree.
+
+## [0.5.2] - 2026-08-05
+
+Post-merge review of PR #15 (permissions, notifications, provider payments) and PR #16 (live subscriptions search). PR #15 fixed `record_payment/3` so provider-driven payments finally insert — which meant both of its production callers executed their success paths for the first time, and neither survived it. Full findings in `dev_docs/pull_requests/2026/15-permissions-notifications-payment-fixes/CLAUDE_REVIEW.md` and `.../16-subscriptions-live-search/CLAUDE_REVIEW.md`.
+
+### Fixed
+- **Subscription renewals could charge a customer up to three times.** `SubscriptionRenewalWorker` passes the provider's `%ChargeResult{}` struct as `provider_data`, and Ecto lets a struct through both `cast` and `dump` on a `:map` column — the failure only surfaces in the JSON encoder, as a **raise** from inside the repo transaction, i.e. *after* the card has been charged. The exception escaped `attempt_renewal/2`'s `with` (an `else` clause does not match exceptions), so the Oban job crashed instead of moving the subscription to `past_due`, and each retry created another invoice and charged the card again. `provider_data` is now sanitized to a plain, JSON-safe map at the context boundary, where providers' result structs arrive.
+- **Every successful provider webhook payment raised `KeyError`.** `WebhookProcessor` read `.status` off `record_payment/3`'s return value, which is a `%Transaction{}` — a schema with no `:status` field. The payment committed, the webhook then 500'd, no receipt was generated, and the provider retried a charge that had already been recorded. Unreachable until provider payments started inserting at all.
+- **The webhook status gate and `Invoice.payable?/1` disagreed.** `validate_invoice_status/1` admitted `"draft"`, which `record_payment/3` now rejects as `:not_payable`, so a draft invoice passed the processor's gate only to have its payment dropped downstream. It now delegates to `Invoice.payable?/1` so the two cannot drift.
+- **`mark_invoice_paid/2` could commit a paid status without its ledger row.** A failed settlement insert was discarded with `_ =` rather than rolling the transaction back — the exact inconsistency that transaction exists to close. It now also takes the same `FOR UPDATE` row lock `record_payment/3` relies on, without which a concurrent mark-paid and payment could together record more than the invoice bills.
+- **Every customer notification linked to a route that does not exist.** `/dashboard/invoices/<uuid>` is registered nowhere; `user_dashboard_tabs/0` exposes `orders` and `billing-profiles`. Customer invoice and payment notices now link via `Paths.user_orders/0`.
+- **`billing.payment_failed` was a registered notification nothing could emit.** Notification sends stopped at the admin LiveView, so the provider paths recorded payments and failures silently. `payment_received/2` and `payment_failed/2` are now emitted from the webhook processor and the renewal worker.
+- **A partial payment was announced as the invoice total** — `payment_received` formatted `invoice.total`, so 50-of-500 read as *"Payment received — 500.00 EUR"*. It now reports the amount actually recorded.
+- **A decline reason could be truncated mid-codepoint.** `binary_part/3` cuts at a byte offset; a localized provider message split that way is invalid UTF-8 and is rejected by both Postgres and the JSON encoder, so the notification reporting a failed payment failed itself.
+- **Back-button behaviour on the orders, invoices and transactions lists.** All three have debounced live search but pushed a history entry per typing pause, so Back walked the query backwards a few characters at a time. They now use the `replace: true` that PR #16 applied to subscriptions.
+
+### Changed
+- `Web.Authz`'s moduledoc described the e-commerce module (`"shop"` key, "carts carry customer contact details"); it now describes billing.
+- `snapshot_refreshable?/1`'s doc claimed an in-place billing-profile edit refreshes a draft order's snapshot. It does not — only a profile *switch* is reconsidered, at any status or policy. The doc now states the actual scope.
+- `mix.lock` pruned of eight unused entries (`igniter`, `sourceror`, `spitfire` and friends) left behind by the dependency refresh in `19525d0`, which had `mix precommit` failing on `deps.unlock --check-unused`.
+
+### Added
+- Regression coverage for the two defects above that a DB-backed test could reach: a provider result **struct** recorded as `provider_data`, and mark-paid keeping status and ledger row in one transaction.
+- `test/phoenix_kit_billing/notification_contracts_test.exs` — DB-free contract tests: every registered notification action has a producer, every customer link resolves to a tab `user_dashboard_tabs/0` registers, and decline reasons truncate on a character boundary.
+- `Paths.user_orders/0` and `Paths.user_billing_profiles/0` for the customer-facing routes this module registers.
+
 ## [0.5.1] - 2026-06-08
 
 No consumer-facing changes — the published surface (declared `{:phoenix_kit, "~> 1.7"}` and behaviour) is identical to 0.5.0. This release refreshes dependencies and adds local-development tooling.

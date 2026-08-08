@@ -1,7 +1,7 @@
 defmodule PhoenixKitBilling.MixProject do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "0.5.3"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_billing"
 
   def project do
@@ -103,8 +103,14 @@ defmodule PhoenixKitBilling.MixProject do
       # >= 1.7.184 needed for the Core.Checkbox `:description` slot + `disabled`/
       # `title`/`wrapper_class` attrs used by the checkbox-toggle migration.
       # hackney 4.x override mirrors core: stripity_stripe/ex_aws_sqs still pin 1.x,
-      # but core (>= 1.7.189) requires hackney ~> 4.0 and overrides only apply from the root project.
-      {:hackney, "~> 4.0", override: true},
+      # but core (>= 1.7.189) requires hackney ~> 4.0 and overrides only apply from
+      # the root project. That last clause is why this is dev/test-only: for anyone
+      # depending on us the override is inert (their root project decides), while
+      # `mix hex.publish` refuses outright to build a package that declares an
+      # overridden PROD dependency. Nothing here calls hackney - it arrives
+      # transitively via ex_aws/stripity_stripe - so scoping it to the environments
+      # that actually resolve it costs consumers nothing.
+      {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
       pk_dep(:phoenix_kit, "~> 1.7.214"),
 
       # Gettext for per-module i18n of sidebar tab labels.

@@ -25,6 +25,18 @@ defmodule PhoenixKitBilling.CompatDelegateTest do
      PhoenixKitBilling.Web.UserBillingProfiles}
   ]
 
+  # The zero-arity surface core resolves on a *registered* module with
+  # `function_exported?/3` — `PhoenixKit.Module` callbacks plus the two
+  # duck-typed hooks. Every one of these fails open: a module that doesn't
+  # export it contributes nothing and core moves on without an error, which
+  # is how `css_sources/0` went missing on the main module long enough to
+  # purge every billing class out of a host's Tailwind build.
+  @registered_module_surface ~w(
+    enabled? version required_modules module_key module_name route_module
+    permission_metadata admin_tabs settings_tabs user_dashboard_tabs
+    get_config css_sources notification_types module_stats
+  )a
+
   # Functions injected by `use`/macros on the compat module itself
   # (e.g. Phoenix.LiveView callbacks) that are not delegated and would
   # otherwise be reported as missing on the target. We only want to
@@ -65,5 +77,26 @@ defmodule PhoenixKitBilling.CompatDelegateTest do
              "#{inspect(compat_mod)} delegates to #{inspect(target_mod)} functions that no " <>
                "longer exist (delegate drift): #{inspect(missing)}"
     end
+  end
+
+  # The loop above only guards one direction — that nothing the shim
+  # delegates has vanished from the target. Drift the other way is the
+  # dangerous one: a callback added to PhoenixKitBilling but not re-exported
+  # here leaves the legacy namespace silently short of it.
+  test "PhoenixKit.Modules.Billing re-exports the whole registered-module surface" do
+    Code.ensure_loaded!(PhoenixKit.Modules.Billing)
+    Code.ensure_loaded!(PhoenixKitBilling)
+
+    missing =
+      Enum.reject(@registered_module_surface, fn name ->
+        # Only require the shim to carry what the target actually implements.
+        not function_exported?(PhoenixKitBilling, name, 0) or
+          function_exported?(PhoenixKit.Modules.Billing, name, 0)
+      end)
+
+    assert missing == [],
+           "PhoenixKitBilling implements #{inspect(missing)} but the compat shim does not " <>
+             "delegate them — core resolves these with function_exported?/3, so a host " <>
+             "registering PhoenixKit.Modules.Billing loses them with no error"
   end
 end

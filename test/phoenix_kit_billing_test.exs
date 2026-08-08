@@ -15,6 +15,20 @@ defmodule PhoenixKitBillingTest do
     assert Billing.module_name() == "Billing"
   end
 
+  # Pins the exact shape the host's :phoenix_kit_css_sources compiler reads.
+  # Losing this callback is silent — the compiler guards on
+  # function_exported?/3 and simply emits no @source line — and the symptom
+  # surfaces far away, as Tailwind purging every billing class from a host
+  # build.
+  test "css_sources/0 returns the billing app, so hosts scan its templates" do
+    # Compared against the real OTP app name rather than a repeated literal:
+    # the compiler resolves the atom against the host's deps by app name, so
+    # the two must be the same value, and a package rename must fail here
+    # instead of quietly emitting an @source for a directory that isn't there.
+    assert Billing.css_sources() == [Application.get_application(Billing)]
+    assert Billing.css_sources() == [:phoenix_kit_billing]
+  end
+
   test "required_modules/0 returns list" do
     assert is_list(Billing.required_modules())
   end

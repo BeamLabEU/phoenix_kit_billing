@@ -47,8 +47,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
         # After the payment is committed. Best-effort by construction: a
         # notification reports a recorded payment and must not be able to
-        # undo it.
-        _ = PhoenixKitBilling.Notifications.payment_received(socket.assigns.invoice)
+        # undo it. The amount RECORDED is passed explicitly - a partial
+        # payment must not be announced as the invoice total.
+        _ =
+          PhoenixKitBilling.Notifications.payment_received(
+            socket.assigns.invoice,
+            transaction.amount
+          )
 
         {:noreply,
          socket
