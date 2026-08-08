@@ -91,12 +91,36 @@ defmodule PhoenixKitBilling.Currency do
       iex> Currency.format_amount(1234.5, currency)
       "€1,234.50"
   """
-  def format_amount(amount, %__MODULE__{symbol: symbol, decimal_places: places}) do
+  def format_amount(amount, currency), do: format_amount(amount, currency, [])
+
+  @doc """
+  Formats an amount, optionally dropping a fractional part that is all zeros.
+
+  `trim_zeros: true` renders 40.00 as "40" but leaves 40.50 as "40.50" — it drops
+  the separator only when nothing is lost. It is a STOREFRONT option and must not
+  be applied to invoices, receipts or credit notes, where "40.00" is the expected
+  and auditable form; those keep calling `format_amount/2`.
+
+  The switch deliberately does not live on `Currency` itself. A currency row is
+  shared with the accounting documents, so a per-currency flag would restyle every
+  invoice in EUR to satisfy a shop's storefront preference. It also does not live
+  at the call site: the preference is shop-wide policy, and threading it by hand
+  guarantees one page eventually shows 40 beside another showing 40.00.
+  """
+  def format_amount(amount, %__MODULE__{symbol: symbol, decimal_places: places}, opts) do
     amount
     |> to_decimal()
     |> Decimal.round(places)
+    |> maybe_trim_zeros(Keyword.get(opts, :trim_zeros, false))
     |> format_with_thousands()
     |> then(&"#{symbol}#{&1}")
+  end
+
+  defp maybe_trim_zeros(decimal, false), do: decimal
+
+  defp maybe_trim_zeros(decimal, true) do
+    rounded = Decimal.round(decimal, 0)
+    if Decimal.equal?(decimal, rounded), do: rounded, else: decimal
   end
 
   @doc """
