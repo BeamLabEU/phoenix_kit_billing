@@ -232,6 +232,7 @@ lib/
 - **URL paths**: `/admin/billing` (dashboard), `/admin/settings/billing` (settings), use hyphens not underscores
 - **Internal subscription control** — subscriptions are managed in our database; providers only handle payment collection
 - **Decimal for money** — all monetary amounts use `Decimal` type; never use floats for currency
+- **Decimal for money** — all monetary amounts use `Decimal` type; never use floats for currency
 
 ## Tailwind CSS Scanning
 
