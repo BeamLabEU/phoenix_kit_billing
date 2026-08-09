@@ -113,6 +113,39 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def module_key, do: "billing"
 
+  # Project-extension catalog entry for the `phoenix_kit_projects` hub —
+  # duck-typed contract (no dependency on that package, no `@impl`).
+  # HONESTLY LABELED "Customer billing" (the design consult's hard
+  # requirement): the tab shows the linked CUSTOMER's money, not a
+  # per-project P&L. `rate_cents_per_hour` lives in this config so the
+  # projects-side ledger→invoice bridge and the tab share one money
+  # settings home.
+  def phoenix_kit_project_extensions do
+    [
+      %{
+        key: "billing_customer",
+        name: "Customer billing",
+        description: "Link a billing profile — the customer's invoices and orders in context",
+        icon: "hero-banknotes",
+        module_key: "billing",
+        default_enabled: false,
+        tabs: [
+          %{
+            key: "billing",
+            label: "Billing",
+            icon: "hero-banknotes",
+            lv: PhoenixKitBilling.Web.ProjectBillingLive
+          }
+        ],
+        config_schema: [
+          %{key: "billing_profile_uuid", type: :string, label: "Billing profile UUID"},
+          %{key: "rate_cents_per_hour", type: :number, label: "Rate (cents per hour)"}
+        ],
+        permission_actions: [:view]
+      }
+    ]
+  end
+
   @impl PhoenixKit.Module
   def module_name, do: "Billing"
 

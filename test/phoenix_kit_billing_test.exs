@@ -61,3 +61,24 @@ defmodule PhoenixKitBillingTest do
     end
   end
 end
+
+defmodule PhoenixKitBilling.ProjectExtensionContractTest do
+  use ExUnit.Case, async: true
+
+  # The phoenix_kit_projects hub discovers this duck-typed entry; pin the
+  # shape (incl. the honest "Customer billing" naming and the shared
+  # rate config the projects-side invoice bridge reads).
+  test "phoenix_kit_project_extensions/0 declares the Customer billing tab" do
+    assert [ext] = PhoenixKitBilling.phoenix_kit_project_extensions()
+    assert ext.key == "billing_customer"
+    assert ext.name == "Customer billing"
+    assert ext.module_key == "billing"
+    refute ext.default_enabled
+    assert [%{key: "billing", lv: lv}] = ext.tabs
+    assert Code.ensure_loaded?(lv)
+
+    config_keys = Enum.map(ext.config_schema, & &1.key)
+    assert "billing_profile_uuid" in config_keys
+    assert "rate_cents_per_hour" in config_keys
+  end
+end
