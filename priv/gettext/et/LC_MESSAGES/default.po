@@ -3333,3 +3333,48 @@ msgstr "Iga-aastane"
 #, elixir-autogen, elixir-format
 msgid "Orders, invoices, billing profiles and multi-currency support"
 msgstr "Tellimused, arved, arvelduse profiilid ja mitme valuuta tugi"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Customer billing — everything on this customer's profile, not a per-project total."
+msgstr "Kliendi arveldus — kõik selle kliendi profiililt, mitte projektipõhine kogusumma."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Open in Billing"
+msgstr "Ava arvelduses"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "No invoices for this customer yet."
+msgstr "Sellel kliendil pole veel arveid."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Showing the %{count} most recent invoices."
+msgstr "Kuvatakse %{count} viimast arvet."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "No customer linked to this project yet."
+msgstr "Selle projektiga pole veel klienti seotud."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Paste a billing profile UUID into this tab's settings in the project's Modules & features panel."
+msgstr "Sisesta arveldusprofiili UUID selle vahekaardi seadetesse projekti paneelil „Moodulid ja funktsioonid“."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Find it on the profile page in"
+msgstr "Leiad selle profiililehelt siin:"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Billing › Profiles"
+msgstr "Arveldus › Arvelduse profiilid"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Unnamed profile"
+msgstr "Nimeta profiil"

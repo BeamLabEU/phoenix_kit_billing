@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-08-09
+
+PR #18 plus its post-merge review. The PR contributes a **Customer billing** tab
+to the `phoenix_kit_projects` hub. The review found the tab's unlinked state
+enumerating every billing profile in the installation, and four places where it
+reimplemented shared billing UI or skipped conventions the sibling CRM tab
+already follows. Full findings in
+`dev_docs/pull_requests/2026/18-project-billing-tab/CLAUDE_REVIEW.md`.
+
+### Added
+- **`phoenix_kit_project_extensions/0` — the Customer billing tab for the projects hub** (PR #18). A duck-typed catalog entry (plain maps; no dependency on `phoenix_kit_projects`, no FK) that links a project to a billing profile by UUID and renders that customer's recent invoices inside the project page via `PhoenixKitBilling.Web.ProjectBillingLive`. Honestly labeled: the tab is the linked **customer's** money — everything on their profile, across everything they buy — not a per-project P&L. `rate_cents_per_hour` lives on the same extension so the projects-side ledger→invoice bridge and this tab share one money-settings home. `default_enabled: false`.
+- **`:limit` filter for the invoice list functions.** `list_invoices/1` and `list_user_invoices/2` now accept `%{limit: n}`, so rollup panels can ask for the most recent few instead of loading a customer's entire invoice history and slicing it in memory.
+
+### Fixed
+- **The unlinked Customer billing tab disclosed every billing profile in the installation.** With no profile linked, the tab called `list_billing_profiles/1` with no options — which applies no user, type, search or pagination filter — and rendered every row's display name *and* UUID. Any project member opening the tab saw the identity of every customer of the whole host app, including people with no relationship to that project, and a host with thousands of profiles rendered all of them into the page on every mount. The empty state now links out to Billing › Profiles, matching the sibling CRM tab.
+- **Voided and draft invoices rendered the wrong color in the tab.** It defined its own status→badge clauses instead of using `Web.Components.InvoiceStatusBadge`, and two of the five statuses disagreed with the shared component: `void` came out neutral-gray instead of red, and `draft` came out warning-yellow instead of gray. Now uses the shared component, so the two lists cannot drift again.
+- **Money in the tab bypassed `Web.Components.CurrencyDisplay`**, rendering `1234.50 EUR` where the rest of billing renders `€1,234.50` — no symbol, no thousand separators, and a hardcoded 2-decimal round that is wrong for the zero-decimal currencies the shared component already handles (JPY, HUF).
+- **The tab ignored the hub's locale and used no gettext.** The projects hub passes `"locale"` in the embed session; the tab dropped it and hardcoded English, so the pane rendered untranslated inside otherwise-translated ru/et project pages. All strings are now gettext-backed with `en`/`ru`/`et` translations; the catalogues are back to zero untranslated and zero fuzzy entries.
+
+### Changed
+- **The tab's reads moved behind a `connected?/1` guard.** They ran in `mount/3`, which executes twice on a full page load, so every query was paid for twice and the first result discarded. The hub requires contributed tab LVs to be mountable off-router with no `handle_params/3` (it renders them via `live_render`), which rules out the usual `handle_params` split — a new regression test asserts the LV does not export `handle_params/3`, since that failure is otherwise only visible from the projects side.
+- The invoice table now fetches one row over its display cap and says "Showing the 15 most recent invoices." when there are more, instead of silently truncating.
+
 ## [0.5.3] - 2026-08-06
 
 PR #17 plus its post-merge review. The PR fixed a callback whose absence is

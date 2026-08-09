@@ -3333,3 +3333,48 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Orders, invoices, billing profiles and multi-currency support"
 msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Customer billing — everything on this customer's profile, not a per-project total."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Open in Billing"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "No invoices for this customer yet."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Showing the %{count} most recent invoices."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "No customer linked to this project yet."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Paste a billing profile UUID into this tab's settings in the project's Modules & features panel."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Find it on the profile page in"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Billing › Profiles"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#, elixir-autogen, elixir-format
+msgid "Unnamed profile"
+msgstr ""

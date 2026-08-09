@@ -1497,6 +1497,10 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Lists invoices for a specific user.
+
+  Accepts the shared invoice filters, including `:limit` for callers that
+  only need the most recent few (rollup panels) and must not pull a
+  long-standing customer's entire invoice history into memory.
   """
   def list_user_invoices(user_uuid, filters \\ %{}) do
     user_uuid = extract_user_uuid(user_uuid)
@@ -2529,6 +2533,9 @@ defmodule PhoenixKitBilling do
       {:overdue, true}, q ->
         today = Date.utc_today()
         where(q, [i], i.status in ["sent", "overdue"] and i.due_date < ^today)
+
+      {:limit, n}, q when is_integer(n) and n > 0 ->
+        limit(q, ^n)
 
       _, q ->
         q

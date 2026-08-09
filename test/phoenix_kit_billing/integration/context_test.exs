@@ -217,6 +217,23 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
       assert {:ok, updated} = Billing.update_invoice(invoice, %{notes: "n"})
       assert updated.notes == "n"
     end
+
+    # Rollup panels (the projects-hub Customer billing tab) ask for the
+    # most recent few. Without a query-level limit they pull a customer's
+    # entire invoice history into memory and slice it there.
+    test "list_user_invoices/2 honors the :limit filter", %{user: user} do
+      for _ <- 1..4 do
+        {:ok, _} = Billing.create_invoice(user, %{total: Decimal.new("1.00"), currency: "EUR"})
+      end
+
+      assert length(Billing.list_user_invoices(user.uuid)) == 4
+      assert length(Billing.list_user_invoices(user.uuid, %{limit: 2})) == 2
+
+      # Newest first, so the limit keeps the most recent rows.
+      [newest | _] = all = Billing.list_user_invoices(user.uuid)
+      assert [^newest] = Billing.list_user_invoices(user.uuid, %{limit: 1})
+      assert length(all) == 4
+    end
   end
 
   # ── Billing profiles ────────────────────────────────────────────

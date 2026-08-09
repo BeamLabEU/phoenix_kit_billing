@@ -81,4 +81,29 @@ defmodule PhoenixKitBilling.ProjectExtensionContractTest do
     assert "billing_profile_uuid" in config_keys
     assert "rate_cents_per_hour" in config_keys
   end
+
+  # The hub renders contributed tabs with `live_render`, so the LV must be
+  # mountable off-router. Exporting `handle_params/3` makes LiveView demand
+  # a router match and the embed raises — a failure only visible from the
+  # projects side, which does not depend on this package.
+  test "the contributed tab LV is off-router-mountable" do
+    [%{tabs: [%{lv: lv}]}] = PhoenixKitBilling.phoenix_kit_project_extensions()
+    Code.ensure_loaded!(lv)
+
+    refute function_exported?(lv, :handle_params, 3)
+    assert function_exported?(lv, :mount, 3)
+  end
+
+  # `config_schema` types are validated by the hub's normalizer, which
+  # DROPS fields whose type isn't in its whitelist — a typo'd type
+  # silently loses the field from the settings form.
+  test "config_schema uses types the hub normalizer accepts" do
+    [ext] = PhoenixKitBilling.phoenix_kit_project_extensions()
+    hub_types = [:string, :text, :number, :boolean, :select]
+
+    for field <- ext.config_schema do
+      assert field.type in hub_types, "unsupported config_schema type: #{inspect(field.type)}"
+      assert is_binary(field.label) and field.label != ""
+    end
+  end
 end
