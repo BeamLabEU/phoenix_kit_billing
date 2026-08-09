@@ -15,6 +15,7 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
   alias PhoenixKit.RepoHelper
   alias PhoenixKit.Users.Auth
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Providers.Types.ChargeResult
 
   defp user_fixture do
     {:ok, user} =
@@ -232,5 +233,63 @@ defmodule PhoenixKitBilling.Regression.ProviderPaymentTest do
                %{amount: Decimal.new("10.00"), payment_method: "bank"},
                nil
              )
+  end
+
+  test "a provider's result STRUCT can be recorded as provider_data" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    # Exactly what SubscriptionRenewalWorker passes: the provider's own
+    # `%ChargeResult{}`. `provider_data` is a `:map` column and Ecto passes a
+    # struct through both cast and dump untouched, so the failure landed in
+    # the JSON encoder as a RAISE from inside the repo transaction - after
+    # the card had been charged. Oban then retried the renewal, invoicing
+    # and charging the customer again.
+    charge = %ChargeResult{
+      id: "ch_struct",
+      provider_transaction_id: "ch_struct",
+      amount: Decimal.new("100.00"),
+      currency: "EUR",
+      status: "succeeded",
+      metadata: %{nested: %{"deep" => :atom_value}}
+    }
+
+    assert {:ok, transaction} =
+             Billing.record_payment(
+               invoice,
+               %{
+                 amount: Decimal.new("100.00"),
+                 payment_method: "stripe",
+                 provider_transaction_id: charge.provider_transaction_id,
+                 provider_data: charge
+               },
+               nil
+             )
+
+    # Stored as a plain map, and readable back out of Postgres.
+    stored = Billing.get_transaction!(transaction.uuid).provider_data
+    refute is_struct(stored)
+    assert stored["status"] == "succeeded"
+    assert stored["provider_transaction_id"] == "ch_struct"
+    assert Decimal.equal?(Billing.get_invoice(invoice.uuid).paid_amount, Decimal.new("100.00"))
+  end
+
+  test "marking paid keeps the status and the ledger row in one transaction" do
+    user = user_fixture()
+    invoice = invoice_fixture(user)
+
+    {:ok, paid} = Billing.mark_invoice_paid(invoice)
+
+    assert paid.status == "paid"
+    assert Decimal.equal?(paid.paid_amount, Decimal.new("100.00"))
+
+    # The settlement row exists and covers the whole balance: status and
+    # ledger agree. A discarded insert error would leave these disagreeing.
+    ledger =
+      [invoice_uuid: invoice.uuid]
+      |> Billing.list_transactions()
+      |> Enum.reduce(Decimal.new("0"), &Decimal.add(&2, &1.amount))
+
+    assert Decimal.equal?(ledger, Decimal.new("100.00"))
   end
 end

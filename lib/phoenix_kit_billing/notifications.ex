@@ -41,6 +41,7 @@ defmodule PhoenixKitBilling.Notifications do
   alias PhoenixKit.Users.Permissions
   alias PhoenixKit.Users.Roles
   alias PhoenixKit.Utils.Routes
+  alias PhoenixKitBilling.Paths
 
   @invoice_issued_action "billing.invoice_issued"
   @payment_received_action "billing.payment_received"
@@ -73,13 +74,19 @@ defmodule PhoenixKitBilling.Notifications do
     end)
   end
 
-  @doc "A payment was recorded against an invoice."
-  def payment_received(invoice) do
+  @doc """
+  A payment was recorded against an invoice.
+
+  `paid` is the amount actually recorded. It matters: quoting the invoice
+  total on a PARTIAL payment tells an operator 500 arrived when 50 did.
+  Falls back to the invoice total when a caller has no amount to hand.
+  """
+  def payment_received(invoice, paid \\ nil) do
     safely(fn ->
       notify_admins(
         "billing.manage_invoices",
         @payment_received_action,
-        "Payment received for #{number(invoice)} — #{amount(invoice)}",
+        "Payment received for #{number(invoice)} — #{paid_amount(invoice, paid)}",
         "hero-banknotes",
         Routes.path("/admin/billing/invoices")
       )
@@ -144,10 +151,11 @@ defmodule PhoenixKitBilling.Notifications do
 
   defp notify_customer(_record, _action, _text, _icon), do: :ok
 
-  defp customer_link(%{uuid: uuid}) when is_binary(uuid),
-    do: Routes.path("/dashboard/invoices/#{uuid}")
-
-  defp customer_link(_), do: Routes.path("/dashboard")
+  # `/dashboard/orders` is the customer-facing billing surface this module
+  # actually registers (see `user_dashboard_tabs/0`). An earlier
+  # `/dashboard/invoices/<uuid>` link pointed at a route no install has —
+  # every customer notification landed on a 404.
+  defp customer_link(_record), do: Paths.user_orders()
 
   @doc """
   Everyone who should hear about billing operations: holders of `key`,
@@ -181,8 +189,17 @@ defmodule PhoenixKitBilling.Notifications do
 
   defp amount(_), do: ""
 
-  defp truncate(text, max) when byte_size(text) > max, do: binary_part(text, 0, max) <> "…"
-  defp truncate(text, _max), do: text
+  defp paid_amount(%{currency: currency}, %Decimal{} = paid),
+    do: "#{Decimal.round(paid, 2)} #{currency}"
+
+  defp paid_amount(invoice, _paid), do: amount(invoice)
+
+  # String.slice/2, not binary_part/3: a provider's decline reason can carry
+  # non-ASCII, and cutting on a byte boundary yields an invalid UTF-8 string
+  # that Postgres and the JSON encoder both reject.
+  defp truncate(text, max) do
+    if String.length(text) > max, do: String.slice(text, 0, max) <> "…", else: text
+  end
 
   # A notification must never take down the thing it is reporting on.
   defp safely(fun) do

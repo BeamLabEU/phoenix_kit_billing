@@ -235,7 +235,32 @@ lib/
 
 ## Tailwind CSS Scanning
 
-This module implements `css_sources/0` returning `[:phoenix_kit_billing]` so PhoenixKit's installer adds the correct `@source` directive to the parent's `app.css`. Without this, Tailwind purges CSS classes unique to this module's templates.
+`PhoenixKitBilling.css_sources/0` returns `[:phoenix_kit_billing]`. Core's
+`:phoenix_kit_css_sources` **compiler** regenerates the host's
+`assets/css/_phoenix_kit_sources.css` (imported by `app.css`) on every compile,
+collecting the callback from each discovered module and emitting
+`@source "../../deps/phoenix_kit_billing";`. Without the callback Tailwind never
+scans this package's templates and purges every class unique to them.
+
+Two things to keep in mind when touching it:
+
+- **The callback fails open.** The compiler guards on
+  `function_exported?(mod, :css_sources, 0)`; a module without it contributes
+  nothing and no error is raised. This section claimed the callback was
+  implemented from the initial scaffolding onward while the code never had it —
+  shipped and unnoticed until PR #17. The same applies to the
+  `PhoenixKit.Modules.Billing` compat shim: core calls these on whichever module
+  is registered, so a delegate missing there is equally silent
+  (`test/phoenix_kit_billing/compat_delegate_test.exs` now guards both
+  directions).
+- **Do not copy core's path-dep `@source_root` example verbatim.** It is written
+  for a module whose callback lives at `lib/<app>/<app>.ex`, where
+  `Path.expand(Path.join(__DIR__, "../.."))` is the package root. Here the
+  callback lives in `lib/phoenix_kit_billing.ex`, so `__DIR__` is `<pkg>/lib` and
+  `../..` resolves to the *parent* of the package — `deps/` — which would emit an
+  `@source` over the entire dependency tree. The bare app-name atom already
+  covers path deps: the compiler reads the host's `mix.exs` dep tuple and uses
+  its `path:` value when there is one.
 
 ## Versioning & Releases
 
