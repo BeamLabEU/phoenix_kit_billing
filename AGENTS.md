@@ -41,6 +41,38 @@ Implemented via `pk_dep/3` in `mix.exs` — never hand-edit a `phoenix_kit*`
 dep into a `path:` tuple (a committed path dep ships a broken package); set
 the env var instead.
 
+## Core version compatibility
+
+The `phoenix_kit` requirement is `>= 1.7.214 and < 3.0.0`, not the `~> 1.7.x`
+pin the other modules use. A host upgrading core to 1.8 or 2.0 is therefore
+never blocked from installing billing by the resolver. That is a deliberate
+trade: Hex will no longer refuse a core that dropped an API this package calls,
+so the failure moves from dependency resolution into billing's own compile or
+runtime.
+
+`PhoenixKitBilling.CoreCompat` is what makes that failure legible. It declares
+the core surface billing depends on in three lists — unguarded calls, calls
+already behind `Code.ensure_loaded?/1`, and modules that are `use`d or
+`import`ed — and:
+
+- `test/phoenix_kit_billing/core_api_contract_test.exs` fails with the missing
+  functions named, so `mix test` after a core bump reports exactly what moved.
+  A fifth test re-derives the call list from billing's own AST, so a new call
+  site into core that nobody declared fails the suite rather than silently
+  escaping the guard.
+- `PhoenixKitBilling.Supervisor.init/1` logs the same report at boot —
+  `:error` when unguarded calls are missing, `:warning` when only guarded ones
+  are.
+
+**When core moves an API:** update the call sites and the `CoreCompat` list in
+the same commit. Never delete an entry to make the suite green — that is the
+only inventory of what core owes this package.
+
+**What it does not cover:** semantics. A core that keeps
+`Settings.get_setting/2` but changes its return shape passes every check here.
+Only running the suite against that core catches it — see `PHOENIX_KIT_PATH`
+above for testing against an unreleased core checkout.
+
 ## Architecture
 
 This is a **library** (not a standalone Phoenix app) that provides billing as a PhoenixKit plugin module.

@@ -111,7 +111,14 @@ defmodule PhoenixKitBilling.MixProject do
       # transitively via ex_aws/stripity_stripe - so scoping it to the environments
       # that actually resolve it costs consumers nothing.
       {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
-      pk_dep(:phoenix_kit, "~> 1.7.214"),
+      # The upper bound is deliberately a major ahead: a host upgrading core to
+      # 1.8 or 2.0 should not be blocked from installing billing by the resolver.
+      # The trade-off is that a 2.0 which drops an API billing calls now surfaces
+      # as a compile or runtime error here rather than a clean "no version
+      # satisfies" from Hex. PhoenixKitBilling.CoreCompat is the counterweight:
+      # it declares the core surface this package calls, fails the test suite
+      # with a named list when core moves, and logs the same list at boot.
+      pk_dep(:phoenix_kit, ">= 1.7.214 and < 3.0.0"),
 
       # Gettext for per-module i18n of sidebar tab labels.
       {:gettext, "~> 1.0"},
