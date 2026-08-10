@@ -1,7 +1,7 @@
 defmodule PhoenixKitBilling.MixProject do
   use Mix.Project
 
-  @version "0.6.0"
+  @version "0.7.0"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_billing"
 
   def project do
@@ -111,7 +111,7 @@ defmodule PhoenixKitBilling.MixProject do
       # transitively via ex_aws/stripity_stripe - so scoping it to the environments
       # that actually resolve it costs consumers nothing.
       {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
-      pk_dep(:phoenix_kit, "~> 1.7.214"),
+      pk_dep(:phoenix_kit, "~> 2.0"),
 
       # Gettext for per-module i18n of sidebar tab labels.
       {:gettext, "~> 1.0"},
