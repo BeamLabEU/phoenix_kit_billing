@@ -43,12 +43,17 @@ the env var instead.
 
 ## Core version compatibility
 
-The `phoenix_kit` requirement is `>= 1.7.214 and < 3.0.0`, not the `~> 1.7.x`
-pin the other modules use. A host upgrading core to 1.8 or 2.0 is therefore
-never blocked from installing billing by the resolver. That is a deliberate
-trade: Hex will no longer refuse a core that dropped an API this package calls,
-so the failure moves from dependency resolution into billing's own compile or
-runtime.
+The `phoenix_kit` requirement is `~> 2.0` — every core 2.x, and nothing else.
+Core 1.7 is excluded on purpose: core 2.0.0 squashed the migration chain into a
+single `V135` baseline and made V135 its floor, and this module is verified only
+against that baseline. `test/core_pin_conformance_test.exs` guards the pin
+itself, in both directions — it fails if the requirement is re-narrowed to a
+single minor (`~> 2.0.x` admits no 2.1), if it re-admits 1.7, or if a local
+`path:` override reaches a commit.
+
+That covers *which core resolves*. It says nothing about whether that core still
+exports what this package calls — a 2.4 that renames a function satisfies `~> 2.0`
+and breaks billing at the call site.
 
 `PhoenixKitBilling.CoreCompat` is what makes that failure legible. It declares
 the core surface billing depends on in three lists — unguarded calls, calls
