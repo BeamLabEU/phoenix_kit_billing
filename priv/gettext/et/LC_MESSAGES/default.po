@@ -3369,10 +3369,40 @@ msgstr "Sisesta arveldusprofiili UUID selle vahekaardi seadetesse projekti panee
 msgid "Find it on the profile page in"
 msgstr "Leiad selle profiililehelt siin:"
 
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:178
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:317
+#, elixir-autogen, elixir-format
+msgid "Acme Corp OÜ"
+msgstr "Acme Corp OÜ"
+
 #: lib/phoenix_kit_billing/web/project_billing_live.ex
 #, elixir-autogen, elixir-format
 msgid "Billing › Profiles"
 msgstr "Arveldus › Arvelduse profiilid"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:132
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:261
+#, elixir-autogen, elixir-format
+msgid "Doe"
+msgstr "Tamm"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:291
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:471
+#, elixir-autogen, elixir-format
+msgid "Harju"
+msgstr "Harju"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:115
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:245
+#, elixir-autogen, elixir-format
+msgid "John"
+msgstr "Jaan"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:282
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
+#, elixir-autogen, elixir-format
+msgid "Tallinn"
+msgstr "Tallinn"
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex
 #, elixir-autogen, elixir-format
