@@ -242,7 +242,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                       name="billing_profile[first_name]"
                       value={@form[:first_name].value}
                       class="input input-bordered"
-                      placeholder="John"
+                      placeholder={gettext("John")}
                     />
                     <.error :for={msg <- @form[:first_name].errors |> Enum.map(&elem(&1, 0))}>
                       {msg}
@@ -258,7 +258,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                       name="billing_profile[last_name]"
                       value={@form[:last_name].value}
                       class="input input-bordered"
-                      placeholder="Doe"
+                      placeholder={gettext("Doe")}
                     />
                     <.error :for={msg <- @form[:last_name].errors |> Enum.map(&elem(&1, 0))}>
                       {msg}
@@ -314,7 +314,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     name="billing_profile[company_name]"
                     value={@form[:company_name].value}
                     class="input input-bordered"
-                    placeholder="Acme Corp OÜ"
+                    placeholder={gettext("Acme Corp OÜ")}
                   />
                   <.error :for={msg <- @form[:company_name].errors |> Enum.map(&elem(&1, 0))}>
                     {msg}
@@ -455,7 +455,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     name="billing_profile[city]"
                     value={@form[:city].value}
                     class="input input-bordered"
-                    placeholder="Tallinn"
+                    placeholder={gettext("Tallinn")}
                   />
                 </div>
 
@@ -468,7 +468,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     name="billing_profile[state]"
                     value={@form[:state].value}
                     class="input input-bordered"
-                    placeholder="Harju"
+                    placeholder={gettext("Harju")}
                   />
                 </div>
 

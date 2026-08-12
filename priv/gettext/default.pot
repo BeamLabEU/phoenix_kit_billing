@@ -3369,9 +3369,39 @@ msgstr ""
 msgid "Find it on the profile page in"
 msgstr ""
 
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:178
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:317
+#, elixir-autogen, elixir-format
+msgid "Acme Corp OÜ"
+msgstr ""
+
 #: lib/phoenix_kit_billing/web/project_billing_live.ex
 #, elixir-autogen, elixir-format
 msgid "Billing › Profiles"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:132
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:261
+#, elixir-autogen, elixir-format
+msgid "Doe"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:291
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:471
+#, elixir-autogen, elixir-format
+msgid "Harju"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:115
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:245
+#, elixir-autogen, elixir-format
+msgid "John"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:282
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
+#, elixir-autogen, elixir-format
+msgid "Tallinn"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex
