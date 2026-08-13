@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.2 - 2026-08-13
+
+### i18n
+
+- The example placeholders in both billing profile forms now go through
+  Gettext. Every label around them already did, so an Estonian or Russian
+  user saw fully translated labels with English examples underneath —
+  `John`, `Doe`, `Tallinn`, `Harju`, `Acme Corp OÜ`. Added to the `et`, `ru`
+  and `en` catalogues. Format-only placeholders (`john@example.com`,
+  `+372 5555 5555`, `EE123456789`, `10115`) are deliberately left literal —
+  they read the same in every locale (#20).
+
+### Changed
+
+- Dependency updates: `phoenix_kit` 2.3.0.
+
 ## 0.7.1 - 2026-08-11
 
 ### Changed
