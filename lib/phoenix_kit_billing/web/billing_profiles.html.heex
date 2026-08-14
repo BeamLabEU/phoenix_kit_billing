@@ -75,10 +75,10 @@
                     name="search"
                     value={@search}
                     placeholder={gettext("Name, email, company...")}
-                    class="input input-bordered input-sm w-full md:w-56"
+                    class="input input-sm w-full md:w-56"
                     phx-debounce="300"
                   />
-                  <select name="type" class="select select-bordered select-sm">
+                  <select name="type" class="select select-sm">
                     <option value="all" selected={@type_filter == "all"}>{gettext("All Types")}</option>
                     <option value="individual" selected={@type_filter == "individual"}>
                       {gettext("Individual")}

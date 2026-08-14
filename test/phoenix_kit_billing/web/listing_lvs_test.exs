@@ -13,11 +13,18 @@ defmodule PhoenixKitBilling.Web.ListingLvsTest do
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
 
+  # The user has to be a REAL row, not `fake_scope/1`'s generated uuid: the
+  # "renders a seeded ..." tests below insert an order and an invoice, and both
+  # tables carry an FK to `phoenix_kit_users` (`fk_orders_user_uuid` /
+  # `fk_invoices_user_uuid`). With an unpersisted scope user those inserts
+  # raise `Ecto.ConstraintError` — which is what they did, silently, for as
+  # long as this suite ran without a reachable database.
   setup %{conn: conn} do
     Settings.update_setting("billing_enabled", "true")
-    scope = fake_scope()
+    user = fixture_user()
+    scope = fake_scope(user_uuid: user.uuid, email: user.email)
     conn = put_test_scope(conn, scope)
-    {:ok, conn: conn, user: scope.user}
+    {:ok, conn: conn, user: user}
   end
 
   describe "Orders" do

@@ -140,7 +140,8 @@ defmodule PhoenixKitBilling.BillingProfile do
     |> validate_type_specific_fields()
     |> validate_vat_number()
     |> maybe_set_display_name()
-    |> foreign_key_constraint(:user_uuid)
+    # Named explicitly — see the note in `Invoice.changeset/2`.
+    |> foreign_key_constraint(:user_uuid, name: :fk_billing_profiles_user_uuid)
   end
 
   defp validate_type_specific_fields(changeset) do

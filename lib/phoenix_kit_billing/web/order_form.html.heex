@@ -14,13 +14,13 @@
           <h2 class="card-title">{gettext("Customer")}</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label">
-                <span class="label-text">{gettext("Select Customer")}</span>
+                <span class="fieldset-legend">{gettext("Select Customer")}</span>
               </label>
               <select
                 name="user_uuid"
-                class="select select-bordered"
+                class="select"
                 phx-change="select_user"
               >
                 <option value="">{gettext("Select a customer...")}</option>
@@ -37,15 +37,15 @@
 
             <%= if @selected_user_uuid do %>
               <%= if length(@billing_profiles) > 0 do %>
-                <div class="form-control">
+                <div class="fieldset">
                   <label class="label">
-                    <span class="label-text">
+                    <span class="fieldset-legend">
                       {gettext("Billing Profile")} <span class="text-error">*</span>
                     </span>
                   </label>
                   <select
                     name="order[billing_profile_uuid]"
-                    class="select select-bordered"
+                    class="select"
                     phx-change="select_billing_profile"
                     required
                   >
@@ -123,7 +123,7 @@
                       <input
                         type="text"
                         value={item.name}
-                        class="input input-bordered input-sm w-full"
+                        class="input input-sm w-full"
                         placeholder={gettext("Item name")}
                         phx-blur="update_line_item"
                         phx-value-id={item.id}
@@ -135,7 +135,7 @@
                       <input
                         type="text"
                         value={item.description}
-                        class="input input-bordered input-sm w-full"
+                        class="input input-sm w-full"
                         placeholder={gettext("Description (optional)")}
                         phx-blur="update_line_item"
                         phx-value-id={item.id}
@@ -147,7 +147,7 @@
                       <input
                         type="number"
                         value={item.quantity}
-                        class="input input-bordered input-sm w-full"
+                        class="input input-sm w-full"
                         min="1"
                         phx-blur="update_line_item"
                         phx-value-id={item.id}
@@ -159,7 +159,7 @@
                       <input
                         type="text"
                         value={item.unit_price}
-                        class="input input-bordered input-sm w-full font-mono"
+                        class="input input-sm w-full font-mono"
                         placeholder="0.00"
                         phx-blur="update_line_item"
                         phx-value-id={item.id}
@@ -191,7 +191,7 @@
           <h2 class="card-title">{gettext("Order Settings")}</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="form-control">
+            <div class="fieldset">
               <.select
                 field={@form[:currency]}
                 label={gettext("Currency")}
@@ -199,7 +199,7 @@
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <.select
                 field={@form[:status]}
                 label={gettext("Status")}
@@ -221,7 +221,7 @@
           <h2 class="card-title">{gettext("Notes")}</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="form-control">
+            <div class="fieldset">
               <.textarea
                 field={@form[:notes]}
                 label={gettext("Customer Notes")}
@@ -230,7 +230,7 @@
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <.textarea
                 field={@form[:internal_notes]}
                 label={gettext("Internal Notes")}

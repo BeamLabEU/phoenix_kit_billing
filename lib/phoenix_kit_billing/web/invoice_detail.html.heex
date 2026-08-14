@@ -716,10 +716,10 @@
         </p>
 
         <form phx-change="update_payment_form" phx-submit="record_payment">
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Amount")} ({@invoice.currency})</span>
-              <span class="label-text-alt">
+              <span class="fieldset-legend">{gettext("Amount")} ({@invoice.currency})</span>
+              <span class="fieldset-label">
                 {gettext("Remaining:")}
                 <.currency_compact
                   amount={PhoenixKitBilling.Invoice.remaining_amount(@invoice)}
@@ -736,16 +736,16 @@
                 Decimal.to_string(PhoenixKitBilling.Invoice.remaining_amount(@invoice))
               }
               value={@payment_amount}
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Payment Method")}</span>
+              <span class="fieldset-legend">{gettext("Payment Method")}</span>
             </label>
-            <select name="payment_method" class="select select-bordered">
+            <select name="payment_method" class="select">
               <%= for method <- @available_payment_methods do %>
                 <option value={method} selected={method == @selected_payment_method}>
                   {format_payment_method_name(method)}
@@ -754,16 +754,16 @@
             </select>
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Description (optional)")}</span>
+              <span class="fieldset-legend">{gettext("Description (optional)")}</span>
             </label>
             <input
               type="text"
               name="description"
               value={@payment_description}
               placeholder={gettext("Payment reference, notes...")}
-              class="input input-bordered"
+              class="input"
             />
           </div>
 
@@ -789,10 +789,10 @@
         </p>
 
         <form phx-change="update_refund_form" phx-submit="record_refund">
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Refund Amount")} ({@invoice.currency})</span>
-              <span class="label-text-alt">
+              <span class="fieldset-legend">{gettext("Refund Amount")} ({@invoice.currency})</span>
+              <span class="fieldset-label">
                 {gettext("Max:")}
                 <.currency_compact
                   amount={@invoice.paid_amount}
@@ -807,31 +807,31 @@
               min="0.01"
               max={Decimal.to_string(@invoice.paid_amount)}
               value={@refund_amount}
-              class="input input-bordered"
+              class="input"
               placeholder={gettext("Enter refund amount")}
               required
             />
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Reason")} <span class="text-error">*</span></span>
+              <span class="fieldset-legend">{gettext("Reason")} <span class="text-error">*</span></span>
             </label>
             <input
               type="text"
               name="description"
               value={@refund_description}
               placeholder={gettext("Reason for refund (required)")}
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Refund Method")}</span>
+              <span class="fieldset-legend">{gettext("Refund Method")}</span>
             </label>
-            <select name="payment_method" class="select select-bordered">
+            <select name="payment_method" class="select">
               <%= for method <- @available_payment_methods do %>
                 <option value={method} selected={method == @selected_refund_payment_method}>
                   {format_payment_method_name(method)}
@@ -866,16 +866,16 @@
         </p>
 
         <form phx-change="update_send_form" phx-submit="send_invoice">
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Email Address")}</span>
+              <span class="fieldset-legend">{gettext("Email Address")}</span>
             </label>
             <input
               type="email"
               name="email"
               value={@send_email}
               placeholder="customer@example.com"
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>
@@ -903,16 +903,16 @@
         </p>
 
         <form phx-change="update_send_receipt_form" phx-submit="send_receipt">
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Email Address")}</span>
+              <span class="fieldset-legend">{gettext("Email Address")}</span>
             </label>
             <input
               type="email"
               name="email"
               value={@send_receipt_email}
               placeholder="customer@example.com"
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>
@@ -939,16 +939,16 @@
         </p>
 
         <form phx-change="update_send_credit_note_form" phx-submit="send_credit_note">
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Email Address")}</span>
+              <span class="fieldset-legend">{gettext("Email Address")}</span>
             </label>
             <input
               type="email"
               name="email"
               value={@send_credit_note_email}
               placeholder="customer@example.com"
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>
@@ -980,16 +980,16 @@
           phx-change="update_send_payment_confirmation_form"
           phx-submit="send_payment_confirmation"
         >
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <label class="label">
-              <span class="label-text">{gettext("Email Address")}</span>
+              <span class="fieldset-legend">{gettext("Email Address")}</span>
             </label>
             <input
               type="email"
               name="email"
               value={@send_payment_confirmation_email}
               placeholder="customer@example.com"
-              class="input input-bordered"
+              class="input"
               required
             />
           </div>

@@ -342,14 +342,14 @@
         <% end %>
 
         <%!-- New Subscription Type Selection --%>
-        <div class="form-control mt-4">
+        <div class="fieldset mt-4">
           <label class="label">
-            <span class="label-text">{gettext("Select New Subscription Type")}</span>
+            <span class="fieldset-legend">{gettext("Select New Subscription Type")}</span>
           </label>
           <select
             name="subscription_type_uuid"
             phx-change="select_new_subscription_type"
-            class="select select-bordered w-full"
+            class="select w-full"
           >
             <option value="">{gettext("Choose a subscription type...")}</option>
             <%= for type <- @subscription_types do %>
