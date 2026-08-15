@@ -57,9 +57,9 @@
                   </button>
                 </div>
               <% else %>
-                <div class="form-control mt-4">
+                <div class="fieldset mt-4">
                   <label class="label">
-                    <span class="label-text">
+                    <span class="fieldset-legend">
                       {gettext("Search by email")} <span class="text-error">*</span>
                     </span>
                   </label>
@@ -70,7 +70,7 @@
                         value={@user_search}
                         phx-debounce="300"
                         name="query"
-                        class="input input-bordered w-full"
+                        class="input w-full"
                         placeholder={gettext("Enter email address...")}
                         autocomplete="off"
                       />
@@ -112,9 +112,9 @@
               <.icon name="hero-squares-2x2" class="w-5 h-5" /> {gettext("Subscription Type")}
             </h2>
 
-            <div class="form-control mt-4">
+            <div class="fieldset mt-4">
               <label class="label">
-                <span class="label-text">
+                <span class="fieldset-legend">
                   <%= if @live_action == :edit do %>
                     {gettext("Change subscription type")}
                   <% else %>
@@ -125,7 +125,7 @@
               <form phx-change="select_subscription_type">
                 <select
                   name="subscription_type_uuid"
-                  class="select select-bordered w-full"
+                  class="select w-full"
                 >
                   <option value="">{gettext("Choose a subscription type...")}</option>
                   <%= for type <- @subscription_types do %>
@@ -144,7 +144,7 @@
 
             <%!-- Trial Period (create mode only) --%>
             <%= if @live_action != :edit do %>
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <.checkbox
                   name="enable"
                   checked={@enable_trial}
@@ -155,9 +155,9 @@
               </div>
 
               <%= if @enable_trial do %>
-                <div class="form-control mt-2">
+                <div class="fieldset mt-2">
                   <label class="label">
-                    <span class="label-text">{gettext("Trial days")}</span>
+                    <span class="fieldset-legend">{gettext("Trial days")}</span>
                   </label>
                   <input
                     type="number"
@@ -165,7 +165,7 @@
                     value={@trial_days}
                     phx-keyup="update_trial_days"
                     phx-debounce="300"
-                    class="input input-bordered w-32"
+                    class="input w-32"
                     min="1"
                     max="365"
                     placeholder="14"
@@ -291,14 +291,14 @@
                 <span class="badge badge-ghost">{gettext("Optional")}</span>
               </h2>
 
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <label class="label">
-                  <span class="label-text">{gettext("Select a saved payment method")}</span>
+                  <span class="fieldset-legend">{gettext("Select a saved payment method")}</span>
                 </label>
                 <form phx-change="select_payment_method">
                   <select
                     name="payment_method_uuid"
-                    class="select select-bordered w-full"
+                    class="select w-full"
                   >
                     <option value="">{gettext("No payment method")}</option>
                     <%= for pm <- @payment_methods do %>
@@ -315,7 +315,7 @@
                   </select>
                 </form>
                 <label class="label">
-                  <span class="label-text-alt text-base-content/60">
+                  <span class="fieldset-label text-base-content/60">
                     {gettext("Payment method is optional for manually created subscriptions")}
                   </span>
                 </label>

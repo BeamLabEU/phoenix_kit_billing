@@ -153,8 +153,12 @@ defmodule PhoenixKitBilling.Invoice do
     |> validate_number(:paid_amount, greater_than_or_equal_to: 0)
     |> validate_line_items()
     |> unique_constraint(:invoice_number)
-    |> foreign_key_constraint(:user_uuid)
-    |> foreign_key_constraint(:order_uuid)
+    # The constraints are named by core's migration chain, not by Ecto's
+    # `<table>_<field>_fkey` default, so they must be named explicitly or
+    # Postgres' error never matches and a bad reference raises
+    # `Ecto.ConstraintError` (a 500) instead of returning a changeset error.
+    |> foreign_key_constraint(:user_uuid, name: :fk_invoices_user_uuid)
+    |> foreign_key_constraint(:order_uuid, name: :fk_invoices_order_uuid)
   end
 
   defp validate_line_items(changeset) do

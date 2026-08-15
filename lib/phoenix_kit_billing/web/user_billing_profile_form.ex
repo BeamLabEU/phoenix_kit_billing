@@ -206,7 +206,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     phx-click="change_type"
                     phx-value-type="individual"
                   />
-                  <span class="label-text">{gettext("Individual")}</span>
+                  <span class="fieldset-legend">{gettext("Individual")}</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input
@@ -218,7 +218,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     phx-click="change_type"
                     phx-value-type="company"
                   />
-                  <span class="label-text">{gettext("Company")}</span>
+                  <span class="fieldset-legend">{gettext("Company")}</span>
                 </label>
               </div>
             </div>
@@ -233,15 +233,15 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 </h2>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("First Name *")}</span>
+                      <span class="fieldset-legend">{gettext("First Name *")}</span>
                     </label>
                     <input
                       type="text"
                       name="billing_profile[first_name]"
                       value={@form[:first_name].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder={gettext("John")}
                     />
                     <.error :for={msg <- @form[:first_name].errors |> Enum.map(&elem(&1, 0))}>
@@ -249,15 +249,15 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                     </.error>
                   </div>
 
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Last Name *")}</span>
+                      <span class="fieldset-legend">{gettext("Last Name *")}</span>
                     </label>
                     <input
                       type="text"
                       name="billing_profile[last_name]"
                       value={@form[:last_name].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder={gettext("Doe")}
                     />
                     <.error :for={msg <- @form[:last_name].errors |> Enum.map(&elem(&1, 0))}>
@@ -267,28 +267,28 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Email")}</span>
+                      <span class="fieldset-legend">{gettext("Email")}</span>
                     </label>
                     <input
                       type="email"
                       name="billing_profile[email]"
                       value={@form[:email].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder="john@example.com"
                     />
                   </div>
 
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Phone")}</span>
+                      <span class="fieldset-legend">{gettext("Phone")}</span>
                     </label>
                     <input
                       type="tel"
                       name="billing_profile[phone]"
                       value={@form[:phone].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder="+372 5555 5555"
                     />
                   </div>
@@ -305,15 +305,15 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                   <.icon name="hero-building-office" class="w-5 h-5" /> {gettext("Company Information")}
                 </h2>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <label class="label">
-                    <span class="label-text">{gettext("Company Name *")}</span>
+                    <span class="fieldset-legend">{gettext("Company Name *")}</span>
                   </label>
                   <input
                     type="text"
                     name="billing_profile[company_name]"
                     value={@form[:company_name].value}
-                    class="input input-bordered"
+                    class="input"
                     placeholder={gettext("Acme Corp OÜ")}
                   />
                   <.error :for={msg <- @form[:company_name].errors |> Enum.map(&elem(&1, 0))}>
@@ -322,43 +322,43 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("VAT Number")}</span>
+                      <span class="fieldset-legend">{gettext("VAT Number")}</span>
                     </label>
                     <input
                       type="text"
                       name="billing_profile[company_vat_number]"
                       value={@form[:company_vat_number].value}
-                      class="input input-bordered font-mono"
+                      class="input font-mono"
                       placeholder="EE123456789"
                     />
                     <label class="label">
-                      <span class="label-text-alt">{gettext("EU VAT format: Country code + number")}</span>
+                      <span class="fieldset-label">{gettext("EU VAT format: Country code + number")}</span>
                     </label>
                   </div>
 
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Registration Number")}</span>
+                      <span class="fieldset-legend">{gettext("Registration Number")}</span>
                     </label>
                     <input
                       type="text"
                       name="billing_profile[company_registration_number]"
                       value={@form[:company_registration_number].value}
-                      class="input input-bordered font-mono"
+                      class="input font-mono"
                       placeholder="12345678"
                     />
                   </div>
                 </div>
 
-                <div class="form-control mt-4">
+                <div class="fieldset mt-4">
                   <label class="label">
-                    <span class="label-text">{gettext("Legal Address")}</span>
+                    <span class="fieldset-legend">{gettext("Legal Address")}</span>
                   </label>
                   <textarea
                     name="billing_profile[company_legal_address]"
-                    class="textarea textarea-bordered"
+                    class="textarea"
                     rows="2"
                     placeholder={gettext("Registered legal address")}
                   >{@form[:company_legal_address].value}</textarea>
@@ -367,28 +367,28 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 <div class="divider">{gettext("Contact")}</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Contact Email")}</span>
+                      <span class="fieldset-legend">{gettext("Contact Email")}</span>
                     </label>
                     <input
                       type="email"
                       name="billing_profile[email]"
                       value={@form[:email].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder="billing@company.com"
                     />
                   </div>
 
-                  <div class="form-control">
+                  <div class="fieldset">
                     <label class="label">
-                      <span class="label-text">{gettext("Phone")}</span>
+                      <span class="fieldset-legend">{gettext("Phone")}</span>
                     </label>
                     <input
                       type="tel"
                       name="billing_profile[phone]"
                       value={@form[:phone].value}
-                      class="input input-bordered"
+                      class="input"
                       placeholder="+372 5555 5555"
                     />
                   </div>
@@ -405,11 +405,11 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
               </h2>
 
               <%!-- Country first --%>
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Country *")}</span>
+                  <span class="fieldset-legend">{gettext("Country *")}</span>
                 </label>
-                <select name="billing_profile[country]" class="select select-bordered">
+                <select name="billing_profile[country]" class="select">
                   <option value="">{gettext("Select country...")}</option>
                   <%= for {name, code} <- @countries do %>
                     <option value={code} selected={@form[:country].value == code}>
@@ -419,68 +419,68 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 </select>
               </div>
 
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <label class="label">
-                  <span class="label-text">{gettext("Address Line 1")}</span>
+                  <span class="fieldset-legend">{gettext("Address Line 1")}</span>
                 </label>
                 <input
                   type="text"
                   name="billing_profile[address_line1]"
                   value={@form[:address_line1].value}
-                  class="input input-bordered"
+                  class="input"
                   placeholder={gettext("Street address")}
                 />
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Address Line 2")}</span>
+                  <span class="fieldset-legend">{gettext("Address Line 2")}</span>
                 </label>
                 <input
                   type="text"
                   name="billing_profile[address_line2]"
                   value={@form[:address_line2].value}
-                  class="input input-bordered"
+                  class="input"
                   placeholder={gettext("Apartment, suite, etc.")}
                 />
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <div class="form-control">
+                <div class="fieldset">
                   <label class="label">
-                    <span class="label-text">{gettext("City")}</span>
+                    <span class="fieldset-legend">{gettext("City")}</span>
                   </label>
                   <input
                     type="text"
                     name="billing_profile[city]"
                     value={@form[:city].value}
-                    class="input input-bordered"
+                    class="input"
                     placeholder={gettext("Tallinn")}
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <label class="label">
-                    <span class="label-text">{@subdivision_label}</span>
+                    <span class="fieldset-legend">{@subdivision_label}</span>
                   </label>
                   <input
                     type="text"
                     name="billing_profile[state]"
                     value={@form[:state].value}
-                    class="input input-bordered"
+                    class="input"
                     placeholder={gettext("Harju")}
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <label class="label">
-                    <span class="label-text">{gettext("Postal Code")}</span>
+                    <span class="fieldset-legend">{gettext("Postal Code")}</span>
                   </label>
                   <input
                     type="text"
                     name="billing_profile[postal_code]"
                     value={@form[:postal_code].value}
-                    class="input input-bordered"
+                    class="input"
                     placeholder="10115"
                   />
                 </div>
@@ -495,7 +495,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 <.icon name="hero-cog-6-tooth" class="w-5 h-5" /> {gettext("Options")}
               </h2>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.checkbox field={@form[:is_default]} label={gettext("Set as default profile")}>
                   <:description>
                     {gettext("This profile will be used by default for new orders")}
@@ -503,19 +503,19 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
                 </.checkbox>
               </div>
 
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <label class="label">
-                  <span class="label-text">{gettext("Profile Name (Optional)")}</span>
+                  <span class="fieldset-legend">{gettext("Profile Name (Optional)")}</span>
                 </label>
                 <input
                   type="text"
                   name="billing_profile[name]"
                   value={@form[:name].value}
-                  class="input input-bordered"
+                  class="input"
                   placeholder={gettext("e.g., Home Address, Work")}
                 />
                 <label class="label">
-                  <span class="label-text-alt">{gettext("Custom name to identify this profile")}</span>
+                  <span class="fieldset-label">{gettext("Custom name to identify this profile")}</span>
                 </label>
               </div>
             </div>

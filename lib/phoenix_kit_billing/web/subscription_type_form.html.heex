@@ -21,7 +21,7 @@
               <h2 class="card-title">{gettext("Basic Information")}</h2>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:name]}
                     type="text"
@@ -31,7 +31,7 @@
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:slug]}
                     type="text"
@@ -42,13 +42,13 @@
                   />
                   <%= if @form[:slug].errors == [] do %>
                     <label class="label">
-                      <span class="label-text-alt">{gettext("URL-friendly unique identifier")}</span>
+                      <span class="fieldset-label">{gettext("URL-friendly unique identifier")}</span>
                     </label>
                   <% end %>
                 </div>
               </div>
 
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <.textarea
                   field={@form[:description]}
                   label={gettext("Description")}
@@ -65,7 +65,7 @@
               <h2 class="card-title">{gettext("Pricing")}</h2>
 
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:price]}
                     type="number"
@@ -77,7 +77,7 @@
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <.select
                     field={@form[:currency]}
                     label={gettext("Currency")}
@@ -85,7 +85,7 @@
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:trial_days]}
                     type="number"
@@ -97,7 +97,7 @@
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div class="form-control">
+                <div class="fieldset">
                   <.select
                     field={@form[:interval]}
                     label={gettext("Billing Interval")}
@@ -110,7 +110,7 @@
                   />
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:interval_count]}
                     type="number"
@@ -121,7 +121,7 @@
                     placeholder="1"
                   />
                   <label class="label">
-                    <span class="label-text-alt">
+                    <span class="fieldset-label">
                       {gettext("e.g. 3 months = interval \"month\", count 3")}
                     </span>
                   </label>
@@ -138,7 +138,7 @@
                 {gettext("List the features included in this plan (one per line)")}
               </p>
 
-              <div class="form-control mt-4">
+              <div class="fieldset mt-4">
                 <.textarea
                   name="features"
                   value={@features_input}
@@ -158,7 +158,7 @@
               <h2 class="card-title">{gettext("Settings")}</h2>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div class="form-control">
+                <div class="fieldset">
                   <.input
                     field={@form[:sort_order]}
                     type="number"
@@ -167,11 +167,11 @@
                     placeholder="0"
                   />
                   <label class="label">
-                    <span class="label-text-alt">{gettext("Lower numbers appear first")}</span>
+                    <span class="fieldset-label">{gettext("Lower numbers appear first")}</span>
                   </label>
                 </div>
 
-                <div class="form-control">
+                <div class="fieldset">
                   <.checkbox field={@form[:active]} label={gettext("Active")}>
                     <:description>
                       {gettext("Only active plans are shown to customers")}

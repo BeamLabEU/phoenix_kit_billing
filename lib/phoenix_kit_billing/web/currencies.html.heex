@@ -275,8 +275,8 @@
         <.form for={@form} phx-change="validate" phx-submit="save">
           <div class="space-y-4">
             <%!-- Code --%>
-            <div class="form-control">
-              <label class="label"><span class="label-text">{gettext("Currency Code")}</span></label>
+            <div class="fieldset">
+              <label class="label"><span class="fieldset-legend">{gettext("Currency Code")}</span></label>
               <input
                 type="text"
                 name="currency[code]"
@@ -284,11 +284,11 @@
                 maxlength="3"
                 placeholder="USD"
                 disabled={@editing_currency != nil}
-                class={"input input-bordered w-full uppercase #{if @form[:code].errors != [], do: "input-error"}"}
+                class={"input w-full uppercase #{if @form[:code].errors != [], do: "input-error"}"}
               />
               <%= if @form[:code].errors != [] do %>
                 <label class="label">
-                  <span class="label-text-alt text-error">
+                  <span class="fieldset-label text-error">
                     {error_to_string(@form[:code].errors)}
                   </span>
                 </label>
@@ -299,18 +299,18 @@
             </div>
 
             <%!-- Name --%>
-            <div class="form-control">
-              <label class="label"><span class="label-text">{gettext("Name")}</span></label>
+            <div class="fieldset">
+              <label class="label"><span class="fieldset-legend">{gettext("Name")}</span></label>
               <input
                 type="text"
                 name="currency[name]"
                 value={@form[:name].value}
                 placeholder={gettext("US Dollar")}
-                class={"input input-bordered w-full #{if @form[:name].errors != [], do: "input-error"}"}
+                class={"input w-full #{if @form[:name].errors != [], do: "input-error"}"}
               />
               <%= if @form[:name].errors != [] do %>
                 <label class="label">
-                  <span class="label-text-alt text-error">
+                  <span class="fieldset-label text-error">
                     {error_to_string(@form[:name].errors)}
                   </span>
                 </label>
@@ -318,19 +318,19 @@
             </div>
 
             <%!-- Symbol --%>
-            <div class="form-control">
-              <label class="label"><span class="label-text">{gettext("Symbol")}</span></label>
+            <div class="fieldset">
+              <label class="label"><span class="fieldset-legend">{gettext("Symbol")}</span></label>
               <input
                 type="text"
                 name="currency[symbol]"
                 value={@form[:symbol].value}
                 placeholder="$"
                 maxlength="5"
-                class={"input input-bordered w-full #{if @form[:symbol].errors != [], do: "input-error"}"}
+                class={"input w-full #{if @form[:symbol].errors != [], do: "input-error"}"}
               />
               <%= if @form[:symbol].errors != [] do %>
                 <label class="label">
-                  <span class="label-text-alt text-error">
+                  <span class="fieldset-label text-error">
                     {error_to_string(@form[:symbol].errors)}
                   </span>
                 </label>
@@ -339,45 +339,45 @@
 
             <div class="grid grid-cols-2 gap-4">
               <%!-- Decimal Places --%>
-              <div class="form-control">
-                <label class="label"><span class="label-text">{gettext("Decimal Places")}</span></label>
+              <div class="fieldset">
+                <label class="label"><span class="fieldset-legend">{gettext("Decimal Places")}</span></label>
                 <input
                   type="number"
                   name="currency[decimal_places]"
                   value={@form[:decimal_places].value}
                   min="0"
                   max="4"
-                  class="input input-bordered w-full"
+                  class="input w-full"
                 />
               </div>
 
               <%!-- Exchange Rate --%>
-              <div class="form-control">
-                <label class="label"><span class="label-text">{gettext("Exchange Rate")}</span></label>
+              <div class="fieldset">
+                <label class="label"><span class="fieldset-legend">{gettext("Exchange Rate")}</span></label>
                 <input
                   type="text"
                   name="currency[exchange_rate]"
                   value={@form[:exchange_rate].value}
                   placeholder="1.0"
-                  class="input input-bordered w-full"
+                  class="input w-full"
                 />
               </div>
             </div>
 
             <%!-- Sort Order --%>
-            <div class="form-control">
-              <label class="label"><span class="label-text">{gettext("Sort Order")}</span></label>
+            <div class="fieldset">
+              <label class="label"><span class="fieldset-legend">{gettext("Sort Order")}</span></label>
               <input
                 type="number"
                 name="currency[sort_order]"
                 value={@form[:sort_order].value}
                 min="0"
-                class="input input-bordered w-full"
+                class="input w-full"
               />
             </div>
 
             <%!-- Enabled --%>
-            <div class="form-control">
+            <div class="fieldset">
               <.checkbox field={@form[:enabled]} label={gettext("Enabled")} />
             </div>
           </div>

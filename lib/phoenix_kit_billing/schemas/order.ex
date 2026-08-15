@@ -196,8 +196,11 @@ defmodule PhoenixKitBilling.Order do
     |> validate_line_items()
     |> maybe_generate_order_number()
     |> unique_constraint(:order_number)
-    |> foreign_key_constraint(:user_uuid)
-    |> foreign_key_constraint(:billing_profile_uuid)
+    # Named explicitly — see the note in `Invoice.changeset/2`.
+    |> foreign_key_constraint(:user_uuid, name: :fk_orders_user_uuid)
+    |> foreign_key_constraint(:billing_profile_uuid,
+      name: :fk_orders_billing_profile_uuid
+    )
   end
 
   # Guest orders must have billing_snapshot with email when no billing_profile_uuid

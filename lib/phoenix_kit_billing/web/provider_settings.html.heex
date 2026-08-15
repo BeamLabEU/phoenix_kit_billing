@@ -81,11 +81,11 @@
           <div class="divider my-2"></div>
 
           <form phx-submit="save_stripe" class="space-y-3">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Secret Key")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Secret Key")}</span>
                 <%= if has_credentials?(@stripe_secret_key) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -94,16 +94,16 @@
                 type="password"
                 name="secret_key"
                 placeholder="sk_live_..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Publishable Key")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Publishable Key")}</span>
                 <%= if has_credentials?(@stripe_publishable_key) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -112,16 +112,16 @@
                 type="text"
                 name="publishable_key"
                 placeholder="pk_live_..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook Secret")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook Secret")}</span>
                 <%= if has_credentials?(@stripe_webhook_secret) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -130,20 +130,20 @@
                 type="password"
                 name="webhook_secret"
                 placeholder="whsec_..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook URL")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook URL")}</span>
               </label>
               <div class="join w-full">
                 <input
                   type="text"
                   value={@stripe_webhook_url}
-                  class="input input-bordered input-sm font-mono join-item flex-1 text-xs"
+                  class="input input-sm font-mono join-item flex-1 text-xs"
                   readonly
                 />
                 <button
@@ -190,11 +190,11 @@
           <div class="divider my-2"></div>
 
           <form phx-submit="save_paypal" class="space-y-3">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Mode")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Mode")}</span>
               </label>
-              <select name="mode" class="select select-bordered select-sm">
+              <select name="mode" class="select select-sm">
                 <option value="sandbox" selected={@paypal_mode == "sandbox"}>
                   {gettext("Sandbox (Test)")}
                 </option>
@@ -202,11 +202,11 @@
               </select>
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Client ID")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Client ID")}</span>
                 <%= if has_credentials?(@paypal_client_id) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -215,16 +215,16 @@
                 type="text"
                 name="client_id"
                 placeholder="AW..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Client Secret")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Client Secret")}</span>
                 <%= if has_credentials?(@paypal_client_secret) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -233,16 +233,16 @@
                 type="password"
                 name="client_secret"
                 placeholder="EL..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook ID")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook ID")}</span>
                 <%= if has_credentials?(@paypal_webhook_id) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -251,20 +251,20 @@
                 type="text"
                 name="webhook_id"
                 placeholder="WH-..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook URL")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook URL")}</span>
               </label>
               <div class="join w-full">
                 <input
                   type="text"
                   value={@paypal_webhook_url}
-                  class="input input-bordered input-sm font-mono join-item flex-1 text-xs"
+                  class="input input-sm font-mono join-item flex-1 text-xs"
                   readonly
                 />
                 <button
@@ -311,11 +311,11 @@
           <div class="divider my-2"></div>
 
           <form phx-submit="save_razorpay" class="space-y-3">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Key ID")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Key ID")}</span>
                 <%= if has_credentials?(@razorpay_key_id) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -324,16 +324,16 @@
                 type="text"
                 name="key_id"
                 placeholder="rzp_live_..."
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Key Secret")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Key Secret")}</span>
                 <%= if has_credentials?(@razorpay_key_secret) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -342,16 +342,16 @@
                 type="password"
                 name="key_secret"
                 placeholder="••••••••••••"
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook Secret")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook Secret")}</span>
                 <%= if has_credentials?(@razorpay_webhook_secret) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -360,20 +360,20 @@
                 type="password"
                 name="webhook_secret"
                 placeholder="••••••••••••"
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Webhook URL")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Webhook URL")}</span>
               </label>
               <div class="join w-full">
                 <input
                   type="text"
                   value={@razorpay_webhook_url}
-                  class="input input-bordered input-sm font-mono join-item flex-1 text-xs"
+                  class="input input-sm font-mono join-item flex-1 text-xs"
                   readonly
                 />
                 <button
@@ -420,21 +420,21 @@
           <div class="divider my-2"></div>
 
           <form phx-submit="save_everypay" class="space-y-3">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Mode")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Mode")}</span>
               </label>
-              <select name="mode" class="select select-bordered select-sm">
+              <select name="mode" class="select select-sm">
                 <option value="test" selected={@everypay_mode == "test"}>{gettext("Test (Demo)")}</option>
                 <option value="live" selected={@everypay_mode == "live"}>{gettext("Live (Production)")}</option>
               </select>
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("API Username")}</span>
+                <span class="fieldset-legend text-xs">{gettext("API Username")}</span>
                 <%= if has_credentials?(@everypay_api_username) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -443,16 +443,16 @@
                 type="text"
                 name="api_username"
                 placeholder="api_username"
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("API Secret")}</span>
+                <span class="fieldset-legend text-xs">{gettext("API Secret")}</span>
                 <%= if has_credentials?(@everypay_api_secret) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -461,16 +461,16 @@
                 type="password"
                 name="api_secret"
                 placeholder="••••••••••••"
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Account Name")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Account Name")}</span>
                 <%= if has_credentials?(@everypay_account_name) do %>
-                  <span class="label-text-alt text-success text-xs">
+                  <span class="fieldset-label text-success text-xs">
                     <.icon name="hero-check-circle" class="w-3 h-3 inline" /> {gettext("Set")}
                   </span>
                 <% end %>
@@ -479,20 +479,20 @@
                 type="text"
                 name="account_name"
                 placeholder="EUR3D1"
-                class="input input-bordered input-sm font-mono"
+                class="input input-sm font-mono"
                 autocomplete="off"
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label py-1">
-                <span class="label-text text-xs">{gettext("Callback URL")}</span>
+                <span class="fieldset-legend text-xs">{gettext("Callback URL")}</span>
               </label>
               <div class="join w-full">
                 <input
                   type="text"
                   value={@everypay_webhook_url}
-                  class="input input-bordered input-sm font-mono join-item flex-1 text-xs"
+                  class="input input-sm font-mono join-item flex-1 text-xs"
                   readonly
                 />
                 <button

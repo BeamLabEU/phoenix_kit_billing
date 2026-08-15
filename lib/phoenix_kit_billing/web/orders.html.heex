@@ -76,10 +76,10 @@
                     name="search"
                     value={@search}
                     placeholder={gettext("Order number, customer...")}
-                    class="input input-bordered input-sm w-full md:w-56"
+                    class="input input-sm w-full md:w-56"
                     phx-debounce="300"
                   />
-                  <select name="status" class="select select-bordered select-sm">
+                  <select name="status" class="select select-sm">
                     <option value="all" selected={@status_filter == "all"}>{gettext("All Statuses")}</option>
                     <option value="draft" selected={@status_filter == "draft"}>{gettext("Draft")}</option>
                     <option value="pending" selected={@status_filter == "pending"}>{gettext("Pending")}</option>

@@ -60,15 +60,15 @@
                     name="search"
                     value={@search}
                     placeholder={gettext("Transaction #, Invoice #...")}
-                    class="input input-bordered input-sm w-full md:w-56"
+                    class="input input-sm w-full md:w-56"
                     phx-debounce="300"
                   />
-                  <select name="type" class="select select-bordered select-sm">
+                  <select name="type" class="select select-sm">
                     <option value="all" selected={@type_filter == "all"}>{gettext("All Types")}</option>
                     <option value="payment" selected={@type_filter == "payment"}>{gettext("Payments")}</option>
                     <option value="refund" selected={@type_filter == "refund"}>{gettext("Refunds")}</option>
                   </select>
-                  <select name="payment_method" class="select select-bordered select-sm">
+                  <select name="payment_method" class="select select-sm">
                     <option value="all" selected={@payment_method_filter == "all"}>{gettext("All Methods")}</option>
                     <option value="bank" selected={@payment_method_filter == "bank"}>
                       {gettext("Bank Transfer")}

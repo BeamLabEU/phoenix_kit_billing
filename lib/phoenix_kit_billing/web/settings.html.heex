@@ -40,11 +40,11 @@
         <div class="card-body">
           <h2 class="card-title">{gettext("General Settings")}</h2>
           <form phx-submit="save_general" class="space-y-4 mt-4">
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label">
-                <span class="label-text">{gettext("Default Currency")}</span>
+                <span class="fieldset-legend">{gettext("Default Currency")}</span>
               </label>
-              <select name="default_currency" class="select select-bordered">
+              <select name="default_currency" class="select">
                 <option value="EUR" selected={@default_currency == "EUR"}>{gettext("EUR - Euro")}</option>
                 <option value="USD" selected={@default_currency == "USD"}>{gettext("USD - US Dollar")}</option>
                 <option value="GBP" selected={@default_currency == "GBP"}>
@@ -54,53 +54,53 @@
             </div>
 
             <div class="grid grid-cols-3 gap-4">
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Order Prefix")}</span>
+                  <span class="fieldset-legend">{gettext("Order Prefix")}</span>
                 </label>
                 <input
                   type="text"
                   name="order_prefix"
                   value={@order_prefix}
-                  class="input input-bordered input-sm"
+                  class="input input-sm"
                   placeholder="ORD"
                 />
               </div>
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Invoice Prefix")}</span>
+                  <span class="fieldset-legend">{gettext("Invoice Prefix")}</span>
                 </label>
                 <input
                   type="text"
                   name="invoice_prefix"
                   value={@invoice_prefix}
-                  class="input input-bordered input-sm"
+                  class="input input-sm"
                   placeholder="INV"
                 />
               </div>
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Receipt Prefix")}</span>
+                  <span class="fieldset-legend">{gettext("Receipt Prefix")}</span>
                 </label>
                 <input
                   type="text"
                   name="receipt_prefix"
                   value={@receipt_prefix}
-                  class="input input-bordered input-sm"
+                  class="input input-sm"
                   placeholder="RCP"
                 />
               </div>
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <label class="label">
-                <span class="label-text">{gettext("Invoice Due Days")}</span>
+                <span class="fieldset-legend">{gettext("Invoice Due Days")}</span>
               </label>
               <input
                 type="number"
                 name="invoice_due_days"
                 value={@invoice_due_days}
-                class="input input-bordered input-sm w-32"
+                class="input input-sm w-32"
                 min="1"
                 max="90"
               />
@@ -109,7 +109,7 @@
             <div class="divider">{gettext("Tax Settings")}</div>
 
             <div class="grid grid-cols-2 gap-4 items-end">
-              <div class="form-control">
+              <div class="fieldset">
                 <.checkbox
                   name="tax_enabled"
                   checked={@tax_enabled}
@@ -117,15 +117,15 @@
                   class="checkbox-sm"
                 />
               </div>
-              <div class="form-control">
+              <div class="fieldset">
                 <label class="label">
-                  <span class="label-text">{gettext("Default Tax Rate (%)")}</span>
+                  <span class="fieldset-legend">{gettext("Default Tax Rate (%)")}</span>
                 </label>
                 <input
                   type="number"
                   name="tax_rate"
                   value={@tax_rate}
-                  class="input input-bordered input-sm"
+                  class="input input-sm"
                   min="0"
                   max="100"
                   step="0.01"

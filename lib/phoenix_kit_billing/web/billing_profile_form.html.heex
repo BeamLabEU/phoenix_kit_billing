@@ -19,13 +19,13 @@
             <.icon name="hero-user" class="w-5 h-5" /> {gettext("User")}
           </h2>
 
-          <div class="form-control">
+          <div class="fieldset">
             <label class="label">
-              <span class="label-text">{gettext("Select User *")}</span>
+              <span class="fieldset-legend">{gettext("Select User *")}</span>
             </label>
             <select
               name="user_uuid"
-              class="select select-bordered"
+              class="select"
               phx-change="select_user"
               disabled={@profile != nil}
             >
@@ -44,7 +44,7 @@
             </select>
             <%= if @profile do %>
               <label class="label">
-                <span class="label-text-alt text-info">
+                <span class="fieldset-label text-info">
                   {gettext("User cannot be changed after creation")}
                 </span>
               </label>
@@ -71,7 +71,7 @@
                 phx-click="change_type"
                 phx-value-type="individual"
               />
-              <span class="label-text">
+              <span class="fieldset-legend">
                 <span class="font-medium">{gettext("Individual")}</span>
                 <span class="text-base-content/60 block text-sm">{gettext("Personal billing profile")}</span>
               </span>
@@ -87,7 +87,7 @@
                 phx-click="change_type"
                 phx-value-type="company"
               />
-              <span class="label-text">
+              <span class="fieldset-legend">
                 <span class="font-medium">{gettext("Company")}</span>
                 <span class="text-base-content/60 block text-sm">
                   {gettext("Business billing profile (EU)")}
@@ -107,7 +107,7 @@
             </h2>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:first_name]}
                   type="text"
@@ -116,7 +116,7 @@
                 />
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:middle_name]}
                   type="text"
@@ -124,7 +124,7 @@
                 />
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:last_name]}
                   type="text"
@@ -135,7 +135,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:email]}
                   type="email"
@@ -143,13 +143,13 @@
                   placeholder="john@example.com"
                 />
                 <label class="label">
-                  <span class="label-text-alt">
+                  <span class="fieldset-label">
                     {gettext("Billing email (can differ from account email)")}
                   </span>
                 </label>
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:phone]}
                   type="tel"
@@ -170,7 +170,7 @@
               <.icon name="hero-building-office" class="w-5 h-5" /> {gettext("Company Information")}
             </h2>
 
-            <div class="form-control">
+            <div class="fieldset">
               <.input
                 field={@form[:company_name]}
                 type="text"
@@ -180,7 +180,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:company_vat_number]}
                   type="text"
@@ -189,11 +189,11 @@
                   placeholder="EE123456789"
                 />
                 <label class="label">
-                  <span class="label-text-alt">{gettext("EU VAT format: Country code + number")}</span>
+                  <span class="fieldset-label">{gettext("EU VAT format: Country code + number")}</span>
                 </label>
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:company_registration_number]}
                   type="text"
@@ -204,7 +204,7 @@
               </div>
             </div>
 
-            <div class="form-control mt-4">
+            <div class="fieldset mt-4">
               <.textarea
                 field={@form[:company_legal_address]}
                 label={gettext("Legal Address")}
@@ -216,7 +216,7 @@
             <div class="divider">{gettext("Contact")}</div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:email]}
                   type="email"
@@ -225,7 +225,7 @@
                 />
               </div>
 
-              <div class="form-control">
+              <div class="fieldset">
                 <.input
                   field={@form[:phone]}
                   type="tel"
@@ -246,7 +246,7 @@
           </h2>
 
           <%!-- Country first --%>
-          <div class="form-control">
+          <div class="fieldset">
             <.select
               field={@form[:country]}
               label={gettext("Country")}
@@ -255,7 +255,7 @@
             />
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <.input
               field={@form[:address_line1]}
               type="text"
@@ -264,7 +264,7 @@
             />
           </div>
 
-          <div class="form-control">
+          <div class="fieldset">
             <.input
               field={@form[:address_line2]}
               type="text"
@@ -274,7 +274,7 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            <div class="form-control">
+            <div class="fieldset">
               <.input
                 field={@form[:city]}
                 type="text"
@@ -283,7 +283,7 @@
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <.input
                 field={@form[:state]}
                 type="text"
@@ -292,7 +292,7 @@
               />
             </div>
 
-            <div class="form-control">
+            <div class="fieldset">
               <.input
                 field={@form[:postal_code]}
                 type="text"
@@ -311,7 +311,7 @@
             <.icon name="hero-cog-6-tooth" class="w-5 h-5" /> {gettext("Options")}
           </h2>
 
-          <div class="form-control">
+          <div class="fieldset">
             <.checkbox field={@form[:is_default]} label={gettext("Set as default profile")}>
               <:description>
                 {gettext("This profile will be used by default for new orders")}
@@ -319,7 +319,7 @@
             </.checkbox>
           </div>
 
-          <div class="form-control mt-4">
+          <div class="fieldset mt-4">
             <.input
               field={@form[:name]}
               type="text"
@@ -327,7 +327,7 @@
               placeholder={gettext("e.g., Home Address, Work, Company HQ")}
             />
             <label class="label">
-              <span class="label-text-alt">{gettext("Custom name to identify this profile")}</span>
+              <span class="fieldset-label">{gettext("Custom name to identify this profile")}</span>
             </label>
           </div>
         </div>
