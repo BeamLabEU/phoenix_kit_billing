@@ -3,11 +3,10 @@ defmodule PhoenixKitBilling.CoreApiContractTest do
   Guards the PhoenixKit core API surface declared in
   `PhoenixKitBilling.CoreCompat` against whichever core actually resolved.
 
-  `mix.exs` admits core from 1.7.214 up to 3.0.0, so `mix deps.update
-  phoenix_kit` can pull a minor — or eventually a major — that moved something
-  billing calls. Without this test that shows up as an `UndefinedFunctionError`
-  in whichever LiveView a user opened first. With it, `mix test` names the
-  functions.
+  `mix.exs` requires `phoenix_kit ~> 2.0`, so `mix deps.update phoenix_kit` can
+  still pull a minor that moved something billing calls. Without this test that
+  shows up as an `UndefinedFunctionError` in whichever LiveView a user opened
+  first. With it, `mix test` names the functions.
 
   The declaration is also a claim about billing's own source: a call site added
   against a core function nobody listed is invisible to this guard, so the last

@@ -3,9 +3,10 @@ defmodule PhoenixKitBilling.CoreCompat do
   The PhoenixKit core surface this package calls, in one list, checked against
   whichever core actually resolved.
 
-  `mix.exs` admits any core from 1.7.214 up to (but not including) 3.0.0, so a
-  host upgrading core to 1.8 or 2.0 is not blocked by the resolver. Admitting a
-  major version is not the same as working on one: 2.0 may move or drop
+  `mix.exs` requires `phoenix_kit ~> 2.0` — every core 2.x, and nothing else;
+  core 1.7 is excluded because 2.0.0 squashed the migration chain to a `V135`
+  floor this module is verified against (see `core_pin_conformance_test.exs`).
+  Admitting a minor is not the same as working on one: 2.1 may move or drop
   anything. What this module buys is a legible failure — the surface is declared
   here, so a core that moved something reports a named list at boot and in the
   test suite, instead of raising `UndefinedFunctionError` at whichever call site
