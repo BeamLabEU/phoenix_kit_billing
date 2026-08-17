@@ -41,6 +41,22 @@ defmodule PhoenixKitBilling.Test.Router do
       # Invoices
       live("/invoices", Invoices, :index, as: :billing_invoices)
       live("/invoices/:id", InvoiceDetail, :show, as: :billing_invoice_detail)
+      live("/invoices/:id/print", InvoicePrint, :print, as: :billing_invoice_print)
+      live("/invoices/:id/receipt", ReceiptPrint, :print, as: :billing_receipt_print)
+
+      live(
+        "/invoices/:invoice_uuid/credit-note/:transaction_uuid",
+        CreditNotePrint,
+        :print,
+        as: :billing_credit_note_print
+      )
+
+      live(
+        "/invoices/:invoice_uuid/payment-confirmation/:transaction_uuid",
+        PaymentConfirmationPrint,
+        :print,
+        as: :billing_payment_confirmation_print
+      )
 
       # Transactions
       live("/transactions", Transactions, :index, as: :billing_transactions)
