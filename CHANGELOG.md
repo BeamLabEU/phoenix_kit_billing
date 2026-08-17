@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.3 - 2026-08-17
+
+### Fixed
+
+- `PhoenixKitBilling.CoreCompat`'s moduledoc and
+  `core_api_contract_test.exs`'s moduledoc claimed `mix.exs` admits
+  `phoenix_kit` 1.7.214 up to 3.0.0 — stale, left over from a branch commit
+  (PR #21) that was superseded when the branch merged upstream's `~> 2.0`
+  pin. The actual requirement (`~> 2.0`, core 1.7 excluded) was already
+  correct in `mix.exs`, `AGENTS.md`, and `core_pin_conformance_test.exs`;
+  only these two docstrings disagreed with it. No behaviour change.
+
 ## 0.7.2 - 2026-08-13
 
 ### i18n
