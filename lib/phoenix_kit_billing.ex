@@ -1712,7 +1712,7 @@ defmodule PhoenixKitBilling do
     to_email = Keyword.get(opts, :to_email)
 
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Determine recipient email
     recipient_email = to_email || (invoice.user && invoice.user.email)
@@ -1766,7 +1766,7 @@ defmodule PhoenixKitBilling do
   """
   def send_invoice_email(%Invoice{} = invoice, opts \\ []) do
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
@@ -1818,7 +1818,7 @@ defmodule PhoenixKitBilling do
     to_email = Keyword.get(opts, :to_email)
 
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
     recipient_email = to_email || (invoice.user && invoice.user.email)
@@ -1861,7 +1861,7 @@ defmodule PhoenixKitBilling do
   """
   def send_receipt_email(%Invoice{} = invoice, opts \\ []) do
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
@@ -1918,7 +1918,7 @@ defmodule PhoenixKitBilling do
     to_email = Keyword.get(opts, :to_email)
 
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
     recipient_email = to_email || (invoice.user && invoice.user.email)
@@ -1970,7 +1970,7 @@ defmodule PhoenixKitBilling do
   """
   def send_credit_note_email(%Invoice{} = invoice, %Transaction{} = transaction, opts \\ []) do
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
@@ -2050,7 +2050,7 @@ defmodule PhoenixKitBilling do
     to_email = Keyword.get(opts, :to_email)
 
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
     recipient_email = to_email || (invoice.user && invoice.user.email)
@@ -2103,7 +2103,7 @@ defmodule PhoenixKitBilling do
         opts \\ []
       ) do
     # Preload user if not loaded
-    invoice = ensure_preloaded(invoice, [:order])
+    invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)

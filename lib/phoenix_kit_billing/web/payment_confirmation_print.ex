@@ -25,9 +25,13 @@ defmodule PhoenixKitBilling.Web.PaymentConfirmationPrint do
     end)
   end
 
-  defp do_mount(%{"id" => invoice_uuid, "transaction_uuid" => transaction_uuid}, _session, socket) do
+  defp do_mount(
+         %{"invoice_uuid" => invoice_uuid, "transaction_uuid" => transaction_uuid},
+         _session,
+         socket
+       ) do
     with true <- Billing.enabled?(),
-         %{} = invoice <- Billing.get_invoice(invoice_uuid, preload: [:order]),
+         %{} = invoice <- Billing.get_invoice(invoice_uuid, preload: [:order, :user]),
          %Transaction{} = transaction <- Billing.get_transaction(transaction_uuid),
          true <- Transaction.payment?(transaction) do
       mount_payment_confirmation(socket, invoice, transaction)

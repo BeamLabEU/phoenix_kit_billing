@@ -383,7 +383,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
   defp reload_invoice(socket) do
     invoice = socket.assigns.invoice
-    updated_invoice = Billing.get_invoice(invoice.uuid, preload: [:order, :transactions])
+    updated_invoice = Billing.get_invoice(invoice.uuid, preload: [:order, :transactions, :user])
     transactions = Billing.list_invoice_transactions(invoice.uuid)
 
     socket
