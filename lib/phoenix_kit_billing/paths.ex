@@ -19,7 +19,7 @@ defmodule PhoenixKitBilling.Paths do
     do: Routes.path("#{@base}/invoices/#{id}/credit-note/#{txn_uuid}")
 
   def payment_confirmation(id, txn_uuid),
-    do: Routes.path("#{@base}/invoices/#{id}/payment/#{txn_uuid}")
+    do: Routes.path("#{@base}/invoices/#{id}/payment-confirmation/#{txn_uuid}")
 
   def transactions, do: Routes.path("#{@base}/transactions")
   def subscriptions, do: Routes.path("#{@base}/subscriptions")
