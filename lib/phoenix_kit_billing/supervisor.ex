@@ -18,9 +18,14 @@ defmodule PhoenixKitBilling.Supervisor do
   end
 
   alias PhoenixKitBilling.ApplicationIntegration
+  alias PhoenixKitBilling.CoreCompat
 
   def init(_opts) do
     ApplicationIntegration.register()
+    # Names any core API this package expects and the resolved phoenix_kit does
+    # not provide. mix.exs admits core up to 3.0.0, so this is where a host that
+    # upgraded past what billing understands finds out — once, by name.
+    CoreCompat.log_check()
     Supervisor.init([], strategy: :one_for_one)
   end
 

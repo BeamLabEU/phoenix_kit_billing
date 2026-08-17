@@ -41,6 +41,43 @@ Implemented via `pk_dep/3` in `mix.exs` — never hand-edit a `phoenix_kit*`
 dep into a `path:` tuple (a committed path dep ships a broken package); set
 the env var instead.
 
+## Core version compatibility
+
+The `phoenix_kit` requirement is `~> 2.0` — every core 2.x, and nothing else.
+Core 1.7 is excluded on purpose: core 2.0.0 squashed the migration chain into a
+single `V135` baseline and made V135 its floor, and this module is verified only
+against that baseline. `test/core_pin_conformance_test.exs` guards the pin
+itself, in both directions — it fails if the requirement is re-narrowed to a
+single minor (`~> 2.0.x` admits no 2.1), if it re-admits 1.7, or if a local
+`path:` override reaches a commit.
+
+That covers *which core resolves*. It says nothing about whether that core still
+exports what this package calls — a 2.4 that renames a function satisfies `~> 2.0`
+and breaks billing at the call site.
+
+`PhoenixKitBilling.CoreCompat` is what makes that failure legible. It declares
+the core surface billing depends on in three lists — unguarded calls, calls
+already behind `Code.ensure_loaded?/1`, and modules that are `use`d or
+`import`ed — and:
+
+- `test/phoenix_kit_billing/core_api_contract_test.exs` fails with the missing
+  functions named, so `mix test` after a core bump reports exactly what moved.
+  A fifth test re-derives the call list from billing's own AST, so a new call
+  site into core that nobody declared fails the suite rather than silently
+  escaping the guard.
+- `PhoenixKitBilling.Supervisor.init/1` logs the same report at boot —
+  `:error` when unguarded calls are missing, `:warning` when only guarded ones
+  are.
+
+**When core moves an API:** update the call sites and the `CoreCompat` list in
+the same commit. Never delete an entry to make the suite green — that is the
+only inventory of what core owes this package.
+
+**What it does not cover:** semantics. A core that keeps
+`Settings.get_setting/2` but changes its return shape passes every check here.
+Only running the suite against that core catches it — see `PHOENIX_KIT_PATH`
+above for testing against an unreleased core checkout.
+
 ## Architecture
 
 This is a **library** (not a standalone Phoenix app) that provides billing as a PhoenixKit plugin module.
