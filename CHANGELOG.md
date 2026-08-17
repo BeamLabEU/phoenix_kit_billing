@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.4 - 2026-08-17
+
+### Fixed
+
+- Billing print views (`InvoicePrint`, `ReceiptPrint`, `CreditNotePrint`,
+  `PaymentConfirmationPrint`) and `InvoiceDetail.Actions.reload_invoice/1`
+  never preloaded `:user`, but their templates read
+  `@invoice.user.email` — `KeyError: key :email not found in:
+  #Ecto.Association.NotLoaded<...>` on every visit. All 8 public
+  `send_*_email/2,3` functions in `PhoenixKitBilling` had the same gap in
+  their own `ensure_preloaded/2` call. Fixed by adding `:user` to every
+  preload list that feeds one of these reads (#22).
+- `CreditNotePrint` and `PaymentConfirmationPrint` never mounted: their
+  `do_mount` pattern-matched on `"id"`, but the registered route binds
+  `:invoice_uuid` (#22).
+- `Paths.payment_confirmation/2` built `.../invoices/:id/payment/:txn_uuid`
+  instead of the registered `.../payment-confirmation/:txn_uuid` — same bug
+  class as the route-param fix above, in the one file PR #22 didn't touch.
+  Currently unreferenced by any call site, so it never 404'd in practice.
+
 ## 0.7.3 - 2026-08-17
 
 ### Fixed
