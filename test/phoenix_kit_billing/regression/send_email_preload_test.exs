@@ -82,7 +82,13 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
     # short-circuiting on the caller-supplied address.
     result = Billing.send_invoice_email(invoice, send_email: false)
 
-    refute match?({:error, :no_recipient_email}, result)
+    # Asserts the concrete success value, not just "not this one error" —
+    # `send_email_if_available/4` returns bare `:ok` when
+    # `PhoenixKit.Modules.Emails` isn't loaded (true in this test env, and
+    # on any host without the emails package installed); a looser
+    # assertion here would pass on an unrelated failure just as easily as
+    # on success.
+    assert :ok = result
   end
 
   test "send_receipt_email/2 doesn't crash on an invoice fetched without :user preloaded" do
@@ -90,7 +96,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
 
     result = Billing.send_receipt_email(invoice, send_email: false)
 
-    refute match?({:error, :no_recipient_email}, result)
+    assert :ok = result
   end
 
   test "send_credit_note_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -104,7 +110,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
 
     result = Billing.send_credit_note_email(under_preloaded(invoice), refund, send_email: false)
 
-    refute match?({:error, :no_recipient_email}, result)
+    assert :ok = result
   end
 
   test "send_payment_confirmation_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -117,6 +123,6 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
         send_email: false
       )
 
-    refute match?({:error, :no_recipient_email}, result)
+    assert :ok = result
   end
 end
