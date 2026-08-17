@@ -26,7 +26,7 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
 
   defp do_mount(%{"id" => id}, _session, socket) do
     if Billing.enabled?() do
-      case Billing.get_invoice(id, preload: [:order, :transactions]) do
+      case Billing.get_invoice(id, preload: [:order, :transactions, :user]) do
         nil ->
           {:ok,
            socket
