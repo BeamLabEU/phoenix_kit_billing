@@ -82,13 +82,14 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
     # short-circuiting on the caller-supplied address.
     result = Billing.send_invoice_email(invoice, send_email: false)
 
-    # Asserts the concrete success value, not just "not this one error" —
-    # `send_email_if_available/4` returns bare `:ok` when
-    # `PhoenixKit.Modules.Emails` isn't loaded (true in this test env, and
-    # on any host without the emails package installed); a looser
-    # assertion here would pass on an unrelated failure just as easily as
-    # on success.
-    assert :ok = result
+    # Asserts the concrete value, not just "didn't crash" — `send_email_if_available/4`
+    # returns `{:error, :emails_module_not_installed}` when
+    # `PhoenixKit.Modules.Emails.Templates` isn't loaded (true in this test
+    # env, and on any host without the emails package installed; see
+    # send_email_availability_test.exs for that behavior's own dedicated
+    # coverage). A looser assertion here would pass on an unrelated
+    # failure just as easily as on the expected one.
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_receipt_email/2 doesn't crash on an invoice fetched without :user preloaded" do
@@ -96,7 +97,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
 
     result = Billing.send_receipt_email(invoice, send_email: false)
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_credit_note_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -110,7 +111,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
 
     result = Billing.send_credit_note_email(under_preloaded(invoice), refund, send_email: false)
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_payment_confirmation_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -123,6 +124,6 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
         send_email: false
       )
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 end

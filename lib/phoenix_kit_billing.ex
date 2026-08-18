@@ -2166,12 +2166,37 @@ defmodule PhoenixKitBilling do
 
   # Sends email via PhoenixKit.Modules.Emails.Templates if available.
   # Uses apply/3 to avoid compile-time warnings when phoenix_kit_emails is not installed.
+  #
+  # Checks `Templates` itself, not the `PhoenixKit.Modules.Emails` namespace
+  # module one level up — the two can be loaded independently (a host with
+  # phoenix_kit_emails installed but pinned to a release that renamed or
+  # dropped `Templates.send_email/4` would have the former without the
+  # latter), and `apply/3` on a function that doesn't exist raises
+  # `UndefinedFunctionError` instead of falling through to the "not
+  # available" branch below.
+  #
+  # Not installed is a legitimate configuration — most hosts don't install
+  # phoenix_kit_emails — but returning bare `:ok` for it made "the email
+  # was sent" and "there is no email system to send it with" identical to
+  # every caller, and invisible to an operator who never compares against
+  # what they expected. Logged and returned as a distinguishable error
+  # instead, matching the `{:error, :no_recipient_email}` shape these
+  # callers already return for the other way sending can fail. No PII in
+  # the log line — `notifications.ex`'s "money copy carries no PII"
+  # principle applies here too: metadata (invoice/transaction uuids) is
+  # fine, the raw recipient address is not.
   defp send_email_if_available(template, email, variables, opts) do
-    if Code.ensure_loaded?(PhoenixKit.Modules.Emails) do
+    if Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates) and
+         function_exported?(PhoenixKit.Modules.Emails.Templates, :send_email, 4) do
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
       apply(PhoenixKit.Modules.Emails.Templates, :send_email, [template, email, variables, opts])
     else
-      :ok
+      Logger.warning(
+        "[Billing] #{template} email not sent: phoenix_kit_emails is not installed " <>
+          "(#{inspect(Keyword.get(opts, :metadata, %{}))})"
+      )
+
+      {:error, :emails_module_not_installed}
     end
   end
 
