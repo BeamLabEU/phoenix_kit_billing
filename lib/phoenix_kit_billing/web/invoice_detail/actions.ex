@@ -175,7 +175,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     invoice_url = Routes.url("/admin/billing/invoices/#{invoice.uuid}/print")
 
     case Billing.send_invoice(invoice, invoice_url: invoice_url, to_email: email) do
-      {:ok, updated_invoice} ->
+      {:ok, updated_invoice, email_result} ->
         Activity.log("billing.invoice_sent",
           actor_uuid: actor_uuid(socket),
           actor_role: actor_role(socket),
@@ -190,11 +190,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         # Issuing IS sending, from the customer's point of view.
         _ = PhoenixKitBilling.Notifications.invoice_issued(updated_invoice)
 
+        {kind, message} = send_email_flash("Invoice", email, email_result)
+
         {:noreply,
          socket
          |> Phoenix.Component.assign(:invoice, updated_invoice)
          |> Phoenix.Component.assign(:show_send_modal, false)
-         |> put_flash(:info, "Invoice sent to #{email}")}
+         |> put_flash(kind, message)}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed to send invoice: #{reason}")}
@@ -207,7 +209,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     receipt_url = Routes.url("/admin/billing/invoices/#{invoice.uuid}/receipt")
 
     case Billing.send_receipt(invoice, receipt_url: receipt_url, to_email: email) do
-      {:ok, updated_invoice} ->
+      {:ok, updated_invoice, email_result} ->
         Activity.log("billing.receipt_sent",
           actor_uuid: actor_uuid(socket),
           actor_role: actor_role(socket),
@@ -219,11 +221,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           }
         )
 
+        {kind, message} = send_email_flash("Receipt", email, email_result)
+
         {:noreply,
          socket
          |> Phoenix.Component.assign(:invoice, updated_invoice)
          |> Phoenix.Component.assign(:show_send_receipt_modal, false)
-         |> put_flash(:info, "Receipt sent to #{email}")}
+         |> put_flash(kind, message)}
 
       {:error, :invoice_not_paid} ->
         {:noreply, put_flash(socket, :error, "Invoice must be paid before sending receipt")}
@@ -246,7 +250,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       Routes.url("/admin/billing/invoices/#{invoice.uuid}/credit-note/#{transaction_uuid}")
 
     with %{} <- transaction,
-         {:ok, updated_transaction} <-
+         {:ok, updated_transaction, email_result} <-
            Billing.send_credit_note(invoice, transaction,
              credit_note_url: credit_note_url,
              to_email: email
@@ -262,12 +266,14 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       updated_transactions =
         update_transaction_in_list(socket.assigns.transactions, updated_transaction)
 
+      {kind, message} = send_email_flash("Credit note", email, email_result)
+
       {:noreply,
        socket
        |> Phoenix.Component.assign(:transactions, updated_transactions)
        |> Phoenix.Component.assign(:show_send_credit_note_modal, false)
        |> Phoenix.Component.assign(:send_credit_note_transaction_uuid, nil)
-       |> put_flash(:info, "Credit note sent to #{email}")}
+       |> put_flash(kind, message)}
     else
       nil ->
         {:noreply, put_flash(socket, :error, "Transaction not found")}
@@ -293,7 +299,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       Routes.url("/admin/billing/invoices/#{invoice.uuid}/payment/#{transaction_uuid}")
 
     with %{} <- transaction,
-         {:ok, updated_transaction} <-
+         {:ok, updated_transaction, email_result} <-
            Billing.send_payment_confirmation(invoice, transaction,
              payment_url: payment_url,
              to_email: email
@@ -309,12 +315,14 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       updated_transactions =
         update_transaction_in_list(socket.assigns.transactions, updated_transaction)
 
+      {kind, message} = send_email_flash("Payment confirmation", email, email_result)
+
       {:noreply,
        socket
        |> Phoenix.Component.assign(:transactions, updated_transactions)
        |> Phoenix.Component.assign(:show_send_payment_confirmation_modal, false)
        |> Phoenix.Component.assign(:send_payment_confirmation_transaction_uuid, nil)
-       |> put_flash(:info, "Payment confirmation sent to #{email}")}
+       |> put_flash(kind, message)}
     else
       nil ->
         {:noreply, put_flash(socket, :error, "Transaction not found")}
@@ -395,5 +403,29 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     Enum.map(transactions, fn t ->
       if t.uuid == updated_transaction.uuid, do: updated_transaction, else: t
     end)
+  end
+
+  # The record-level operation (status change, send-history entry) behind
+  # `subject` already committed by the time this runs regardless of
+  # `email_result` — that part is real and done, so it's never reported
+  # as a failure. Only the wording changes based on whether the customer
+  # was actually emailed: B003 found that `do_send_invoice/3` and its
+  # three siblings used to silently discard this outcome entirely, so
+  # the flash always claimed "sent to <email>" even when
+  # phoenix_kit_emails wasn't installed and nothing went out.
+  defp send_email_flash(subject, email, email_result) do
+    case email_result do
+      {:error, :emails_module_not_installed} ->
+        {:warning, "#{subject} saved, but no email was sent — the emails module isn't installed"}
+
+      {:error, reason} ->
+        {:warning, "#{subject} saved, but the email failed: #{inspect(reason)}"}
+
+      :skipped ->
+        {:info, "#{subject} saved (no email requested)"}
+
+      _ ->
+        {:info, "#{subject} sent to #{email}"}
+    end
   end
 end

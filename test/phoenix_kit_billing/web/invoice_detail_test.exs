@@ -31,7 +31,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetailTest do
     {:ok, invoice} =
       Billing.create_invoice(user.uuid, %{total: Decimal.new("100.00"), currency: "EUR"})
 
-    {:ok, invoice} =
+    {:ok, invoice, _email_result} =
       Billing.send_invoice(invoice, to_email: "customer@example.com", send_email: false)
 
     {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
@@ -59,7 +59,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetailTest do
     {:ok, invoice} =
       Billing.create_invoice(user.uuid, %{total: Decimal.new("100.00"), currency: "EUR"})
 
-    {:ok, invoice} =
+    {:ok, invoice, _email_result} =
       Billing.send_invoice(invoice, to_email: "customer@example.com", send_email: false)
 
     {:ok, _payment} = Billing.record_payment(invoice, %{amount: "100.00"}, nil)

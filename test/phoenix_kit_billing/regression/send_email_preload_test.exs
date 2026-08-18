@@ -61,7 +61,10 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
   # about) preload handling of `invoice.user`.
   defp sent_invoice_fixture(user) do
     invoice = invoice_fixture(user)
-    {:ok, invoice} = Billing.send_invoice(invoice, to_email: user.email, send_email: false)
+
+    {:ok, invoice, _email_result} =
+      Billing.send_invoice(invoice, to_email: user.email, send_email: false)
+
     invoice
   end
 
@@ -79,24 +82,29 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
 
     # No `:to_email` opt — forces the function down its own
     # `invoice.user && invoice.user.email` fallback path instead of
-    # short-circuiting on the caller-supplied address.
-    result = Billing.send_invoice_email(invoice, send_email: false)
+    # short-circuiting on the caller-supplied address. No `:send_email`
+    # opt either — `send_invoice_email/2` has no such gate at all (that
+    # only exists on the public `send_invoice/2` wrapper, which decides
+    # whether to call this function in the first place); passing it here
+    # would do nothing but imply a relationship that doesn't exist.
+    result = Billing.send_invoice_email(invoice)
 
-    # Asserts the concrete success value, not just "not this one error" —
-    # `send_email_if_available/4` returns bare `:ok` when
-    # `PhoenixKit.Modules.Emails` isn't loaded (true in this test env, and
-    # on any host without the emails package installed); a looser
-    # assertion here would pass on an unrelated failure just as easily as
-    # on success.
-    assert :ok = result
+    # Asserts the concrete value, not just "didn't crash" — `send_email_if_available/4`
+    # returns `{:error, :emails_module_not_installed}` when
+    # `PhoenixKit.Modules.Emails.Templates` isn't loaded (true in this test
+    # env, and on any host without the emails package installed; see
+    # send_email_module_check_test.exs for that behavior's own dedicated
+    # coverage). A looser assertion here would pass on an unrelated
+    # failure just as easily as on the expected one.
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_receipt_email/2 doesn't crash on an invoice fetched without :user preloaded" do
     invoice = user_fixture() |> invoice_fixture() |> under_preloaded()
 
-    result = Billing.send_receipt_email(invoice, send_email: false)
+    result = Billing.send_receipt_email(invoice)
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_credit_note_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -108,9 +116,9 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
     {:ok, refund} =
       Billing.record_refund(paid_invoice, %{amount: "40.00", description: "damaged"}, nil)
 
-    result = Billing.send_credit_note_email(under_preloaded(invoice), refund, send_email: false)
+    result = Billing.send_credit_note_email(under_preloaded(invoice), refund)
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 
   test "send_payment_confirmation_email/3 doesn't crash on an invoice fetched without :user preloaded" do
@@ -118,11 +126,8 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
     invoice = sent_invoice_fixture(user)
     {:ok, payment} = Billing.record_payment(invoice, %{amount: "25.00"}, nil)
 
-    result =
-      Billing.send_payment_confirmation_email(under_preloaded(invoice), payment,
-        send_email: false
-      )
+    result = Billing.send_payment_confirmation_email(under_preloaded(invoice), payment)
 
-    assert :ok = result
+    assert {:error, :emails_module_not_installed} = result
   end
 end

@@ -37,7 +37,7 @@ defmodule PhoenixKitBilling.Web.PrintLvsTest do
     # `to_email` is passed explicitly so this fixture doesn't depend on
     # `Billing.send_invoice/2`'s own (separate, out-of-scope) preload
     # handling of `invoice.user`.
-    {:ok, invoice} =
+    {:ok, invoice, _email_result} =
       Billing.send_invoice(invoice, to_email: "customer@example.com", send_email: false)
 
     invoice

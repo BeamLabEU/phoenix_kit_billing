@@ -32,15 +32,36 @@ defmodule PhoenixKitBilling.Activity do
 
   @module "billing"
 
-  @typedoc "Return value of `log/2`. Mirrors `PhoenixKit.Activity.log/1` plus the unavailable/rescued sentinels."
-  @type log_result :: :ok | :activity_unavailable | {:ok, struct()} | {:error, any()}
+  @typedoc """
+  Return value of `log/2`. Mirrors `PhoenixKit.Activity.log/1`'s own
+  `{:ok, struct()} | {:error, any()}` plus the unavailable sentinel.
+
+  Bare `:ok` used to be part of this type too — two `rescue` clauses
+  (`Postgrex.Error`, `DBConnection.OwnershipError`) returned it silently,
+  with no log. In practice neither clause is reachable today: core's own
+  `PhoenixKit.Activity.log/1` already wraps `repo().insert()` in its own
+  catch-all `rescue e -> Logger.warning(...); {:error, e}`, so any
+  exception raised inside it — including these two — is caught and
+  turned into a normal `{:error, e}` *return value* one level down,
+  before it would ever reach this module's own `rescue` (confirmed by
+  direct testing: an unowned spawned process calling this function gets
+  a logged, returned `{:error, %DBConnection.OwnershipError{}}`, not an
+  exception, with or without the two clauses below). Collapsed into one
+  clause anyway — dead code with different behavior than its neighbor is
+  still worth removing, and it stops relying on a core internal that
+  isn't a documented contract to stay this way. `:ok` is no longer part
+  of what this function can return, reachable or not.
+  """
+  @type log_result :: :activity_unavailable | {:ok, struct()} | {:error, any()}
 
   @doc """
   Logs a billing activity entry via `PhoenixKit.Activity`.
 
   No-ops (returns `:activity_unavailable`) when core's `PhoenixKit.Activity`
-  module isn't loaded, and rescues/catches any failure so the calling
-  LiveView event handler can't crash on a logging error.
+  module isn't loaded, and rescues/catches any failure — logging it and
+  returning `{:error, _}` — so the calling LiveView event handler can't
+  crash on a logging error, but a failure is still visible to whoever
+  looks at either the logs or the return value.
 
   ## Options
 
@@ -71,17 +92,13 @@ defmodule PhoenixKitBilling.Activity do
       :activity_unavailable
     end
   rescue
-    Postgrex.Error ->
-      :ok
-
-    DBConnection.OwnershipError ->
-      :ok
-
     e ->
       Logger.warning("[Billing] Activity logging error: #{Exception.message(e)}")
       {:error, e}
   catch
-    :exit, _reason -> :ok
+    :exit, reason ->
+      Logger.warning("[Billing] Activity logging exited: #{inspect(reason)}")
+      {:error, {:exit, reason}}
   end
 
   @doc """
