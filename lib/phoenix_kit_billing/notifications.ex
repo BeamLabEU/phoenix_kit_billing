@@ -151,10 +151,15 @@ defmodule PhoenixKitBilling.Notifications do
 
   defp notify_customer(_record, _action, _text, _icon), do: :ok
 
-  # `/dashboard/orders` is the customer-facing billing surface this module
-  # actually registers (see `user_dashboard_tabs/0`). An earlier
-  # `/dashboard/invoices/<uuid>` link pointed at a route no install has —
-  # every customer notification landed on a 404.
+  # `/dashboard/billing-orders` is what this module actually registers, via
+  # `:dashboard_orders`'s own `:live_view` in `user_dashboard_tabs/0`.
+  # `/dashboard/orders` is core-reserved for `phoenix_kit_ecommerce`'s own
+  # (separate) orders screen — see the hardcoded
+  # `authenticated_live_routes/0`/`authenticated_live_locale_routes/0` blocks
+  # in `deps/phoenix_kit/lib/phoenix_kit_web/integration.ex` — and must never
+  # be reused here: on a host with both modules installed it would collide
+  # with, or silently shadow, the ecommerce module's own UI over the same
+  # underlying `PhoenixKitBilling.Order` data.
   defp customer_link(_record), do: Paths.user_orders()
 
   @doc """

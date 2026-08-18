@@ -1,0 +1,103 @@
+<PhoenixKitWeb.Layouts.dashboard {dashboard_assigns(assigns)}>
+  <div class="p-6 max-w-4xl mx-auto">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold">{gettext("My Orders")}</h1>
+      <p class="text-base-content/60 mt-1">
+        {gettext("Your order history, invoices, and payments")}
+      </p>
+    </div>
+
+    <%= if Enum.empty?(@orders) do %>
+      <.empty_state
+        title={gettext("No orders yet")}
+        icon="hero-shopping-bag"
+        description={gettext("Your orders will appear here once you place one")}
+        variant="card"
+      />
+    <% else %>
+      <div class="space-y-4" id="orders-list">
+        <%= for order <- @orders do %>
+          <div class="card bg-base-100 shadow-lg" id={"order-#{order.uuid}"}>
+            <div class="card-body">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-3">
+                  <span class="font-mono font-semibold">{order.order_number}</span>
+                  <.order_status_badge status={order.status} />
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-sm text-base-content">
+                    {localized_date(order.inserted_at)}
+                  </span>
+                  <.currency_amount amount={order.total} currency={order.currency} class="font-semibold" />
+                </div>
+              </div>
+
+              <%= if Enum.empty?(order.invoices) do %>
+                <p class="text-sm text-base-content mt-4">
+                  {gettext("No invoices yet for this order")}
+                </p>
+              <% else %>
+                <div class="mt-4 space-y-3">
+                  <%= for invoice <- order.invoices do %>
+                    <.accordion id={"invoice-#{invoice.uuid}"} class="bg-base-200">
+                      <:title>
+                        <div class="flex flex-wrap items-center justify-between gap-2 pr-2">
+                          <div class="flex items-center gap-2">
+                            <.icon name="hero-document-text" class="w-4 h-4 opacity-80" />
+                            <span class="font-mono text-sm">{invoice.invoice_number}</span>
+                            <.invoice_status_badge status={invoice.status} />
+                          </div>
+                          <div class="text-sm text-base-content">
+                            {gettext("Paid")}
+                            <.currency_compact amount={invoice.paid_amount} currency={invoice.currency} />
+                            / <.currency_compact amount={invoice.total} currency={invoice.currency} />
+                          </div>
+                        </div>
+                      </:title>
+                      <:content>
+                        <%= if Enum.empty?(invoice.transactions) do %>
+                          <p class="text-sm text-base-content">
+                            {gettext("No transactions recorded yet")}
+                          </p>
+                        <% else %>
+                          <div class="overflow-x-auto">
+                            <table class="table table-sm">
+                              <thead>
+                                <tr>
+                                  <th>{gettext("Date")}</th>
+                                  <th>{gettext("Type")}</th>
+                                  <th class="text-right">{gettext("Amount")}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <%= for txn <- invoice.transactions do %>
+                                  <tr>
+                                    <td>{localized_date(txn.inserted_at)}</td>
+                                    <td>
+                                      <%= if Transaction.refund?(txn) do %>
+                                        <span class="badge badge-error badge-sm">{gettext("Refund")}</span>
+                                      <% else %>
+                                        <span class="badge badge-success badge-sm">{gettext("Payment")}</span>
+                                      <% end %>
+                                    </td>
+                                    <td class="text-right">
+                                      <.currency_colored amount={txn.amount} currency={invoice.currency} />
+                                    </td>
+                                  </tr>
+                                <% end %>
+                              </tbody>
+                            </table>
+                          </div>
+                        <% end %>
+                      </:content>
+                    </.accordion>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</PhoenixKitWeb.Layouts.dashboard>

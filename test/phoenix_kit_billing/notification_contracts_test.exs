@@ -67,6 +67,20 @@ defmodule PhoenixKitBilling.NotificationContractsTest do
     refute File.read!(@notifications_source) =~ ~s|path("/dashboard|
   end
 
+  test "customer_link's final target is a route backed by a real LiveView" do
+    # The original B002 bug was a tab that existed (and so passed the
+    # registered-path check above) but carried no `:live_view` — the generic
+    # tab->route mechanism silently skips such tabs, producing no route at
+    # all. Checking the path string alone would not have caught that.
+    tab = Enum.find(PhoenixKitBilling.user_dashboard_tabs(), &(&1.id == :dashboard_orders))
+
+    assert tab.live_view,
+           "the :dashboard_orders tab has no :live_view — Paths.user_orders()'s " <>
+             "target route does not actually exist"
+
+    assert Paths.user_orders() =~ "/dashboard/#{tab.path}"
+  end
+
   test "a decline reason is truncated on a CHARACTER boundary" do
     # Providers return localized decline reasons. Cutting at 100 BYTES can
     # land mid-codepoint, and the invalid string is then rejected by both the
