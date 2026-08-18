@@ -39,4 +39,11 @@ defmodule PhoenixKitBilling.Paths do
   # this module registers are the only customer routes guaranteed to exist.
   def user_orders, do: Routes.path("#{@user_base}/orders")
   def user_billing_profiles, do: Routes.path("#{@user_base}/billing-profiles")
+
+  # Bare dashboard root — unconditionally registered by core whenever
+  # `PhoenixKit.Config.user_dashboard_enabled?()` is true, unlike the tabs
+  # above which only exist when this module's own `:live_view` wiring does.
+  # Used as a safe fallback target when a more specific customer route isn't
+  # guaranteed to exist yet.
+  def dashboard_root, do: Routes.path(@user_base)
 end
