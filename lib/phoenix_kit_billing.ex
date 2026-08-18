@@ -34,7 +34,7 @@ defmodule PhoenixKitBilling do
       {:ok, invoice} = Billing.create_invoice_from_order(order)
 
       # Send invoice
-      {:ok, invoice} = Billing.send_invoice(invoice)
+      {:ok, invoice, _email_result} = Billing.send_invoice(invoice)
 
       # Mark as paid (generates receipt)
       {:ok, invoice} = Billing.mark_invoice_paid(invoice)
@@ -1704,6 +1704,13 @@ defmodule PhoenixKitBilling do
   Options:
   - `:send_email` - Whether to send email (default: true)
   - `:invoice_url` - URL to view invoice online (optional)
+
+  Returns `{:ok, invoice, email_result}` on success — the status/history
+  update always commits independently of the email, so it's never folded
+  into `{:error, _}`. `email_result` is `:skipped` when `:send_email` is
+  `false`, otherwise whatever `send_invoice_email/2` returned — check it
+  if the caller cares whether the customer was actually emailed, not
+  just whether the invoice record itself updated.
   """
   def send_invoice(%Invoice{} = invoice, opts \\ []) do
     cond do
@@ -1761,12 +1768,27 @@ defmodule PhoenixKitBilling do
           # Broadcast invoice sent event
           Events.broadcast_invoice_sent(updated_invoice)
 
-          # Send email if requested
-          if send_email? do
-            send_invoice_email(updated_invoice, Keyword.put(opts, :to_email, recipient_email))
-          end
+          # Send email if requested. The status/metadata update above
+          # already committed - that part of "send invoice" genuinely
+          # succeeded regardless of what happens next - so this can't
+          # become part of an {:error, _} return without misreporting a
+          # real, committed change as a failure. The email outcome is
+          # carried as a third element instead: {:ok, invoice, :skipped}
+          # when send_email? is false, otherwise whatever
+          # send_invoice_email/2 returned, most importantly
+          # {:error, :emails_module_not_installed} when that's what
+          # happened - see B003. Callers that only need to know "did the
+          # billing operation succeed" keep matching on {:ok, invoice, _};
+          # callers that also care whether the customer was actually
+          # emailed check the third element.
+          email_result =
+            if send_email? do
+              send_invoice_email(updated_invoice, Keyword.put(opts, :to_email, recipient_email))
+            else
+              :skipped
+            end
 
-          {:ok, updated_invoice}
+          {:ok, updated_invoice, email_result}
 
         error ->
           error
@@ -1810,6 +1832,9 @@ defmodule PhoenixKitBilling do
   - `:send_email` - Whether to send email (default: true)
   - `:to_email` - Override recipient email address
   - `:receipt_url` - URL to view receipt online (optional)
+
+  Returns `{:ok, invoice, email_result}` — see `send_invoice/2`'s own
+  docs for what `email_result` means.
   """
   def send_receipt(%Invoice{} = invoice, opts \\ []) do
     cond do
@@ -1856,12 +1881,19 @@ defmodule PhoenixKitBilling do
 
       case repo().update(changeset) do
         {:ok, updated_invoice} ->
-          # Send email if requested
-          if send_email? do
-            send_receipt_email(updated_invoice, Keyword.put(opts, :to_email, recipient_email))
-          end
+          # Send email if requested. See do_send_invoice/3 for why the
+          # email outcome is a third tuple element rather than folded
+          # into {:ok, _} / {:error, _} - the receipt-data update above
+          # already committed independently of whether the email goes
+          # out.
+          email_result =
+            if send_email? do
+              send_receipt_email(updated_invoice, Keyword.put(opts, :to_email, recipient_email))
+            else
+              :skipped
+            end
 
-          {:ok, updated_invoice}
+          {:ok, updated_invoice, email_result}
 
         error ->
           error
@@ -1913,9 +1945,13 @@ defmodule PhoenixKitBilling do
     - `:to_email` - Override recipient email
     - `:credit_note_url` - URL to view credit note online
 
+  Returns `{:ok, transaction, email_result}` — see `send_invoice/2`'s own
+  docs for what `email_result` means.
+
   ## Examples
 
-      {:ok, invoice} = Billing.send_credit_note(invoice, transaction, credit_note_url: "https://...")
+      {:ok, transaction, _email_result} =
+        Billing.send_credit_note(invoice, transaction, credit_note_url: "https://...")
   """
   def send_credit_note(%Invoice{} = invoice, %Transaction{} = transaction, opts \\ []) do
     # Verify transaction is a refund
@@ -1961,16 +1997,20 @@ defmodule PhoenixKitBilling do
           # Broadcast credit note sent event
           Events.broadcast_credit_note_sent(invoice, updated_transaction)
 
-          # Send email if requested
-          if send_email? do
-            send_credit_note_email(
-              invoice,
-              updated_transaction,
-              Keyword.put(opts, :to_email, recipient_email)
-            )
-          end
+          # Send email if requested. See do_send_invoice/3 for why the
+          # email outcome is a third tuple element.
+          email_result =
+            if send_email? do
+              send_credit_note_email(
+                invoice,
+                updated_transaction,
+                Keyword.put(opts, :to_email, recipient_email)
+              )
+            else
+              :skipped
+            end
 
-          {:ok, updated_transaction}
+          {:ok, updated_transaction, email_result}
 
         error ->
           error
@@ -2048,6 +2088,9 @@ defmodule PhoenixKitBilling do
     - `:to_email` - Override recipient email address
     - `:payment_url` - URL to view payment confirmation online
     - `:send_email` - Whether to send email (default: true)
+
+  Returns `{:ok, transaction, email_result}` — see `send_invoice/2`'s own
+  docs for what `email_result` means.
   """
   def send_payment_confirmation(%Invoice{} = invoice, %Transaction{} = transaction, opts \\ []) do
     # Verify transaction is a payment (positive amount)
@@ -2090,16 +2133,20 @@ defmodule PhoenixKitBilling do
 
       case repo().update(changeset) do
         {:ok, updated_transaction} ->
-          # Send email if requested
-          if send_email? do
-            send_payment_confirmation_email(
-              invoice,
-              updated_transaction,
-              Keyword.put(opts, :to_email, recipient_email)
-            )
-          end
+          # Send email if requested. See do_send_invoice/3 for why the
+          # email outcome is a third tuple element.
+          email_result =
+            if send_email? do
+              send_payment_confirmation_email(
+                invoice,
+                updated_transaction,
+                Keyword.put(opts, :to_email, recipient_email)
+              )
+            else
+              :skipped
+            end
 
-          {:ok, updated_transaction}
+          {:ok, updated_transaction, email_result}
 
         error ->
           error
@@ -2201,22 +2248,35 @@ defmodule PhoenixKitBilling do
   #
   # The *return value* is `{:error, :emails_module_not_installed}` on
   # every single call, unconditionally — every caller must always be
-  # able to tell this apart from success. The *log line* is a separate
-  # concern with a different right answer: on an install that has
-  # deliberately not installed phoenix_kit_emails (the owner's own case
-  # this contract started from), every invoice/receipt/credit-note/
-  # payment-confirmation email attempt would otherwise log an identical
-  # `:warning` — real noise for a known, accepted configuration, not new
-  # information after the first one. `:warning` (not a quieter level)
-  # stays the severity, since this project's own `config/test.exs` pins
-  # `:logger, level: :warning` — a common production floor too — and a
-  # quieter level risks the message never appearing anywhere at all,
-  # which would defeat the point. So: log once per BEAM boot, at
-  # `:warning`; the condition doesn't change between the first email
-  # attempt and the thousandth, so one visible, findable line is enough
-  # to make the *systemic* gap discoverable. `:persistent_term` (write-
-  # once, read-cheap, exactly this shape) tracks whether that line has
-  # already fired.
+  # able to tell this apart from success. This is the ONLY thing this
+  # function itself is responsible for guaranteeing: what a caller two
+  # or three frames up eventually does with that return value is a
+  # separate concern (see `do_send_invoice/3` — B003 round 2 found that
+  # its `if send_email? do send_invoice_email(...) end` used to discard
+  # this exact return value entirely, so `send_invoice/2` always reported
+  # `{:ok, invoice}` regardless of whether the email went anywhere; fixed
+  # there by carrying the result through as a third tuple element instead
+  # of relying on the log below to be the only record).
+  #
+  # The *log line* is a separate, strictly secondary concern with a
+  # different right answer: on an install that has deliberately not
+  # installed phoenix_kit_emails (the owner's own case this contract
+  # started from), every invoice/receipt/credit-note/payment-confirmation
+  # email attempt would otherwise log an identical `:warning` — real
+  # noise for a known, accepted configuration, not new information after
+  # the first one. `:warning` (not a quieter level) stays the severity,
+  # since this project's own `config/test.exs` pins `:logger, level:
+  # :warning` — a common production floor too — and a quieter level
+  # risks the message never appearing anywhere at all. So: log once per
+  # BEAM boot at `:warning`, via `:persistent_term` (write-once,
+  # read-cheap, exactly this shape). This is now safe to deduplicate
+  # PRECISELY BECAUSE the return value above is never deduplicated —
+  # every individual failure is still fully addressable through the
+  # caller's own return value; the log is a "here's the pattern, and
+  # here's one example of it" breadcrumb for someone grepping server
+  # logs without correlating application state, not the only record of
+  # any given instance. Its metadata is labeled as belonging to that one
+  # first occurrence, not implied to describe every occurrence.
   defp send_email_if_available(template, email, variables, opts) do
     if Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates) and
          function_exported?(PhoenixKit.Modules.Emails.Templates, :send_email, 4) do
@@ -2237,10 +2297,12 @@ defmodule PhoenixKitBilling do
       :persistent_term.put(@emails_unavailable_warned_key, true)
 
       Logger.warning(
-        "[Billing] #{template} email not sent: phoenix_kit_emails is not installed " <>
-          "(#{inspect(Keyword.get(opts, :metadata, %{}))}). This condition won't change " <>
-          "until the app restarts - further email attempts this run will be skipped " <>
-          "the same way, silently."
+        "[Billing] phoenix_kit_emails is not installed - #{template} email not sent " <>
+          "(first occurrence this run: #{inspect(Keyword.get(opts, :metadata, %{}))}). " <>
+          "This condition won't change until the app restarts, so this line won't repeat " <>
+          "for later occurrences - each send_*_email/2,3 call still returns " <>
+          "{:error, :emails_module_not_installed} on every attempt, so check the caller's " <>
+          "own return value/handling for any specific instance, not this log."
       )
     end
   end

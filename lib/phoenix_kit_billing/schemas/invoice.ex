@@ -45,7 +45,7 @@ defmodule PhoenixKitBilling.Invoice do
       {:ok, invoice} = Billing.create_invoice_from_order(order)
 
       # Send invoice
-      {:ok, invoice} = Billing.send_invoice(invoice)
+      {:ok, invoice, _email_result} = Billing.send_invoice(invoice)
 
       # Mark as paid (generates receipt)
       {:ok, invoice} = Billing.mark_invoice_paid(invoice)

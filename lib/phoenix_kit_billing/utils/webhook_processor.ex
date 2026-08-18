@@ -240,7 +240,13 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp send_receipt(invoice) do
     case Billing.send_receipt(invoice, []) do
-      {:ok, _} ->
+      {:ok, _updated_invoice, {:error, email_reason}} ->
+        Logger.warning(
+          "Receipt saved for #{invoice.invoice_number} but its email was not sent: " <>
+            "#{inspect(email_reason)}"
+        )
+
+      {:ok, _updated_invoice, _email_result} ->
         :ok
 
       other ->

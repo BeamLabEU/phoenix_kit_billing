@@ -61,7 +61,10 @@ defmodule PhoenixKitBilling.Regression.SendEmailPreloadTest do
   # about) preload handling of `invoice.user`.
   defp sent_invoice_fixture(user) do
     invoice = invoice_fixture(user)
-    {:ok, invoice} = Billing.send_invoice(invoice, to_email: user.email, send_email: false)
+
+    {:ok, invoice, _email_result} =
+      Billing.send_invoice(invoice, to_email: user.email, send_email: false)
+
     invoice
   end
 

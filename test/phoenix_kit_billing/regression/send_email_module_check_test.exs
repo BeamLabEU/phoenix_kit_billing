@@ -112,7 +112,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
     refute log =~ user.email
   end
 
-  test "the warning fires once per boot, not once per call" do
+  test "the log dedups per boot, but the return value never does — checked on every call, not just the log count" do
     user = user_fixture()
 
     {:ok, invoice} =
@@ -120,14 +120,27 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
 
     log =
       capture_log(fn ->
+        # Each iteration asserts the return value INSIDE the loop — a
+        # test that only counted log lines after the fact (as an
+        # earlier version of this test did) would have looked identical
+        # whether every call correctly returned the distinguishable
+        # error, or only the first one did and the rest silently
+        # succeeded. That's exactly the round-2 regression this file's
+        # sibling, send_email_availability_through_send_invoice_test.exs,
+        # caught: do_send_invoice/3 discarded this same return value
+        # one level up, so `send_invoice/2` kept reporting success on
+        # every call after the first regardless of what
+        # send_invoice_email/2 itself returned. This test only proves
+        # send_invoice_email/2 is correct at its own boundary; that
+        # other file proves the guarantee survives through the real
+        # send_invoice/2 caller too.
         for _ <- 1..3 do
           assert {:error, :emails_module_not_installed} =
                    Billing.send_invoice_email(invoice, to_email: user.email)
         end
       end)
 
-    # Every call still gets the distinguishable error - only the log is
-    # deduplicated.
+    # The log is the ONLY thing allowed to deduplicate.
     assert Enum.count(String.split(log, "email not sent")) - 1 == 1
   end
 end
