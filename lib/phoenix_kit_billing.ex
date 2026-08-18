@@ -2198,19 +2198,60 @@ defmodule PhoenixKitBilling do
   # the log line — `notifications.ex`'s "money copy carries no PII"
   # principle applies here too: metadata (invoice/transaction uuids) is
   # fine, the raw recipient address is not.
+  #
+  # The *return value* is `{:error, :emails_module_not_installed}` on
+  # every single call, unconditionally — every caller must always be
+  # able to tell this apart from success. The *log line* is a separate
+  # concern with a different right answer: on an install that has
+  # deliberately not installed phoenix_kit_emails (the owner's own case
+  # this contract started from), every invoice/receipt/credit-note/
+  # payment-confirmation email attempt would otherwise log an identical
+  # `:warning` — real noise for a known, accepted configuration, not new
+  # information after the first one. `:warning` (not a quieter level)
+  # stays the severity, since this project's own `config/test.exs` pins
+  # `:logger, level: :warning` — a common production floor too — and a
+  # quieter level risks the message never appearing anywhere at all,
+  # which would defeat the point. So: log once per BEAM boot, at
+  # `:warning`; the condition doesn't change between the first email
+  # attempt and the thousandth, so one visible, findable line is enough
+  # to make the *systemic* gap discoverable. `:persistent_term` (write-
+  # once, read-cheap, exactly this shape) tracks whether that line has
+  # already fired.
   defp send_email_if_available(template, email, variables, opts) do
     if Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates) and
          function_exported?(PhoenixKit.Modules.Emails.Templates, :send_email, 4) do
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
       apply(PhoenixKit.Modules.Emails.Templates, :send_email, [template, email, variables, opts])
     else
-      Logger.warning(
-        "[Billing] #{template} email not sent: phoenix_kit_emails is not installed " <>
-          "(#{inspect(Keyword.get(opts, :metadata, %{}))})"
-      )
-
+      warn_emails_unavailable_once(template, opts)
       {:error, :emails_module_not_installed}
     end
+  end
+
+  @emails_unavailable_warned_key {__MODULE__, :emails_unavailable_warned}
+
+  defp warn_emails_unavailable_once(template, opts) do
+    if :persistent_term.get(@emails_unavailable_warned_key, false) do
+      :ok
+    else
+      :persistent_term.put(@emails_unavailable_warned_key, true)
+
+      Logger.warning(
+        "[Billing] #{template} email not sent: phoenix_kit_emails is not installed " <>
+          "(#{inspect(Keyword.get(opts, :metadata, %{}))}). This condition won't change " <>
+          "until the app restarts - further email attempts this run will be skipped " <>
+          "the same way, silently."
+      )
+    end
+  end
+
+  @doc false
+  # Test-only: `:persistent_term` state outlives individual tests, so a
+  # test asserting on the warn-once log needs to clear this between runs
+  # rather than race whichever test happens to trigger it first.
+  def reset_emails_unavailable_warning! do
+    :persistent_term.erase(@emails_unavailable_warned_key)
+    :ok
   end
 
   defp build_receipt_email_variables(invoice, user, opts) do

@@ -10,6 +10,14 @@ defmodule PhoenixKit.Modules.Emails do
   `send_email_if_available/4`) can't tell this apart from a fully
   working install — only checking `Templates` itself, the module
   actually `apply/3`'d, can.
+
+  Compiling this stub makes `PhoenixKit.Modules.Emails` loaded for the
+  *whole test run*, not just this file — every test below (and any other
+  test that happens to run afterward) sees `Emails` as present. There is
+  no test in this file for "the namespace module itself is entirely
+  absent" as a result; that's genuinely covered elsewhere, by
+  `send_email_preload_test.exs`, which defines no stub and runs in this
+  same (stub-free otherwise) test environment.
   """
 end
 
@@ -25,12 +33,26 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
   the exact case this file's stub `PhoenixKit.Modules.Emails` (defined
   above, deliberately empty) reproduces.
 
-  Also covers the more common case, where phoenix_kit_emails isn't
-  installed at all — true in this test environment already (see the
-  "[ModuleRegistry] ... module 'emails' is not registered" warning any
-  test run prints) — confirming the same distinguishable, logged failure
-  either way, not an exception in one case and silent success in the
-  other.
+  ## `send_email: false` does nothing here, deliberately
+
+  `send_invoice_email/2` and `send_receipt_email/2` (called directly
+  below) have no `:send_email` gate at all — that option only exists on
+  their PUBLIC wrappers (`send_invoice/2`, `send_receipt/2`), which
+  decide whether to call the `_email` function in the first place. Calls
+  below intentionally go straight to the `_email` functions with no
+  `send_email:` opt, so there's nothing to misread as short-circuiting
+  the real branch. `real_production_path_test.exs`-style coverage
+  through the gated public wrapper lives in
+  `send_email_availability_through_send_invoice_test.exs`.
+
+  ## Log is once-per-boot, not once-per-call
+
+  `send_email_if_available/4` only logs the first time it hits this
+  branch in the life of the BEAM (see its own comment) — every test here
+  that asserts on log content calls
+  `PhoenixKitBilling.reset_emails_unavailable_warning!/0` first so it
+  isn't at the mercy of whichever test in the whole suite happens to run
+  first.
   """
 
   use PhoenixKitBilling.DataCase, async: false
@@ -39,6 +61,11 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
 
   alias PhoenixKit.Users.Auth
   alias PhoenixKitBilling, as: Billing
+
+  setup do
+    Billing.reset_emails_unavailable_warning!()
+    :ok
+  end
 
   defp user_fixture do
     {:ok, user} =
@@ -50,7 +77,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
     user
   end
 
-  test "Emails present but Templates absent: no exception, a logged and distinguishable error" do
+  test "Emails present, Templates absent: no exception, a logged and distinguishable error" do
     assert Code.ensure_loaded?(PhoenixKit.Modules.Emails)
     refute Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates)
 
@@ -61,7 +88,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
 
     log =
       capture_log(fn ->
-        result = Billing.send_invoice_email(invoice, to_email: user.email, send_email: false)
+        result = Billing.send_invoice_email(invoice, to_email: user.email)
         assert {:error, :emails_module_not_installed} = result
       end)
 
@@ -69,7 +96,7 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
     refute log =~ user.email
   end
 
-  test "Emails entirely absent: the same distinguishable error, logged" do
+  test "the fix applies uniformly to a second public caller (send_receipt_email/2)" do
     user = user_fixture()
 
     {:ok, invoice} =
@@ -77,11 +104,30 @@ defmodule PhoenixKitBilling.Regression.SendEmailModuleCheckTest do
 
     log =
       capture_log(fn ->
-        result = Billing.send_receipt_email(invoice, to_email: user.email, send_email: false)
+        result = Billing.send_receipt_email(invoice, to_email: user.email)
         assert {:error, :emails_module_not_installed} = result
       end)
 
     assert log =~ "billing_receipt email not sent"
     refute log =~ user.email
+  end
+
+  test "the warning fires once per boot, not once per call" do
+    user = user_fixture()
+
+    {:ok, invoice} =
+      Billing.create_invoice(user.uuid, %{total: Decimal.new("100.00"), currency: "EUR"})
+
+    log =
+      capture_log(fn ->
+        for _ <- 1..3 do
+          assert {:error, :emails_module_not_installed} =
+                   Billing.send_invoice_email(invoice, to_email: user.email)
+        end
+      end)
+
+    # Every call still gets the distinguishable error - only the log is
+    # deduplicated.
+    assert Enum.count(String.split(log, "email not sent")) - 1 == 1
   end
 end
