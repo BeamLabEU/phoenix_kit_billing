@@ -4,6 +4,70 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.8.0 - 2026-08-18
+
+PR #23 (customer-facing "My Orders" screen) and PR #24 (email-fallback
+visibility, round 2), plus the post-merge review of both. Full findings in
+`dev_docs/pull_requests/2026/23-customer-orders-dashboard/CLAUDE_REVIEW.md`
+and `dev_docs/pull_requests/2026/24-fix-email-fallback-visibility/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **Customer-facing "My Orders" dashboard.** `:dashboard_orders` previously
+  registered a tab with no `:live_view`, so the tab→route mechanism
+  silently produced no route and every customer link to it 404'd. Adds
+  `PhoenixKitBilling.Web.UserOrders`: a read-only list of the current
+  user's own orders, each with its invoices and each invoice's
+  payment/refund transactions. Wired up at `/dashboard/billing-orders` —
+  not `/dashboard/orders`, which core hardcodes for `phoenix_kit_ecommerce`'s
+  own orders screen and would collide with on a host running both modules
+  (#23).
+- `list_user_orders/3` gained an opt-in `:preload` option (default `[]`,
+  so no existing caller's query shape changes) (#23).
+
+### Fixed
+
+- **⚠️ Breaking:** `send_invoice/2`, `send_receipt/2`, `send_credit_note/3`,
+  and `send_payment_confirmation/3` used to discard whether the customer
+  was actually emailed and unconditionally return `{:ok, record}`. On an
+  install with `phoenix_kit_emails` not installed — a supported, ongoing
+  configuration, not a transient error — every send after the first one
+  in a boot looked exactly like a real email going out: no return-value
+  signal, and the one log line for it had already fired and deduplicated.
+  All four now return `{:ok, record, email_result}` — `:skipped` when
+  `:send_email` is `false`, otherwise the underlying send result,
+  including `{:error, :emails_module_not_installed}` when that's what
+  happened. Callers that only care whether the billing operation itself
+  succeeded can keep matching `{:ok, record, _}`; callers that care
+  whether the customer was actually emailed check the third element. The
+  4 admin "send" actions in `InvoiceDetail` now flash an accurate warning
+  instead of always claiming success, and the webhook processor logs a
+  receipt's email failure distinctly without failing the webhook (#24).
+- `send_email_if_available/4` checked `Code.ensure_loaded?(PhoenixKit.Modules.Emails)`
+  — the sibling package's namespace module — then called a function on
+  `Templates`, a different module one level down that can be absent even
+  when the namespace module is loaded (a partial/stale
+  `phoenix_kit_emails` install). Now checks `Templates` itself directly
+  (#24).
+- The 8 `get_dashboard_stats/0` query helpers rescued a real query failure
+  (bad connection, a mid-flight migration, a locked table) straight to
+  `0` / `Decimal.new(0)` with no log line — indistinguishable on the
+  admin dashboard from an actually-empty, healthy system. Now logged as a
+  warning before falling back; the fallback values themselves are
+  unchanged (#24).
+- `Activity.log/2` silently rescued `Postgrex.Error` and
+  `DBConnection.OwnershipError` to bare `:ok`. Verified unreachable in
+  practice (core's own `PhoenixKit.Activity.log/1` already rescues
+  internally and returns `{:error, _}`), but collapsed into the same
+  logged-and-returned `{:error, _}` path as every other failure rather
+  than relying on an undocumented core internal to keep making it dead
+  code (#24).
+- Fixed a `mix test` break on `main` left by these two PRs merging in
+  parallel: `user_orders_test.exs` (#23) was written against the old
+  2-tuple `send_invoice/2` return shape and never saw #24's contract
+  change, and its new-file `mix credo --strict` violations were blocking
+  `mix precommit`. No production code affected.
+
 ## 0.7.4 - 2026-08-17
 
 ### Fixed
