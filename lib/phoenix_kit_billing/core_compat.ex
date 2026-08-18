@@ -44,6 +44,7 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Utils.Routes, :path, 1},
     {PhoenixKit.Utils.Routes, :url, 1},
     {PhoenixKit.Utils.Date, :utc_now, 0},
+    {PhoenixKit.Utils.Date, :short_month, 1},
     {PhoenixKit.Utils.UUID, :valid?, 1},
     {PhoenixKit.Utils.CountryData, :countries_for_select, 0},
     {PhoenixKit.Utils.CountryData, :eu_member?, 1},

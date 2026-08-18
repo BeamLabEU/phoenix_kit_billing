@@ -78,6 +78,23 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
 
       assert html =~ order.order_number
       refute html =~ other_order.order_number
+
+      # The two checks above only rule out ONE specific string leaking —
+      # order_number is a predictable, sequential "PREFIX-YEAR-NNNN" value
+      # (see generate_order_number/1), so a subtler scoping bug that still
+      # happened to exclude that one string wouldn't be caught by them
+      # alone. Assert directly on the query result too: exactly the
+      # current user's order, identified by uuid rather than by a
+      # guessable formatted number.
+      assert [%{uuid: uuid}] = Billing.list_user_orders(user.uuid)
+      assert uuid == order.uuid
+    end
+
+    test "shows the empty state for a user with no orders", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/en/dashboard/billing-orders")
+
+      assert html =~ "No orders yet"
+      refute html =~ "card bg-base-100 shadow-lg"
     end
   end
 end

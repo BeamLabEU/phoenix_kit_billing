@@ -17,6 +17,7 @@ defmodule PhoenixKitBilling.Web.UserOrders do
   import PhoenixKitBilling.Web.Components.InvoiceStatusBadge
   import PhoenixKitBilling.Web.Components.OrderStatusBadge
 
+  alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Transaction
@@ -58,5 +59,19 @@ defmodule PhoenixKitBilling.Web.UserOrders do
       %{user: %{uuid: _} = user} -> user
       _ -> nil
     end
+  end
+
+  # `Calendar.strftime(dt, "%b %d, %Y")` is what the rest of this module's
+  # views use (invoice_print, receipt_print, order_detail, ...) — `%b` is
+  # locale-blind and always renders English month names, even on a
+  # Russian-locale page. That's a pre-existing, module-wide gap, out of
+  # scope to fix everywhere from here. This screen is customer-facing
+  # rather than admin-only, though, so it uses core's actual localized
+  # helper (`PhoenixKit.Utils.Date.short_month/1`, gettext-backed with
+  # et/ru translations already in core's catalog) instead of repeating the
+  # same locale-blind pattern a third time.
+  defp localized_date(date) do
+    day = date.day |> to_string() |> String.pad_leading(2, "0")
+    "#{UtilsDate.short_month(date.month)} #{day}, #{date.year}"
   end
 end

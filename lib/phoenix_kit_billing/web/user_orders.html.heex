@@ -25,15 +25,15 @@
                   <.order_status_badge status={order.status} />
                 </div>
                 <div class="flex items-center gap-4">
-                  <span class="text-sm text-base-content/60">
-                    {Calendar.strftime(order.inserted_at, "%b %d, %Y")}
+                  <span class="text-sm text-base-content/70">
+                    {localized_date(order.inserted_at)}
                   </span>
                   <.currency_amount amount={order.total} currency={order.currency} class="font-semibold" />
                 </div>
               </div>
 
               <%= if Enum.empty?(order.invoices) do %>
-                <p class="text-sm text-base-content/50 mt-4">
+                <p class="text-sm text-base-content/70 mt-4">
                   {gettext("No invoices yet for this order")}
                 </p>
               <% else %>
@@ -43,11 +43,11 @@
                       <:title>
                         <div class="flex flex-wrap items-center justify-between gap-2 pr-2">
                           <div class="flex items-center gap-2">
-                            <.icon name="hero-document-text" class="w-4 h-4 opacity-60" />
+                            <.icon name="hero-document-text" class="w-4 h-4 opacity-70" />
                             <span class="font-mono text-sm">{invoice.invoice_number}</span>
                             <.invoice_status_badge status={invoice.status} />
                           </div>
-                          <div class="text-sm text-base-content/60">
+                          <div class="text-sm text-base-content/70">
                             {gettext("Paid")}
                             <.currency_compact amount={invoice.paid_amount} currency={invoice.currency} />
                             / <.currency_compact amount={invoice.total} currency={invoice.currency} />
@@ -56,7 +56,7 @@
                       </:title>
                       <:content>
                         <%= if Enum.empty?(invoice.transactions) do %>
-                          <p class="text-sm text-base-content/50">
+                          <p class="text-sm text-base-content/70">
                             {gettext("No transactions recorded yet")}
                           </p>
                         <% else %>
@@ -72,7 +72,7 @@
                               <tbody>
                                 <%= for txn <- invoice.transactions do %>
                                   <tr>
-                                    <td>{Calendar.strftime(txn.inserted_at, "%b %d, %Y")}</td>
+                                    <td>{localized_date(txn.inserted_at)}</td>
                                     <td>
                                       <%= if Transaction.refund?(txn) do %>
                                         <span class="badge badge-error badge-sm">{gettext("Refund")}</span>
