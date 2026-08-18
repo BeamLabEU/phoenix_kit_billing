@@ -70,8 +70,28 @@ defmodule PhoenixKitBilling.Web.UserOrders do
   # helper (`PhoenixKit.Utils.Date.short_month/1`, gettext-backed with
   # et/ru translations already in core's catalog) instead of repeating the
   # same locale-blind pattern a third time.
-  defp localized_date(date) do
+  #
+  # The month name alone isn't enough — "Aug 17, 2026" reads wrong in
+  # every locale this can render in except English: en-US is the outlier
+  # with month-first-and-comma, not the default. Every other supported
+  # locale (ru, et, and de/es/fr/it/pl via core) puts the day first with
+  # no comma ("17 Aug 2026" / "17 авг 2026"). `short_month/1` itself reads
+  # its locale from `PhoenixKitWeb.Gettext` (see its source), so the word
+  # order is read from the same place to stay consistent with whatever
+  # actually decided the month's language.
+  #
+  # Public (not exported from docs) rather than `defp`, specifically so
+  # `user_orders_test.exs` can unit-test the locale/order logic directly
+  # against `Gettext.put_locale/2` instead of needing a locale-aware route
+  # in the hand-maintained test router (which only mirrors "/en/...").
+  @doc false
+  def localized_date(date) do
     day = date.day |> to_string() |> String.pad_leading(2, "0")
-    "#{UtilsDate.short_month(date.month)} #{day}, #{date.year}"
+    month = UtilsDate.short_month(date.month)
+
+    case Gettext.get_locale(PhoenixKitWeb.Gettext) do
+      "en" -> "#{month} #{day}, #{date.year}"
+      _ -> "#{day} #{month} #{date.year}"
+    end
   end
 end

@@ -7,10 +7,11 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
   page work at all — the association is unloaded by default, and the
   template reads `order.invoices` and `invoice.transactions` for every
   order it renders. Test 1 below doubles as the regression guard for that:
-  it was confirmed red (an `Ecto.Association.NotLoaded` render crash)
-  against a version of `UserOrders.mount/3` that dropped the `preload:`
-  option, then green again once restored — see the implementer's report
-  for the pasted red/green output.
+  confirmed red (`** (Ecto.Association.NotLoaded) ...` /
+  `Protocol.UndefinedError` on `Enum.empty?(order.invoices)`, depending on
+  which line hits the unloaded struct first) against a version of
+  `UserOrders.mount/3` with `preload: [invoices: :transactions]` dropped
+  from the `list_user_orders/3` call, green again once restored.
   """
 
   use PhoenixKitBilling.LiveCase, async: false
@@ -94,7 +95,34 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
       {:ok, _view, html} = live(conn, "/en/dashboard/billing-orders")
 
       assert html =~ "No orders yet"
-      refute html =~ "card bg-base-100 shadow-lg"
+      # `id="orders-list"` only renders in the non-empty branch — checking
+      # for it instead of a CSS class survives a styling refactor that a
+      # class-based check wouldn't (it would go red on a cosmetic change
+      # and stay silently green on a real regression that kept the old
+      # classes but broke the emptiness check itself).
+      refute html =~ ~s(id="orders-list")
+    end
+  end
+
+  describe "localized_date/1" do
+    # The test router only mirrors "/en/..." (see its own moduledoc), so
+    # this goes straight at the formatting logic via Gettext.put_locale/2
+    # rather than through a route this test setup doesn't have.
+    test "puts the month first, with a comma, only for English" do
+      date = ~D[2026-08-07]
+
+      Gettext.put_locale(PhoenixKitWeb.Gettext, "en")
+      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "Aug 07, 2026"
+    end
+
+    test "puts the day first, no comma, for every other supported locale" do
+      date = ~D[2026-08-07]
+
+      Gettext.put_locale(PhoenixKitWeb.Gettext, "ru")
+      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "07 Авг 2026"
+
+      Gettext.put_locale(PhoenixKitWeb.Gettext, "et")
+      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "07 Aug 2026"
     end
   end
 end
