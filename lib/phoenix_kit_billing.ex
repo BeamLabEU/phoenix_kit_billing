@@ -543,22 +543,35 @@ defmodule PhoenixKitBilling do
     }
   end
 
+  # A failed dashboard-stat query used to rescue straight to a fallback
+  # value with no log line - a real query error (bad connection, a
+  # migration mid-flight, a locked table) rendered as "$0 pending
+  # revenue" / "0 orders", indistinguishable from an actually-empty,
+  # healthy system. The fallback value is still the right thing to show
+  # (a stat tile crashing the whole admin dashboard over a transient
+  # query error would be worse), but it needs to be a KNOWN degraded
+  # value, not a silent one.
+  defp dashboard_stat_fallback(label, fallback, error) do
+    Logger.warning("[Billing] dashboard stat #{label} failed: #{Exception.message(error)}")
+    fallback
+  end
+
   defp count_orders do
     Order |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_orders", 0, e)
   end
 
   defp count_invoices do
     Invoice |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_invoices", 0, e)
   end
 
   defp count_currencies do
     Currency |> where([c], c.enabled == true) |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_currencies", 0, e)
   end
 
   defp count_orders_since(date) do
@@ -566,7 +579,7 @@ defmodule PhoenixKitBilling do
     |> where([o], o.inserted_at >= ^NaiveDateTime.new!(date, ~T[00:00:00]))
     |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_orders_since", 0, e)
   end
 
   defp count_invoices_since(date) do
@@ -574,7 +587,7 @@ defmodule PhoenixKitBilling do
     |> where([i], i.inserted_at >= ^NaiveDateTime.new!(date, ~T[00:00:00]))
     |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_invoices_since", 0, e)
   end
 
   defp count_invoices_by_status(status) do
@@ -582,7 +595,7 @@ defmodule PhoenixKitBilling do
     |> where([i], i.status == ^status)
     |> repo().aggregate(:count)
   rescue
-    _ -> 0
+    e -> dashboard_stat_fallback("count_invoices_by_status(#{status})", 0, e)
   end
 
   defp calculate_paid_revenue do
@@ -594,7 +607,7 @@ defmodule PhoenixKitBilling do
 
     result || Decimal.new(0)
   rescue
-    _ -> Decimal.new(0)
+    e -> dashboard_stat_fallback("calculate_paid_revenue", Decimal.new(0), e)
   end
 
   defp calculate_pending_revenue do
@@ -606,7 +619,7 @@ defmodule PhoenixKitBilling do
 
     result || Decimal.new(0)
   rescue
-    _ -> Decimal.new(0)
+    e -> dashboard_stat_fallback("calculate_pending_revenue", Decimal.new(0), e)
   end
 
   # ============================================
