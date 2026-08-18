@@ -18,6 +18,7 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
 
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Web.UserOrders
 
   setup %{conn: conn} do
     Settings.update_setting("billing_enabled", "true")
@@ -37,7 +38,7 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
 
     {:ok, invoice} = Billing.create_invoice_from_order(order)
 
-    {:ok, invoice} =
+    {:ok, invoice, :skipped} =
       Billing.send_invoice(invoice, to_email: user.email, send_email: false)
 
     {:ok, _payment} = Billing.record_payment(invoice, %{amount: "60.00"}, nil)
@@ -112,17 +113,17 @@ defmodule PhoenixKitBilling.Web.UserOrdersTest do
       date = ~D[2026-08-07]
 
       Gettext.put_locale(PhoenixKitWeb.Gettext, "en")
-      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "Aug 07, 2026"
+      assert UserOrders.localized_date(date) == "Aug 07, 2026"
     end
 
     test "puts the day first, no comma, for every other supported locale" do
       date = ~D[2026-08-07]
 
       Gettext.put_locale(PhoenixKitWeb.Gettext, "ru")
-      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "07 Авг 2026"
+      assert UserOrders.localized_date(date) == "07 Авг 2026"
 
       Gettext.put_locale(PhoenixKitWeb.Gettext, "et")
-      assert PhoenixKitBilling.Web.UserOrders.localized_date(date) == "07 Aug 2026"
+      assert UserOrders.localized_date(date) == "07 Aug 2026"
     end
   end
 end
