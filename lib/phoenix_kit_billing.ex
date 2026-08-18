@@ -417,10 +417,11 @@ defmodule PhoenixKitBilling do
         id: :dashboard_orders,
         label: "My Orders",
         icon: "hero-shopping-bag",
-        path: "orders",
+        path: "billing-orders",
         priority: 200,
         match: :prefix,
-        group: :main
+        group: :main,
+        live_view: {PhoenixKitBilling.Web.UserOrders, :index}
       ),
       billing_tab!(
         id: :dashboard_billing_profiles,
@@ -1007,13 +1008,15 @@ defmodule PhoenixKitBilling do
   @doc """
   Lists orders for a specific user.
   """
-  def list_user_orders(user_uuid, filters \\ %{}) do
+  def list_user_orders(user_uuid, filters \\ %{}, opts \\ []) do
     user_uuid = extract_user_uuid(user_uuid)
+    preloads = Keyword.get(opts, :preload, [])
 
     Order
     |> where([o], o.user_uuid == ^user_uuid)
     |> apply_order_filters(filters)
     |> order_by([o], desc: o.inserted_at)
+    |> preload(^preloads)
     |> repo().all()
   end
 

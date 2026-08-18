@@ -151,18 +151,16 @@ defmodule PhoenixKitBilling.Notifications do
 
   defp notify_customer(_record, _action, _text, _icon), do: :ok
 
-  # Provisional target: `Paths.user_orders/0` currently points at
-  # `/dashboard/orders`, a path this module does NOT register — that route is
-  # core-reserved for `phoenix_kit_ecommerce`'s own orders screen (see the
-  # hardcoded `authenticated_live_routes/0`/`authenticated_live_locale_routes/0`
-  # blocks in `deps/phoenix_kit/lib/phoenix_kit_web/integration.ex`), so every
-  # customer notification link 404s on an install that has billing but not
-  # ecommerce. Until the real customer orders screen lands (`:dashboard_orders`
-  # wired to a `:live_view`, later on this branch), link to the bare dashboard
-  # root instead, via `Paths.dashboard_root/0` — unconditionally registered
-  # whenever `PhoenixKit.Config.user_dashboard_enabled?()` is true, which
-  # holds on any install using the dashboard at all.
-  defp customer_link(_record), do: Paths.dashboard_root()
+  # `/dashboard/billing-orders` is what this module actually registers, via
+  # `:dashboard_orders`'s own `:live_view` in `user_dashboard_tabs/0`.
+  # `/dashboard/orders` is core-reserved for `phoenix_kit_ecommerce`'s own
+  # (separate) orders screen — see the hardcoded
+  # `authenticated_live_routes/0`/`authenticated_live_locale_routes/0` blocks
+  # in `deps/phoenix_kit/lib/phoenix_kit_web/integration.ex` — and must never
+  # be reused here: on a host with both modules installed it would collide
+  # with, or silently shadow, the ecommerce module's own UI over the same
+  # underlying `PhoenixKitBilling.Order` data.
+  defp customer_link(_record), do: Paths.user_orders()
 
   @doc """
   Everyone who should hear about billing operations: holders of `key`,

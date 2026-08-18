@@ -37,7 +37,7 @@ defmodule PhoenixKitBilling.Paths do
 
   # Customer-facing pages. These mirror `user_dashboard_tabs/0` — the tabs
   # this module registers are the only customer routes guaranteed to exist.
-  def user_orders, do: Routes.path("#{@user_base}/orders")
+  def user_orders, do: Routes.path("#{@user_base}/billing-orders")
   def user_billing_profiles, do: Routes.path("#{@user_base}/billing-profiles")
 
   # Bare dashboard root — unconditionally registered by core whenever

@@ -88,6 +88,17 @@ defmodule PhoenixKitBilling.Test.Router do
     end
   end
 
+  # Customer dashboard tabs live under `/dashboard` in production.
+  scope "/en/dashboard", PhoenixKitBilling.Web do
+    pipe_through(:browser)
+
+    live_session :billing_dashboard_test,
+      layout: {PhoenixKitBilling.Test.Layouts, :app},
+      on_mount: {PhoenixKitBilling.Test.Hooks, :assign_scope} do
+      live("/billing-orders", UserOrders, :index, as: :billing_user_orders)
+    end
+  end
+
   # Settings tabs live under `/admin/settings/billing` in production.
   scope "/en/admin/settings/billing", PhoenixKitBilling.Web do
     pipe_through(:browser)
