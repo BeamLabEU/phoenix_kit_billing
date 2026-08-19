@@ -8,7 +8,15 @@ config :phoenix_kit_billing, PhoenixKitBilling.Test.Repo,
   username: System.get_env("PGUSER", "postgres"),
   password: System.get_env("PGPASSWORD", "postgres"),
   hostname: System.get_env("PGHOST", "localhost"),
-  database: "phoenix_kit_billing_test#{System.get_env("MIX_TEST_PARTITION")}",
+  # Name overridable so a host that cannot create databases (our CI user has
+  # no CREATEDB) can point the suite at an existing test database instead of
+  # silently losing the whole integration half. Same shape as
+  # phoenix_kit_document_creator.
+  database:
+    System.get_env(
+      "PGDATABASE",
+      "phoenix_kit_billing_test#{System.get_env("MIX_TEST_PARTITION")}"
+    ),
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
