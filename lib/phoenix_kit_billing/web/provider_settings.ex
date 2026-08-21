@@ -12,6 +12,7 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitBilling.Web.Components.SettingsTabs
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes

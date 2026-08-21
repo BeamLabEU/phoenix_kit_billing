@@ -9,6 +9,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypes do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitBilling.Web.Components.SettingsTabs
   import PhoenixKitWeb.Components.Core.TableRowMenu
   import PhoenixKitBilling.Web.Components.CurrencyDisplay
   import PhoenixKitBilling.Web.Components.SubscriptionHelpers

@@ -77,32 +77,7 @@
               }
             >
               <:toolbar_title>
-                <div class="tabs tabs-box bg-base-200 p-1">
-                  <.link
-                    navigate={PhoenixKit.Utils.Routes.path("/admin/settings/billing")}
-                    class="tab tab-sm"
-                  >
-                    <.icon name="hero-cog-6-tooth" class="w-4 h-4 mr-1" /> {gettext("General")}
-                  </.link>
-                  <.link
-                    navigate={PhoenixKit.Utils.Routes.path("/admin/settings/billing/providers")}
-                    class="tab tab-sm"
-                  >
-                    <.icon name="hero-credit-card" class="w-4 h-4 mr-1" /> {gettext("Payment Providers")}
-                  </.link>
-                  <.link
-                    navigate={PhoenixKit.Utils.Routes.path("/admin/billing/currencies")}
-                    class="tab tab-sm tab-active"
-                  >
-                    <.icon name="hero-currency-dollar" class="w-4 h-4 mr-1" /> {gettext("Currencies")}
-                  </.link>
-                  <.link
-                    navigate={PhoenixKit.Utils.Routes.path("/admin/billing/subscription-types")}
-                    class="tab tab-sm"
-                  >
-                    <.icon name="hero-clipboard-document-list" class="w-4 h-4 mr-1" /> {gettext("Subscription Types")}
-                  </.link>
-                </div>
+                <.settings_tabs active_tab="currencies" class="tabs-sm" />
               </:toolbar_title>
               <:card_header :let={currency}>
                 <div class="flex items-center gap-2">

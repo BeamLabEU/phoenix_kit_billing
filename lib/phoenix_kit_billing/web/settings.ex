@@ -11,6 +11,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitBilling.Web.Components.SettingsTabs
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.CountryData
