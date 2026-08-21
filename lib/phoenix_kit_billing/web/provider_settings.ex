@@ -9,7 +9,6 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
-  alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitBilling.Web.Components.SettingsTabs
