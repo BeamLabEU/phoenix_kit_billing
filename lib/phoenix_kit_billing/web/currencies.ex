@@ -13,6 +13,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitBilling.Web.Components.SettingsTabs
   import PhoenixKitWeb.Components.Core.TableDefault
   import PhoenixKitWeb.Components.Core.TableRowMenu
 
