@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.8.1 - 2026-08-21
+
+### Changed
+
+- **The four billing-settings tab strips are one `<.settings_tabs>`
+  component**, rendered through core's `<.nav_tabs>`. daisyUI 4's
+  `tabs-boxed` is gone with them. Tabs use `:path` so the strip still
+  works against every 2.x core (#26).
+
+### Fixed
+
+- Dropped a duplicate `alias PhoenixKit.Utils.Routes` in
+  `provider_settings.ex` that the new import landed between (post-merge).
+
 ## 0.8.0 - 2026-08-18
 
 PR #23 (customer-facing "My Orders" screen) and PR #24 (email-fallback
