@@ -112,6 +112,11 @@ defmodule PhoenixKitBilling.MixProject do
       # that actually resolve it costs consumers nothing.
       {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
       pk_dep(:phoenix_kit, "~> 2.0"),
+      # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
+      # builds from source when MDEX_NATIVE_BUILD=1 is set in the
+      # environment; that path requires rustler itself, not just
+      # rustler_precompiled. Same declaration as phoenix_kit's own mix.exs.
+      {:rustler, ">= 0.0.0", optional: true},
 
       # Gettext for per-module i18n of sidebar tab labels.
       {:gettext, "~> 1.0"},
