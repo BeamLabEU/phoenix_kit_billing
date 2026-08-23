@@ -8,10 +8,19 @@ config :phoenix_kit_billing, PhoenixKitBilling.Test.Repo,
   username: System.get_env("PGUSER", "postgres"),
   password: System.get_env("PGPASSWORD", "postgres"),
   hostname: System.get_env("PGHOST", "localhost"),
-  # Name overridable so a host that cannot create databases (our CI user has
-  # no CREATEDB) can point the suite at an existing test database instead of
-  # silently losing the whole integration half. Same shape as
-  # phoenix_kit_document_creator.
+  # test_helper.exs never creates this database itself. README's Development
+  # section lists `mix deps.get && mix test` with no createdb step, while a
+  # separate section below it adds `createdb phoenix_kit_billing_test` as a
+  # one-time step — a reader who follows the first path hits the same silent
+  # skip as a host that cannot create databases at all. PGDATABASE lets
+  # either kind of reader point the suite at an existing database instead of
+  # losing the whole integration half without a clear reason why. Same shape
+  # as phoenix_kit_document_creator.
+  #
+  # Known limitation: PGDATABASE overrides MIX_TEST_PARTITION entirely, so a
+  # partitioned run would share one database across partitions instead of
+  # getting one each. Harmless today — this repo has no partitioned CI — but
+  # worth knowing before adding one.
   database:
     System.get_env(
       "PGDATABASE",
