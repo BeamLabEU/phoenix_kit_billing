@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.9.0 - 2026-08-26
+
+PR #29, plus the post-merge review. Full findings in
+`dev_docs/pull_requests/2026/29-migration-module-payment-provider-configs/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **`migration_module/0`**, declaring `PhoenixKitBilling.Migrations` — this
+  package's first module-owned versioned migration chain, discovered by
+  core's `mix phoenix_kit.update`.
+- **Adopts `phoenix_kit_payment_provider_configs`.** The table is
+  core-created (V135 baseline); this chain's V1 stamps a `pkb_schema:1`
+  marker without changing its shape, taking ownership of the table's future
+  evolution. No application code reads or writes the table yet — provider
+  credentials still live in `phoenix_kit_settings`.
+
 ## 0.8.1 - 2026-08-21
 
 ### Changed
