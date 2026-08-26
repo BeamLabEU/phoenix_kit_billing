@@ -157,6 +157,14 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def route_module, do: PhoenixKitBilling.Web.Routes
 
+  # `phoenix_kit_payment_provider_configs` is core-created (V135); this
+  # chain's V1 only ADOPTS it (stamps the `pkb_schema:` marker, changes
+  # no shape) and owns its future evolution — see the moduledoc in
+  # PhoenixKitBilling.Migrations. No application code reads or writes the
+  # table yet; provider credentials still live in `phoenix_kit_settings`.
+  @impl PhoenixKit.Module
+  def migration_module, do: PhoenixKitBilling.Migrations
+
   # Without this the host's `:phoenix_kit_css_sources` compiler emits no
   # `@source` line for this package, so Tailwind never scans the billing
   # templates and purges every class they use out of the host's build.
