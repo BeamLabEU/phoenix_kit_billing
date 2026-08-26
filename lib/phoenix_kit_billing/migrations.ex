@@ -85,7 +85,15 @@ defmodule PhoenixKitBilling.Migrations do
       _ -> 0
     end
   rescue
-    _ -> 0
+    # An invalid prefix must surface as the validation error, not be
+    # swallowed into 0 ("not installed") — that misleads the operator AND
+    # lets the unvalidated string reach interpolated SQL in callers'
+    # fallback paths.
+    e in ArgumentError ->
+      reraise e, __STACKTRACE__
+
+    _ ->
+      0
   end
 
   @doc "Applies every chain version up to `current_version/0` (idempotent)."
@@ -99,6 +107,10 @@ defmodule PhoenixKitBilling.Migrations do
   @doc "Rolls back to `target` (`:version` in `opts`). Never drops the table — see the moduledoc."
   def down(opts \\ []) do
     prefix = validated_prefix(opts)
+    # The protocol only ever calls down/1 with a keyword list (core codegens
+    # a literal `down(prefix: ..., version: ...)` call — see
+    # /app/lib/mix/tasks/phoenix_kit.update.ex:1178), so the map branch is
+    # dead in practice, same as validated_prefix/1's %{prefix: prefix} branch.
     target = if is_list(opts), do: Keyword.get(opts, :version, 0), else: 0
 
     prefix
@@ -162,7 +174,8 @@ defmodule PhoenixKitBilling.Migrations do
 
   @doc "The SQL `down/1` executes, as data (marker bookkeeping only)."
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
-  def down_statements(prefix \\ "public", target \\ 0) do
+  def down_statements(prefix \\ "public", target \\ 0)
+      when is_integer(target) and target >= 0 do
     prefix = validated_prefix(prefix: prefix)
     p = "#{prefix}."
 
