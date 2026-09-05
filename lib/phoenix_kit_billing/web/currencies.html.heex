@@ -148,12 +148,17 @@
                     </.table_default_cell>
                     <.table_default_cell>{currency.decimal_places}</.table_default_cell>
                     <.table_default_cell>
+                      <span class="font-mono">{Decimal.to_string(currency.exchange_rate)}</span>
                       <%= if currency.is_default do %>
-                        <span class="badge badge-ghost">{gettext("Base")}</span>
-                      <% else %>
-                        <span class="font-mono">
-                          {Decimal.to_string(currency.exchange_rate)}
-                        </span>
+                        <span class="badge badge-ghost ml-1">{gettext("Base")}</span>
+                        <%= if Decimal.compare(currency.exchange_rate, Decimal.new("1")) != :eq do %>
+                          <div class="text-xs text-warning mt-1">
+                            {gettext(
+                              "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize.",
+                              rate: Decimal.to_string(currency.exchange_rate)
+                            )}
+                          </div>
+                        <% end %>
                       <% end %>
                     </.table_default_cell>
                     <.table_default_cell>
@@ -234,7 +239,9 @@
       <div>
         <h3 class="font-bold">{gettext("Currency Configuration")}</h3>
         <p class="text-sm">
-          {gettext("The default currency is used for all new orders. Exchange rates are relative to the default currency (base rate = 1.0). Enable only the currencies you plan to accept for billing.")}
+          {gettext(
+            "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
+          )}
         </p>
       </div>
     </div>

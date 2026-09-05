@@ -2965,8 +2965,13 @@ msgstr "Testirežiim (demo)"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:262
 #, elixir-autogen, elixir-format
-msgid "The default currency is used for all new orders. Exchange rates are relative to the default currency (base rate = 1.0). Enable only the currencies you plan to accept for billing."
-msgstr "Vaikimisi valuutat kasutatakse kõigi uute tellimuste jaoks. Vahetuskursid on suhtelised vaikimisi valuuta suhtes (baaskurss = 1,0). Lubage ainult need valuutad, mida kavatsete arvelduses kasutada."
+msgid "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
+msgstr "Vaikimisi valuutat kasutatakse kõigi uute tellimuste jaoks. Vahetuskurss näitab, mitu ühikut valuutat ostab üks ühik vaikimisi valuutat; kui valuuta määratakse vaikimisi valuutaks, arvutatakse kõik kursid ümber nii, et selle enda kurss on 1,0. Lubage ainult need valuutad, mida kavatsete arvelduses kasutada."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:153
+#, elixir-autogen, elixir-format
+msgid "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize."
+msgstr "Baasvaluuta kurss peab olema 1,0 — praegu %{rate}. Kursside ümberarvutamiseks vajutage sellel „Määra vaikimisi“."
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:77
 #, elixir-autogen, elixir-format

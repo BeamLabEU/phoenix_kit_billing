@@ -40,7 +40,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
   describe "the coordinator implements the protocol" do
     test "current_version/0 and version_table/0" do
-      assert Migrations.current_version() == 1
+      assert Migrations.current_version() == 2
       assert Migrations.version_table() == "phoenix_kit_payment_provider_configs"
     end
 
@@ -70,7 +70,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
       statements = Migrations.up_statements()
 
       assert List.last(statements) ==
-               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:1'",
+               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'",
              "the marker must be stamped after the DDL it certifies, not before"
     end
 
@@ -102,16 +102,45 @@ defmodule PhoenixKitBilling.MigrationsTest do
     # `execute("DROP TABLE ...")` in `up/1`) would be invisible to it. That
     # path is closed by the source-text test below, which checks what is
     # executed rather than what is built.
+    #
+    # This test and "no statement anywhere in the data-level chain can drop
+    # the table, truncate, or delete rows" below are the two halves of one
+    # guarantee, post-V2: this test pins the EXACT drop statements V2's
+    # `down/1` is allowed to emit (index + two columns on
+    # phoenix_kit_currencies, never the table), and the other test proves
+    # nothing MORE destructive slips in anywhere — including up_statements/2
+    # and every prefix/target this test does not enumerate.
     test "down/1 emits exactly the marker bookkeeping, in every target and prefix" do
+      # Below V2 (target 0 or 1), down/1 also drops the V2 additions on
+      # phoenix_kit_currencies — never the phoenix_kit_payment_provider_configs
+      # table (see "the chain can never destroy the table" below).
+      v2_drops_public = [
+        "DROP INDEX IF EXISTS public.phoenix_kit_currencies_default_uidx",
+        "ALTER TABLE public.phoenix_kit_currencies DROP COLUMN IF EXISTS rounding_rule",
+        "ALTER TABLE public.phoenix_kit_currencies DROP COLUMN IF EXISTS rate_updated_at"
+      ]
+
+      v2_drops_alt = [
+        "DROP INDEX IF EXISTS billing_alt.phoenix_kit_currencies_default_uidx",
+        "ALTER TABLE billing_alt.phoenix_kit_currencies DROP COLUMN IF EXISTS rounding_rule",
+        "ALTER TABLE billing_alt.phoenix_kit_currencies DROP COLUMN IF EXISTS rate_updated_at"
+      ]
+
       assert Migrations.down_statements("public", 0) ==
-               ["COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS NULL"]
+               v2_drops_public ++
+                 ["COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS NULL"]
 
       assert Migrations.down_statements("public", 1) ==
-               ["COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:1'"]
+               v2_drops_public ++
+                 [
+                   "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:1'"
+                 ]
 
       assert Migrations.down_statements("billing_alt", 0) ==
-               ["COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS NULL"]
+               v2_drops_alt ++
+                 ["COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS NULL"]
 
+      # target 2 == current_version: nothing to drop, marker only.
       assert Migrations.down_statements("billing_alt", 2) ==
                [
                  "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'"
@@ -131,13 +160,13 @@ defmodule PhoenixKitBilling.MigrationsTest do
       {"COMMENT ON TABLE", "phoenix_kit_payment_provider_configs"}
     ]
 
-    test "up/1 emits exactly these operations and no others" do
+    test "up_statements/2 at target 1 emits exactly these V1 operations and no others" do
       for prefix <- ["public", "billing_alt"] do
-        actual = Enum.map(Migrations.up_statements(prefix), &operation/1)
+        actual = Enum.map(Migrations.up_statements(prefix, 1), &operation/1)
 
         assert Enum.sort(actual) == Enum.sort(@up_operations),
                """
-               up_statements(#{inspect(prefix)}) does not emit the expected set of
+               up_statements(#{inspect(prefix)}, 1) does not emit the expected set of
                operations.
 
                unexpected: #{inspect(Enum.sort(actual) -- Enum.sort(@up_operations))}
@@ -150,8 +179,13 @@ defmodule PhoenixKitBilling.MigrationsTest do
       end
     end
 
-    test "no statement anywhere in the data-level chain can drop/truncate/delete" do
-      forbidden = ~r/\b(DROP|TRUNCATE|DELETE)\b/i
+    test "no statement anywhere in the data-level chain can drop the table, truncate, or delete rows" do
+      # Narrowed from a bare DROP to DROP TABLE: V2's down/1 legitimately
+      # emits "DROP INDEX" and "ALTER TABLE ... DROP COLUMN" against
+      # phoenix_kit_currencies (see "the chain can never destroy the table"
+      # below) — what must never appear anywhere is a statement that could
+      # destroy a core-created TABLE, or bulk-mutate its rows.
+      forbidden = ~r/\b(DROP TABLE|TRUNCATE|DELETE)\b/i
 
       for prefix <- ["public", "billing_alt"] do
         for stmt <- Migrations.up_statements(prefix) do
@@ -219,9 +253,9 @@ defmodule PhoenixKitBilling.MigrationsTest do
     test "each direction executes its own builder" do
       source = File.read!(@source)
 
-      assert source =~ ~r/up_statements\(\)\s*\|>\s*Enum\.each\(&execute\/1\)/,
-             "up/1 no longer pipes up_statements/1 into execute/1 — whatever it " <>
-               "runs instead is not what `up/1 emits exactly these operations` checks"
+      assert source =~ ~r/up_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,
+             "up/1 no longer pipes up_statements/2 into execute/1 — whatever it " <>
+               "runs instead is not what the up_statements-based tests above check"
 
       assert source =~ ~r/down_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,
              "down/1 no longer pipes down_statements/2 into execute/1 — whatever it " <>
@@ -303,7 +337,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
     # The same shape, parsed back out of the CREATE TABLE V1 emits.
     defp v1_columns do
-      [create | _] = Migrations.up_statements()
+      [create | _] = Migrations.up_statements("public", 1)
 
       ~r/^\s*"(\w+)"\s+(.+?),?$/m
       |> Regex.scan(create)
@@ -321,6 +355,51 @@ defmodule PhoenixKitBilling.MigrationsTest do
         [type] -> %{type: type, default: nil, not_null: not_null}
         [type, default] -> %{type: type, default: default, not_null: not_null}
       end
+    end
+  end
+
+  describe "V2 — currencies: default uniqueness + rounding/rate columns" do
+    test "up_statements/2 at target 2 adds the partial unique index and both columns" do
+      stmts = Migrations.up_statements("public", 2)
+
+      assert Enum.any?(
+               stmts,
+               &(&1 =~
+                   ~r/CREATE UNIQUE INDEX IF NOT EXISTS phoenix_kit_currencies_default_uidx ON public\.phoenix_kit_currencies USING btree \(is_default\) WHERE is_default/)
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 =~
+                   ~r/ADD COLUMN IF NOT EXISTS rounding_rule character varying\(16\) DEFAULT 'exact' NOT NULL/)
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 =~ ~r/ADD COLUMN IF NOT EXISTS rate_updated_at timestamp with time zone/)
+             )
+
+      assert List.last(stmts) =~ "pkb_schema:2"
+    end
+
+    test "up_statements/2 at target 1 is the V1 adoption only" do
+      stmts = Migrations.up_statements("public", 1)
+      refute Enum.any?(stmts, &(&1 =~ "phoenix_kit_currencies"))
+      assert List.last(stmts) =~ "pkb_schema:1"
+    end
+
+    test "down_statements/2 to 1 drops the index and both columns, never the table" do
+      stmts = Migrations.down_statements("public", 1)
+
+      assert Enum.any?(
+               stmts,
+               &(&1 =~ "DROP INDEX IF EXISTS public.phoenix_kit_currencies_default_uidx")
+             )
+
+      assert Enum.any?(stmts, &(&1 =~ "DROP COLUMN IF EXISTS rounding_rule"))
+      assert Enum.any?(stmts, &(&1 =~ "DROP COLUMN IF EXISTS rate_updated_at"))
+      refute Enum.any?(stmts, &(&1 =~ ~r/DROP TABLE/i))
+      assert List.last(stmts) =~ "pkb_schema:1"
     end
   end
 end

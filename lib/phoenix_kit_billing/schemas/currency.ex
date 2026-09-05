@@ -14,6 +14,11 @@ defmodule PhoenixKitBilling.Currency do
   - `enabled`: Whether currency is available for use
   - `exchange_rate`: Rate relative to base currency
   - `sort_order`: Display order in currency lists
+  - `rounding_rule`: Display rounding strategy (`"exact"`, `"charm_99"`,
+    `"charm_90"`, `"integer"`); no reader uses this yet — `"exact"`
+    reproduces today's behavior
+  - `rate_updated_at`: When `exchange_rate` was last refreshed; no reader
+    uses this yet
 
   ## Usage Examples
 
@@ -44,9 +49,13 @@ defmodule PhoenixKitBilling.Currency do
     field(:enabled, :boolean, default: true)
     field(:exchange_rate, :decimal, default: Decimal.new("1.0"))
     field(:sort_order, :integer, default: 0)
+    field(:rounding_rule, :string, default: "exact")
+    field(:rate_updated_at, :utc_datetime)
 
     timestamps(type: :utc_datetime)
   end
+
+  @rounding_rules ~w(exact charm_99 charm_90 integer)
 
   @doc """
   Creates a changeset for currency creation and updates.
@@ -61,13 +70,16 @@ defmodule PhoenixKitBilling.Currency do
       :is_default,
       :enabled,
       :exchange_rate,
-      :sort_order
+      :sort_order,
+      :rounding_rule,
+      :rate_updated_at
     ])
     |> validate_required([:code, :name, :symbol])
     |> validate_length(:code, is: 3)
     |> validate_length(:symbol, min: 1, max: 5)
     |> validate_number(:decimal_places, greater_than_or_equal_to: 0, less_than_or_equal_to: 4)
     |> validate_number(:exchange_rate, greater_than: 0)
+    |> validate_inclusion(:rounding_rule, @rounding_rules)
     |> unique_constraint(:code, name: :phoenix_kit_currencies_code_uidx)
     |> upcase_code()
   end

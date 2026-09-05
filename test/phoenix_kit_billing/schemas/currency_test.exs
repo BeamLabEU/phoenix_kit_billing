@@ -46,6 +46,17 @@ defmodule PhoenixKitBilling.Schemas.CurrencyTest do
       assert %{exchange_rate: [_ | _]} = errors_on(cs)
     end
 
+    test "rounding_rule defaults to exact and rejects unknown values" do
+      cs = Currency.changeset(%Currency{}, @valid)
+      assert get_field(cs, :rounding_rule) == "exact"
+
+      cs = Currency.changeset(%Currency{}, Map.put(@valid, :rounding_rule, "made_up"))
+      assert %{rounding_rule: [_ | _]} = errors_on(cs)
+
+      cs = Currency.changeset(%Currency{}, Map.put(@valid, :rounding_rule, "charm_99"))
+      assert cs.valid?
+    end
+
     test "duplicate code returns a changeset error (constraint name matches DB index)" do
       # Regression: unique_constraint(:code) now pins the real DB index name
       # `phoenix_kit_currencies_code_uidx`, so a duplicate is translated into a
