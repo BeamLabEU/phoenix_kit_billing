@@ -11,12 +11,13 @@ defmodule PhoenixKitBilling.Schemas.InvoiceTest do
       assert Invoice.changeset(%Invoice{}, @valid).valid?
     end
 
-    test "requires user_uuid and total (currency has a default)" do
+    test "requires user_uuid, total AND currency (no schema default)" do
       errors = errors_on(Invoice.changeset(%Invoice{}, %{}))
       assert "can't be blank" in errors.user_uuid
       assert "can't be blank" in errors.total
-      # currency defaults to "EUR" on the schema, so it's never blank.
-      refute Map.has_key?(errors, :currency)
+      # The schema default was removed (§7.3): a missing currency is a loud
+      # changeset error, not a silent "EUR".
+      assert "can't be blank" in errors.currency
     end
 
     test "rejects invalid status" do

@@ -62,6 +62,13 @@ defmodule PhoenixKitBilling.Migrations do
       prerequisite for a `LIMIT`-less `WHERE is_default` backfill a future
       chain runs against this table, so it must exist before that
       backfill runs, not merely by the time it finishes.
+      A host can already BE in the two-default state the index forbids, so
+      V2 demotes every default but one (lowest `sort_order`, then oldest)
+      immediately before creating the index — otherwise `CREATE UNIQUE
+      INDEX` aborts the whole chain on exactly those databases. That
+      `UPDATE` is the one row-level write this chain makes to a
+      core-created table, and it only repairs a state no reader can
+      handle: `get_default_currency/0` raises on it today.
     * `rounding_rule character varying(16) NOT NULL DEFAULT 'exact'` and
       `rate_updated_at timestamp with time zone` — both additions with no
       reader anywhere in this version; the default reproduces today's
@@ -213,6 +220,25 @@ defmodule PhoenixKitBilling.Migrations do
     v2 =
       if target >= 2 do
         [
+          # The index below is created on a table that is ALREADY allowed
+          # to hold two `is_default` rows — that is the very defect V2
+          # exists to close, and `create_currency/1` / `update_currency/2`
+          # can still produce it today. `CREATE UNIQUE INDEX` on such a
+          # table aborts with a unique violation, so the migration would
+          # fail on precisely the databases that need it. Demote every
+          # default but one (lowest `sort_order`, then oldest) first. A
+          # table with zero or one default row is untouched: the subselect
+          # is NULL and `uuid <> NULL` matches nothing.
+          """
+          UPDATE #{p}phoenix_kit_currencies SET is_default = false
+          WHERE is_default
+            AND uuid <> (
+              SELECT uuid FROM #{p}phoenix_kit_currencies
+              WHERE is_default
+              ORDER BY sort_order, inserted_at, uuid
+              LIMIT 1
+            )
+          """,
           # §9.1/§3.2 of the currency design spec: the index must exist
           # before the core backfill that assumes a single `is_default`
           # row runs — billing (this chain) migrates before core in the

@@ -103,10 +103,20 @@ PhoenixKit uses **Internal Subscription Control** — subscriptions are managed 
 - Charging saved payment methods
 - Processing refunds
 
-The `Provider` behaviour defines 9 callbacks. Three implementations exist:
+The `Provider` behaviour defines 9 callbacks. Four implementations exist —
+`PhoenixKitBilling.Providers.@providers` is the registry, and it is the list to
+sweep when a rule applies to "every provider":
 - **Stripe** — primary provider via `stripity_stripe`
 - **PayPal** — via REST API
 - **Razorpay** — via REST API
+- **EveryPay** — via REST API; charges in the currency fixed by the processing
+  account, so it sends no currency field and is exempt from the
+  explicit-`:currency` rule below
+
+**Providers must never default a currency.** A caller that omits `:currency`
+gets a raise, not a fallback — `test/phoenix_kit_billing/providers/currency_required_test.exs`
+enumerates the registry and fails until a newly added provider is classified
+either `:requires_currency` or `{:exempt, reason}`.
 
 ### Contexts
 
@@ -345,8 +355,12 @@ The module ships a full test harness (added 2026-06-04):
 - **Test `Endpoint` + `Router`** under `test/support/` host the module's
   LiveViews in isolation (no parent app required).
 - Schema setup runs core's versioned migrations via
-  `PhoenixKit.Migration.ensure_current/2` in `test_helper.exs` — no
-  module-owned DDL.
+  `PhoenixKit.Migration.ensure_current/2` in `test_helper.exs`, then applies
+  this module's own chain on top by executing
+  `PhoenixKitBilling.Migrations.up_statements/2` as data. Both halves are
+  needed: from chain V2 on, the `Currency` schema declares columns only this
+  chain creates, so core's baseline alone makes every currency insert raise
+  `undefined_column`.
 - Test-only deps: `lazy_html` (HTML assertions). A `.dialyzer_ignore.exs`
   filters known third-party warnings.
 
@@ -354,12 +368,12 @@ The module ships a full test harness (added 2026-06-04):
 
 ```bash
 createdb phoenix_kit_billing_test   # one-time: create the test database
-mix test                            # all tests (177 tests; 3 skipped — see below)
+mix test                            # all tests (369 tests; 4 skipped — see below)
 mix test test/phoenix_kit_billing/schemas        # a directory
 mix test test/phoenix_kit_billing_test.exs:42    # a single test
 ```
 
-The 3 skipped tests are `@tag :skip` pending a **core** fix: on a fresh
+The skipped tests are `@tag :skip` pending a **core** fix: on a fresh
 `PhoenixKit.Migration.ensure_current/2` build, `phoenix_kit_subscriptions`
 lacks the `subscription_type_uuid` column (core V65 renames a column that
 V33 never created), so `Subscription` inserts and the Subscriptions LV

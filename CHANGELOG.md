@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.10.0 - 2026-09-05
+
+PR #30, plus the post-merge review. Full findings in
+`dev_docs/pull_requests/2026/30-currency-hygiene-e0/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **Migration chain V2** — a partial unique index
+  `phoenix_kit_currencies_default_uidx ON (is_default) WHERE is_default`, so
+  two default currencies can no longer coexist and crash
+  `get_default_currency/0`; plus `rounding_rule` and `rate_updated_at`
+  columns on `phoenix_kit_currencies` (no readers yet — `"exact"` reproduces
+  today's rounding). `up/1` now honours a `:version` target, and `down/1`
+  below V2 drops the index and both columns — never the core-created table.
+  V2 demotes surplus default rows immediately before creating the index, so
+  the migration also repairs a database that is already in the state the
+  index forbids.
+
+### Changed
+
+- **The base currency's rate is now an enforced invariant.**
+  `set_default_currency/1` renormalizes every `exchange_rate` against the
+  incoming base before promoting it at exactly `1.0`. Ratios are preserved,
+  so no converted amount moves — only the displayed numbers become honest.
+  A nil or non-positive base rate is refused with `{:error, :invalid_base_rate}`.
+  The admin currency list always shows the numeric rate and warns when the
+  base row's rate is not 1.0.
+- **Payment providers require an explicit `:currency`.** The hardcoded
+  fallbacks are gone from Stripe, PayPal and Razorpay: a caller that omits
+  the currency raises instead of silently charging in euros (or, on
+  Razorpay, rupees). EveryPay is exempt — it charges in the currency fixed
+  by the processing account. A full refund still needs no currency. The
+  `Provider` behaviour documents which calls raise.
+- **`Order.currency` and `Invoice.currency` lost their `"EUR"` schema
+  default**, so a missing currency is a loud changeset error rather than a
+  silent euro. `Transaction.currency` keeps its default until it gets the
+  same validation.
+
+### Fixed
+
+- **`Currency.changeset/2` declares the new default-currency constraint**, so
+  a second `is_default` row returns `{:error, changeset}` instead of raising
+  `Ecto.ConstraintError` out of `create_currency/1` / `update_currency/2`.
+- **The test harness applies this module's migration chain.** From V2 on the
+  `Currency` schema declares columns only the chain creates; without it every
+  DB-backed currency test raised `undefined_column`.
+
 ## 0.9.0 - 2026-08-26
 
 PR #29, plus the post-merge review. Full findings in

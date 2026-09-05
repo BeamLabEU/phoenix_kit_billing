@@ -81,6 +81,12 @@ defmodule PhoenixKitBilling.Currency do
     |> validate_number(:exchange_rate, greater_than: 0)
     |> validate_inclusion(:rounding_rule, @rounding_rules)
     |> unique_constraint(:code, name: :phoenix_kit_currencies_code_uidx)
+    # Chain V2 added the partial unique index on `(is_default) WHERE
+    # is_default`. Without this declaration a second `is_default: true`
+    # row raises `Ecto.ConstraintError` out of `create_currency/1` /
+    # `update_currency/2` instead of returning `{:error, changeset}` —
+    # `set_default_currency/1` is the only path that demotes the incumbent.
+    |> unique_constraint(:is_default, name: :phoenix_kit_currencies_default_uidx)
     |> upcase_code()
   end
 

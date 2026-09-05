@@ -15,12 +15,13 @@ defmodule PhoenixKitBilling.Schemas.OrderTest do
       assert Order.changeset(%Order{}, @valid).valid?
     end
 
-    test "requires total (currency has a default)" do
+    test "requires total AND currency (no schema default answers for the caller)" do
       cs = Order.changeset(%Order{}, %{billing_snapshot: %{"email" => "g@e.com"}})
       errors = errors_on(cs)
       assert "can't be blank" in errors.total
-      # currency defaults to "EUR" on the schema, so it's never blank.
-      refute Map.has_key?(errors, :currency)
+      # The schema default was removed (§7.3): a missing currency is a loud
+      # changeset error, not a silent "EUR".
+      assert "can't be blank" in errors.currency
     end
 
     test "guest order without billing profile or snapshot email is invalid" do

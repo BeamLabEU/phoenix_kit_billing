@@ -88,7 +88,25 @@ defmodule PhoenixKitBilling.MigrationsTest do
       # so a disappearing statement fails there instead.
       ddl = Enum.reject(Migrations.up_statements(), &String.starts_with?(&1, "COMMENT"))
 
-      for stmt <- ddl do
+      # V2's pre-index repair is the one statement that creates nothing, so
+      # `IF NOT EXISTS` does not apply to it. It is idempotent by
+      # construction instead: it demotes every default row but one, so a
+      # second run finds nothing left to demote. Matched narrowly — any
+      # OTHER unguarded statement still fails below.
+      {repairs, creates} =
+        Enum.split_with(ddl, &String.starts_with?(String.trim(&1), "UPDATE "))
+
+      for stmt <- repairs do
+        assert stmt =~ ~r/SET is_default = false/,
+               "the only unguarded statement V2 may emit is the default-currency " <>
+                 "repair; this one writes something else:\n#{stmt}"
+
+        assert stmt =~ "LIMIT 1",
+               "the repair must leave exactly one default row, or re-running it " <>
+                 "is not a no-op:\n#{stmt}"
+      end
+
+      for stmt <- creates do
         assert stmt =~ "IF NOT EXISTS",
                "statement is not idempotent against a core-created table:\n#{stmt}"
       end
@@ -386,6 +404,55 @@ defmodule PhoenixKitBilling.MigrationsTest do
       stmts = Migrations.up_statements("public", 1)
       refute Enum.any?(stmts, &(&1 =~ "phoenix_kit_currencies"))
       assert List.last(stmts) =~ "pkb_schema:1"
+    end
+
+    test "V2 demotes surplus default rows BEFORE creating the unique index" do
+      stmts = Migrations.up_statements("public", 2)
+
+      demote =
+        Enum.find_index(
+          stmts,
+          &(&1 =~ ~r/UPDATE public\.phoenix_kit_currencies SET is_default = false/)
+        )
+
+      index =
+        Enum.find_index(
+          stmts,
+          &(&1 =~ "CREATE UNIQUE INDEX IF NOT EXISTS phoenix_kit_currencies_default_uidx")
+        )
+
+      assert demote,
+             "V2 must repair a table that already holds two default rows — " <>
+               "CREATE UNIQUE INDEX aborts on exactly the databases this index " <>
+               "exists to protect"
+
+      assert demote < index, "the demotion must run before the index is created"
+
+      # It keeps one default rather than clearing them all: a table with no
+      # default row makes `get_default_currency/0` return nil everywhere.
+      demote_stmt = Enum.at(stmts, demote)
+      assert demote_stmt =~ "LIMIT 1"
+      assert demote_stmt =~ "uuid <> ("
+      refute demote_stmt =~ ~r/\bDELETE\b/i
+    end
+
+    test "the changeset declares the constraint under the exact name V2 creates" do
+      # Two lists that must stay in sync: the DDL index name and the
+      # `unique_constraint/3` name in `Currency.changeset/2`. If they drift,
+      # a second default row raises Ecto.ConstraintError instead of
+      # returning {:error, changeset}.
+      declared =
+        %PhoenixKitBilling.Currency{}
+        |> PhoenixKitBilling.Currency.changeset(%{})
+        |> Map.fetch!(:constraints)
+        |> Enum.map(& &1.constraint)
+
+      assert "phoenix_kit_currencies_default_uidx" in declared
+
+      assert Enum.any?(
+               Migrations.up_statements("public", 2),
+               &(&1 =~ "phoenix_kit_currencies_default_uidx")
+             )
     end
 
     test "down_statements/2 to 1 drops the index and both columns, never the table" do
