@@ -324,11 +324,17 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   end
 
   defp do_create_refund(token, capture_id, amount, opts) do
-    currency = Keyword.fetch!(opts, :currency)
     note = Keyword.get(opts, :note, "Refund")
 
     body =
       if amount do
+        # :currency is only required here, in the partial-refund branch —
+        # a full refund (amount: nil) sends no currency_code at all, so
+        # requiring it unconditionally would raise for nothing (§7.1: the
+        # invariant is "never silently default where it's used", not
+        # "require everywhere").
+        currency = Keyword.fetch!(opts, :currency)
+
         amount_str =
           if is_integer(amount) do
             :erlang.float_to_binary(amount / 100, decimals: 2)

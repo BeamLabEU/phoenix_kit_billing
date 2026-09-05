@@ -104,7 +104,7 @@ defmodule PhoenixKitBilling.Order do
     field(:discount_amount, :decimal, default: Decimal.new("0"))
     field(:discount_code, :string)
     field(:total, :decimal)
-    field(:currency, :string, default: "EUR")
+    field(:currency, :string)
 
     # Snapshots
     field(:billing_snapshot, :map, default: %{})
