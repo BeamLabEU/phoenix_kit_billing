@@ -109,6 +109,12 @@ defmodule PhoenixKitBilling.Providers.PayPal do
 
   @impl true
   def charge_payment_method(payment_method, amount, opts) do
+    # Read BEFORE get_access_token/0 so a missing :currency fails even
+    # without configured PayPal credentials — otherwise the with-chain
+    # below short-circuits on {:error, :not_configured} and the caller
+    # never learns :currency was missing at all (§7.1).
+    _currency = Keyword.fetch!(opts, :currency)
+
     with {:ok, token} <- get_access_token(),
          {:ok, order} <- create_order_with_vault(token, payment_method, amount, opts),
          {:ok, capture} <- capture_order(token, order["id"]) do
@@ -205,7 +211,11 @@ defmodule PhoenixKitBilling.Providers.PayPal do
 
   defp create_order(token, opts) do
     amount = opts[:amount] || opts["amount"]
-    currency = opts[:currency] || opts["currency"] || "EUR"
+
+    currency =
+      opts[:currency] || opts["currency"] ||
+        raise(ArgumentError, "PayPal create_order: :currency is required")
+
     description = opts[:description] || opts["description"] || "Payment"
     success_url = opts[:success_url] || opts["success_url"]
     cancel_url = opts[:cancel_url] || opts["cancel_url"]
@@ -245,7 +255,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   end
 
   defp create_order_with_vault(token, payment_method, amount, opts) do
-    currency = Keyword.get(opts, :currency, "EUR")
+    currency = Keyword.fetch!(opts, :currency)
     description = Keyword.get(opts, :description, "Payment")
     metadata = Keyword.get(opts, :metadata, %{})
 
@@ -314,7 +324,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   end
 
   defp do_create_refund(token, capture_id, amount, opts) do
-    currency = Keyword.get(opts, :currency, "EUR")
+    currency = Keyword.fetch!(opts, :currency)
     note = Keyword.get(opts, :note, "Refund")
 
     body =
@@ -594,11 +604,15 @@ defmodule PhoenixKitBilling.Providers.PayPal do
 
   defp invoice_to_opts(invoice) when is_map(invoice) do
     amount = invoice[:total] || invoice["total"] || Decimal.new(0)
+    # Known debt: assumes 2 minor units (zero-decimal currencies
+    # unsupported) — spec §2.6
     amount_cents = Decimal.to_integer(Decimal.mult(amount, 100))
 
     [
       amount: amount_cents,
-      currency: invoice[:currency] || invoice["currency"] || "EUR",
+      currency:
+        invoice[:currency] || invoice["currency"] ||
+          raise(ArgumentError, "invoice has no currency"),
       description: "Invoice #{invoice[:invoice_number] || invoice["invoice_number"]}",
       metadata: %{
         invoice_uuid: invoice[:uuid] || invoice["uuid"] || invoice[:id] || invoice["id"],

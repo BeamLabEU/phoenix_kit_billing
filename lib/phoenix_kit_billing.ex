@@ -731,12 +731,15 @@ defmodule PhoenixKitBilling do
   Sets a currency as default.
 
   Promoting a currency renormalizes every currency's `exchange_rate`
-  against it as the new base FIRST (past the changeset, via `update_all`),
-  so the promoted row's own rate can then be pinned to exactly `1.0` —
-  the invariant the currency design spec fixes in §3.2 ("the base
-  currency's rate must be 1.0"). Renormalizing is a division by every
-  rate's ratio to the new base, so no conversion result changes: only the
-  displayed numbers become honest about which currency is the base.
+  against it as the new base FIRST, via a raw `update_all` that bypasses
+  `Currency.changeset/2` entirely (no changeset touches this step at
+  all) — only THEN is the promoted row itself updated through the
+  changeset, in step 3 below, pinning its own rate to exactly `1.0`. That
+  order is the invariant the currency design spec fixes in §3.2 ("the
+  base currency's rate must be 1.0"). Renormalizing is a division by
+  every rate's ratio to the new base, so no conversion result changes:
+  only the displayed numbers become honest about which currency is the
+  base.
 
   Refuses a `nil` or non-positive `exchange_rate` on `currency` with
   `{:error, :invalid_base_rate}` instead of dividing every other rate by
