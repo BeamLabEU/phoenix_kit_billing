@@ -729,19 +729,58 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Sets a currency as default.
-  """
-  def set_default_currency(%Currency{} = currency) do
-    repo().transaction(fn ->
-      # Clear existing default
-      Currency
-      |> where([c], c.is_default == true)
-      |> repo().update_all(set: [is_default: false])
 
-      # Set new default (also enable if disabled)
-      currency
-      |> Currency.changeset(%{is_default: true, enabled: true})
-      |> repo().update!()
-    end)
+  Promoting a currency renormalizes every currency's `exchange_rate`
+  against it as the new base FIRST (past the changeset, via `update_all`),
+  so the promoted row's own rate can then be pinned to exactly `1.0` —
+  the invariant the currency design spec fixes in §3.2 ("the base
+  currency's rate must be 1.0"). Renormalizing is a division by every
+  rate's ratio to the new base, so no conversion result changes: only the
+  displayed numbers become honest about which currency is the base.
+
+  Refuses a `nil` or non-positive `exchange_rate` on `currency` with
+  `{:error, :invalid_base_rate}` instead of dividing every other rate by
+  zero.
+
+  NOTE: `Currency.changeset/2` deliberately does NOT validate "the
+  default currency's rate is 1.0". `set_default_currency/1` promotes
+  through that same changeset (`update!/1` inside the transaction below),
+  so a changeset-level check would also block promoting a currency whose
+  own stored rate happens to be wrong — exactly the operation a host
+  needs to fix that. The invariant is enforced here, procedurally,
+  instead: renormalize, then promote at `1.0`.
+  """
+  def set_default_currency(%Currency{exchange_rate: rate} = currency) do
+    if is_nil(rate) or Decimal.compare(rate, 0) != :gt do
+      {:error, :invalid_base_rate}
+    else
+      repo().transaction(fn ->
+        # 1. Renormalize every rate against the new base, past the
+        #    changeset — ratios are preserved, so no converted price moves.
+        from(c in Currency,
+          update: [
+            set: [
+              exchange_rate: fragment("round(? / ?, 6)", c.exchange_rate, type(^rate, :decimal))
+            ]
+          ]
+        )
+        |> repo().update_all([])
+
+        # 2. Clear the previous default.
+        Currency
+        |> where([c], c.is_default == true)
+        |> repo().update_all(set: [is_default: false])
+
+        # 3. Promote, pinning the base rate to exactly 1.0 (also enables it).
+        currency
+        |> Currency.changeset(%{
+          is_default: true,
+          enabled: true,
+          exchange_rate: Decimal.new("1.0")
+        })
+        |> repo().update!()
+      end)
+    end
   end
 
   @doc """

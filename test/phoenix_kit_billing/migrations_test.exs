@@ -102,6 +102,14 @@ defmodule PhoenixKitBilling.MigrationsTest do
     # `execute("DROP TABLE ...")` in `up/1`) would be invisible to it. That
     # path is closed by the source-text test below, which checks what is
     # executed rather than what is built.
+    #
+    # This test and "no statement anywhere in the data-level chain can drop
+    # the table, truncate, or delete rows" below are the two halves of one
+    # guarantee, post-V2: this test pins the EXACT drop statements V2's
+    # `down/1` is allowed to emit (index + two columns on
+    # phoenix_kit_currencies, never the table), and the other test proves
+    # nothing MORE destructive slips in anywhere — including up_statements/2
+    # and every prefix/target this test does not enumerate.
     test "down/1 emits exactly the marker bookkeeping, in every target and prefix" do
       # Below V2 (target 0 or 1), down/1 also drops the V2 additions on
       # phoenix_kit_currencies — never the phoenix_kit_payment_provider_configs
