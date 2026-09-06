@@ -173,6 +173,71 @@ defmodule PhoenixKitBilling.Currency do
     |> Decimal.round(2)
   end
 
+  @doc """
+  The ONE place a base-currency amount becomes a display-currency amount
+  (§4.3, §12 of the per-domain-currency spec). `Currency.convert/3` above
+  is NOT that place — it is never called from anywhere but its own
+  moduledoc example (§12.1); every other caller in this codebase must
+  come through here.
+
+  Takes a display-currency CODE, not a `%Currency{}`, and resolves both
+  the base and the target through `PhoenixKitBilling.get_base_currency/0`
+  and `PhoenixKitBilling.resolve_display_currency/1` on EVERY call — so
+  nothing upstream can cache a `%Currency{}` (and, inside it, a rate) in
+  a struct or an assign and have that rate go stale the moment an admin
+  edits it (§4.2.1). A `nil` code (no display override in play) and the
+  base currency's own code both return `amount` unrounded: an author's
+  stored price is not "converted to itself" and then rounded away from
+  what they typed (§5, exact rounding only in Э1 — no psychological
+  rounding yet). The same passthrough covers a `target` this call cannot
+  resolve to anything but the base (`resolve_display_currency/1`'s
+  fail-safe, §6.3) — the fallback has already logged its own warning by
+  the time `present/3` sees it, so this function does not warn again.
+
+  `opts[:rate]` is the ONE way this function does not read
+  `phoenix_kit_currencies` for the target's rate: the cart's frozen
+  `exchange_rate`, taken as-is regardless of what the currency table
+  says right now (§12.2 — a snapshot rate is never mixed with a live
+  one). Rounding still happens once, by the target's `decimal_places`,
+  same as the live-rate path.
+  """
+  @spec present(Decimal.t() | number | String.t(), String.t() | nil, keyword) :: Decimal.t()
+  def present(amount, display_code, opts \\ [])
+
+  def present(amount, nil, _opts), do: to_decimal(amount)
+
+  def present(amount, display_code, opts) when is_binary(display_code) do
+    amount = to_decimal(amount)
+    base = PhoenixKitBilling.get_base_currency()
+    target = PhoenixKitBilling.resolve_display_currency(display_code)
+
+    if is_nil(base) or is_nil(target) or target.code == base.code do
+      amount
+    else
+      rate = Keyword.get(opts, :rate) || Decimal.div(target.exchange_rate, base.exchange_rate)
+
+      amount
+      |> Decimal.mult(rate)
+      |> Decimal.round(target.decimal_places)
+    end
+  end
+
+  @doc """
+  The multiplier `base -> target` a cart freezes at creation (§4.4): the
+  target's rate over the base's rate, rounded to six decimal places —
+  enough headroom that repeated freeze/thaw does not accumulate visible
+  drift, matching `phoenix_kit_shop_carts.exchange_rate`'s
+  `numeric(15,6)` column.
+  """
+  @spec effective_rate(t(), t()) :: Decimal.t()
+  def effective_rate(%__MODULE__{exchange_rate: target_rate}, %__MODULE__{
+        exchange_rate: base_rate
+      }) do
+    target_rate
+    |> Decimal.div(base_rate)
+    |> Decimal.round(6)
+  end
+
   @request_currency_key :phoenix_kit_billing_request_currency
 
   @doc """
