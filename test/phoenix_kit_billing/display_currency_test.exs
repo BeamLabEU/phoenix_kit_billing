@@ -5,14 +5,12 @@ defmodule PhoenixKitBilling.DisplayCurrencyTest do
   shop's base currency and the request-scoped display code (§4.2).
 
   Integration-tagged via `PhoenixKitBilling.DataCase`; excluded when the
-  DataCase database is unavailable (see `test/test_helper.exs`). In this
-  container the Sandbox pool currently cannot be enabled after
-  `PhoenixKit.Migration.ensure_current/2` runs (pre-existing, unrelated to
-  this task, same limitation Э0-B2's `e0b2_verify.exs` worked around), so
-  these scenarios are ALSO verified against a real connection outside
-  ExUnit via a scratch `mix run` script (`e1b2_verify.exs`, same pattern
-  as Э0-B2's) — all five scenarios passed against `decor3dprint_test` on
-  2026-09-06.
+  DataCase database is unavailable (see `test/test_helper.exs`). An
+  earlier revision of this suite could not get the Sandbox pool enabled
+  in this container and worked around it with a scratch `mix run` script
+  (`e1b2_verify.exs`) run outside ExUnit; the maintainer's `cc3a6b0`
+  (applying billing's own migration chain before `Sandbox.mode/2` in
+  `test_helper.exs`) superseded that — this DataCase suite runs directly.
   """
 
   use PhoenixKitBilling.DataCase, async: false

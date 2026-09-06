@@ -892,11 +892,16 @@ defmodule PhoenixKitBilling do
   # `exchange_rate` in one call (renormalization) — invalidating only the
   # promoted code would leave every OTHER currency's cached rate stale.
   # In-process only: this clears the cache on the node that made the
-  # write. A second web node, or a write from outside this application
-  # entirely (a `mix run` script, a direct SQL `UPDATE`), is invisible
-  # here until the cache's `ttl` (5 minutes) expires on its own — the
-  # same bound `Settings.get_setting_cached/2`'s cache accepts, and the
-  # right tradeoff for a single-node stand. A currency write followed
+  # write. That is not as narrow as it sounds — the cache is one named
+  # `PhoenixKit.Cache` GenServer (and one ETS table) per BEAM node, not
+  # per process, so every process on that node (every request, every
+  # LiveView, every `Task`) shares it and sees the clear immediately, no
+  # TTL wait involved. What stays invisible until the `ttl` (5 minutes)
+  # expires is a write this cache never gets told about at all: a SECOND
+  # web node, or anything outside this application entirely (a `mix run`
+  # script, a direct SQL `UPDATE`) — the same bound
+  # `Settings.get_setting_cached/2`'s cache accepts, and the right
+  # tradeoff for a single-node stand. A currency write followed
   # immediately by a read that must see it (this package's own test for
   # exactly that, "resolves on every call") has to go through
   # `update_currency/2` or one of the other three writers below, not a
