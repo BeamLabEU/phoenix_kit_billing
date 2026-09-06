@@ -460,7 +460,8 @@ defmodule PhoenixKitBilling do
   def get_config do
     %{
       enabled: enabled?(),
-      default_currency: Settings.get_setting_cached("billing_default_currency", "EUR"),
+      # §3.3: base = is_default row (billing_default_currency is no longer read)
+      default_currency: base_currency_code(),
       tax_enabled: tax_enabled?(),
       default_tax_rate: Settings.get_setting_cached("billing_default_tax_rate", "0"),
       invoice_prefix: Settings.get_setting_cached("billing_invoice_prefix", "INV"),
@@ -536,7 +537,8 @@ defmodule PhoenixKitBilling do
   def get_dashboard_stats do
     today = Date.utc_today()
     start_of_month = Date.beginning_of_month(today)
-    default_currency = Settings.get_setting("billing_default_currency", "EUR")
+    # §3.3: base = is_default row (billing_default_currency is no longer read)
+    default_currency = dashboard_default_currency_code()
 
     %{
       total_orders: count_orders(),
@@ -563,6 +565,30 @@ defmodule PhoenixKitBilling do
   defp dashboard_stat_fallback(label, fallback, error) do
     Logger.warning("[Billing] dashboard stat #{label} failed: #{Exception.message(error)}")
     fallback
+  end
+
+  # Same rescue-and-log treatment as the eight count/aggregate helpers
+  # below: `get_base_currency/0` is a real query same as the rest, so a
+  # transient failure here must not crash the whole dashboard render —
+  # but it must not go silent either.
+  defp dashboard_default_currency_code do
+    base_currency_code()
+  rescue
+    e -> dashboard_stat_fallback("default_currency", nil, e)
+  end
+
+  # §3.3: base = is_default row. Shared by every non-stat reader that
+  # used to fall back to the `billing_default_currency` setting (now
+  # retired from code, though the setting row itself is not deleted —
+  # that is a separate core-chain change). No literal fallback: `nil`
+  # here means "no default currency configured at all", which a
+  # changeset should reject loudly rather than paper over with a
+  # made-up code.
+  defp base_currency_code do
+    case get_base_currency() do
+      %{code: code} -> code
+      nil -> nil
+    end
   end
 
   defp count_orders do
@@ -1546,8 +1572,11 @@ defmodule PhoenixKitBilling do
     if Map.has_key?(attrs, :currency) || Map.has_key?(attrs, "currency") do
       attrs
     else
-      default = Settings.get_setting("billing_default_currency", "EUR")
-      Map.put(attrs, "currency", default)
+      # §3.3: base = is_default row. No literal fallback: an order created
+      # with no default currency configured at all should fail its
+      # changeset loudly (currency is required, §7.3), not silently land
+      # on a made-up code.
+      Map.put(attrs, "currency", base_currency_code())
     end
   end
 
@@ -3546,7 +3575,8 @@ defmodule PhoenixKitBilling do
         payment_method_uuid: payment_method_uuid,
         plan_name: type.name,
         price: type.price,
-        currency: type.currency || Settings.get_setting("billing_default_currency", "EUR"),
+        # §3.3: base = is_default row (billing_default_currency is no longer read)
+        currency: type.currency || base_currency_code(),
         status: status,
         current_period_start: period_start,
         current_period_end: period_end,

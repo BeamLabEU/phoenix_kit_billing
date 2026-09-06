@@ -54,7 +54,8 @@ defmodule PhoenixKitBilling.Web.OrderForm do
     project_title = Settings.get_project_title()
     %{users: users} = Auth.list_users_paginated(limit: 100)
     currencies = Billing.list_currencies(enabled: true)
-    default_currency = Settings.get_setting("billing_default_currency", "EUR")
+    # §3.3: base = is_default row (billing_default_currency is no longer read)
+    default_currency = (Billing.get_base_currency() || %{code: nil}).code
 
     socket =
       socket

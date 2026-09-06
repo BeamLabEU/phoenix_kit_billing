@@ -16,6 +16,11 @@ defmodule PhoenixKitBilling.Order do
   ### Payment
   - `payment_method`: Payment method (Phase 1: "bank" only)
   - `currency`: ISO 4217 currency code
+  - `base_currency`: The shop's base currency, frozen at order creation
+  - `exchange_rate`: The rate `base_currency -> currency` the order was
+    priced at, frozen at order creation
+  - `base_total`: `total` expressed in `base_currency`, frozen at order
+    creation
 
   ### Line Items
   - `line_items`: JSONB array of items purchased
@@ -106,6 +111,15 @@ defmodule PhoenixKitBilling.Order do
     field(:total, :decimal)
     field(:currency, :string)
 
+    # Frozen at order creation (§4.5, §9.1): the shop's base currency and
+    # the rate the order was actually priced at, plus the total expressed
+    # in that base currency. Nullable — core V185 backfills these from
+    # data, never a literal, and a host running an older core simply has
+    # them come back nil; nothing downstream requires them.
+    field(:base_currency, :string)
+    field(:exchange_rate, :decimal)
+    field(:base_total, :decimal)
+
     # Snapshots
     field(:billing_snapshot, :map, default: %{})
 
@@ -176,6 +190,9 @@ defmodule PhoenixKitBilling.Order do
       :discount_code,
       :total,
       :currency,
+      :base_currency,
+      :exchange_rate,
+      :base_total,
       :billing_snapshot,
       :notes,
       :internal_notes,
@@ -189,6 +206,7 @@ defmodule PhoenixKitBilling.Order do
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_payment_method()
     |> validate_length(:currency, is: 3)
+    |> validate_length(:base_currency, is: 3)
     |> validate_number(:total, greater_than_or_equal_to: 0)
     |> validate_number(:subtotal, greater_than_or_equal_to: 0)
     |> validate_number(:tax_amount, greater_than_or_equal_to: 0)

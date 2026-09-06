@@ -26,7 +26,8 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   def mount(params, _session, socket) do
     if Billing.enabled?() do
       project_title = Settings.get_project_title()
-      default_currency = Settings.get_setting("billing_default_currency", "EUR")
+      # §3.3: base = is_default row (billing_default_currency is no longer read)
+      default_currency = (Billing.get_base_currency() || %{code: nil}).code
 
       {type, title, mode} =
         case params do
