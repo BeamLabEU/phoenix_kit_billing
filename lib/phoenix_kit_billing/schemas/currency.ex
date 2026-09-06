@@ -55,6 +55,8 @@ defmodule PhoenixKitBilling.Currency do
     timestamps(type: :utc_datetime)
   end
 
+  @type t :: %__MODULE__{}
+
   @rounding_rules ~w(exact charm_99 charm_90 integer)
 
   @doc """

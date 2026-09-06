@@ -678,6 +678,96 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  The shop's base currency — the `is_default` row.
+
+  Authoring and admin paths (a product's stored price, an order's own
+  `currency` before display, anywhere the number being handled is the
+  base amount rather than something being shown to a shopper) call this
+  directly. Unlike `get_display_currency/0`, it never depends on the
+  request: the base currency is a property of the shop, not of who is
+  looking at it right now (§4.2).
+  """
+  @spec get_base_currency() :: Currency.t() | nil
+  def get_base_currency, do: get_default_currency()
+
+  @doc """
+  The currency to SHOW and CHARGE for the current request.
+
+  Resolves the request-scoped code set by the host app (a Plug/`on_mount`
+  hook calling `PhoenixKitBilling.Currency.put_request_currency/1` — see
+  its docs) through `resolve_display_currency/1`, falling back to the
+  base currency per §6.3. Call this wherever a price is about to be
+  shown to (or charged from) the current shopper; call `get_base_currency/0`
+  instead for anything that reads or writes the stored, base-currency
+  amount.
+  """
+  @spec get_display_currency() :: Currency.t() | nil
+  def get_display_currency, do: resolve_display_currency(Currency.get_request_currency())
+
+  @doc """
+  Resolves a display-currency CODE to a `%Currency{}`, fail-safe per §6.3.
+
+  `nil` (no request override) or the base currency's own code resolve to
+  the base, silently — that is the expected, unremarkable case, not a
+  failure worth a log line. Any other code resolves to itself only if it
+  is a currency this shop actually knows about, has enabled, and carries
+  a usable (positive) exchange rate; anything short of that — unknown
+  code, disabled currency, missing or non-positive rate — falls back to
+  the base currency rather than raising or showing a broken price, and
+  logs exactly ONE warning per process per offending code (tracked via
+  the process dictionary key `{:phoenix_kit_billing_fx_warned, code}`),
+  so a page that calls this many times over one request does not flood
+  the log for the same unresolvable code.
+  """
+  @spec resolve_display_currency(String.t() | nil) :: Currency.t() | nil
+  def resolve_display_currency(nil), do: get_base_currency()
+
+  def resolve_display_currency(code) when is_binary(code) do
+    base = get_base_currency()
+
+    cond do
+      is_nil(base) ->
+        nil
+
+      base.code == code ->
+        base
+
+      true ->
+        case get_currency_by_code(code) do
+          %Currency{enabled: true, exchange_rate: %Decimal{} = rate} = currency ->
+            if Decimal.compare(rate, 0) == :gt do
+              currency
+            else
+              fallback_to_base(base, code, "non-positive exchange rate")
+            end
+
+          %Currency{enabled: false} ->
+            fallback_to_base(base, code, "disabled")
+
+          %Currency{} ->
+            fallback_to_base(base, code, "no exchange rate")
+
+          nil ->
+            fallback_to_base(base, code, "unknown currency")
+        end
+    end
+  end
+
+  defp fallback_to_base(base, code, reason) do
+    warned_key = {:phoenix_kit_billing_fx_warned, code}
+
+    unless Process.get(warned_key) do
+      Process.put(warned_key, true)
+
+      Logger.warning(
+        "[Billing] display currency #{code} unusable (#{reason}); falling back to base #{base.code}"
+      )
+    end
+
+    base
+  end
+
+  @doc """
   Gets a currency by ID or UUID.
   """
   def get_currency(id) when is_binary(id) do
