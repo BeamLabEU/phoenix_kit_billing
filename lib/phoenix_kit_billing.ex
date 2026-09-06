@@ -62,6 +62,11 @@ defmodule PhoenixKitBilling do
 
   require Logger
 
+  # §13: namespace for the currency-table cache — see `children/0`,
+  # `get_base_currency/0`, `get_currency_by_code/1`,
+  # `invalidate_currency_cache/0`.
+  @currency_cache_name :billing_currencies
+
   # ============================================
   # SYSTEM ENABLE/DISABLE
   # ============================================
@@ -156,6 +161,25 @@ defmodule PhoenixKitBilling do
 
   @impl PhoenixKit.Module
   def route_module, do: PhoenixKitBilling.Web.Routes
+
+  # §13: `Currency.present/3` makes up to three currency-table queries per
+  # call, and a catalog page renders dozens of prices — this cache is what
+  # turns that back into O(1) queries after the first miss per key. Picked
+  # up automatically by `PhoenixKit.Supervisor` via
+  # `PhoenixKit.ModuleRegistry.static_children/0` — no host wiring needed,
+  # and it starts after `PhoenixKit.Cache.Registry` (a fixed, earlier
+  # child of that same supervisor). See `get_base_currency/0` and
+  # `get_currency_by_code/1` for what reads it, and `invalidate_currency_cache/0`
+  # for what clears it.
+  @impl PhoenixKit.Module
+  def children do
+    [
+      Supervisor.child_spec(
+        {PhoenixKit.Cache, name: @currency_cache_name, ttl: :timer.minutes(5)},
+        id: :billing_currencies_cache
+      )
+    ]
+  end
 
   # `phoenix_kit_payment_provider_configs` is core-created (V135); this
   # chain's V1 only ADOPTS it (stamps the `pkb_schema:` marker, changes
@@ -460,7 +484,8 @@ defmodule PhoenixKitBilling do
   def get_config do
     %{
       enabled: enabled?(),
-      default_currency: Settings.get_setting_cached("billing_default_currency", "EUR"),
+      # §3.3: base = is_default row (billing_default_currency is no longer read)
+      default_currency: base_currency_code(),
       tax_enabled: tax_enabled?(),
       default_tax_rate: Settings.get_setting_cached("billing_default_tax_rate", "0"),
       invoice_prefix: Settings.get_setting_cached("billing_invoice_prefix", "INV"),
@@ -536,7 +561,8 @@ defmodule PhoenixKitBilling do
   def get_dashboard_stats do
     today = Date.utc_today()
     start_of_month = Date.beginning_of_month(today)
-    default_currency = Settings.get_setting("billing_default_currency", "EUR")
+    # §3.3: base = is_default row (billing_default_currency is no longer read)
+    default_currency = dashboard_default_currency_code()
 
     %{
       total_orders: count_orders(),
@@ -563,6 +589,30 @@ defmodule PhoenixKitBilling do
   defp dashboard_stat_fallback(label, fallback, error) do
     Logger.warning("[Billing] dashboard stat #{label} failed: #{Exception.message(error)}")
     fallback
+  end
+
+  # Same rescue-and-log treatment as the eight count/aggregate helpers
+  # below: `get_base_currency/0` is a real query same as the rest, so a
+  # transient failure here must not crash the whole dashboard render —
+  # but it must not go silent either.
+  defp dashboard_default_currency_code do
+    base_currency_code()
+  rescue
+    e -> dashboard_stat_fallback("default_currency", nil, e)
+  end
+
+  # §3.3: base = is_default row. Shared by every non-stat reader that
+  # used to fall back to the `billing_default_currency` setting (now
+  # retired from code, though the setting row itself is not deleted —
+  # that is a separate core-chain change). No literal fallback: `nil`
+  # here means "no default currency configured at all", which a
+  # changeset should reject loudly rather than paper over with a
+  # made-up code.
+  defp base_currency_code do
+    case get_base_currency() do
+      %{code: code} -> code
+      nil -> nil
+    end
   end
 
   defp count_orders do
@@ -678,6 +728,107 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  The shop's base currency — the `is_default` row.
+
+  Authoring and admin paths (a product's stored price, an order's own
+  `currency` before display, anywhere the number being handled is the
+  base amount rather than something being shown to a shopper) call this
+  directly. Unlike `get_display_currency/0`, it never depends on the
+  request: the base currency is a property of the shop, not of who is
+  looking at it right now (§4.2).
+
+  Cached (§13): `Currency.present/3` calls this — through
+  `resolve_display_currency/1` — on every single price it converts, and
+  a catalog page converts dozens of prices per render. `get_default_currency/0`
+  itself stays a direct, uncached query (unchanged, on purpose — some
+  callers legitimately want the guarantee of a fresh read); this function
+  reuses it as the query underneath its own cache rather than duplicating
+  the `Ecto` query. See `invalidate_currency_cache/0` for what clears the
+  cache and when.
+  """
+  @spec get_base_currency() :: Currency.t() | nil
+  def get_base_currency do
+    with_currency_cache(:base, fn -> get_default_currency() end)
+  end
+
+  @doc """
+  The currency to SHOW and CHARGE for the current request.
+
+  Resolves the request-scoped code set by the host app (a Plug/`on_mount`
+  hook calling `PhoenixKitBilling.Currency.put_request_currency/1` — see
+  its docs) through `resolve_display_currency/1`, falling back to the
+  base currency per §6.3. Call this wherever a price is about to be
+  shown to (or charged from) the current shopper; call `get_base_currency/0`
+  instead for anything that reads or writes the stored, base-currency
+  amount.
+  """
+  @spec get_display_currency() :: Currency.t() | nil
+  def get_display_currency, do: resolve_display_currency(Currency.get_request_currency())
+
+  @doc """
+  Resolves a display-currency CODE to a `%Currency{}`, fail-safe per §6.3.
+
+  `nil` (no request override) or the base currency's own code resolve to
+  the base, silently — that is the expected, unremarkable case, not a
+  failure worth a log line. Any other code resolves to itself only if it
+  is a currency this shop actually knows about, has enabled, and carries
+  a usable (positive) exchange rate; anything short of that — unknown
+  code, disabled currency, missing or non-positive rate — falls back to
+  the base currency rather than raising or showing a broken price, and
+  logs exactly ONE warning per process per offending code (tracked via
+  the process dictionary key `{:phoenix_kit_billing_fx_warned, code}`),
+  so a page that calls this many times over one request does not flood
+  the log for the same unresolvable code.
+  """
+  @spec resolve_display_currency(String.t() | nil) :: Currency.t() | nil
+  def resolve_display_currency(nil), do: get_base_currency()
+
+  def resolve_display_currency(code) when is_binary(code) do
+    base = get_base_currency()
+
+    cond do
+      is_nil(base) ->
+        nil
+
+      base.code == code ->
+        base
+
+      true ->
+        case get_currency_by_code(code) do
+          %Currency{enabled: true, exchange_rate: %Decimal{} = rate} = currency ->
+            if Decimal.compare(rate, 0) == :gt do
+              currency
+            else
+              fallback_to_base(base, code, "non-positive exchange rate")
+            end
+
+          %Currency{enabled: false} ->
+            fallback_to_base(base, code, "disabled")
+
+          %Currency{} ->
+            fallback_to_base(base, code, "no exchange rate")
+
+          nil ->
+            fallback_to_base(base, code, "unknown currency")
+        end
+    end
+  end
+
+  defp fallback_to_base(base, code, reason) do
+    warned_key = {:phoenix_kit_billing_fx_warned, code}
+
+    unless Process.get(warned_key) do
+      Process.put(warned_key, true)
+
+      Logger.warning(
+        "[Billing] display currency #{code} unusable (#{reason}); falling back to base #{base.code}"
+      )
+    end
+
+    base
+  end
+
+  @doc """
   Gets a currency by ID or UUID.
   """
   def get_currency(id) when is_binary(id) do
@@ -702,12 +853,72 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Gets a currency by code.
+
+  Cached (§13) alongside `get_base_currency/0`, under the same
+  `#{inspect(@currency_cache_name)}` namespace — `resolve_display_currency/1`
+  calls this for every non-base code `Currency.present/3` resolves.
   """
   def get_currency_by_code(code) do
-    Currency
-    |> where([c], c.code == ^String.upcase(code))
-    |> repo().one()
+    upcased = String.upcase(code)
+
+    with_currency_cache(upcased, fn ->
+      Currency
+      |> where([c], c.code == ^upcased)
+      |> repo().one()
+    end)
   end
+
+  # §13 cache helper shared by `get_base_currency/0` and
+  # `get_currency_by_code/1`. A dedicated sentinel (rather than `nil`)
+  # distinguishes "not cached yet" from "cached, and the answer is nil" —
+  # a currency table with no default row, or a code nothing matches, is a
+  # real answer worth caching too, not just a cache miss to retry forever.
+  defp with_currency_cache(key, query_fun) do
+    cache_miss = :__cache_not_found__
+
+    case PhoenixKit.Cache.get(@currency_cache_name, key, cache_miss) do
+      ^cache_miss ->
+        value = query_fun.()
+        PhoenixKit.Cache.put(@currency_cache_name, key, value)
+        value
+
+      value ->
+        value
+    end
+  end
+
+  # §4.1, §13: clears the WHOLE currency cache namespace rather than one
+  # key, because `set_default_currency/1` can change every row's
+  # `exchange_rate` in one call (renormalization) — invalidating only the
+  # promoted code would leave every OTHER currency's cached rate stale.
+  # In-process only: this clears the cache on the node that made the
+  # write. That is not as narrow as it sounds — the cache is one named
+  # `PhoenixKit.Cache` GenServer (and one ETS table) per BEAM node, not
+  # per process, so every process on that node (every request, every
+  # LiveView, every `Task`) shares it and sees the clear immediately, no
+  # TTL wait involved. What stays invisible until the `ttl` (5 minutes)
+  # expires is a write this cache never gets told about at all: a SECOND
+  # web node, or anything outside this application entirely (a `mix run`
+  # script, a direct SQL `UPDATE`) — the same bound
+  # `Settings.get_setting_cached/2`'s cache accepts, and the right
+  # tradeoff for a single-node stand. A currency write followed
+  # immediately by a read that must see it (this package's own test for
+  # exactly that, "resolves on every call") has to go through
+  # `update_currency/2` or one of the other three writers below, not a
+  # raw `Repo.update_all`.
+  defp invalidate_currency_cache do
+    PhoenixKit.Cache.clear(@currency_cache_name)
+  end
+
+  # Only clears the cache when the write actually happened — an
+  # `{:error, changeset}` (or any other non-`:ok` shape) changed nothing
+  # in the table, so there is nothing stale to evict.
+  defp maybe_invalidate_currency_cache({:ok, _} = result) do
+    invalidate_currency_cache()
+    result
+  end
+
+  defp maybe_invalidate_currency_cache(result), do: result
 
   @doc """
   Creates a currency.
@@ -716,6 +927,7 @@ defmodule PhoenixKitBilling do
     %Currency{}
     |> Currency.changeset(attrs)
     |> repo().insert()
+    |> maybe_invalidate_currency_cache()
   end
 
   @doc """
@@ -725,6 +937,7 @@ defmodule PhoenixKitBilling do
     currency
     |> Currency.changeset(attrs)
     |> repo().update()
+    |> maybe_invalidate_currency_cache()
   end
 
   @doc """
@@ -826,6 +1039,7 @@ defmodule PhoenixKitBilling do
         |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
         |> repo().update!()
       end)
+      |> maybe_invalidate_currency_cache()
     end
   end
 
@@ -843,7 +1057,7 @@ defmodule PhoenixKitBilling do
         {:error, :currency_in_use}
 
       true ->
-        repo().delete(currency)
+        currency |> repo().delete() |> maybe_invalidate_currency_cache()
     end
   end
 
@@ -1456,8 +1670,11 @@ defmodule PhoenixKitBilling do
     if Map.has_key?(attrs, :currency) || Map.has_key?(attrs, "currency") do
       attrs
     else
-      default = Settings.get_setting("billing_default_currency", "EUR")
-      Map.put(attrs, "currency", default)
+      # §3.3: base = is_default row. No literal fallback: an order created
+      # with no default currency configured at all should fail its
+      # changeset loudly (currency is required, §7.3), not silently land
+      # on a made-up code.
+      Map.put(attrs, "currency", base_currency_code())
     end
   end
 
@@ -3456,7 +3673,8 @@ defmodule PhoenixKitBilling do
         payment_method_uuid: payment_method_uuid,
         plan_name: type.name,
         price: type.price,
-        currency: type.currency || Settings.get_setting("billing_default_currency", "EUR"),
+        # §3.3: base = is_default row (billing_default_currency is no longer read)
+        currency: type.currency || base_currency_code(),
         status: status,
         current_period_start: period_start,
         current_period_end: period_end,

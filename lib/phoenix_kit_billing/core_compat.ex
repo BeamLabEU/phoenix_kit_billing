@@ -62,6 +62,11 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Notifications, :create, 1},
     {PhoenixKit.Notifications, :create_many, 2},
     {PhoenixKit.Dashboard.Tab, :new!, 1},
+    # §13 currency cache — get_base_currency/0, get_currency_by_code/1,
+    # invalidate_currency_cache/0 in phoenix_kit_billing.ex.
+    {PhoenixKit.Cache, :get, 3},
+    {PhoenixKit.Cache, :put, 3},
+    {PhoenixKit.Cache, :clear, 1},
     # Company and bank details for invoices live on a core *LiveView* module.
     # Reaching into a web module from a context is the most fragile line in
     # this list: core owes it no API stability, and a 2.0 that reorganises

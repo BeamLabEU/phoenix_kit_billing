@@ -55,6 +55,8 @@ defmodule PhoenixKitBilling.Currency do
     timestamps(type: :utc_datetime)
   end
 
+  @type t :: %__MODULE__{}
+
   @rounding_rules ~w(exact charm_99 charm_90 integer)
 
   @doc """
@@ -170,4 +172,152 @@ defmodule PhoenixKitBilling.Currency do
     |> Decimal.mult(to_rate)
     |> Decimal.round(2)
   end
+
+  @doc """
+  The ONE place a base-currency amount becomes a display-currency amount
+  (§4.3, §12 of the per-domain-currency spec). `Currency.convert/3` above
+  is NOT that place — it is never called from anywhere but its own
+  moduledoc example (§12.1); every other caller in this codebase must
+  come through here.
+
+  Takes a display-currency CODE, not a `%Currency{}`, and resolves both
+  the base and the target through `PhoenixKitBilling.get_base_currency/0`
+  and `PhoenixKitBilling.resolve_display_currency/1` on EVERY call — so
+  nothing upstream can cache a `%Currency{}` (and, inside it, a rate) in
+  a struct or an assign and have that rate go stale the moment an admin
+  edits it (§4.2.1). A `nil` code (no display override in play) and the
+  base currency's own code both return `amount` unrounded: an author's
+  stored price is not "converted to itself" and then rounded away from
+  what they typed (§5, exact rounding only in Э1 — no psychological
+  rounding yet). The same passthrough covers a `target` this call cannot
+  resolve to anything but the base (`resolve_display_currency/1`'s
+  fail-safe, §6.3) — the fallback has already logged its own warning by
+  the time `present/3` sees it, so this function does not warn again.
+
+  `opts[:rate]` is the ONE way this function does not read
+  `phoenix_kit_currencies` for the target's rate: a caller's frozen
+  `exchange_rate` (a cart's, an order's), taken as-is regardless of what
+  the currency table says right now (§12.2 — a snapshot rate is never
+  mixed with a live one). With `:rate` given, the code is looked up ONLY
+  for its `decimal_places` (rounding, cosmetic) — never through
+  `resolve_display_currency/1`, whose own fail-safe (§6.3) would
+  substitute the base as target the moment the code is disabled or its
+  live rate turns unusable, and this function would then see
+  `target.code == base.code` and return the amount unconverted,
+  silently discarding the very rate the caller froze it at. A frozen
+  rate must survive the target currency being disabled AFTER the
+  freeze — that is the whole reason a caller freezes one in the first
+  place (found in review: an EUR cart disabled mid-checkout used to lose
+  its conversion this way). Rounding still happens once, by the
+  resolved decimal places, same as the live-rate path; a code this
+  shop's table has never heard of at all falls back to the base's own
+  decimal places, then 2.
+  """
+  @spec present(Decimal.t() | number | String.t(), String.t() | nil, keyword) :: Decimal.t()
+  def present(amount, display_code, opts \\ [])
+
+  def present(amount, nil, _opts), do: to_decimal(amount)
+
+  def present(amount, display_code, opts) when is_binary(display_code) do
+    amount = to_decimal(amount)
+    base = PhoenixKitBilling.get_base_currency()
+
+    case Keyword.get(opts, :rate) do
+      nil -> present_live(amount, display_code, base)
+      rate -> present_frozen(amount, display_code, base, rate)
+    end
+  end
+
+  # Live path: unchanged from before this module froze rates — resolves
+  # the target fail-safe (§6.3) on every call, so a rate edit is visible
+  # on the very next present/3 call (§4.2.1).
+  defp present_live(amount, display_code, base) do
+    target = PhoenixKitBilling.resolve_display_currency(display_code)
+
+    if is_nil(base) or is_nil(target) or target.code == base.code do
+      amount
+    else
+      rate = Decimal.div(target.exchange_rate, base.exchange_rate)
+      amount |> Decimal.mult(rate) |> Decimal.round(target.decimal_places)
+    end
+  end
+
+  # Frozen path: the caller already knows the rate — nothing here may
+  # decide WHETHER to convert based on the target's current usability,
+  # only what precision to round to.
+  defp present_frozen(amount, display_code, base, rate) do
+    base_code = base && base.code
+
+    if display_code == base_code do
+      amount
+    else
+      amount |> Decimal.mult(rate) |> Decimal.round(present_decimal_places(display_code, base))
+    end
+  end
+
+  defp present_decimal_places(code, base) do
+    case PhoenixKitBilling.get_currency_by_code(code) do
+      %{decimal_places: places} -> places
+      nil -> (base && base.decimal_places) || 2
+    end
+  end
+
+  @doc """
+  The multiplier `base -> target` a cart freezes at creation (§4.4): the
+  target's rate over the base's rate, rounded to six decimal places —
+  enough headroom that repeated freeze/thaw does not accumulate visible
+  drift, matching `phoenix_kit_shop_carts.exchange_rate`'s
+  `numeric(15,6)` column.
+  """
+  @spec effective_rate(t(), t()) :: Decimal.t()
+  def effective_rate(%__MODULE__{exchange_rate: target_rate}, %__MODULE__{
+        exchange_rate: base_rate
+      }) do
+    target_rate
+    |> Decimal.div(base_rate)
+    |> Decimal.round(6)
+  end
+
+  @request_currency_key :phoenix_kit_billing_request_currency
+
+  @doc """
+  Sets (or, with `nil`/`""`, clears) the request-scoped display-currency
+  CODE — the currency the shopper on THIS request should see and be
+  charged in, as opposed to the shop's base currency (§4.2 of the
+  per-domain-currency spec: authoring/storage always stays in the base;
+  only display and checkout resolve per request).
+
+  Process-scoped, mirroring
+  `PhoenixKit.Languages.put_request_default_language/1`: the host app
+  (a Plug for the dead render, an `on_mount` hook for LiveView) sets it
+  per request, and it does NOT propagate to spawned `Task`s or Oban jobs.
+  Always call it — including with `nil` — on every request, even ones
+  with no override, so a previous request's code can never leak forward
+  on a reused process. `""` is treated the same as `nil` for a host that
+  builds the code from a possibly-blank domain map lookup.
+
+  Stores the CODE, never a `%Currency{}` struct (§4.2.1) — a cached
+  struct across requests could go stale the moment an admin changes a
+  rate, while the code is re-resolved through
+  `PhoenixKitBilling.resolve_display_currency/1` on every read.
+  """
+  @spec put_request_currency(String.t() | nil) :: :ok
+  def put_request_currency(nil) do
+    Process.delete(@request_currency_key)
+    :ok
+  end
+
+  def put_request_currency(""), do: put_request_currency(nil)
+
+  def put_request_currency(code) when is_binary(code) do
+    Process.put(@request_currency_key, String.upcase(code))
+    :ok
+  end
+
+  @doc """
+  Returns the request/process-scoped display-currency code override, if
+  any set by `put_request_currency/1` on this process.
+  """
+  @spec get_request_currency() :: String.t() | nil
+  def get_request_currency, do: Process.get(@request_currency_key)
 end

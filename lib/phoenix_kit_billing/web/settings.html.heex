@@ -14,19 +14,6 @@
         <div class="card-body">
           <h2 class="card-title">{gettext("General Settings")}</h2>
           <form phx-submit="save_general" class="space-y-4 mt-4">
-            <div class="fieldset">
-              <label class="label">
-                <span class="fieldset-legend">{gettext("Default Currency")}</span>
-              </label>
-              <select name="default_currency" class="select">
-                <option value="EUR" selected={@default_currency == "EUR"}>{gettext("EUR - Euro")}</option>
-                <option value="USD" selected={@default_currency == "USD"}>{gettext("USD - US Dollar")}</option>
-                <option value="GBP" selected={@default_currency == "GBP"}>
-                  {gettext("GBP - British Pound")}
-                </option>
-              </select>
-            </div>
-
             <div class="grid grid-cols-3 gap-4">
               <div class="fieldset">
                 <label class="label">

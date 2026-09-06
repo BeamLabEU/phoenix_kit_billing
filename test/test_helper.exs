@@ -122,6 +122,17 @@ Application.put_env(:phoenix_kit_billing, :test_repo_available, repo_available)
 # Minimal PhoenixKit services needed by the context layer.
 {:ok, _pid} = PhoenixKit.PubSub.Manager.start_link([])
 
+# §13 currency cache: production gets this via `PhoenixKitBilling.children/0`,
+# picked up by `PhoenixKit.Supervisor` (core's own tree, not started here).
+# This suite manually wires the same two pieces that supervisor would have
+# started, in the same order (Registry, then the named cache) — without
+# this, `get_base_currency/0`/`get_currency_by_code/1` degrade to their
+# unwarmed :noproc fallback (a permanent cache miss, silently) and
+# currency_query_count_test.exs would measure the un-cached number even
+# after caching is implemented.
+{:ok, _pid} = PhoenixKit.Cache.Registry.start_link()
+{:ok, _pid} = PhoenixKit.Cache.start_link(name: :billing_currencies, ttl: :timer.minutes(5))
+
 # The permission layer resolves a sub-permission through the module
 # registry: Scope.can?/2 requires feature_enabled?/1, which asks the
 # registry which module owns a key. Without it EVERY can?/2 answers false
