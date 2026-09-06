@@ -170,4 +170,47 @@ defmodule PhoenixKitBilling.Currency do
     |> Decimal.mult(to_rate)
     |> Decimal.round(2)
   end
+
+  @request_currency_key :phoenix_kit_billing_request_currency
+
+  @doc """
+  Sets (or, with `nil`/`""`, clears) the request-scoped display-currency
+  CODE — the currency the shopper on THIS request should see and be
+  charged in, as opposed to the shop's base currency (§4.2 of the
+  per-domain-currency spec: authoring/storage always stays in the base;
+  only display and checkout resolve per request).
+
+  Process-scoped, mirroring
+  `PhoenixKit.Languages.put_request_default_language/1`: the host app
+  (a Plug for the dead render, an `on_mount` hook for LiveView) sets it
+  per request, and it does NOT propagate to spawned `Task`s or Oban jobs.
+  Always call it — including with `nil` — on every request, even ones
+  with no override, so a previous request's code can never leak forward
+  on a reused process. `""` is treated the same as `nil` for a host that
+  builds the code from a possibly-blank domain map lookup.
+
+  Stores the CODE, never a `%Currency{}` struct (§4.2.1) — a cached
+  struct across requests could go stale the moment an admin changes a
+  rate, while the code is re-resolved through
+  `PhoenixKitBilling.resolve_display_currency/1` on every read.
+  """
+  @spec put_request_currency(String.t() | nil) :: :ok
+  def put_request_currency(nil) do
+    Process.delete(@request_currency_key)
+    :ok
+  end
+
+  def put_request_currency(""), do: put_request_currency(nil)
+
+  def put_request_currency(code) when is_binary(code) do
+    Process.put(@request_currency_key, String.upcase(code))
+    :ok
+  end
+
+  @doc """
+  Returns the request/process-scoped display-currency code override, if
+  any set by `put_request_currency/1` on this process.
+  """
+  @spec get_request_currency() :: String.t() | nil
+  def get_request_currency, do: Process.get(@request_currency_key)
 end
