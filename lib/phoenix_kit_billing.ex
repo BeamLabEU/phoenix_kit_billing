@@ -62,6 +62,11 @@ defmodule PhoenixKitBilling do
 
   require Logger
 
+  # §13: namespace for the currency-table cache — see `children/0`,
+  # `get_base_currency/0`, `get_currency_by_code/1`,
+  # `invalidate_currency_cache/0`.
+  @currency_cache_name :billing_currencies
+
   # ============================================
   # SYSTEM ENABLE/DISABLE
   # ============================================
@@ -156,6 +161,25 @@ defmodule PhoenixKitBilling do
 
   @impl PhoenixKit.Module
   def route_module, do: PhoenixKitBilling.Web.Routes
+
+  # §13: `Currency.present/3` makes up to three currency-table queries per
+  # call, and a catalog page renders dozens of prices — this cache is what
+  # turns that back into O(1) queries after the first miss per key. Picked
+  # up automatically by `PhoenixKit.Supervisor` via
+  # `PhoenixKit.ModuleRegistry.static_children/0` — no host wiring needed,
+  # and it starts after `PhoenixKit.Cache.Registry` (a fixed, earlier
+  # child of that same supervisor). See `get_base_currency/0` and
+  # `get_currency_by_code/1` for what reads it, and `invalidate_currency_cache/0`
+  # for what clears it.
+  @impl PhoenixKit.Module
+  def children do
+    [
+      Supervisor.child_spec(
+        {PhoenixKit.Cache, name: @currency_cache_name, ttl: :timer.minutes(5)},
+        id: :billing_currencies_cache
+      )
+    ]
+  end
 
   # `phoenix_kit_payment_provider_configs` is core-created (V135); this
   # chain's V1 only ADOPTS it (stamps the `pkb_schema:` marker, changes
@@ -712,9 +736,20 @@ defmodule PhoenixKitBilling do
   directly. Unlike `get_display_currency/0`, it never depends on the
   request: the base currency is a property of the shop, not of who is
   looking at it right now (§4.2).
+
+  Cached (§13): `Currency.present/3` calls this — through
+  `resolve_display_currency/1` — on every single price it converts, and
+  a catalog page converts dozens of prices per render. `get_default_currency/0`
+  itself stays a direct, uncached query (unchanged, on purpose — some
+  callers legitimately want the guarantee of a fresh read); this function
+  reuses it as the query underneath its own cache rather than duplicating
+  the `Ecto` query. See `invalidate_currency_cache/0` for what clears the
+  cache and when.
   """
   @spec get_base_currency() :: Currency.t() | nil
-  def get_base_currency, do: get_default_currency()
+  def get_base_currency do
+    with_currency_cache(:base, fn -> get_default_currency() end)
+  end
 
   @doc """
   The currency to SHOW and CHARGE for the current request.
@@ -818,12 +853,67 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Gets a currency by code.
+
+  Cached (§13) alongside `get_base_currency/0`, under the same
+  `#{inspect(@currency_cache_name)}` namespace — `resolve_display_currency/1`
+  calls this for every non-base code `Currency.present/3` resolves.
   """
   def get_currency_by_code(code) do
-    Currency
-    |> where([c], c.code == ^String.upcase(code))
-    |> repo().one()
+    upcased = String.upcase(code)
+
+    with_currency_cache(upcased, fn ->
+      Currency
+      |> where([c], c.code == ^upcased)
+      |> repo().one()
+    end)
   end
+
+  # §13 cache helper shared by `get_base_currency/0` and
+  # `get_currency_by_code/1`. A dedicated sentinel (rather than `nil`)
+  # distinguishes "not cached yet" from "cached, and the answer is nil" —
+  # a currency table with no default row, or a code nothing matches, is a
+  # real answer worth caching too, not just a cache miss to retry forever.
+  defp with_currency_cache(key, query_fun) do
+    cache_miss = :__cache_not_found__
+
+    case PhoenixKit.Cache.get(@currency_cache_name, key, cache_miss) do
+      ^cache_miss ->
+        value = query_fun.()
+        PhoenixKit.Cache.put(@currency_cache_name, key, value)
+        value
+
+      value ->
+        value
+    end
+  end
+
+  # §4.1, §13: clears the WHOLE currency cache namespace rather than one
+  # key, because `set_default_currency/1` can change every row's
+  # `exchange_rate` in one call (renormalization) — invalidating only the
+  # promoted code would leave every OTHER currency's cached rate stale.
+  # In-process only: this clears the cache on the node that made the
+  # write. A second web node, or a write from outside this application
+  # entirely (a `mix run` script, a direct SQL `UPDATE`), is invisible
+  # here until the cache's `ttl` (5 minutes) expires on its own — the
+  # same bound `Settings.get_setting_cached/2`'s cache accepts, and the
+  # right tradeoff for a single-node stand. A currency write followed
+  # immediately by a read that must see it (this package's own test for
+  # exactly that, "resolves on every call") has to go through
+  # `update_currency/2` or one of the other three writers below, not a
+  # raw `Repo.update_all`.
+  defp invalidate_currency_cache do
+    PhoenixKit.Cache.clear(@currency_cache_name)
+  end
+
+  # Only clears the cache when the write actually happened — an
+  # `{:error, changeset}` (or any other non-`:ok` shape) changed nothing
+  # in the table, so there is nothing stale to evict.
+  defp maybe_invalidate_currency_cache({:ok, _} = result) do
+    invalidate_currency_cache()
+    result
+  end
+
+  defp maybe_invalidate_currency_cache(result), do: result
 
   @doc """
   Creates a currency.
@@ -832,6 +922,7 @@ defmodule PhoenixKitBilling do
     %Currency{}
     |> Currency.changeset(attrs)
     |> repo().insert()
+    |> maybe_invalidate_currency_cache()
   end
 
   @doc """
@@ -841,6 +932,7 @@ defmodule PhoenixKitBilling do
     currency
     |> Currency.changeset(attrs)
     |> repo().update()
+    |> maybe_invalidate_currency_cache()
   end
 
   @doc """
@@ -942,6 +1034,7 @@ defmodule PhoenixKitBilling do
         |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
         |> repo().update!()
       end)
+      |> maybe_invalidate_currency_cache()
     end
   end
 
@@ -959,7 +1052,7 @@ defmodule PhoenixKitBilling do
         {:error, :currency_in_use}
 
       true ->
-        repo().delete(currency)
+        currency |> repo().delete() |> maybe_invalidate_currency_cache()
     end
   end
 
