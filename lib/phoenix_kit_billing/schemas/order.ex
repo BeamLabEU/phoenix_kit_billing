@@ -113,9 +113,11 @@ defmodule PhoenixKitBilling.Order do
 
     # Frozen at order creation (§4.5, §9.1): the shop's base currency and
     # the rate the order was actually priced at, plus the total expressed
-    # in that base currency. Nullable — core V185 backfills these from
-    # data, never a literal, and a host running an older core simply has
-    # them come back nil; nothing downstream requires them.
+    # in that base currency. The columns are added by this package's own
+    # `PhoenixKitBilling.Migrations` chain (V3), not a core migration —
+    # see that module's moduledoc for why. Nullable, with no backfill of
+    # existing rows: nothing downstream requires them populated, and a
+    # pre-V3 or pre-Э1 order simply has them come back nil.
     field(:base_currency, :string)
     field(:exchange_rate, :decimal)
     field(:base_total, :decimal)

@@ -78,11 +78,45 @@ defmodule PhoenixKitBilling.Migrations do
   Both ride in the same chain version because this chain moves one
   version per module per release, not one version per column. `down/1`
   to below V2 drops the index and both columns — never the table.
+
+  ## V3 — `phoenix_kit_orders` gets its frozen-currency columns
+
+  `phoenix_kit_orders` is another core-created table this chain does not
+  otherwise own. `PhoenixKitBilling.Order` (§4.5/§9.1 of the per-domain-
+  currency spec) declares `base_currency`, `exchange_rate` and
+  `base_total` — the shop's base currency and the rate an order was
+  actually priced at, frozen at creation — but the core release that was
+  originally meant to add these columns (an unreleased "V186", adding the
+  identical three columns with the identical types) had not shipped to
+  Hex when the schema change did. Any host resolving the currently
+  published core got an `Order` struct whose SELECT lists columns the
+  database does not have, and `Ecto.Repo.all/2`/`get/2`/`one/2` on
+  `Order` — hit by `list_orders/1`, `get_order/1`, the user dashboard's
+  orders LiveView, `delete_order/1` — all raised
+  `Postgrex.Error (undefined_column)` instead of returning data.
+
+  V3 closes that gap the same way V2 closed one on `phoenix_kit_currencies`:
+  this chain adds the columns itself rather than waiting on a core
+  release. The three `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements
+  use the exact names and types core's own eventual migration does, so
+  the day that core release ships, its `ADD COLUMN IF NOT EXISTS` finds
+  the columns already here and no-ops — and its backfill (deriving
+  `base_currency`/`exchange_rate`/`base_total` for pre-existing rows from
+  `phoenix_kit_currencies`) still runs and still does useful work,
+  because V3 deliberately adds the columns nullable with NO backfill of
+  its own: inventing a derivation here would duplicate — and risk
+  disagreeing with — logic that belongs to whichever release actually
+  owns getting it right. Every reader of these three fields already
+  treats `nil` as "unknown", per `Order`'s own moduledoc, so an
+  unbackfilled column breaks nothing between V3 and that release.
+
+  `down/1` to below V3 drops the three columns — never the table, same
+  invariant as V1/V2.
   """
 
   use Ecto.Migration
 
-  @current_version 2
+  @current_version 3
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -167,7 +201,8 @@ defmodule PhoenixKitBilling.Migrations do
   `current_version/0`): `1` is the pure V135-adoption step on
   `phoenix_kit_payment_provider_configs`; `2` additionally shapes
   `phoenix_kit_currencies` (partial unique default-currency index,
-  `rounding_rule`, `rate_updated_at` — see the moduledoc).
+  `rounding_rule`, `rate_updated_at`); `3` additionally adds
+  `phoenix_kit_orders`' frozen-currency columns (see the moduledoc).
   """
   @spec up_statements(String.t(), pos_integer()) :: [String.t()]
   def up_statements(prefix \\ "public", target \\ @current_version)
@@ -251,12 +286,24 @@ defmodule PhoenixKitBilling.Migrations do
         []
       end
 
-    v1 ++ v2 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
+    v3 =
+      if target >= 3 do
+        [
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_currency character varying(3)",
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS exchange_rate numeric(15,6)",
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_total numeric(15,2)"
+        ]
+      else
+        []
+      end
+
+    v1 ++ v2 ++ v3 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
   end
 
   @doc """
   The SQL `down/1` executes, as data. Below V2 this also drops the
-  `phoenix_kit_currencies` index and columns V2 added — never the
+  `phoenix_kit_currencies` index and columns V2 added, and below V3 the
+  `phoenix_kit_orders` columns V3 added — never the
   `phoenix_kit_payment_provider_configs` table itself.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
@@ -265,6 +312,17 @@ defmodule PhoenixKitBilling.Migrations do
   def down_statements(prefix, target) when is_integer(target) and target >= 0 do
     prefix = validated_prefix(prefix: prefix)
     p = "#{prefix}."
+
+    drop_v3 =
+      if target < 3 do
+        [
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS base_currency",
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate",
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS base_total"
+        ]
+      else
+        []
+      end
 
     drop_v2 =
       if target < 2 do
@@ -284,7 +342,7 @@ defmodule PhoenixKitBilling.Migrations do
         "COMMENT ON TABLE #{p}#{@version_table} IS NULL"
       end
 
-    drop_v2 ++ [marker]
+    drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do

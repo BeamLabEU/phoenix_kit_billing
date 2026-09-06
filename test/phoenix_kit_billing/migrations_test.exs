@@ -40,7 +40,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
   describe "the coordinator implements the protocol" do
     test "current_version/0 and version_table/0" do
-      assert Migrations.current_version() == 2
+      assert Migrations.current_version() == 3
       assert Migrations.version_table() == "phoenix_kit_payment_provider_configs"
     end
 
@@ -70,7 +70,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
       statements = Migrations.up_statements()
 
       assert List.last(statements) ==
-               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'",
+               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'",
              "the marker must be stamped after the DDL it certifies, not before"
     end
 
@@ -130,12 +130,26 @@ defmodule PhoenixKitBilling.MigrationsTest do
     # and every prefix/target this test does not enumerate.
     test "down/1 emits exactly the marker bookkeeping, in every target and prefix" do
       # Below V2 (target 0 or 1), down/1 also drops the V2 additions on
-      # phoenix_kit_currencies — never the phoenix_kit_payment_provider_configs
-      # table (see "the chain can never destroy the table" below).
+      # phoenix_kit_currencies; below V3 (target 0, 1 or 2) it also drops
+      # the V3 additions on phoenix_kit_orders — never the
+      # phoenix_kit_payment_provider_configs table (see "the chain can
+      # never destroy the table" below).
+      v3_drops_public = [
+        "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS base_currency",
+        "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate",
+        "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS base_total"
+      ]
+
       v2_drops_public = [
         "DROP INDEX IF EXISTS public.phoenix_kit_currencies_default_uidx",
         "ALTER TABLE public.phoenix_kit_currencies DROP COLUMN IF EXISTS rounding_rule",
         "ALTER TABLE public.phoenix_kit_currencies DROP COLUMN IF EXISTS rate_updated_at"
+      ]
+
+      v3_drops_alt = [
+        "ALTER TABLE billing_alt.phoenix_kit_orders DROP COLUMN IF EXISTS base_currency",
+        "ALTER TABLE billing_alt.phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate",
+        "ALTER TABLE billing_alt.phoenix_kit_orders DROP COLUMN IF EXISTS base_total"
       ]
 
       v2_drops_alt = [
@@ -145,23 +159,34 @@ defmodule PhoenixKitBilling.MigrationsTest do
       ]
 
       assert Migrations.down_statements("public", 0) ==
-               v2_drops_public ++
+               v3_drops_public ++
+                 v2_drops_public ++
                  ["COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS NULL"]
 
       assert Migrations.down_statements("public", 1) ==
-               v2_drops_public ++
+               v3_drops_public ++
+                 v2_drops_public ++
                  [
                    "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:1'"
                  ]
 
       assert Migrations.down_statements("billing_alt", 0) ==
-               v2_drops_alt ++
+               v3_drops_alt ++
+                 v2_drops_alt ++
                  ["COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS NULL"]
 
-      # target 2 == current_version: nothing to drop, marker only.
+      # target 2: below V3, so the orders columns still get dropped, but
+      # the currencies index/columns (added at V2, kept at target >= 2) do not.
       assert Migrations.down_statements("billing_alt", 2) ==
+               v3_drops_alt ++
+                 [
+                   "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'"
+                 ]
+
+      # target 3 == current_version: nothing to drop, marker only.
+      assert Migrations.down_statements("billing_alt", 3) ==
                [
-                 "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'"
+                 "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'"
                ]
     end
 
@@ -210,7 +235,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
           refute stmt =~ forbidden, "up_statements(#{inspect(prefix)}) contains: #{stmt}"
         end
 
-        for target <- [0, 1, 2] do
+        for target <- [0, 1, 2, 3] do
           for stmt <- Migrations.down_statements(prefix, target) do
             refute stmt =~ forbidden,
                    "down_statements(#{inspect(prefix)}, #{target}) contains: #{stmt}"
@@ -467,6 +492,77 @@ defmodule PhoenixKitBilling.MigrationsTest do
       assert Enum.any?(stmts, &(&1 =~ "DROP COLUMN IF EXISTS rate_updated_at"))
       refute Enum.any?(stmts, &(&1 =~ ~r/DROP TABLE/i))
       assert List.last(stmts) =~ "pkb_schema:1"
+    end
+  end
+
+  describe "V3 — orders: frozen base_currency/exchange_rate/base_total columns" do
+    test "up_statements/2 at target 3 adds all three columns, with core's own future types" do
+      stmts = Migrations.up_statements("public", 3)
+
+      assert Enum.any?(
+               stmts,
+               &(&1 ==
+                   "ALTER TABLE public.phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_currency character varying(3)")
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 ==
+                   "ALTER TABLE public.phoenix_kit_orders ADD COLUMN IF NOT EXISTS exchange_rate numeric(15,6)")
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 ==
+                   "ALTER TABLE public.phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_total numeric(15,2)")
+             )
+
+      assert List.last(stmts) =~ "pkb_schema:3"
+    end
+
+    test "up_statements/2 at target 2 does not touch phoenix_kit_orders" do
+      stmts = Migrations.up_statements("public", 2)
+      refute Enum.any?(stmts, &(&1 =~ "phoenix_kit_orders"))
+      assert List.last(stmts) =~ "pkb_schema:2"
+    end
+
+    test "down_statements/2 to 2 drops all three columns, never the table" do
+      stmts = Migrations.down_statements("public", 2)
+
+      assert Enum.any?(
+               stmts,
+               &(&1 == "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS base_currency")
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 == "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate")
+             )
+
+      assert Enum.any?(
+               stmts,
+               &(&1 == "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS base_total")
+             )
+
+      refute Enum.any?(stmts, &(&1 =~ ~r/DROP TABLE/i))
+      assert List.last(stmts) =~ "pkb_schema:2"
+    end
+
+    test "the columns match PhoenixKitBilling.Order's own field types" do
+      # Two lists that must stay in sync: the DDL and the schema's `field/2`
+      # declarations. A drift here means `Order.changeset/2` casts a shape
+      # the database cannot store (or vice versa) without any test noticing
+      # until a real insert fails.
+      alias PhoenixKitBilling.Order
+
+      fields = Order.__schema__(:fields)
+      assert :base_currency in fields
+      assert :exchange_rate in fields
+      assert :base_total in fields
+
+      assert Order.__schema__(:type, :base_currency) == :string
+      assert Order.__schema__(:type, :exchange_rate) == :decimal
+      assert Order.__schema__(:type, :base_total) == :decimal
     end
   end
 end
