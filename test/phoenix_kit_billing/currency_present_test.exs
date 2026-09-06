@@ -87,6 +87,38 @@ defmodule PhoenixKitBilling.CurrencyPresentTest do
            )
   end
 
+  test ":rate ignores the target's current usability — a disabled currency still converts (§12.1/§12.2)" do
+    # Regression: present/3 used to resolve its target via
+    # resolve_display_currency/1 even when :rate was given. Disabling
+    # the target made that resolution fail over to the base, which then
+    # hit the `target.code == base.code` early return and discarded the
+    # frozen rate — exactly what happened to a real EUR cart disabled
+    # mid-checkout.
+    {:ok, _} =
+      PhoenixKitBilling.update_currency(PhoenixKitBilling.get_currency_by_code("EUR"), %{
+        enabled: false
+      })
+
+    assert Decimal.equal?(
+             Currency.present(Decimal.new("138.00"), "EUR", rate: Decimal.new("0.909091")),
+             Decimal.new("125.45")
+           )
+  end
+
+  test ":rate with an unknown code still rounds — 2 places, matching the base" do
+    assert Decimal.equal?(
+             Currency.present(Decimal.new("138.00"), "XXX", rate: Decimal.new("0.909091")),
+             Decimal.new("125.45")
+           )
+  end
+
+  test ":rate with the base's own code returns the amount unchanged (rate is 1.0 by construction)" do
+    assert Decimal.equal?(
+             Currency.present(Decimal.new("138.00"), "USD", rate: Decimal.new("1.0")),
+             Decimal.new("138.00")
+           )
+  end
+
   test "effective_rate/2 is target over base, six decimals" do
     usd = PhoenixKitBilling.get_currency_by_code("USD")
     eur = PhoenixKitBilling.get_currency_by_code("EUR")

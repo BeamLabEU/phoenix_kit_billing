@@ -195,11 +195,23 @@ defmodule PhoenixKitBilling.Currency do
   the time `present/3` sees it, so this function does not warn again.
 
   `opts[:rate]` is the ONE way this function does not read
-  `phoenix_kit_currencies` for the target's rate: the cart's frozen
-  `exchange_rate`, taken as-is regardless of what the currency table
-  says right now (§12.2 — a snapshot rate is never mixed with a live
-  one). Rounding still happens once, by the target's `decimal_places`,
-  same as the live-rate path.
+  `phoenix_kit_currencies` for the target's rate: a caller's frozen
+  `exchange_rate` (a cart's, an order's), taken as-is regardless of what
+  the currency table says right now (§12.2 — a snapshot rate is never
+  mixed with a live one). With `:rate` given, the code is looked up ONLY
+  for its `decimal_places` (rounding, cosmetic) — never through
+  `resolve_display_currency/1`, whose own fail-safe (§6.3) would
+  substitute the base as target the moment the code is disabled or its
+  live rate turns unusable, and this function would then see
+  `target.code == base.code` and return the amount unconverted,
+  silently discarding the very rate the caller froze it at. A frozen
+  rate must survive the target currency being disabled AFTER the
+  freeze — that is the whole reason a caller freezes one in the first
+  place (found in review: an EUR cart disabled mid-checkout used to lose
+  its conversion this way). Rounding still happens once, by the
+  resolved decimal places, same as the live-rate path; a code this
+  shop's table has never heard of at all falls back to the base's own
+  decimal places, then 2.
   """
   @spec present(Decimal.t() | number | String.t(), String.t() | nil, keyword) :: Decimal.t()
   def present(amount, display_code, opts \\ [])
@@ -209,16 +221,44 @@ defmodule PhoenixKitBilling.Currency do
   def present(amount, display_code, opts) when is_binary(display_code) do
     amount = to_decimal(amount)
     base = PhoenixKitBilling.get_base_currency()
+
+    case Keyword.get(opts, :rate) do
+      nil -> present_live(amount, display_code, base)
+      rate -> present_frozen(amount, display_code, base, rate)
+    end
+  end
+
+  # Live path: unchanged from before this module froze rates — resolves
+  # the target fail-safe (§6.3) on every call, so a rate edit is visible
+  # on the very next present/3 call (§4.2.1).
+  defp present_live(amount, display_code, base) do
     target = PhoenixKitBilling.resolve_display_currency(display_code)
 
     if is_nil(base) or is_nil(target) or target.code == base.code do
       amount
     else
-      rate = Keyword.get(opts, :rate) || Decimal.div(target.exchange_rate, base.exchange_rate)
+      rate = Decimal.div(target.exchange_rate, base.exchange_rate)
+      amount |> Decimal.mult(rate) |> Decimal.round(target.decimal_places)
+    end
+  end
 
+  # Frozen path: the caller already knows the rate — nothing here may
+  # decide WHETHER to convert based on the target's current usability,
+  # only what precision to round to.
+  defp present_frozen(amount, display_code, base, rate) do
+    base_code = base && base.code
+
+    if display_code == base_code do
       amount
-      |> Decimal.mult(rate)
-      |> Decimal.round(target.decimal_places)
+    else
+      amount |> Decimal.mult(rate) |> Decimal.round(present_decimal_places(display_code, base))
+    end
+  end
+
+  defp present_decimal_places(code, base) do
+    case PhoenixKitBilling.get_currency_by_code(code) do
+      %{decimal_places: places} -> places
+      nil -> (base && base.decimal_places) || 2
     end
   end
 
