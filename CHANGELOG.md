@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.11.0 - 2026-09-06
+
+PR #31, PR #32, plus the post-merge review of #32. Full findings in
+`dev_docs/pull_requests/2026/31-set-default-currency-repromote/CLAUDE_REVIEW.md`
+and `dev_docs/pull_requests/2026/32-currency-e1-display-currency-cache/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **Request-scoped display currency.** `Currency.put_request_currency/1` /
+  `get_request_currency/0` let a host set, per request, the currency a
+  shopper should see and be charged in, independent of the shop's base
+  currency. `get_base_currency/0` (cached), `get_display_currency/0` and
+  `resolve_display_currency/1` resolve it with a fail-safe: an unknown,
+  disabled, or non-positive-rate code falls back to the base currency and
+  logs once per process per offending code, rather than crashing or showing
+  a broken price.
+- **`Currency.present/3`** — the one place a base-currency amount becomes a
+  display-currency amount. Resolves the base and target fresh on every call
+  (a rate edit is visible on the next call), or, with `opts[:rate]`, uses a
+  caller's own frozen rate (a cart's or order's snapshot) without
+  re-checking the target's live usability — a frozen rate must survive the
+  target being disabled after the freeze.
+- **`Currency.effective_rate/2`** — the `base -> target` multiplier a cart
+  freezes at creation, rounded to six decimal places.
+- **Currency-table caching (§13).** `get_base_currency/0` and
+  `get_currency_by_code/1` are backed by a `PhoenixKit.Cache` instance
+  (5 minute TTL), invalidated wholesale by every currency writer. Cuts
+  `Currency.present/3`'s per-call query cost from 3 to ~0 once warm — a
+  catalog page converting dozens of prices no longer pays for it per price.
+- **Migration chain V3** — adds `phoenix_kit_orders.base_currency`,
+  `.exchange_rate` and `.base_total` (nullable, no backfill), the columns
+  `PhoenixKitBilling.Order` now declares for a later stage's frozen order
+  pricing. Added post-merge: PR #32 shipped the schema fields on the
+  assumption that a core release would add these columns, but the core
+  release in question had not been published, so every `Order` query broke
+  on the currently published core. This chain now adds them itself, using
+  the same names/types that core release will use, so its own
+  `ADD COLUMN IF NOT EXISTS` and backfill still work unchanged once it ships.
+
+### Changed
+
+- **`billing_default_currency` is no longer read.** Every internal reader
+  (order/subscription creation, dashboard stats, the order form) now uses
+  the `is_default` row of `phoenix_kit_currencies` via `get_base_currency/0`.
+  The dead "Default Currency" select on the settings page (it wrote a
+  setting nothing read) is removed along with it.
+
+### Fixed
+
+- **`set_default_currency/1`: re-promoting the currency that is already
+  default no longer clears `is_default` entirely.** The base-rate
+  renormalization added in 0.10.0 demoted the target's own row in the
+  database while the caller's in-memory struct still read `is_default:
+  true`, so Ecto's changeset diff saw no change and never re-promoted it.
+  The function now reloads the row before both the guard check and the
+  promoting changeset, and forces `:is_default`/`:exchange_rate` into the
+  changeset regardless of what the reload reports.
+
 ## 0.10.0 - 2026-09-05
 
 PR #30, plus the post-merge review. Full findings in
