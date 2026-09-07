@@ -907,8 +907,19 @@ defmodule PhoenixKitBilling do
   # exactly that, "resolves on every call") has to go through
   # `update_currency/2` or one of the other three writers below, not a
   # raw `Repo.update_all`.
+  # `PhoenixKit.Cache.clear/1` is a cast. The `stats/1` call that follows is
+  # a barrier: the cache GenServer handles messages from this process in
+  # order, so by the time `stats/1` returns the clear HAS been applied —
+  # which is what lets `maybe_broadcast_currencies_changed/1` promise a
+  # subscriber a fresh read (§4.2.1 п.5). Without it the broadcast could
+  # overtake the clear and a subscriber's re-read would hit the stale entry.
+  # `stats/1` already guards a missing/unavailable cache process on its own
+  # (returns a default map instead of raising), so no extra guard is needed
+  # here.
   defp invalidate_currency_cache do
     PhoenixKit.Cache.clear(@currency_cache_name)
+    _ = PhoenixKit.Cache.stats(@currency_cache_name)
+    :ok
   end
 
   # Only clears the cache when the write actually happened — an

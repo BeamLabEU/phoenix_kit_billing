@@ -29,14 +29,46 @@ defmodule PhoenixKitBilling.CurrencyEventsTest do
     %{usd: usd, eur: eur}
   end
 
-  test "update_currency/2 broadcasts after the cache is cleared", %{eur: eur} do
-    {:ok, _} = PhoenixKitBilling.update_currency(eur, %{exchange_rate: "0.95"})
-    assert_receive {:currencies_changed, "EUR"}
+  # Deterministic on the correct pipe order: `invalidate_currency_cache/0`
+  # follows its `Cache.clear/1` cast with a same-process `Cache.stats/1`
+  # call, a barrier that cannot return until the cache GenServer has
+  # actually applied the clear — so by the time this function's caller
+  # reaches `maybe_broadcast_currencies_changed/1`, the stale entry is
+  # already gone. Without that barrier this test only catches a swapped
+  # pipe order intermittently (empirically ~1 run in 15), since a bare
+  # `GenServer.cast` gives no cross-process ordering guarantee at all.
+  test "a subscriber reacting to the event already sees the new table (cache cleared before broadcast)",
+       %{eur: eur} do
+    parent = self()
 
+    # Prime the cache with the OLD rate first — otherwise this test can't
+    # tell "cleared before broadcast" from the swapped order at all: with
+    # nothing cached yet, the very first read after the write always goes
+    # to the database regardless of pipe order.
     assert Decimal.equal?(
              PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
-             Decimal.new("0.95")
+             Decimal.new("0.909091")
            )
+
+    # DataCase's shared sandbox (async: false) lets the spawned process query
+    # without an explicit `Sandbox.allow/3`.
+    _subscriber =
+      spawn_link(fn ->
+        :ok = Events.subscribe_currencies()
+        send(parent, :subscribed)
+
+        receive do
+          {:currencies_changed, "EUR"} ->
+            send(parent, {:seen, PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate})
+        end
+      end)
+
+    assert_receive :subscribed
+
+    {:ok, _} = PhoenixKitBilling.update_currency(eur, %{exchange_rate: "0.95"})
+
+    assert_receive {:seen, rate}
+    assert Decimal.equal?(rate, Decimal.new("0.95"))
   end
 
   test "create, set_default and delete broadcast too", %{eur: eur} do

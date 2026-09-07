@@ -353,6 +353,13 @@ defmodule PhoenixKitBilling.Events do
   currency cache is cleared, so a subscriber that re-reads on receipt sees
   the new table. `code` is the currency that was written (for
   `set_default_currency/1`, the new base — every rate was renormalized).
+
+  The clear itself is a `GenServer.cast` (fire-and-forget), so the context
+  follows it with a same-process `GenServer.call` to the cache (a barrier —
+  Erlang orders messages from one sender to one receiver, so the call
+  cannot return until the cast has been applied) before ever reaching this
+  function. That is what makes the "sees the new table" promise above
+  true, not just usual.
   """
   def broadcast_currencies_changed(%PhoenixKitBilling.Currency{code: code}) do
     broadcast(@currencies_topic, {:currencies_changed, code})
