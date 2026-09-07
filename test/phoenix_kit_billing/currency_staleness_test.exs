@@ -98,6 +98,48 @@ defmodule PhoenixKitBilling.CurrencyStalenessTest do
     end
   end
 
+  describe "Currency.stale?/2 boundary (§6.2)" do
+    # `DateTime.diff/3` with `:day` TRUNCATES elapsed seconds — it does
+    # not round. A comparison built on that unit would report "not
+    # stale" for anything short of a FULL extra day past the threshold
+    # (e.g. 30 days, 23 hours, 59 minutes, 59 seconds), silently turning
+    # a `max_age_days` of 30 into an effective threshold of "more than
+    # 31 days". A small threshold keeps the exact-second arithmetic
+    # below readable without waiting on real wall-clock days.
+    @max_age_days 2
+    @max_age_seconds @max_age_days * 86_400
+
+    defp backdate_seconds(code, seconds) do
+      stale_at =
+        DateTime.utc_now() |> DateTime.add(-seconds, :second) |> DateTime.truncate(:second)
+
+      Repo.update_all(Ecto.Query.from(c in Currency, where: c.code == ^code),
+        set: [rate_updated_at: stale_at]
+      )
+
+      PhoenixKit.Cache.clear(:billing_currencies)
+      stale_at
+    end
+
+    test "aged exactly max_age_days is not stale (boundary is exclusive)" do
+      backdate_seconds("EUR", @max_age_seconds)
+      eur = PhoenixKitBilling.get_currency_by_code("EUR")
+      refute Currency.stale?(eur, @max_age_days)
+    end
+
+    test "aged max_age_days plus one second is stale" do
+      backdate_seconds("EUR", @max_age_seconds + 1)
+      eur = PhoenixKitBilling.get_currency_by_code("EUR")
+      assert Currency.stale?(eur, @max_age_days)
+    end
+
+    test "aged max_age_days minus one second is not stale" do
+      backdate_seconds("EUR", @max_age_seconds - 1)
+      eur = PhoenixKitBilling.get_currency_by_code("EUR")
+      refute Currency.stale?(eur, @max_age_days)
+    end
+  end
+
   describe "currencies_with_stale_rates/0" do
     test "lists currencies aged past the configured threshold" do
       PhoenixKit.Settings.update_setting("fx_rate_max_age_days", "30")

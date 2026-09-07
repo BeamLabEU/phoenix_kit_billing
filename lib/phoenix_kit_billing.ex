@@ -1115,6 +1115,17 @@ defmodule PhoenixKitBilling do
         # row's own rate always reads back as exactly 1.0 regardless of
         # scenario (it divided itself by itself), so a reload can never
         # be used as the signal — only this snapshot can.
+        #
+        # This can produce one rare FALSE POSITIVE, never a false
+        # negative: a `base_rate` merely close to 1 (e.g. `1.0000001`)
+        # counts as "not 1" and re-dates every row, even though rounding
+        # to the stored precision (6 decimals) can leave some row's
+        # displayed rate numerically unchanged. Re-dating a rate that
+        # happened not to move is harmless (the row genuinely WAS
+        # recomputed against a new base); the invariant this flag exists
+        # to protect — never erase a real staleness signal — only runs
+        # in the other direction, and that direction has no false
+        # negatives.
         rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
 
         # 1. Renormalize every rate against the new base, past the

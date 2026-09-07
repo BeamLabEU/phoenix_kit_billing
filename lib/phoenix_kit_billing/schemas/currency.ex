@@ -324,13 +324,21 @@ defmodule PhoenixKitBilling.Currency do
   definition, renormalization keeps it current); a `nil`
   `rate_updated_at` (never dated — a row from before this column had a
   writer) is an unknown age, not a known-stale one.
+
+  Compares in SECONDS against the threshold expressed in seconds, not
+  `DateTime.diff/3` with `:day` — that unit TRUNCATES elapsed seconds
+  rather than rounding, so a rate aged 30 days, 23 hours, 59 minutes and
+  59 seconds would still diff to `30` and report "not stale" against a
+  30-day threshold; the flag would only flip a full day later than
+  promised. Comparing seconds against seconds has no such rounding step
+  to get wrong.
   """
   @spec stale?(t(), pos_integer()) :: boolean()
   def stale?(%__MODULE__{is_default: true}, _max_age_days), do: false
   def stale?(%__MODULE__{rate_updated_at: nil}, _max_age_days), do: false
 
   def stale?(%__MODULE__{rate_updated_at: at}, max_age_days) do
-    DateTime.diff(DateTime.utc_now(), at, :day) > max_age_days
+    DateTime.diff(DateTime.utc_now(), at, :second) > max_age_days * 86_400
   end
 
   # Frozen path: the caller already knows the rate — nothing here may
