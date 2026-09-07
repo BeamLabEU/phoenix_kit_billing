@@ -270,27 +270,51 @@ defmodule PhoenixKitBilling.Currency do
     end
   end
 
-  @stale_warned_key :phoenix_kit_billing_stale_rate_warned
+  @stale_verdict_key :phoenix_kit_billing_stale_rate_verdict
 
-  # §6.2: warns exactly ONCE per process per currency code — a catalog
-  # page renders dozens of prices through `present/3`, and without this a
-  # single stale rate would flood the log with an identical line per
-  # price. Only the LIVE path calls this: a cart's frozen rate has no
-  # meaningful "age" (see present/3's own moduledoc), so present_frozen/4
-  # never reaches here.
+  # §6.2 + §13: memoizes the STALENESS VERDICT (not just "have we already
+  # warned") per process per currency code. This is what keeps
+  # `present/3`'s live path cheap without smuggling a Settings-backed
+  # value into the currency table's own cache (that cache is invalidated
+  # by CURRENCY writes; an admin editing `fx_rate_max_age_days` has no
+  # reason to touch a currency row, so a threshold cached there could
+  # sit stale until an unrelated write happened to clear it). A catalog
+  # page's FIRST `present/3` call for a code reads
+  # `fx_rate_max_age_days/0` (a real `Settings.get_setting_cached/2` read
+  # — correctly cached in production, where that cache IS started) and
+  # computes `stale?/2` exactly once; every later call for the SAME code
+  # in this same process reuses the stored verdict and touches neither.
+  # The warning piggybacks on the same memo instead of a separate
+  # "already warned" set: a verdict is written exactly once per code, so
+  # a `true` verdict logs exactly once too.
+  #
+  # Deliberately per-process, not per-cluster: a LiveView/request process
+  # is short-lived enough that an admin's threshold edit just waits for
+  # the next mount to take effect here, and the threshold can never
+  # change a CONVERTED PRICE either way — only whether this log line
+  # appears — so bounding it to "current process" is an acceptable
+  # tradeoff, not a correctness gap. Only the LIVE path calls this: a
+  # cart's frozen rate has no meaningful "age" (see present/3's own
+  # moduledoc), so present_frozen/4 never reaches here.
   defp maybe_warn_stale(%__MODULE__{code: code} = currency) do
-    max_age_days = PhoenixKitBilling.fx_rate_max_age_days()
+    verdicts = Process.get(@stale_verdict_key, %{})
 
-    if stale?(currency, max_age_days) do
-      warned = Process.get(@stale_warned_key, MapSet.new())
+    case Map.fetch(verdicts, code) do
+      {:ok, _already_known} ->
+        :ok
 
-      unless MapSet.member?(warned, code) do
-        Process.put(@stale_warned_key, MapSet.put(warned, code))
+      :error ->
+        max_age_days = PhoenixKitBilling.fx_rate_max_age_days()
+        is_stale = stale?(currency, max_age_days)
+        Process.put(@stale_verdict_key, Map.put(verdicts, code, is_stale))
 
-        Logger.warning(
-          "[Billing] exchange rate for #{code} has not been updated in over #{max_age_days} days"
-        )
-      end
+        if is_stale do
+          Logger.warning(
+            "[Billing] exchange rate for #{code} has not been updated in over #{max_age_days} days"
+          )
+        end
+
+        :ok
     end
   end
 

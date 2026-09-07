@@ -727,27 +727,27 @@ defmodule PhoenixKitBilling do
   `<= 0` reads as the default 30 — a threshold that would make every
   rate instantly stale is worse than not having one at all.
 
-  Cached (§13) under the same `:billing_currencies` namespace as
-  `get_base_currency/0`, NOT through `Settings.get_setting_cached/2`'s
-  own cache: `Currency.present/3`'s live path reads this on every
-  non-base conversion, same hot path `get_base_currency/0` and
-  `get_currency_by_code/1` are cached for, and this value needs the
-  exact same O(1)-after-first-miss treatment. Piggybacking here also
-  means any currency write's `invalidate_currency_cache/0` clears it
-  too — one write more than strictly necessary, harmless given the
-  5-minute TTL either cache would use anyway.
+  Reads through `Settings.get_setting_cached/2` — its OWN cache, not
+  `:billing_currencies` (deliberately NOT reusing `with_currency_cache/2`
+  here, despite the hot-path pressure documented on
+  `Currency.present/3`'s live path: that cache is invalidated by CURRENCY
+  writes, and an admin editing this setting has no reason to touch a
+  currency row, so a threshold cached under that key could sit stale
+  indefinitely. `Currency.present/3`'s own `maybe_warn_stale/1` is what
+  keeps this cheap on the hot path instead — it memoizes the staleness
+  VERDICT per process per currency code, so this function is only
+  actually called once per code per process, not once per `present/3`
+  call).
   """
   @spec fx_rate_max_age_days() :: pos_integer()
   def fx_rate_max_age_days do
-    with_currency_cache(:fx_rate_max_age_days, fn ->
-      "fx_rate_max_age_days"
-      |> Settings.get_setting_cached("30")
-      |> Integer.parse()
-      |> case do
-        {days, _rest} when days > 0 -> days
-        _ -> 30
-      end
-    end)
+    "fx_rate_max_age_days"
+    |> Settings.get_setting_cached("30")
+    |> Integer.parse()
+    |> case do
+      {days, _rest} when days > 0 -> days
+      _ -> 30
+    end
   end
 
   @doc """
