@@ -1199,6 +1199,231 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  Changes the shop's base currency — an OPERATION (§4.9), not a toggle.
+
+  Changing the base without repricing the catalog is a silent
+  re-pricing of the whole shop: the number `138.00` stored on a
+  product does not change, only its MEANING does (it quietly stops
+  being dollars and starts being euros), and no database notices that
+  on its own.
+
+  Billing owns only the two steps that are actually about the currency
+  table:
+
+    1. renormalize every currency's `exchange_rate` by dividing it by
+       the new base's CURRENT rate (§3.2) — real-world ratios are
+       preserved, only which currency reads `1.0` changes;
+    5. promote the new base, pinning its rate to exactly `1.0`.
+
+  §4.9's steps 2-4 (recompute `price`/`compare_at_price`/`cost_per_item`
+  and the fixed option-price modifiers on every catalog item; recompute
+  every shipping method's price and its three thresholds; stamp the new
+  base code onto every item) belong to whichever package owns the
+  catalog and shipping data today — `phoenix_kit_catalogue`, not this
+  one. Billing cannot reach those tables and must not try to. The
+  CALLER supplies that work as `opts[:reprice]`, a 2-arity
+  `(old_base_code, new_base_code) -> {:ok, term} | {:error, term}`
+  function invoked INSIDE this same transaction, strictly AFTER step 1
+  (so it sees already-renormalized rates) and strictly BEFORE step 5
+  (so an `{:error, _}` it returns rolls back the renormalization too —
+  the catalog and the currency table can never end up disagreeing about
+  which currency is base). Both packages resolve
+  `PhoenixKit.RepoHelper.repo()` to the same host repo module, so a
+  `:reprice` implementation's own repo calls join this transaction
+  automatically, with no extra plumbing.
+
+  `opts[:catalog_size]` — a non-negative integer the caller MUST
+  supply; its absence refuses with `{:error, :catalog_size_unknown}`
+  ("I don't know how many products there are" is not permission to
+  proceed). When it is greater than zero and no `:reprice` is given,
+  refuses with `{:error, :reprice_required}` — a silent shop-wide
+  re-pricing is exactly what this function exists to prevent. An empty
+  catalog (`catalog_size: 0`) has nothing to reprice, so `:reprice` is
+  optional there.
+
+  Refuses `{:error, :unknown_currency}` (no such code),
+  `{:error, :currency_not_usable}` (disabled, or `exchange_rate` not
+  `> 0`), and `{:error, :already_base}` (already the default) before
+  touching anything, and re-checks the same three guards on a freshly
+  reloaded row once inside the transaction (the same staleness guard
+  `set_default_currency/1` uses, for the same reason: another process
+  could have changed the row between the pre-check and the transaction
+  actually starting).
+
+  Carts and orders are NEVER touched (§4.9 step 6) — they carry their
+  own frozen `currency`/`exchange_rate` (§4.4, §4.5), which is the
+  entire point of freezing them; this function does not even reference
+  either schema.
+
+  On success, returns `{:ok, %{old_base: <the PREVIOUS base's code>,
+  rate: <the divisor every OTHER currency's rate was just divided by —
+  the new base's own PRE-operation rate>}}`. `:reprice` needs exactly
+  that ratio to convert `old_base_code`-denominated prices into
+  `new_base_code`.
+  """
+  @spec change_base_currency(String.t(), keyword()) ::
+          {:ok, %{old_base: String.t(), rate: Decimal.t()}} | {:error, term()}
+  def change_base_currency(new_base_code, opts \\ []) do
+    reprice = Keyword.get(opts, :reprice)
+    catalog_size = Keyword.get(opts, :catalog_size)
+
+    with :ok <- validate_reprice_requirement(catalog_size, reprice),
+         {:ok, new_base} <- fetch_currency_for_base_change(new_base_code) do
+      new_base
+      |> do_change_base_currency(reprice)
+      |> maybe_invalidate_currency_cache()
+    end
+  end
+
+  defp validate_reprice_requirement(nil, _reprice), do: {:error, :catalog_size_unknown}
+
+  defp validate_reprice_requirement(catalog_size, nil)
+       when is_integer(catalog_size) and catalog_size > 0 do
+    {:error, :reprice_required}
+  end
+
+  defp validate_reprice_requirement(catalog_size, _reprice) when is_integer(catalog_size),
+    do: :ok
+
+  defp fetch_currency_for_base_change(code) do
+    case repo().get_by(Currency, code: String.upcase(code)) do
+      nil -> {:error, :unknown_currency}
+      %Currency{is_default: true} -> {:error, :already_base}
+      %Currency{enabled: false} -> {:error, :currency_not_usable}
+      %Currency{exchange_rate: rate} when is_nil(rate) -> {:error, :currency_not_usable}
+      %Currency{exchange_rate: rate} = currency -> currency_if_usable_rate(currency, rate)
+    end
+  end
+
+  defp currency_if_usable_rate(currency, rate) do
+    if Decimal.compare(rate, 0) == :gt do
+      {:ok, currency}
+    else
+      {:error, :currency_not_usable}
+    end
+  end
+
+  defp do_change_base_currency(%Currency{} = new_base, reprice) do
+    repo().transaction(fn ->
+      # Reload before doing anything else: the row fetched above can be
+      # stale by the time this transaction actually starts (mirrors
+      # `set_default_currency/1`'s own guard, for the same reason).
+      fresh_new_base = repo().get_by!(Currency, uuid: new_base.uuid)
+      validate_fresh_new_base!(fresh_new_base)
+
+      old_base =
+        case get_default_currency() do
+          nil -> repo().rollback(:no_base_currency)
+          %Currency{} = base -> base
+        end
+
+      base_rate = fresh_new_base.exchange_rate
+      now = DateTime.utc_now(:second)
+
+      # §6.2: same identity-is-a-no-op reasoning as `set_default_currency/1`
+      # — only stamp `rate_updated_at` on rows whose rate actually moves.
+      rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
+
+      # 1. Renormalize every rate against the new base (§3.2, §4.9 step 1).
+      #    No `enabled` filter — a disabled currency's rate is still
+      #    real data and still gets renormalized, same as
+      #    `set_default_currency/1`.
+      base_rate
+      |> renormalize_all_rates_query(rate_actually_changes?, now)
+      |> repo().update_all([])
+
+      # §4.9 steps 2-4: the CALLER's job. Runs strictly after step 1
+      # (rates are already renormalized) and strictly before step 5
+      # (the currency table's own `is_default` has not moved yet) —
+      # `Repo.rollback/1` unwinds this whole transaction on `{:error, _}`,
+      # so a repricing failure can never leave the catalog and the
+      # currency table disagreeing about which currency is base.
+      run_reprice!(reprice, old_base.code, fresh_new_base.code)
+
+      # 5. Clear the previous default, then promote the new one at
+      #    exactly 1.0 — same reload-and-force pattern as
+      #    `set_default_currency/1`, for the same reason (this row's
+      #    own fields just moved under it, twice: step 1's
+      #    renormalization, and — for the row that WAS the base — this
+      #    very `update_all` about to flip its `is_default`).
+      Currency
+      |> where([c], c.is_default == true)
+      |> repo().update_all(set: [is_default: false])
+
+      fresh_new_base.uuid
+      |> promote_changeset(rate_actually_changes?, now)
+      |> repo().update!()
+
+      %{old_base: old_base.code, rate: base_rate}
+    end)
+  end
+
+  # Re-checks the three guards `fetch_currency_for_base_change/1` already
+  # checked, against a freshly-reloaded row — the pre-check can be stale
+  # by the time this transaction actually starts.
+  defp validate_fresh_new_base!(%Currency{} = fresh_new_base) do
+    cond do
+      fresh_new_base.is_default ->
+        repo().rollback(:already_base)
+
+      is_nil(fresh_new_base.exchange_rate) or
+          Decimal.compare(fresh_new_base.exchange_rate, 0) != :gt ->
+        repo().rollback(:currency_not_usable)
+
+      not fresh_new_base.enabled ->
+        repo().rollback(:currency_not_usable)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp renormalize_all_rates_query(base_rate, true = _rate_actually_changes?, now) do
+    from(c in Currency,
+      update: [
+        set: [
+          exchange_rate: fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal)),
+          rate_updated_at: ^now
+        ]
+      ]
+    )
+  end
+
+  defp renormalize_all_rates_query(base_rate, false = _rate_actually_changes?, _now) do
+    from(c in Currency,
+      update: [
+        set: [
+          exchange_rate: fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal))
+        ]
+      ]
+    )
+  end
+
+  defp run_reprice!(nil, _old_base_code, _new_base_code), do: :ok
+
+  defp run_reprice!(fun, old_base_code, new_base_code) do
+    case fun.(old_base_code, new_base_code) do
+      {:ok, _} -> :ok
+      {:error, reason} -> repo().rollback(reason)
+    end
+  end
+
+  defp promote_changeset(uuid, rate_actually_changes?, now) do
+    changeset =
+      Currency
+      |> repo().get_by!(uuid: uuid)
+      |> Currency.changeset(%{is_default: true, enabled: true, exchange_rate: Decimal.new("1.0")})
+      |> Ecto.Changeset.force_change(:is_default, true)
+      |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
+
+    if rate_actually_changes? do
+      Ecto.Changeset.put_change(changeset, :rate_updated_at, now)
+    else
+      changeset
+    end
+  end
+
+  @doc """
   Deletes a currency.
 
   The default currency and currencies referenced by orders cannot be deleted.
