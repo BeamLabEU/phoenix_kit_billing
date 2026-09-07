@@ -1268,10 +1268,24 @@ defmodule PhoenixKitBilling do
     catalog_size = Keyword.get(opts, :catalog_size)
 
     with :ok <- validate_reprice_requirement(catalog_size, reprice),
-         {:ok, new_base} <- fetch_currency_for_base_change(new_base_code) do
-      new_base
-      |> do_change_base_currency(reprice)
+         {:ok, new_base} <- fetch_currency_for_base_change(new_base_code),
+         {:ok, result} <- do_change_base_currency(new_base, reprice) do
+      # §4.2.1 п.5: the SAME cache-then-broadcast sequence (and the SAME
+      # helpers) every other currency writer uses — this one rewrites
+      # EVERY row, the largest change this module can make, so every
+      # open storefront tab (subscribed since Э2 for exactly this: a
+      # rate edit re-renders live, no reload) needs to hear about it
+      # too, not just single-currency writes. The newly promoted base's
+      # OWN code is the payload `Events.broadcast_currencies_changed/1`
+      # expects — not the public `%{old_base:, rate:}` result below,
+      # which deliberately does NOT flow through here (it would silently
+      # no-op against `maybe_broadcast_currencies_changed/1`'s
+      # `%Currency{}` match).
+      {:ok, result.promoted}
       |> maybe_invalidate_currency_cache()
+      |> maybe_broadcast_currencies_changed()
+
+      {:ok, %{old_base: result.old_base, rate: result.rate}}
     end
   end
 
@@ -1350,11 +1364,12 @@ defmodule PhoenixKitBilling do
       |> where([c], c.is_default == true)
       |> repo().update_all(set: [is_default: false])
 
-      fresh_new_base.uuid
-      |> promote_changeset(rate_actually_changes?, now)
-      |> repo().update!()
+      promoted =
+        fresh_new_base.uuid
+        |> promote_changeset(rate_actually_changes?, now)
+        |> repo().update!()
 
-      %{old_base: old_base.code, rate: base_rate}
+      %{old_base: old_base.code, rate: base_rate, promoted: promoted}
     end)
   end
 

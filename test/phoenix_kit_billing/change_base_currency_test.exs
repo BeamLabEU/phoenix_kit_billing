@@ -12,6 +12,14 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
   and is injected as `opts[:reprice]` — this suite proves it runs
   exactly once, in the right order, inside the SAME transaction the
   renormalization runs in.
+
+  The "carts and orders are never touched" describe block below tests
+  billing's OWN `Order` (manual bank-transfer/invoicing) as a
+  same-package proxy for that invariant — it is NOT the storefront
+  cart/checkout order §4.4/§4.5 actually describe (billing has no
+  "cart" concept at all; that model lives in `phoenix_kit_catalogue`,
+  which this suite cannot reach). The real storefront assertion belongs
+  to a later ecommerce-side repricing task.
   """
   use PhoenixKitBilling.DataCase, async: false
 
@@ -185,6 +193,36 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
       |> Repo.all()
       |> Enum.map(&{&1.code, &1.exchange_rate, &1.is_default, &1.enabled, &1.rate_updated_at})
       |> Enum.sort()
+    end
+  end
+
+  describe "broadcasts a currencies_changed event (§4.2.1 п.5)" do
+    # Э2 subscribed every open storefront tab to this event precisely so
+    # a rate edit re-renders live, no reload — a base-currency change
+    # rewrites EVERY rate in the table, the largest change this module
+    # can make, so it must announce too, exactly like every other
+    # currency writer, or every open tab keeps showing prices computed
+    # from the old base until the visitor navigates.
+    setup do
+      :ok = PhoenixKitBilling.Events.subscribe_currencies()
+      :ok
+    end
+
+    test "a successful base change broadcasts once, naming the new base" do
+      assert {:ok, %{old_base: "USD"}} =
+               PhoenixKitBilling.change_base_currency("EUR", catalog_size: 0)
+
+      assert_receive {:currencies_changed, "EUR"}
+      refute_receive {:currencies_changed, _}, 100
+    end
+
+    test "a failed base change (reprice errors) broadcasts nothing" do
+      assert PhoenixKitBilling.change_base_currency("EUR",
+               catalog_size: 1,
+               reprice: fn _old, _new -> {:error, :boom} end
+             ) == {:error, :boom}
+
+      refute_receive {:currencies_changed, _}, 100
     end
   end
 
