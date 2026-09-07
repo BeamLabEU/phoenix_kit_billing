@@ -12,6 +12,7 @@ defmodule PhoenixKitBilling.Events do
   - `phoenix_kit:billing:profiles` - Billing profile events (created, updated, deleted)
   - `phoenix_kit:billing:transactions` - Transaction events (created, refunded)
   - `phoenix_kit:billing:credit_notes` - Credit note events (sent, applied)
+  - `phoenix_kit:billing:currencies` - Currency table events (rate, enabled, rounding rule, base changed)
 
   ## Usage Examples
 
@@ -36,6 +37,7 @@ defmodule PhoenixKitBilling.Events do
   @transactions_topic "phoenix_kit:billing:transactions"
   @credit_notes_topic "phoenix_kit:billing:credit_notes"
   @subscriptions_topic "phoenix_kit:billing:subscriptions"
+  @currencies_topic "phoenix_kit:billing:currencies"
 
   # ============================================
   # SUBSCRIPTIONS
@@ -330,6 +332,37 @@ defmodule PhoenixKitBilling.Events do
       "#{@subscriptions_topic}:user:#{subscription.user_uuid}",
       {:subscription_status_changed, subscription, old_status, new_status}
     )
+  end
+
+  # ============================================
+  # CURRENCIES
+  # ============================================
+
+  @doc "Topic for currency-table changes."
+  def currencies_topic, do: @currencies_topic
+
+  @doc """
+  Subscribes to currency-table changes. Storefront LiveViews use this to
+  re-render converted prices the moment a rate, a rounding rule, an
+  `enabled` flag or the base changes (per-domain-currency spec §4.2.1 п.5).
+  """
+  def subscribe_currencies, do: Manager.subscribe(@currencies_topic)
+
+  @doc """
+  Broadcasts `{:currencies_changed, code}` — sent by the context AFTER its
+  currency cache is cleared, so a subscriber that re-reads on receipt sees
+  the new table. `code` is the currency that was written (for
+  `set_default_currency/1`, the new base — every rate was renormalized).
+
+  The clear itself is a `GenServer.cast` (fire-and-forget), so the context
+  follows it with a same-process `GenServer.call` to the cache (a barrier —
+  Erlang orders messages from one sender to one receiver, so the call
+  cannot return until the cast has been applied) before ever reaching this
+  function. That is what makes the "sees the new table" promise above
+  true, not just usual.
+  """
+  def broadcast_currencies_changed(%PhoenixKitBilling.Currency{code: code}) do
+    broadcast(@currencies_topic, {:currencies_changed, code})
   end
 
   # ============================================

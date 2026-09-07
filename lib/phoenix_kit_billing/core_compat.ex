@@ -67,6 +67,11 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Cache, :get, 3},
     {PhoenixKit.Cache, :put, 3},
     {PhoenixKit.Cache, :clear, 1},
+    # §4.2.1 п.5 — invalidate_currency_cache/0's post-clear barrier: a
+    # same-process GenServer.call the cache GenServer must finish handling
+    # after the clear cast before this returns, so a subscriber reacting to
+    # `{:currencies_changed, code}` cannot observe the stale entry.
+    {PhoenixKit.Cache, :stats, 1},
     # Company and bank details for invoices live on a core *LiveView* module.
     # Reaching into a web module from a context is the most fragile line in
     # this list: core owes it no API stability, and a 2.0 that reorganises
