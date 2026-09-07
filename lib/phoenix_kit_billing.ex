@@ -1101,61 +1101,13 @@ defmodule PhoenixKitBilling do
         end
 
         base_rate = fresh_before.exchange_rate
-        # §6.2: computed once, outside the `update_all`, so every row this
-        # renormalization touches carries the exact same instant — it is one
-        # rate change, not N independently-timed ones.
-        now = DateTime.utc_now(:second)
-
-        # §6.2: dividing every rate by 1 is the identity — nothing
-        # numerically moves anywhere. That is exactly this function's own
-        # documented re-promote-the-current-default case (fixing a
-        # drifted base rate is the one exception, and it drifted away
-        # from 1, so it still counts as "not 1" here). Computed ONCE from
-        # the PRE-renormalization value: after step 1 below, this same
-        # row's own rate always reads back as exactly 1.0 regardless of
-        # scenario (it divided itself by itself), so a reload can never
-        # be used as the signal — only this snapshot can.
-        #
-        # This can produce one rare FALSE POSITIVE, never a false
-        # negative: a `base_rate` merely close to 1 (e.g. `1.0000001`)
-        # counts as "not 1" and re-dates every row, even though rounding
-        # to the stored precision (6 decimals) can leave some row's
-        # displayed rate numerically unchanged. Re-dating a rate that
-        # happened not to move is harmless (the row genuinely WAS
-        # recomputed against a new base); the invariant this flag exists
-        # to protect — never erase a real staleness signal — only runs
-        # in the other direction, and that direction has no false
-        # negatives.
-        rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
 
         # 1. Renormalize every rate against the new base, past the
-        #    changeset — ratios are preserved, so no converted price moves.
-        #    `rate_updated_at` is only ever included in the two branches
-        #    below when a real change happened; Ecto's `update: [set: ...]`
-        #    field list is fixed per query, so the branch picks the shape.
-        renormalize_query =
-          if rate_actually_changes? do
-            from(c in Currency,
-              update: [
-                set: [
-                  exchange_rate:
-                    fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal)),
-                  rate_updated_at: ^now
-                ]
-              ]
-            )
-          else
-            from(c in Currency,
-              update: [
-                set: [
-                  exchange_rate:
-                    fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal))
-                ]
-              ]
-            )
-          end
-
-        repo().update_all(renormalize_query, [])
+        #    changeset — ratios are preserved, so no converted price
+        #    moves. Shared with `change_base_currency/2` (see
+        #    `renormalize_all_rates!/1`'s own doc for the
+        #    `rate_actually_changes?` reasoning).
+        {rate_actually_changes?, now} = renormalize_all_rates!(base_rate)
 
         # 2. Clear the previous default.
         Currency
@@ -1163,35 +1115,11 @@ defmodule PhoenixKitBilling do
         |> repo().update_all(set: [is_default: false])
 
         # 3. Promote, pinning the base rate to exactly 1.0 (also enables
-        #    it). Reload again — step 1/2 just changed this same row out
-        #    from under `fresh_before` — and force both fields into the
-        #    changeset so the UPDATE always carries them, even when the
-        #    reloaded row already (mis)reports them as unchanged (see the
-        #    moduledoc note above). `rate_updated_at` uses the same
-        #    `rate_actually_changes?` flag as step 1, NOT `stamp_rate_change/2`:
-        #    `force_change/3` above always injects `:exchange_rate` into
-        #    `changes`, so `fetch_change/2` would always say "changed" —
-        #    exactly the false positive this flag exists to avoid.
-        fresh = repo().get_by!(Currency, uuid: currency.uuid)
-
-        promote_changeset =
-          fresh
-          |> Currency.changeset(%{
-            is_default: true,
-            enabled: true,
-            exchange_rate: Decimal.new("1.0")
-          })
-          |> Ecto.Changeset.force_change(:is_default, true)
-          |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
-
-        promote_changeset =
-          if rate_actually_changes? do
-            Ecto.Changeset.put_change(promote_changeset, :rate_updated_at, now)
-          else
-            promote_changeset
-          end
-
-        repo().update!(promote_changeset)
+        #    it). Shared with `change_base_currency/2` — see
+        #    `promote_to_base!/3`'s own doc for why it reloads the row
+        #    and forces both fields into the changeset regardless of
+        #    what that reload already reports.
+        promote_to_base!(currency.uuid, rate_actually_changes?, now)
       end)
       |> maybe_invalidate_currency_cache()
       |> maybe_broadcast_currencies_changed()
@@ -1221,8 +1149,8 @@ defmodule PhoenixKitBilling do
   base code onto every item) belong to whichever package owns the
   catalog and shipping data today — `phoenix_kit_catalogue`, not this
   one. Billing cannot reach those tables and must not try to. The
-  CALLER supplies that work as `opts[:reprice]`, a 2-arity
-  `(old_base_code, new_base_code) -> {:ok, term} | {:error, term}`
+  CALLER supplies that work as `opts[:reprice]`, a 3-arity
+  `(old_base_code, new_base_code, multiplier) -> {:ok, term} | {:error, term}`
   function invoked INSIDE this same transaction, strictly AFTER step 1
   (so it sees already-renormalized rates) and strictly BEFORE step 5
   (so an `{:error, _}` it returns rolls back the renormalization too —
@@ -1232,14 +1160,29 @@ defmodule PhoenixKitBilling do
   `:reprice` implementation's own repo calls join this transaction
   automatically, with no extra plumbing.
 
+  `multiplier` is the new base's PRE-operation rate — the exact same
+  value this function returns as `:rate` below — handed to the callback
+  explicitly because it is NOT derivable from inside the transaction
+  once step 1 has run: by then, EVERY rate has already been
+  renormalized, including the new base's own (now `1.000000`) and the
+  old base's (now the reciprocal of the very multiplier a repricing
+  implementation needs). A callback that tried to look either of those
+  up would find a plausible-looking number that is simply wrong — a
+  trap that fires once, in someone else's code, long after this
+  function was written. Passing the multiplier closes that off: a
+  repricing implementation multiplies its stored prices by it directly
+  and never has to reach for a currency row at all.
+
   `opts[:catalog_size]` — a non-negative integer the caller MUST
   supply; its absence refuses with `{:error, :catalog_size_unknown}`
   ("I don't know how many products there are" is not permission to
-  proceed). When it is greater than zero and no `:reprice` is given,
-  refuses with `{:error, :reprice_required}` — a silent shop-wide
-  re-pricing is exactly what this function exists to prevent. An empty
-  catalog (`catalog_size: 0`) has nothing to reprice, so `:reprice` is
-  optional there.
+  proceed), and a negative value refuses with
+  `{:error, :invalid_catalog_size}` (a caller error, not permission to
+  skip repricing). When it is greater than zero and no `:reprice` is
+  given, refuses with `{:error, :reprice_required}` — a silent
+  shop-wide re-pricing is exactly what this function exists to prevent.
+  An empty catalog (`catalog_size: 0`) has nothing to reprice, so
+  `:reprice` is optional there.
 
   Refuses `{:error, :unknown_currency}` (no such code),
   `{:error, :currency_not_usable}` (disabled, or `exchange_rate` not
@@ -1291,6 +1234,11 @@ defmodule PhoenixKitBilling do
 
   defp validate_reprice_requirement(nil, _reprice), do: {:error, :catalog_size_unknown}
 
+  defp validate_reprice_requirement(catalog_size, _reprice)
+       when is_integer(catalog_size) and catalog_size < 0 do
+    {:error, :invalid_catalog_size}
+  end
+
   defp validate_reprice_requirement(catalog_size, nil)
        when is_integer(catalog_size) and catalog_size > 0 do
     {:error, :reprice_required}
@@ -1332,42 +1280,35 @@ defmodule PhoenixKitBilling do
         end
 
       base_rate = fresh_new_base.exchange_rate
-      now = DateTime.utc_now(:second)
 
-      # §6.2: same identity-is-a-no-op reasoning as `set_default_currency/1`
-      # — only stamp `rate_updated_at` on rows whose rate actually moves.
-      rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
-
-      # 1. Renormalize every rate against the new base (§3.2, §4.9 step 1).
-      #    No `enabled` filter — a disabled currency's rate is still
-      #    real data and still gets renormalized, same as
-      #    `set_default_currency/1`.
-      base_rate
-      |> renormalize_all_rates_query(rate_actually_changes?, now)
-      |> repo().update_all([])
+      # 1. Renormalize every rate against the new base (§3.2, §4.9 step
+      #    1). Shared with `set_default_currency/1` — see
+      #    `renormalize_all_rates!/1`'s own doc. No `enabled` filter: a
+      #    disabled currency's rate is still real data and still gets
+      #    renormalized.
+      {rate_actually_changes?, now} = renormalize_all_rates!(base_rate)
 
       # §4.9 steps 2-4: the CALLER's job. Runs strictly after step 1
-      # (rates are already renormalized) and strictly before step 5
-      # (the currency table's own `is_default` has not moved yet) —
+      # (rates are already renormalized — `base_rate` below is the
+      # multiplier a repricing implementation needs, and it is handed
+      # over explicitly because it stops being derivable from the table
+      # itself the moment step 1 finishes: the new base's own rate now
+      # reads `1.0`, and the old base's reads the RECIPROCAL of this
+      # multiplier, not the multiplier itself) and strictly before step
+      # 5 (the currency table's own `is_default` has not moved yet) —
       # `Repo.rollback/1` unwinds this whole transaction on `{:error, _}`,
       # so a repricing failure can never leave the catalog and the
       # currency table disagreeing about which currency is base.
-      run_reprice!(reprice, old_base.code, fresh_new_base.code)
+      run_reprice!(reprice, old_base.code, fresh_new_base.code, base_rate)
 
       # 5. Clear the previous default, then promote the new one at
-      #    exactly 1.0 — same reload-and-force pattern as
-      #    `set_default_currency/1`, for the same reason (this row's
-      #    own fields just moved under it, twice: step 1's
-      #    renormalization, and — for the row that WAS the base — this
-      #    very `update_all` about to flip its `is_default`).
+      #    exactly 1.0. Shared with `set_default_currency/1` — see
+      #    `promote_to_base!/3`'s own doc.
       Currency
       |> where([c], c.is_default == true)
       |> repo().update_all(set: [is_default: false])
 
-      promoted =
-        fresh_new_base.uuid
-        |> promote_changeset(rate_actually_changes?, now)
-        |> repo().update!()
+      promoted = promote_to_base!(fresh_new_base.uuid, rate_actually_changes?, now)
 
       %{old_base: old_base.code, rate: base_rate, promoted: promoted}
     end)
@@ -1393,6 +1334,51 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  defp run_reprice!(nil, _old_base_code, _new_base_code, _multiplier), do: :ok
+
+  defp run_reprice!(fun, old_base_code, new_base_code, multiplier) do
+    case fun.(old_base_code, new_base_code, multiplier) do
+      {:ok, _} -> :ok
+      {:error, reason} -> repo().rollback(reason)
+    end
+  end
+
+  # Shared by `set_default_currency/1` and `change_base_currency/2` —
+  # both renormalize EVERY currency's `exchange_rate` by dividing it by
+  # the same `base_rate` (the new base's own pre-operation rate), so a
+  # future fix to one path must not be able to miss the other.
+  #
+  # §6.2: dividing every rate by 1 is the identity — nothing numerically
+  # moves anywhere (the re-promote-the-current-default case, or a
+  # `change_base_currency/2` call whose target happens to already carry
+  # rate `1.0`). Computed from the PRE-renormalization `base_rate`
+  # because after this function runs, the promoted row's own rate always
+  # reads back as exactly 1.0 regardless of scenario (it divided itself
+  # by itself) — a reload afterward can never be used as the signal.
+  #
+  # This can produce one rare FALSE POSITIVE, never a false negative: a
+  # `base_rate` merely close to 1 (e.g. `1.0000001`) counts as "not 1"
+  # and re-dates every row, even though rounding to the stored precision
+  # (6 decimals) can leave some row's displayed rate numerically
+  # unchanged. Re-dating a rate that happened not to move is harmless
+  # (the row genuinely WAS recomputed against a new base); erasing a
+  # real staleness signal would not be — so this flag only ever errs
+  # toward "changed".
+  #
+  # Returns `{rate_actually_changes?, now}` for the caller to pass into
+  # `promote_to_base!/3` unchanged — one instant for the whole operation,
+  # not N independently-timed ones.
+  defp renormalize_all_rates!(base_rate) do
+    now = DateTime.utc_now(:second)
+    rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
+
+    base_rate
+    |> renormalize_all_rates_query(rate_actually_changes?, now)
+    |> repo().update_all([])
+
+    {rate_actually_changes?, now}
+  end
+
   defp renormalize_all_rates_query(base_rate, true = _rate_actually_changes?, now) do
     from(c in Currency,
       update: [
@@ -1414,16 +1400,24 @@ defmodule PhoenixKitBilling do
     )
   end
 
-  defp run_reprice!(nil, _old_base_code, _new_base_code), do: :ok
-
-  defp run_reprice!(fun, old_base_code, new_base_code) do
-    case fun.(old_base_code, new_base_code) do
-      {:ok, _} -> :ok
-      {:error, reason} -> repo().rollback(reason)
-    end
-  end
-
-  defp promote_changeset(uuid, rate_actually_changes?, now) do
+  # Shared by `set_default_currency/1` and `change_base_currency/2` —
+  # both promote the currency at `uuid` to default the same way, pinning
+  # its rate to exactly 1.0. Reloads the row itself rather than trusting
+  # a struct the caller captured earlier: whichever step ran immediately
+  # before this one may have just changed this very row (its own rate,
+  # via `renormalize_all_rates!/1`; or, for the row that WAS the base,
+  # the `is_default` clear that runs right before this call), and
+  # `Ecto.Changeset.cast/3` only records a "change" when the cast value
+  # differs from the struct's CURRENT field value — so both `:is_default`
+  # and `:exchange_rate` are forced into the changeset regardless of
+  # what the reload already (mis)reports, or the `UPDATE` this emits
+  # could end up not touching one of them at all. `rate_updated_at` is
+  # NOT decided by `stamp_rate_change/2` here: `force_change/3` above
+  # always injects `:exchange_rate` into `changes`, so `fetch_change/2`
+  # would always say "changed" — exactly the false positive
+  # `rate_actually_changes?` (computed once, upstream, in
+  # `renormalize_all_rates!/1`) exists to avoid.
+  defp promote_to_base!(uuid, rate_actually_changes?, now) do
     changeset =
       Currency
       |> repo().get_by!(uuid: uuid)
@@ -1431,11 +1425,14 @@ defmodule PhoenixKitBilling do
       |> Ecto.Changeset.force_change(:is_default, true)
       |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
 
-    if rate_actually_changes? do
-      Ecto.Changeset.put_change(changeset, :rate_updated_at, now)
-    else
-      changeset
-    end
+    changeset =
+      if rate_actually_changes? do
+        Ecto.Changeset.put_change(changeset, :rate_updated_at, now)
+      else
+        changeset
+      end
+
+    repo().update!(changeset)
   end
 
   @doc """

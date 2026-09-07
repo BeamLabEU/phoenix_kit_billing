@@ -149,32 +149,44 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
 
     test "missing :catalog_size refuses even with :reprice given" do
       assert PhoenixKitBilling.change_base_currency("EUR",
-               reprice: fn _, _ -> {:ok, :ignored} end
+               reprice: fn _, _, _ -> {:ok, :ignored} end
              ) ==
                {:error, :catalog_size_unknown}
+    end
+
+    test "a negative :catalog_size is a caller error, not permission to skip repricing" do
+      assert PhoenixKitBilling.change_base_currency("EUR", catalog_size: -1) ==
+               {:error, :invalid_catalog_size}
     end
   end
 
   describe ":reprice" do
-    test "runs exactly once, with (old_base, new_base) in that order, after renormalization" do
+    test "runs exactly once, with (old_base, new_base, multiplier) in that order, after renormalization" do
       test_pid = self()
 
-      reprice = fn old_code, new_code ->
+      reprice = fn old_code, new_code, multiplier ->
         # A RAW read, deliberately bypassing Billing's own cache, on the
         # SAME connection this transaction is running on — the only way
         # to prove this callback runs strictly AFTER step 1 rather than
-        # merely being scheduled before commit.
+        # merely being scheduled before commit. By this point USD's OWN
+        # rate is no longer the multiplier a repricing implementation
+        # would need (it now reads the reciprocal) — that is exactly why
+        # `multiplier` is a passed argument, not something derived here.
         usd = Repo.get_by!(Currency, code: "USD")
-        send(test_pid, {:reprice_called, old_code, new_code, usd.exchange_rate})
+        send(test_pid, {:reprice_called, old_code, new_code, multiplier, usd.exchange_rate})
         {:ok, :repriced}
       end
 
-      assert {:ok, %{old_base: "USD"}} =
+      assert {:ok, %{old_base: "USD", rate: rate}} =
                PhoenixKitBilling.change_base_currency("EUR", catalog_size: 1, reprice: reprice)
 
-      assert_received {:reprice_called, "USD", "EUR", rate_seen_by_reprice}
-      assert Decimal.equal?(rate_seen_by_reprice, Decimal.new("1.100000"))
-      refute_received {:reprice_called, _, _, _}
+      assert_received {:reprice_called, "USD", "EUR", multiplier, usd_rate_seen_by_reprice}
+      # The multiplier IS the `:rate` this call returns — same divisor,
+      # same value, handed to the caller two ways.
+      assert Decimal.equal?(multiplier, rate)
+      assert Decimal.equal?(multiplier, Decimal.new("0.909091"))
+      assert Decimal.equal?(usd_rate_seen_by_reprice, Decimal.new("1.100000"))
+      refute_received {:reprice_called, _, _, _, _}
     end
 
     test "an {:error, _} from :reprice rolls back renormalization entirely — the table is byte-identical after" do
@@ -182,7 +194,7 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
 
       assert PhoenixKitBilling.change_base_currency("EUR",
                catalog_size: 1,
-               reprice: fn _old, _new -> {:error, :boom} end
+               reprice: fn _old, _new, _multiplier -> {:error, :boom} end
              ) == {:error, :boom}
 
       assert currency_snapshot() == before_state
@@ -219,7 +231,7 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
     test "a failed base change (reprice errors) broadcasts nothing" do
       assert PhoenixKitBilling.change_base_currency("EUR",
                catalog_size: 1,
-               reprice: fn _old, _new -> {:error, :boom} end
+               reprice: fn _old, _new, _multiplier -> {:error, :boom} end
              ) == {:error, :boom}
 
       refute_receive {:currencies_changed, _}, 100
