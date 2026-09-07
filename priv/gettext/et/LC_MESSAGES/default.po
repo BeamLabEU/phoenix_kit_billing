@@ -3481,3 +3481,18 @@ msgstr "Ümardamisreegel"
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
 msgstr "Täisühikud — ilma sentideta"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+#, elixir-autogen, elixir-format
+msgid "Some exchange rates are out of date"
+msgstr "Mõned vahetuskursid on aegunud"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#, elixir-autogen, elixir-format
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr "Pole uuendatud üle %{days} päeva: %{codes}. Hindu konverteeritakse endiselt nende kursside järgi."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+#, elixir-autogen, elixir-format
+msgid "out of date"
+msgstr "aegunud"

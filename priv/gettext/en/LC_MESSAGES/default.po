@@ -3480,3 +3480,18 @@ msgstr "Rounding rule"
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
 msgstr "Whole units — no minor units"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+#, elixir-autogen, elixir-format
+msgid "Some exchange rates are out of date"
+msgstr "Some exchange rates are out of date"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#, elixir-autogen, elixir-format
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+#, elixir-autogen, elixir-format
+msgid "out of date"
+msgstr "out of date"

@@ -38,6 +38,8 @@ defmodule PhoenixKitBilling.Currency do
   import Ecto.Changeset
   import Ecto.Query, warn: false
 
+  require Logger
+
   @primary_key {:uuid, UUIDv7, autogenerate: true}
 
   schema "phoenix_kit_currencies" do
@@ -251,19 +253,61 @@ defmodule PhoenixKitBilling.Currency do
 
   # Live path: unchanged from before this module froze rates — resolves
   # the target fail-safe (§6.3) on every call, so a rate edit is visible
-  # on the very next present/3 call (§4.2.1).
+  # on the very next present/3 call (§4.2.1). §6.2: a stale rate must not
+  # stop selling — it still converts here, `maybe_warn_stale/1` only logs.
   defp present_live(amount, display_code, base) do
     target = PhoenixKitBilling.resolve_display_currency(display_code)
 
     if is_nil(base) or is_nil(target) or target.code == base.code do
       amount
     else
+      maybe_warn_stale(target)
+
       rate = Decimal.div(target.exchange_rate, base.exchange_rate)
 
       amount
       |> Decimal.mult(rate)
       |> round_for_display(target.decimal_places, target.rounding_rule)
     end
+  end
+
+  @stale_warned_key :phoenix_kit_billing_stale_rate_warned
+
+  # §6.2: warns exactly ONCE per process per currency code — a catalog
+  # page renders dozens of prices through `present/3`, and without this a
+  # single stale rate would flood the log with an identical line per
+  # price. Only the LIVE path calls this: a cart's frozen rate has no
+  # meaningful "age" (see present/3's own moduledoc), so present_frozen/4
+  # never reaches here.
+  defp maybe_warn_stale(%__MODULE__{code: code} = currency) do
+    max_age_days = PhoenixKitBilling.fx_rate_max_age_days()
+
+    if stale?(currency, max_age_days) do
+      warned = Process.get(@stale_warned_key, MapSet.new())
+
+      unless MapSet.member?(warned, code) do
+        Process.put(@stale_warned_key, MapSet.put(warned, code))
+
+        Logger.warning(
+          "[Billing] exchange rate for #{code} has not been updated in over #{max_age_days} days"
+        )
+      end
+    end
+  end
+
+  @doc """
+  Whether `currency`'s `exchange_rate` is older than `max_age_days`
+  (§6.2). The base currency is never stale (its rate is 1.0 by
+  definition, renormalization keeps it current); a `nil`
+  `rate_updated_at` (never dated — a row from before this column had a
+  writer) is an unknown age, not a known-stale one.
+  """
+  @spec stale?(t(), pos_integer()) :: boolean()
+  def stale?(%__MODULE__{is_default: true}, _max_age_days), do: false
+  def stale?(%__MODULE__{rate_updated_at: nil}, _max_age_days), do: false
+
+  def stale?(%__MODULE__{rate_updated_at: at}, max_age_days) do
+    DateTime.diff(DateTime.utc_now(), at, :day) > max_age_days
   end
 
   # Frozen path: the caller already knows the rate — nothing here may

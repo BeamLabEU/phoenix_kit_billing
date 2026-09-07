@@ -3495,3 +3495,18 @@ msgstr "Правило округления"
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
 msgstr "Целые единицы — без копеек"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+#, elixir-autogen, elixir-format
+msgid "Some exchange rates are out of date"
+msgstr "Некоторые курсы устарели"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#, elixir-autogen, elixir-format
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr "Не обновлялись более %{days} дней: %{codes}. Цены по-прежнему конвертируются по этим курсам."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+#, elixir-autogen, elixir-format
+msgid "out of date"
+msgstr "устарел"

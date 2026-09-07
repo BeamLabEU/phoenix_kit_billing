@@ -3481,3 +3481,18 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
 msgstr ""
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+#, elixir-autogen, elixir-format
+msgid "Some exchange rates are out of date"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#, elixir-autogen, elixir-format
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+#, elixir-autogen, elixir-format
+msgid "out of date"
+msgstr ""

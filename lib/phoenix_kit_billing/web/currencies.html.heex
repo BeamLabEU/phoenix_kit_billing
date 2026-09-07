@@ -18,6 +18,23 @@
       </:actions>
     </.admin_page_header>
 
+    <%!-- §6.2: a stale rate never blocks selling — this only warns. --%>
+    <%= unless Enum.empty?(@stale_currencies) do %>
+      <div id="currencies-stale-banner" class="alert alert-warning mb-6">
+        <.icon name="hero-exclamation-triangle" class="w-5 h-5" />
+        <div>
+          <h3 class="font-bold">{gettext("Some exchange rates are out of date")}</h3>
+          <p class="text-sm">
+            {gettext(
+              "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates.",
+              days: @fx_rate_max_age_days,
+              codes: Enum.map_join(@stale_currencies, ", ", & &1.code)
+            )}
+          </p>
+        </div>
+      </div>
+    <% end %>
+
     <%!-- Currencies Table --%>
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body p-0">
@@ -127,6 +144,7 @@
                   <.table_default_header_cell>{gettext("Decimal Places")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Rounding")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Exchange Rate")}</.table_default_header_cell>
+                  <.table_default_header_cell>{gettext("Updated")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Status")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Default")}</.table_default_header_cell>
                   <.table_default_header_cell class="text-right">{gettext("Actions")}</.table_default_header_cell>
@@ -167,6 +185,12 @@
                           </div>
                         <% end %>
                       <% end %>
+                      <%= if Currency.stale?(currency, @fx_rate_max_age_days) do %>
+                        <span class="badge badge-warning badge-sm ml-1">{gettext("out of date")}</span>
+                      <% end %>
+                    </.table_default_cell>
+                    <.table_default_cell>
+                      <.time_ago datetime={currency.rate_updated_at} />
                     </.table_default_cell>
                     <.table_default_cell>
                       <label class="cursor-pointer">

@@ -720,6 +720,48 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  The staleness threshold (in days) past which `Currency.stale?/2` and
+  `currencies_with_stale_rates/0` consider a rate stale (§6.2).
+
+  Backed by the `"fx_rate_max_age_days"` setting; garbage or a value
+  `<= 0` reads as the default 30 — a threshold that would make every
+  rate instantly stale is worse than not having one at all.
+
+  Cached (§13) under the same `:billing_currencies` namespace as
+  `get_base_currency/0`, NOT through `Settings.get_setting_cached/2`'s
+  own cache: `Currency.present/3`'s live path reads this on every
+  non-base conversion, same hot path `get_base_currency/0` and
+  `get_currency_by_code/1` are cached for, and this value needs the
+  exact same O(1)-after-first-miss treatment. Piggybacking here also
+  means any currency write's `invalidate_currency_cache/0` clears it
+  too — one write more than strictly necessary, harmless given the
+  5-minute TTL either cache would use anyway.
+  """
+  @spec fx_rate_max_age_days() :: pos_integer()
+  def fx_rate_max_age_days do
+    with_currency_cache(:fx_rate_max_age_days, fn ->
+      "fx_rate_max_age_days"
+      |> Settings.get_setting_cached("30")
+      |> Integer.parse()
+      |> case do
+        {days, _rest} when days > 0 -> days
+        _ -> 30
+      end
+    end)
+  end
+
+  @doc """
+  Currencies whose `exchange_rate` has not been touched within
+  `fx_rate_max_age_days/0` (§6.2) — feeds the admin staleness banner.
+  A stale rate keeps converting; this is only ever used to warn.
+  """
+  @spec currencies_with_stale_rates() :: [Currency.t()]
+  def currencies_with_stale_rates do
+    max_age_days = fx_rate_max_age_days()
+    list_currencies() |> Enum.filter(&Currency.stale?(&1, max_age_days))
+  end
+
+  @doc """
   Gets the default currency.
   """
   def get_default_currency do
