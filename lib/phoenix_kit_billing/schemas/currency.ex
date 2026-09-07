@@ -15,8 +15,8 @@ defmodule PhoenixKitBilling.Currency do
   - `exchange_rate`: Rate relative to base currency
   - `sort_order`: Display order in currency lists
   - `rounding_rule`: Display rounding strategy (`"exact"`, `"charm_99"`,
-    `"charm_90"`, `"integer"`); no reader uses this yet — `"exact"`
-    reproduces today's behavior
+    `"charm_90"`, `"integer"`), applied by `Currency.present/3` (§5);
+    `"exact"` reproduces pre-Э2 behavior
   - `rate_updated_at`: When `exchange_rate` was last refreshed; no reader
     uses this yet
 
@@ -82,6 +82,7 @@ defmodule PhoenixKitBilling.Currency do
     |> validate_number(:decimal_places, greater_than_or_equal_to: 0, less_than_or_equal_to: 4)
     |> validate_number(:exchange_rate, greater_than: 0)
     |> validate_inclusion(:rounding_rule, @rounding_rules)
+    |> validate_charm_needs_two_decimals()
     |> unique_constraint(:code, name: :phoenix_kit_currencies_code_uidx)
     # Chain V2 added the partial unique index on `(is_default) WHERE
     # is_default`. Without this declaration a second `is_default: true`
@@ -90,6 +91,19 @@ defmodule PhoenixKitBilling.Currency do
     # `set_default_currency/1` is the only path that demotes the incumbent.
     |> unique_constraint(:is_default, name: :phoenix_kit_currencies_default_uidx)
     |> upcase_code()
+  end
+
+  # §5: charm rules are defined in cents. A 0- or 3-decimal currency with
+  # `charm_99` would print "X.99" against its own `decimal_places`.
+  defp validate_charm_needs_two_decimals(changeset) do
+    rule = get_field(changeset, :rounding_rule)
+    places = get_field(changeset, :decimal_places)
+
+    if rule in ["charm_99", "charm_90"] and places != 2 do
+      add_error(changeset, :rounding_rule, "charm rules need exactly two decimal places")
+    else
+      changeset
+    end
   end
 
   defp upcase_code(changeset) do
@@ -188,11 +202,18 @@ defmodule PhoenixKitBilling.Currency do
   edits it (§4.2.1). A `nil` code (no display override in play) and the
   base currency's own code both return `amount` unrounded: an author's
   stored price is not "converted to itself" and then rounded away from
-  what they typed (§5, exact rounding only in Э1 — no psychological
-  rounding yet). The same passthrough covers a `target` this call cannot
+  what they typed (§5 — a `rounding_rule` only ever applies to a
+  converted display amount). The same passthrough covers a `target` this call cannot
   resolve to anything but the base (`resolve_display_currency/1`'s
   fail-safe, §6.3) — the fallback has already logged its own warning by
   the time `present/3` sees it, so this function does not warn again.
+
+  The target's `rounding_rule` (§5) is applied on BOTH paths below, to
+  the raw `amount × rate` figure, exactly once — so a catalog price
+  shown live and the same price frozen into a cart snapshot always
+  agree (§12). It is never applied to the base currency: the
+  passthrough above returns the base amount before either path is
+  reached.
 
   `opts[:rate]` is the ONE way this function does not read
   `phoenix_kit_currencies` for the target's rate: a caller's frozen
@@ -238,28 +259,73 @@ defmodule PhoenixKitBilling.Currency do
       amount
     else
       rate = Decimal.div(target.exchange_rate, base.exchange_rate)
-      amount |> Decimal.mult(rate) |> Decimal.round(target.decimal_places)
+
+      amount
+      |> Decimal.mult(rate)
+      |> round_for_display(target.decimal_places, target.rounding_rule)
     end
   end
 
   # Frozen path: the caller already knows the rate — nothing here may
   # decide WHETHER to convert based on the target's current usability,
-  # only what precision to round to.
+  # only what precision and rule to round with.
   defp present_frozen(amount, display_code, base, rate) do
     base_code = base && base.code
 
     if display_code == base_code do
       amount
     else
-      amount |> Decimal.mult(rate) |> Decimal.round(present_decimal_places(display_code, base))
+      {places, rule} = present_rounding(display_code, base)
+      amount |> Decimal.mult(rate) |> round_for_display(places, rule)
     end
   end
 
-  defp present_decimal_places(code, base) do
+  # With `:rate` the code is looked up ONLY for how to round (never through
+  # `resolve_display_currency/1`, see the `present/3` doc); a code the table
+  # has never heard of rounds like the base, exactly.
+  defp present_rounding(code, base) do
     case PhoenixKitBilling.get_currency_by_code(code) do
-      %{decimal_places: places} -> places
-      nil -> (base && base.decimal_places) || 2
+      %{decimal_places: places, rounding_rule: rule} -> {places, rule}
+      nil -> {(base && base.decimal_places) || 2, "exact"}
     end
+  end
+
+  @one Decimal.new("1")
+
+  @doc """
+  The ONE table of §5, applied to the RAW converted figure — so each rule
+  rounds exactly once and `charm_99` can never round up (18.985 → 17.99,
+  not 18.99 → 18.99):
+
+    * `"exact"` (default, and `nil`) — `Decimal.round/2` by `decimal_places`;
+    * `"charm_99"` — DOWN to the nearest X.99 (18.17 → 17.99, 22.00 → 21.99);
+    * `"charm_90"` — to the NEAREST X.90 (18.17 → 17.90, 125.45 → 125.90);
+    * `"integer"` — whole units, half-up, from the raw figure.
+
+  Charm rules assume two minor-unit digits (the changeset enforces
+  `decimal_places == 2` for them) and leave figures below 1.00 — and zero —
+  at exact rounding: there is no X.99 below one unit, and "free" must stay
+  free. Never applied to the base currency: `present/3` returns the base
+  amount before reaching this function (§5 п.3).
+  """
+  @spec round_for_display(Decimal.t(), non_neg_integer, String.t() | nil) :: Decimal.t()
+  def round_for_display(raw, _places, "integer"), do: Decimal.round(raw, 0)
+  def round_for_display(raw, places, "charm_99"), do: charm(raw, places, &charm_99/1)
+  def round_for_display(raw, places, "charm_90"), do: charm(raw, places, &charm_90/1)
+  def round_for_display(raw, places, _exact), do: Decimal.round(raw, places)
+
+  defp charm(raw, places, fun) do
+    if Decimal.compare(raw, @one) == :lt, do: Decimal.round(raw, places), else: fun.(raw)
+  end
+
+  # floor(raw + 0.01) − 0.01: 18.17 → 17.99, 18.99 → 18.99, 19.00 → 18.99
+  defp charm_99(raw) do
+    raw |> Decimal.add("0.01") |> Decimal.round(0, :floor) |> Decimal.sub("0.01")
+  end
+
+  # round(raw − 0.90) + 0.90: 18.17 → 17.90, 125.45 → 125.90
+  defp charm_90(raw) do
+    raw |> Decimal.sub("0.90") |> Decimal.round(0, :half_up) |> Decimal.add("0.90")
   end
 
   @doc """
