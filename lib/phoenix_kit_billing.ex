@@ -948,6 +948,7 @@ defmodule PhoenixKitBilling do
   def create_currency(attrs) do
     %Currency{}
     |> Currency.changeset(attrs)
+    |> stamp_rate_change()
     |> repo().insert()
     |> maybe_invalidate_currency_cache()
     |> maybe_broadcast_currencies_changed()
@@ -959,9 +960,24 @@ defmodule PhoenixKitBilling do
   def update_currency(%Currency{} = currency, attrs) do
     currency
     |> Currency.changeset(attrs)
+    |> stamp_rate_change()
     |> repo().update()
     |> maybe_invalidate_currency_cache()
     |> maybe_broadcast_currencies_changed()
+  end
+
+  # §6.2: `rate_updated_at` dates the RATE. Stamp it only when the changeset
+  # really changes `exchange_rate` — otherwise the column just repeats
+  # `updated_at` (which moves on a symbol or sort-order edit) and stops
+  # answering the one question it exists for: when was this rate last touched.
+  defp stamp_rate_change(%Ecto.Changeset{} = changeset) do
+    case Ecto.Changeset.fetch_change(changeset, :exchange_rate) do
+      {:ok, _new_rate} ->
+        Ecto.Changeset.put_change(changeset, :rate_updated_at, DateTime.utc_now(:second))
+
+      :error ->
+        changeset
+    end
   end
 
   @doc """
@@ -1027,6 +1043,10 @@ defmodule PhoenixKitBilling do
         end
 
         base_rate = fresh_before.exchange_rate
+        # §6.2: computed once, outside the `update_all`, so every row this
+        # renormalization touches carries the exact same instant — it is one
+        # rate change, not N independently-timed ones.
+        now = DateTime.utc_now(:second)
 
         # 1. Renormalize every rate against the new base, past the
         #    changeset — ratios are preserved, so no converted price moves.
@@ -1034,7 +1054,8 @@ defmodule PhoenixKitBilling do
           update: [
             set: [
               exchange_rate:
-                fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal))
+                fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal)),
+              rate_updated_at: ^now
             ]
           ]
         )
@@ -1061,6 +1082,7 @@ defmodule PhoenixKitBilling do
         })
         |> Ecto.Changeset.force_change(:is_default, true)
         |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
+        |> stamp_rate_change()
         |> repo().update!()
       end)
       |> maybe_invalidate_currency_cache()
