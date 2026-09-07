@@ -56,6 +56,7 @@
                 fn currency ->
                   [
                     %{label: gettext("Decimal Places"), value: currency.decimal_places},
+                    %{label: gettext("Rounding"), value: rounding_rule_label(currency.rounding_rule)},
                     %{
                       label: gettext("Exchange Rate"),
                       value:
@@ -124,6 +125,7 @@
                   <.table_default_header_cell>{gettext("Currency")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Symbol")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Decimal Places")}</.table_default_header_cell>
+                  <.table_default_header_cell>{gettext("Rounding")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Exchange Rate")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Status")}</.table_default_header_cell>
                   <.table_default_header_cell>{gettext("Default")}</.table_default_header_cell>
@@ -147,6 +149,11 @@
                       <span class="text-xl font-bold">{currency.symbol}</span>
                     </.table_default_cell>
                     <.table_default_cell>{currency.decimal_places}</.table_default_cell>
+                    <.table_default_cell>
+                      <span class={["badge badge-sm", currency.rounding_rule == "exact" && "badge-ghost"]}>
+                        {rounding_rule_label(currency.rounding_rule)}
+                      </span>
+                    </.table_default_cell>
                     <.table_default_cell>
                       <span class="font-mono">{Decimal.to_string(currency.exchange_rate)}</span>
                       <%= if currency.is_default do %>
@@ -254,7 +261,7 @@
         <h3 class="font-bold text-lg mb-4">
           {if @editing_currency, do: gettext("Edit Currency"), else: gettext("Add Currency")}
         </h3>
-        <.form for={@form} phx-change="validate" phx-submit="save">
+        <.form for={@form} id="currency-form" phx-change="validate" phx-submit="save">
           <div class="space-y-4">
             <%!-- Code --%>
             <div class="fieldset">
@@ -344,6 +351,36 @@
                   class="input w-full"
                 />
               </div>
+            </div>
+
+            <%!-- Rounding rule (§5): applied to CONVERTED display prices and
+                 cart snapshots only; the base currency is never rounded. --%>
+            <div class="fieldset">
+              <label class="label">
+                <span class="fieldset-legend">{gettext("Rounding rule")}</span>
+              </label>
+              <select id="currency-rounding-rule" name="currency[rounding_rule]" class="select w-full">
+                <%= for {value, label} <- rounding_rule_options() do %>
+                  <option
+                    value={value}
+                    selected={to_string(@form[:rounding_rule].value || "exact") == value}
+                  >
+                    {label}
+                  </option>
+                <% end %>
+              </select>
+              <%= if @form[:rounding_rule].errors != [] do %>
+                <label class="label">
+                  <span class="fieldset-label text-error">
+                    {error_to_string(@form[:rounding_rule].errors)}
+                  </span>
+                </label>
+              <% end %>
+              <p class="text-xs text-base-content/60 mt-1">
+                {gettext(
+                  "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
+                )}
+              </p>
             </div>
 
             <%!-- Sort Order --%>

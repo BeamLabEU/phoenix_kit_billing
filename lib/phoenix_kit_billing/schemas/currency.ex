@@ -220,19 +220,19 @@ defmodule PhoenixKitBilling.Currency do
   `exchange_rate` (a cart's, an order's), taken as-is regardless of what
   the currency table says right now (§12.2 — a snapshot rate is never
   mixed with a live one). With `:rate` given, the code is looked up ONLY
-  for its `decimal_places` (rounding, cosmetic) — never through
-  `resolve_display_currency/1`, whose own fail-safe (§6.3) would
-  substitute the base as target the moment the code is disabled or its
-  live rate turns unusable, and this function would then see
-  `target.code == base.code` and return the amount unconverted,
-  silently discarding the very rate the caller froze it at. A frozen
-  rate must survive the target currency being disabled AFTER the
-  freeze — that is the whole reason a caller freezes one in the first
-  place (found in review: an EUR cart disabled mid-checkout used to lose
-  its conversion this way). Rounding still happens once, by the
-  resolved decimal places, same as the live-rate path; a code this
-  shop's table has never heard of at all falls back to the base's own
-  decimal places, then 2.
+  for its `decimal_places` and `rounding_rule` (both applied on this
+  frozen path too, §5) — never through `resolve_display_currency/1`,
+  whose own fail-safe (§6.3) would substitute the base as target the
+  moment the code is disabled or its live rate turns unusable, and this
+  function would then see `target.code == base.code` and return the
+  amount unconverted, silently discarding the very rate the caller
+  froze it at. A frozen rate must survive the target currency being
+  disabled AFTER the freeze — that is the whole reason a caller freezes
+  one in the first place (found in review: an EUR cart disabled
+  mid-checkout used to lose its conversion this way). Rounding still
+  happens once, by the resolved decimal places and rule, same as the
+  live-rate path; a code this shop's table has never heard of at all
+  falls back to the base's own decimal places (or 2) and `"exact"`.
   """
   @spec present(Decimal.t() | number | String.t(), String.t() | nil, keyword) :: Decimal.t()
   def present(amount, display_code, opts \\ [])

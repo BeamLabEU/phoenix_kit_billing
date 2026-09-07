@@ -206,6 +206,23 @@ defmodule PhoenixKitBilling.Web.Currencies do
 
   # --- Helpers ---
 
+  @doc "The §5 rules as `{value, label}` pairs for the form select."
+  def rounding_rule_options do
+    [
+      {"exact", gettext("Exact — no psychological rounding")},
+      {"charm_99", gettext("Charm .99 — round down to X.99")},
+      {"charm_90", gettext("Charm .90 — nearest X.90")},
+      {"integer", gettext("Whole units — no minor units")}
+    ]
+  end
+
+  @doc "The translated label for a stored `rounding_rule` value (falls back to the raw value for an unknown rule)."
+  def rounding_rule_label(rule) do
+    rounding_rule_options()
+    |> List.keyfind(rule, 0, {rule, rule})
+    |> elem(1)
+  end
+
   def error_to_string([]), do: ""
 
   def error_to_string(errors) when is_list(errors) do
