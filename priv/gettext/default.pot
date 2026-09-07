@@ -3413,3 +3413,35 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Unnamed profile"
 msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Invoice {{invoice_number}} - {{company_name}}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Receipt {{receipt_number}} - {{company_name}}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Credit Note {{credit_note_number}} - Refund Issued - {{company_name}}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nINVOICE {{invoice_number}}\n=============================================\n\nBill To: {{user_name}}\nEmail: {{user_email}}\n\nInvoice Date: {{invoice_date}}\nDue Date: {{due_date}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL:       {{total}} {{currency}}\n---------------------------------------------\n\nPAYMENT DUE: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nBANK TRANSFER DETAILS\n---------------------------------------------\nBank:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nReference:   {{invoice_number}}\n\n---------------------------------------------\nView invoice online: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this invoice, please contact us."
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nRECEIPT {{receipt_number}}\n=============================================\nSTATUS: PAID\n\nThank you for your payment!\nYour payment has been successfully processed.\n\n---------------------------------------------\nRECEIVED FROM\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\nPayment Date: {{payment_date}}\nInvoice: {{invoice_number}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL PAID:  {{paid_amount}} {{currency}}\n---------------------------------------------\n\nPAYMENT CONFIRMED: {{payment_date}}\n\n---------------------------------------------\nView receipt online: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nThank you for your business.\nIf you have any questions, please contact us."
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nCREDIT NOTE {{credit_note_number}}\n=============================================\nSTATUS: REFUND ISSUED\n\nA refund has been processed for your account.\n\nREFUND AMOUNT: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nISSUED BY (PAYER)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n\n---------------------------------------------\nISSUED TO (PAYEE)\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\n---------------------------------------------\nREFUND DETAILS\n---------------------------------------------\nCredit Note #:     {{credit_note_number}}\nRefund Date:       {{refund_date}}\nRefund Amount:     {{refund_amount}} {{currency}}\nOriginal Invoice:  {{invoice_number}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nREASON FOR REFUND\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nView credit note online: {{credit_note_url}}\n\nThe refund will be processed to your original payment method.\nPlease allow 5-10 business days for the refund to appear in your account.\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this refund, please contact us."
+msgstr ""
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nPAYMENT CONFIRMATION {{confirmation_number}}\n=============================================\nSTATUS: PAYMENT RECEIVED\n\nThank you for your payment.\n\nPAYMENT AMOUNT: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nPAYMENT DETAILS\n---------------------------------------------\nConfirmation #:    {{confirmation_number}}\nInvoice #:         {{invoice_number}}\nPayment Date:      {{payment_date}}\nPayment Method:    {{payment_method}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nBALANCE SUMMARY\n---------------------------------------------\nInvoice Total:     {{invoice_total}} {{currency}}\nTotal Paid:        {{total_paid}} {{currency}}\nRemaining:         {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nView payment confirmation online: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nThank you for your business. If you have any questions, please contact us."
+msgstr ""

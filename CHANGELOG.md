@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.12.0 - 2026-09-07
+
+Phase B of retiring the `phoenix_kit_email_templates` table. Plan:
+`phoenix_kit/dev_docs/plans/2026-09-06-templates-table-split.md`.
+
+### Added
+
+- **`PhoenixKitBilling.EmailDefaults` — this package now owns the content of
+  its own four emails.** Invoice, receipt, credit note and payment
+  confirmation were seeded rows in a table belonging to `phoenix_kit_emails`,
+  which is why that package hardcoded billing's copy. That table is being
+  retired; without this, all four emails would stop sending when it goes.
+
+  The content is passed to core as `:defaults` (a zero-arity function, so core
+  evaluates it inside the *recipient's* locale rather than whatever locale a
+  background job happens to be in). Resolution order is unchanged: an active
+  database template, then a host override file, then this.
+
+  **Nothing changes for an existing install.** A host that customized one of
+  these templates keeps its customization, because the database row still
+  wins. Requires core ≥ 2.17 to take effect; older cores ignore the option, so
+  the pin stays at `~> 2.0`.
+
+- Subjects and bodies are now translated into `et` and `ru`. They were
+  English-only for every recipient before, because the seeded rows carried a
+  single `"en"` value.
+
+### Fixed
+
+- Ten `et`/`ru` strings were serving a translation matched from a *different*
+  msgid — "Manage invoices" read as *manage currencies*, and "Subscription
+  extended by %{days} days" had dropped the placeholder and hardcoded 30 days.
+  Rewritten by hand.
+
+### Known gap
+
+- **The four emails no longer carry an HTML body once the templates table is
+  dropped**, only plain text. The shipped HTML was roughly 200 lines each of
+  inline markup with the header and footer copy-pasted between them — the
+  duplication the shared layout layer exists to remove — and re-homing it here
+  would bake that into a second package immediately before deleting it. The
+  layout layer has to land before the table is dropped. Until then nothing
+  changes, because the database row still wins.
+
 ## 0.11.0 - 2026-09-06
 
 PR #31, PR #32, plus the post-merge review of #32. Full findings in

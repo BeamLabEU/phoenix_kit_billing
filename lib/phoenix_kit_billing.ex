@@ -52,6 +52,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKit.Utils.UUID, as: UUIDUtils
   alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Currency
+  alias PhoenixKitBilling.EmailDefaults
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.Order
@@ -2537,7 +2538,12 @@ defmodule PhoenixKitBilling do
     }
   end
 
-  # Sends email via PhoenixKit.Modules.Emails.Templates if available.
+  # Sends email via PhoenixKit.Modules.Emails.Templates if available, carrying
+  # this package's own default content so the send survives that package's
+  # templates table being retired. Dropping the emails dependency outright is
+  # deliberately NOT done here: `{:error, :emails_module_not_installed}` is a
+  # contract the invoice detail UI and four regression tests hold, and Phase B
+  # of the table retirement does not need it broken.
   # Uses apply/3 to avoid compile-time warnings when phoenix_kit_emails is not installed.
   #
   # Checks `Templates` itself, not the `PhoenixKit.Modules.Emails` namespace
@@ -2593,6 +2599,15 @@ defmodule PhoenixKitBilling do
   defp send_email_if_available(template, email, variables, opts) do
     if Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates) and
          function_exported?(PhoenixKit.Modules.Emails.Templates, :send_email, 4) do
+      # `:defaults` carries this package's own copy of the content, so these
+      # four emails keep sending once the `phoenix_kit_email_templates` table
+      # is retired — until now they were seeded rows in a table owned by
+      # another package, which is also why that package hardcoded billing's
+      # copy. `put_new`, because a caller passing its own defaults wins; the
+      # database row still wins over both, so nothing changes for an install
+      # that has one. Cores older than 2.17 ignore the option entirely.
+      opts = Keyword.put_new(opts, :defaults, EmailDefaults.defaults_for(template))
+
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
       apply(PhoenixKit.Modules.Emails.Templates, :send_email, [template, email, variables, opts])
     else
