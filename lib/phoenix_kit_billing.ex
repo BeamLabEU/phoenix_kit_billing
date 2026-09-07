@@ -990,7 +990,7 @@ defmodule PhoenixKitBilling do
   def create_currency(attrs) do
     %Currency{}
     |> Currency.changeset(attrs)
-    |> stamp_rate_change()
+    |> stamp_rate_change(:insert)
     |> repo().insert()
     |> maybe_invalidate_currency_cache()
     |> maybe_broadcast_currencies_changed()
@@ -1002,17 +1002,33 @@ defmodule PhoenixKitBilling do
   def update_currency(%Currency{} = currency, attrs) do
     currency
     |> Currency.changeset(attrs)
-    |> stamp_rate_change()
+    |> stamp_rate_change(:update)
     |> repo().update()
     |> maybe_invalidate_currency_cache()
     |> maybe_broadcast_currencies_changed()
   end
 
-  # §6.2: `rate_updated_at` dates the RATE. Stamp it only when the changeset
-  # really changes `exchange_rate` — otherwise the column just repeats
-  # `updated_at` (which moves on a symbol or sort-order edit) and stops
-  # answering the one question it exists for: when was this rate last touched.
-  defp stamp_rate_change(%Ecto.Changeset{} = changeset) do
+  # §6.2: `rate_updated_at` dates the RATE. On an UPDATE, stamp only when
+  # the changeset really changes `exchange_rate` — otherwise the column
+  # just repeats `updated_at` (which moves on a symbol or sort-order
+  # edit) and stops answering the one question it exists for: when was
+  # this rate last touched.
+  #
+  # On an INSERT, always stamp — a row's rate was set right now, by
+  # definition, so there is no "did it change" question to ask.
+  # `fetch_change/2` alone would get this wrong: `cast/3` only records a
+  # change when the cast value differs from the STRUCT's current field
+  # value, and a fresh `%Currency{}` already defaults `exchange_rate` to
+  # exactly `"1.0"` — so a caller that explicitly passes `"1.0"` (the
+  # bulk import always does; the add-currency form starts pre-filled at
+  # it) produces a changeset with NO recorded change on `exchange_rate`
+  # at all, and the row would go live with `rate_updated_at: nil` — the
+  # worst possible reading for a staleness column.
+  defp stamp_rate_change(%Ecto.Changeset{} = changeset, :insert) do
+    Ecto.Changeset.put_change(changeset, :rate_updated_at, DateTime.utc_now(:second))
+  end
+
+  defp stamp_rate_change(%Ecto.Changeset{} = changeset, :update) do
     case Ecto.Changeset.fetch_change(changeset, :exchange_rate) do
       {:ok, _new_rate} ->
         Ecto.Changeset.put_change(changeset, :rate_updated_at, DateTime.utc_now(:second))
@@ -1090,18 +1106,45 @@ defmodule PhoenixKitBilling do
         # rate change, not N independently-timed ones.
         now = DateTime.utc_now(:second)
 
+        # §6.2: dividing every rate by 1 is the identity — nothing
+        # numerically moves anywhere. That is exactly this function's own
+        # documented re-promote-the-current-default case (fixing a
+        # drifted base rate is the one exception, and it drifted away
+        # from 1, so it still counts as "not 1" here). Computed ONCE from
+        # the PRE-renormalization value: after step 1 below, this same
+        # row's own rate always reads back as exactly 1.0 regardless of
+        # scenario (it divided itself by itself), so a reload can never
+        # be used as the signal — only this snapshot can.
+        rate_actually_changes? = not Decimal.equal?(base_rate, Decimal.new("1"))
+
         # 1. Renormalize every rate against the new base, past the
         #    changeset — ratios are preserved, so no converted price moves.
-        from(c in Currency,
-          update: [
-            set: [
-              exchange_rate:
-                fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal)),
-              rate_updated_at: ^now
-            ]
-          ]
-        )
-        |> repo().update_all([])
+        #    `rate_updated_at` is only ever included in the two branches
+        #    below when a real change happened; Ecto's `update: [set: ...]`
+        #    field list is fixed per query, so the branch picks the shape.
+        renormalize_query =
+          if rate_actually_changes? do
+            from(c in Currency,
+              update: [
+                set: [
+                  exchange_rate:
+                    fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal)),
+                  rate_updated_at: ^now
+                ]
+              ]
+            )
+          else
+            from(c in Currency,
+              update: [
+                set: [
+                  exchange_rate:
+                    fragment("round(? / ?, 6)", c.exchange_rate, type(^base_rate, :decimal))
+                ]
+              ]
+            )
+          end
+
+        repo().update_all(renormalize_query, [])
 
         # 2. Clear the previous default.
         Currency
@@ -1113,19 +1156,31 @@ defmodule PhoenixKitBilling do
         #    from under `fresh_before` — and force both fields into the
         #    changeset so the UPDATE always carries them, even when the
         #    reloaded row already (mis)reports them as unchanged (see the
-        #    moduledoc note above).
+        #    moduledoc note above). `rate_updated_at` uses the same
+        #    `rate_actually_changes?` flag as step 1, NOT `stamp_rate_change/2`:
+        #    `force_change/3` above always injects `:exchange_rate` into
+        #    `changes`, so `fetch_change/2` would always say "changed" —
+        #    exactly the false positive this flag exists to avoid.
         fresh = repo().get_by!(Currency, uuid: currency.uuid)
 
-        fresh
-        |> Currency.changeset(%{
-          is_default: true,
-          enabled: true,
-          exchange_rate: Decimal.new("1.0")
-        })
-        |> Ecto.Changeset.force_change(:is_default, true)
-        |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
-        |> stamp_rate_change()
-        |> repo().update!()
+        promote_changeset =
+          fresh
+          |> Currency.changeset(%{
+            is_default: true,
+            enabled: true,
+            exchange_rate: Decimal.new("1.0")
+          })
+          |> Ecto.Changeset.force_change(:is_default, true)
+          |> Ecto.Changeset.force_change(:exchange_rate, Decimal.new("1.0"))
+
+        promote_changeset =
+          if rate_actually_changes? do
+            Ecto.Changeset.put_change(promote_changeset, :rate_updated_at, now)
+          else
+            promote_changeset
+          end
+
+        repo().update!(promote_changeset)
       end)
       |> maybe_invalidate_currency_cache()
       |> maybe_broadcast_currencies_changed()

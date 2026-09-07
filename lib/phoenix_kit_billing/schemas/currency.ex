@@ -75,8 +75,7 @@ defmodule PhoenixKitBilling.Currency do
       :enabled,
       :exchange_rate,
       :sort_order,
-      :rounding_rule,
-      :rate_updated_at
+      :rounding_rule
     ])
     |> validate_required([:code, :name, :symbol])
     |> validate_length(:code, is: 3)
