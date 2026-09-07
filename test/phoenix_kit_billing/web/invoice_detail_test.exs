@@ -84,4 +84,49 @@ defmodule PhoenixKitBilling.Web.InvoiceDetailTest do
 
     assert html =~ user.email
   end
+
+  test "transactions render actions in a three-dot menu, not always-visible buttons", %{
+    conn: conn,
+    user: user
+  } do
+    {:ok, invoice} =
+      Billing.create_invoice(user.uuid, %{total: Decimal.new("100.00"), currency: "EUR"})
+
+    {:ok, invoice, _email_result} =
+      Billing.send_invoice(invoice, to_email: "customer@example.com", send_email: false)
+
+    {:ok, payment} = Billing.record_payment(invoice, %{amount: "100.00"}, nil)
+    invoice = Billing.get_invoice!(invoice.uuid)
+
+    {:ok, refund} =
+      Billing.record_refund(invoice, %{amount: "20.00", description: "damaged"}, nil)
+
+    {:ok, view, html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+
+    assert has_element?(view, "#transaction-menu-#{payment.uuid}")
+    assert has_element?(view, "#transaction-menu-#{refund.uuid}")
+
+    assert has_element?(
+             view,
+             "a[role='menuitem'][href*='/payment/#{payment.uuid}']"
+           )
+
+    assert has_element?(
+             view,
+             "button[role='menuitem'][phx-click='open_send_payment_confirmation_modal'][phx-value-transaction-uuid='#{payment.uuid}']"
+           )
+
+    assert has_element?(
+             view,
+             "a[role='menuitem'][href*='/credit-note/#{refund.uuid}']"
+           )
+
+    assert has_element?(
+             view,
+             "button[role='menuitem'][phx-click='open_send_credit_note_modal'][phx-value-transaction-uuid='#{refund.uuid}']"
+           )
+
+    refute html =~ "btn-success btn-xs"
+    refute html =~ "btn-warning btn-xs"
+  end
 end
