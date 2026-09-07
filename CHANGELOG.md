@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.13.0 - 2026-09-07
+
+Per-domain currency, stages Э2 and Э3 (PR #33, #34).
+
+### Added
+
+- **`rounding_rule` is now applied by `Currency.present/3`.** Four rules —
+  `"exact"` (default), `"charm_99"` (round down to X.99), `"charm_90"`
+  (nearest X.90), `"integer"` (whole units) — applied once to the raw
+  converted amount, identically on the live and frozen (order/cart snapshot)
+  paths, never to the base currency. A charm rule requires a currency with
+  exactly two decimal places; the changeset now rejects the combination.
+- **`{:currencies_changed, code}` PubSub event** (`Events.subscribe_currencies/0`)
+  — broadcast by every currency writer (create/update/set_default/delete/
+  change_base_currency) after its cache invalidation is guaranteed applied,
+  so a storefront tab can re-render converted prices live instead of on
+  reload.
+- **`PhoenixKitBilling.change_base_currency/2`** — switches the shop's base
+  currency: renormalizes every rate against the new base and promotes it to
+  `1.0`, inside one transaction with a caller-supplied `opts[:reprice]`
+  callback (for recomputing catalog/shipping prices, which this package does
+  not own) run strictly between those two steps. Requires an explicit
+  `opts[:catalog_size]` so a non-empty catalog can't be silently re-priced
+  by omission.
+- **Exchange-rate age tracking.** `rate_updated_at` is now stamped by every
+  currency write that actually changes the rate. `Currency.stale?/2` and
+  `PhoenixKitBilling.currencies_with_stale_rates/0` flag rates older than
+  the `fx_rate_max_age_days` setting (default 30 days) — a stale rate still
+  converts, it only surfaces a one-time-per-process log warning and an
+  admin banner/badge on the Currencies page.
+
 ## 0.12.0 - 2026-09-07
 
 Phase B of retiring the `phoenix_kit_email_templates` table. Plan:
