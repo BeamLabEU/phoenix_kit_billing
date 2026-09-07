@@ -921,6 +921,16 @@ defmodule PhoenixKitBilling do
 
   defp maybe_invalidate_currency_cache(result), do: result
 
+  # §4.2.1 п.5: announce AFTER the cache is cleared (the pipe order in the
+  # four currency writers is load-bearing), so a subscriber that
+  # re-resolves on receipt cannot read the stale entry.
+  defp maybe_broadcast_currencies_changed({:ok, %Currency{} = currency} = result) do
+    Events.broadcast_currencies_changed(currency)
+    result
+  end
+
+  defp maybe_broadcast_currencies_changed(result), do: result
+
   @doc """
   Creates a currency.
   """
@@ -929,6 +939,7 @@ defmodule PhoenixKitBilling do
     |> Currency.changeset(attrs)
     |> repo().insert()
     |> maybe_invalidate_currency_cache()
+    |> maybe_broadcast_currencies_changed()
   end
 
   @doc """
@@ -939,6 +950,7 @@ defmodule PhoenixKitBilling do
     |> Currency.changeset(attrs)
     |> repo().update()
     |> maybe_invalidate_currency_cache()
+    |> maybe_broadcast_currencies_changed()
   end
 
   @doc """
@@ -1041,6 +1053,7 @@ defmodule PhoenixKitBilling do
         |> repo().update!()
       end)
       |> maybe_invalidate_currency_cache()
+      |> maybe_broadcast_currencies_changed()
     end
   end
 
@@ -1058,7 +1071,10 @@ defmodule PhoenixKitBilling do
         {:error, :currency_in_use}
 
       true ->
-        currency |> repo().delete() |> maybe_invalidate_currency_cache()
+        currency
+        |> repo().delete()
+        |> maybe_invalidate_currency_cache()
+        |> maybe_broadcast_currencies_changed()
     end
   end
 
