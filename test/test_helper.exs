@@ -31,7 +31,8 @@ support_dir = Path.expand("support", __DIR__)
   "test_endpoint.ex",
   "activity_log_assertions.ex",
   "data_case.ex",
-  "live_case.ex"
+  "live_case.ex",
+  "live_database_guard.ex"
 ]
 |> Enum.each(&Code.require_file(&1, support_dir))
 
@@ -41,9 +42,11 @@ db_name =
   Application.get_env(:phoenix_kit_billing, TestRepo, [])[:database] ||
     "phoenix_kit_billing_test"
 
-# The preflight ships in core, and this module's core floor (`~> 2.0`)
-# predates it — so it is used when the running core has it, and otherwise
-# this falls through to exactly the previous behaviour.
+# S014: refuse before anything else touches the database — see
+# PhoenixKitBilling.Test.LiveDatabaseGuard's moduledoc for why this exists
+# alongside (not instead of) the external `pk-test` wrapper.
+PhoenixKitBilling.Test.LiveDatabaseGuard.check!(db_name)
+
 db_check =
   if Code.ensure_loaded?(PhoenixKit.TestSupport.PostgresPreflight) do
     # One classified connection attempt, with the repo's OWN credentials and
