@@ -96,12 +96,13 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   """
   @impl true
   def create_checkout_session(invoice, opts) do
-    with {:ok, config} <- ensure_configured() do
+    with {:ok, config} <- ensure_configured(),
+         {:ok, amount} <- decimal_to_amount(invoice.total, invoice.currency) do
       params =
         %{
           api_username: config[:api_username],
           account_name: config[:account_name],
-          amount: decimal_to_amount(invoice.total),
+          amount: amount,
           order_reference: to_string(invoice.uuid),
           nonce: generate_nonce(),
           timestamp: timestamp(),
@@ -412,9 +413,33 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
 
   defp present?(value), do: is_binary(value) and value != ""
 
-  # EveryPay expects amounts as a decimal number with up to 2 fraction digits.
+  # `create_checkout_session/2` has the invoice's own currency on hand, so
+  # this rounds/validates against ITS `decimal_places` the way
+  # `MinorUnits` does for every other provider (§2.6/§7, Э5) — a
+  # hard-coded 2 here silently padded a zero-decimal currency and
+  # silently dropped a three-decimal one's third digit. Refuses rather
+  # than drops: `to_minor_units_and_places/2` already errors on a
+  # fraction the currency cannot represent.
+  defp decimal_to_amount(%Decimal{} = amount, currency_code) when is_binary(currency_code) do
+    with {:ok, _minor_units, places} <-
+           MinorUnits.to_minor_units_and_places(amount, currency_code) do
+      {:ok, amount |> Decimal.round(places) |> Decimal.to_float()}
+    end
+  end
+
+  # `charge_payment_method/3` and `create_refund/3` have NO currency to
+  # check against here: EveryPay's account fixes the currency
+  # server-side, and neither a saved payment method nor a bare refund
+  # amount carries one at these call sites — inventing one (the shop's
+  # base currency, say) would be exactly the kind of guess §7/Э5 forbids,
+  # since nothing here confirms it matches the account's actual currency.
+  # Rounding to a hard-coded 2 before this fix silently dropped a
+  # three-decimal currency's third digit; sending the caller's own
+  # `Decimal` precision unrounded is the honest alternative — a caller
+  # with a legitimately different precision must decide its own
+  # rounding, not have one guessed here.
   defp decimal_to_amount(%Decimal{} = amount) do
-    amount |> Decimal.round(2) |> Decimal.to_float()
+    Decimal.to_float(amount)
   end
 
   defp decimal_to_amount(amount) when is_number(amount), do: amount

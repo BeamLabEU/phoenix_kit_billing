@@ -20,6 +20,8 @@ defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
 
   use PhoenixKitBilling.DataCase, async: false
 
+  import ExUnit.CaptureLog
+
   alias PhoenixKit.RepoHelper
   alias PhoenixKit.Users.Auth
   alias PhoenixKitBilling, as: Billing
@@ -45,6 +47,14 @@ defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
         symbol: "¥",
         decimal_places: 0,
         exchange_rate: "150.0"
+      })
+
+    {:ok, _inr} =
+      Billing.create_currency(%{
+        code: "INR",
+        name: "Rupee",
+        symbol: "₹",
+        exchange_rate: "83.0"
       })
 
     :ok
@@ -165,6 +175,53 @@ defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
       # 1000 interpreted under a wrong currency's assumptions.
       assert Decimal.equal?(paid_invoice.paid_amount, Decimal.new("1000"))
     end
+
+    test "an amount with NO currency at all is logged as a normalizer bug, unlike a plain missing amount" do
+      user = user_fixture()
+      invoice = invoice_fixture(user, "JPY", "1000")
+
+      log =
+        capture_log(fn ->
+          assert {:ok, paid_invoice} =
+                   WebhookProcessor.process(%{
+                     event_id: "evt_no_currency_at_all",
+                     provider: :stripe,
+                     type: "checkout.completed",
+                     data: %{
+                       mode: "payment",
+                       invoice_uuid: invoice.uuid,
+                       amount_total: 1000
+                       # no :currency key at all - a normalizer bug, since
+                       # every provider's own handler already attaches one.
+                     }
+                   })
+
+          assert Decimal.equal?(paid_invoice.paid_amount, Decimal.new("1000"))
+        end)
+
+      assert log =~ "arrived with no currency"
+    end
+
+    test "an event with no amount field at all is the ordinary case and logs nothing" do
+      user = user_fixture()
+      invoice = invoice_fixture(user, "JPY", "1000")
+
+      log =
+        capture_log(fn ->
+          assert {:ok, paid_invoice} =
+                   WebhookProcessor.process(%{
+                     event_id: "evt_no_amount_field",
+                     provider: :stripe,
+                     type: "checkout.completed",
+                     data: %{mode: "payment", invoice_uuid: invoice.uuid}
+                   })
+
+          assert Decimal.equal?(paid_invoice.paid_amount, Decimal.new("1000"))
+        end)
+
+      refute log =~ "arrived with no currency"
+      refute log =~ "is not in this shop's"
+    end
   end
 
   describe "two-decimal currency is unchanged across all four providers (regression guard)" do
@@ -226,6 +283,44 @@ defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
                })
 
       assert Decimal.equal?(paid_invoice.paid_amount, Decimal.new("100.00"))
+    end
+
+    test "razorpay: a real ₹199.99 INR payment and refund are unchanged end to end" do
+      # INR specifically, not just a stand-in 2-decimal currency: Razorpay
+      # is INR-primary, and INR is every current real user of this
+      # provider (§7/Э5 review). 19999 paise, exactly as before this fix.
+      user = user_fixture()
+      invoice = invoice_fixture(user, "INR", "199.99")
+
+      assert {:ok, paid_invoice} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_razorpay_inr_pay",
+                 provider: :razorpay,
+                 type: "checkout.completed",
+                 data: %{
+                   mode: "payment",
+                   invoice_uuid: invoice.uuid,
+                   amount_total: 19_999,
+                   currency: "INR",
+                   payment_intent_id: "pay_inr_1"
+                 }
+               })
+
+      assert Decimal.equal?(paid_invoice.paid_amount, Decimal.new("199.99"))
+
+      assert {:ok, %{amount: refund_amount}} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_razorpay_inr_refund",
+                 provider: :razorpay,
+                 type: "refund.created",
+                 data: %{
+                   charge_id: "pay_inr_1",
+                   amount_refunded: 19_999,
+                   currency: "INR"
+                 }
+               })
+
+      assert Decimal.equal?(refund_amount, Decimal.new("-199.99"))
     end
 
     test "everypay: a $100.00 checkout.completed (amount key, not amount_total) records exactly 100.00" do

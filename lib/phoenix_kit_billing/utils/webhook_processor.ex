@@ -565,7 +565,25 @@ defmodule PhoenixKitBilling.WebhookProcessor do
             :error
         end
 
+      {amount_cents, _no_currency} when is_integer(amount_cents) ->
+        # An amount with NO currency at all is a normalizer bug, not the
+        # ordinary "this event carries no amount under this key" case
+        # below - every provider's own normalizer already attaches the
+        # currency it read alongside the amount (§7/Э5), so this should
+        # not happen on a real webhook. Worth surfacing; falls back the
+        # same way.
+        Logger.warning(
+          "[Billing] webhook amount #{amount_cents} under #{inspect(key)} arrived with no " <>
+            "currency; using the invoice's own balance instead of the webhook's reported amount"
+        )
+
+        :error
+
       _ ->
+        # No amount field at all under this key - the ordinary case for
+        # most event types and most providers (a webhook rarely carries
+        # BOTH :amount_total and :amount, and plenty carry neither).
+        # Stays quiet.
         :error
     end
   end
