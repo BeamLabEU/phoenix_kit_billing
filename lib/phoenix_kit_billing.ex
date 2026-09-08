@@ -1540,16 +1540,29 @@ defmodule PhoenixKitBilling do
   ## Atomicity
 
   Validation and (on success) every write run inside ONE
-  `repo().transaction/1` — the base currency and the known-code set are
-  read fresh as the FIRST thing inside it, not reused from before the
-  transaction opened, so a `set_default_currency/1` or
-  `change_base_currency/2` racing this call can never straddle the
-  read that decides "is this the base" and the writes that act on it.
-  If any write fails after others in the same batch already succeeded
-  (an unexpected DB-level error — the precision checks above are what
-  keep this from happening on any input this function itself rejects),
-  the whole transaction rolls back rather than leaving a partial write
-  committed.
+  `repo().transaction/1` — the base currency is read fresh as the FIRST
+  thing inside it, `SELECT ... FOR UPDATE`, not the plain unlocked
+  `get_default_currency/0` every other caller in this module gets, and
+  not reused from before the transaction opened. Holding that row's lock
+  for the life of this transaction is what makes a straddle actually
+  impossible rather than merely narrowed: `set_default_currency/1` and
+  `change_base_currency/2` both renormalize EVERY currency's rate via a
+  table-wide `update_all` (no `WHERE`) as their first write, which always
+  touches whichever row is currently the default — so once this function
+  holds that row's lock, either call has already fully committed before
+  this read ran, or it blocks on that renormalization until this
+  transaction ends. A lock-free `SELECT` (or a read taken before the
+  transaction opened) would not give that guarantee — nothing stops a
+  promotion from committing, and releasing its locks, in the gap between
+  such a read and this function's own writes on the very row it just
+  promoted.
+
+  The known-code set is also read fresh, inside the same transaction,
+  right after the locked base read. If any write fails after others in
+  the same batch already succeeded (an unexpected DB-level error — the
+  precision checks above are what keep this from happening on any input
+  this function itself rejects), the whole transaction rolls back rather
+  than leaving a partial write committed.
 
   ## Writing, and announcing it AFTER it is real
 
@@ -1658,12 +1671,28 @@ defmodule PhoenixKitBilling do
 
   defp announce_committed_fx_rates(result), do: result
 
+  # `FOR UPDATE`, deliberately not the plain, unlocked `get_default_currency/0`
+  # every other caller in this module gets — see the moduledoc's
+  # "Atomicity" section for why holding this specific row's lock for the
+  # life of the transaction is what makes "a concurrent promotion cannot
+  # straddle this call" true rather than merely likely. Written locally
+  # instead of adding a lock option to the shared function, so no other
+  # caller's behavior changes. A locked `SELECT` matching zero rows (no
+  # default currency at all — a pathological, out-of-scope state) simply
+  # returns `nil`, same as the unlocked query.
+  defp lock_default_currency_for_update do
+    Currency
+    |> where([c], c.is_default == true)
+    |> lock("FOR UPDATE")
+    |> repo().one()
+  end
+
   # Read fresh INSIDE the transaction, not reused from before it opened —
   # see the moduledoc's "Atomicity" section. Both the skip/accept/reject
   # decision below and (on the write path) the writes themselves are
   # backed by this same snapshot.
   defp classify_and_apply_provider_rates(normalized, dry_run?) do
-    base = get_default_currency()
+    base = lock_default_currency_for_update()
     known_by_code = Map.new(list_currencies(), &{&1.code, &1})
 
     classified = Enum.map(normalized, &classify_provider_entry(&1, base, known_by_code))
