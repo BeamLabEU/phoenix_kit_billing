@@ -138,4 +138,22 @@ defmodule PhoenixKitBilling.Providers.MinorUnitsTest do
       assert {:error, :unknown_currency} = MinorUnits.decimal_places("XXX")
     end
   end
+
+  describe "to_minor_units_and_places/2 — single-lookup variant for a provider needing both" do
+    test "returns the same integer as to_minor_units/2, plus the places it used" do
+      assert {:ok, 9_999, 2} = MinorUnits.to_minor_units_and_places(Decimal.new("99.99"), "USD")
+      assert {:ok, 1000, 0} = MinorUnits.to_minor_units_and_places(Decimal.new("1000"), "JPY")
+      assert {:ok, 10_125, 3} = MinorUnits.to_minor_units_and_places(Decimal.new("10.125"), "BHD")
+    end
+
+    test "refuses an unknown code, same as to_minor_units/2" do
+      assert {:error, :unknown_currency} =
+               MinorUnits.to_minor_units_and_places(Decimal.new("10.00"), "XXX")
+    end
+
+    test "refuses an over-precise amount, same as to_minor_units/2" do
+      assert {:error, :fractional_amount} =
+               MinorUnits.to_minor_units_and_places(Decimal.new("10.005"), "USD")
+    end
+  end
 end

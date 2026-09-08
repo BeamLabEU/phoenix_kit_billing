@@ -410,7 +410,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
        data: %{
          charge_id: capture_id,
          invoice_uuid: custom_id["invoice_uuid"] || custom_id["invoice_id"],
-         amount: parse_amount(amount["value"]),
+         amount: parse_amount(amount["value"], amount["currency_code"]),
          currency: amount["currency_code"]
        },
        raw_payload: payload
@@ -446,7 +446,8 @@ defmodule PhoenixKitBilling.Providers.PayPal do
        data: %{
          refund_id: refund_id,
          charge_id: resource["links"] |> find_capture_id(),
-         amount_refunded: parse_amount(amount["value"])
+         amount_refunded: parse_amount(amount["value"], amount["currency_code"]),
+         currency: amount["currency_code"]
        },
        raw_payload: payload
      }}
@@ -550,14 +551,13 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   # decimal point at all ("1000", not "1000.00"); a three-decimal one
   # (BHD, ...) needs all three digits. The old code always formatted to
   # exactly 2 decimals, which is wrong in both directions — spec §2.6/§7
-  # (Э5). Routed through `MinorUnits.to_minor_units/2` for the same
-  # refuse-rather-than-guess unknown-currency and no-silent-rounding
-  # behavior Stripe gets, then rendered back to a string at the exact
-  # digit count `decimal_places/1` reports — never via a float, so a
-  # large amount cannot lose precision in the round trip.
+  # (Э5). Routed through `MinorUnits.to_minor_units_and_places/2` for the
+  # same refuse-rather-than-guess unknown-currency and no-silent-rounding
+  # behavior Stripe gets (one currency lookup, not two), then rendered
+  # back to a string at the exact digit count it reports — never via a
+  # float, so a large amount cannot lose precision in the round trip.
   defp format_amount(%Decimal{} = amount, currency_code) do
-    with {:ok, minor_units} <- MinorUnits.to_minor_units(amount, currency_code),
-         {:ok, places} <- MinorUnits.decimal_places(currency_code) do
+    with {:ok, minor_units, places} <- MinorUnits.to_minor_units_and_places(amount, currency_code) do
       {:ok, minor_units_to_decimal_string(minor_units, places)}
     end
   end
@@ -577,26 +577,30 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     sign <> whole <> "." <> fraction
   end
 
-  # NOT part of the ×100 zero-decimal-currency fix (§7/Э5): PayPal's own
-  # wire format never uses this integer — it is a purely internal
-  # "cents-shaped" encoding invented by this module so webhook amounts
-  # can flow through the private `calculate_payment_amount/2` and
-  # `refund_amount/3` in `utils/webhook_processor.ex`, which divide by a
-  # HARD-CODED 100 regardless of currency. Because both ends of that round
-  # trip use the same fixed 100 today, it already reconstructs the
-  # original amount correctly for ANY currency, including zero- and
-  # three-decimal ones — changing the factor here to `decimal_places`-based
-  # scaling WITHOUT also changing the hard-coded divisor on the other end
-  # would break that round trip instead of fixing anything (a JPY capture
-  # of 1000 would decode to 10.00 instead of 1000). `webhook_processor.ex`
-  # is outside this task's file scope (also shared with Razorpay) — left
-  # unchanged, flagged for a follow-up that touches both sides together.
-  defp parse_amount(amount_str) when is_binary(amount_str) do
-    {float, _} = Float.parse(amount_str)
-    round(float * 100)
+  # PayPal's own wire format never uses this integer — it is a purely
+  # internal minor-unit encoding this module produces so a webhook's
+  # amount can travel through `WebhookEventData.data[:amount]` /
+  # `[:amount_refunded]` the same shape Stripe's raw minor units already
+  # do, for `utils/webhook_processor.ex` to convert back with
+  # `MinorUnits.from_minor_units/2` (§7/Э5). It USED to be a fixed ×100
+  # regardless of currency, which only round-tripped correctly because
+  # the processor divided by the same fixed 100 on the other end; now
+  # that the processor is currency-aware, this must be too, or the pair
+  # would decode a currency-aware charge with a currency-blind confirmation
+  # (see `utils/webhook_processor.ex`'s `webhook_amount_for_key/2`).
+  #
+  # `nil` on an unrecognized currency or an over-precise amount — never a
+  # guessed factor — so the processor's `is_integer(...)` guard misses it
+  # and falls back to the invoice's own balance instead of a wrong number.
+  defp parse_amount(amount_str, currency_code)
+       when is_binary(amount_str) and is_binary(currency_code) do
+    case MinorUnits.to_minor_units(Decimal.new(amount_str), currency_code) do
+      {:ok, minor_units} -> minor_units
+      {:error, _reason} -> nil
+    end
   end
 
-  defp parse_amount(amount), do: amount
+  defp parse_amount(amount, _currency_code), do: amount
 
   defp get_custom_id(resource) do
     custom_id_json =

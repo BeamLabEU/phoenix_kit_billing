@@ -29,6 +29,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   alias PhoenixKit.RepoHelper
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Notifications, PaymentMethod, Transaction, WebhookEvent}
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -367,15 +368,30 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
+  # §7/Э5: the webhook's own reported amount is a provider minor unit,
+  # never a bare "cents" - dividing by a hard-coded 100 was correct only
+  # by coincidence, for exactly the currencies that happen to have two
+  # decimal places. `webhook_amount/3` below reads the currency the
+  # provider's own normalizer already carries alongside the amount
+  # (Stripe, Razorpay's payment side, PayPal, and EveryPay all include
+  # it) and converts via `MinorUnits.from_minor_units/2` instead.
+  #
+  # `:indeterminate` here is NOT a currency guess: it is the SAME
+  # fallback this function already used whenever the webhook carried no
+  # amount at all, now also reached when the webhook's currency is
+  # missing or not one this shop recognizes. A provider that genuinely
+  # cannot supply a
+  # currency (or reports one this shop's `phoenix_kit_currencies` has
+  # never heard of) keeps working through this explicit, logged,
+  # already-existing path rather than through a guessed conversion
+  # factor - it trusts what THIS shop already knows about the invoice
+  # instead of a webhook figure it cannot safely interpret.
   defp refund_amount(data, invoice, original_tx) do
-    cond do
-      is_integer(data[:amount_refunded]) ->
-        {:ok, Decimal.div(Decimal.new(data[:amount_refunded]), 100)}
+    case webhook_amount(data, :amount_refunded, :amount) do
+      {:ok, amount} ->
+        {:ok, amount}
 
-      is_integer(data[:amount]) ->
-        {:ok, Decimal.div(Decimal.new(data[:amount]), 100)}
-
-      true ->
+      :indeterminate ->
         # Default to refunding the full original transaction, capped at
         # the invoice's currently paid_amount (record_refund will reject
         # anything larger).
@@ -508,17 +524,49 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   end
 
   defp calculate_payment_amount(invoice, data) do
-    # Use amount from webhook if available, otherwise use invoice total
-    case data do
-      %{amount_total: amount_cents} when is_integer(amount_cents) ->
-        Decimal.div(Decimal.new(amount_cents), 100)
+    case webhook_amount(data, :amount_total, :amount) do
+      {:ok, amount} -> amount
+      # Same "explicit, documented, already-existing path" as
+      # refund_amount/3 above — see its comment for why this is not a
+      # guess. Use the remaining balance on the invoice instead.
+      :indeterminate -> Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
+    end
+  end
 
-      %{amount: amount_cents} when is_integer(amount_cents) ->
-        Decimal.div(Decimal.new(amount_cents), 100)
+  # Reads a provider-minor-unit amount out of normalized webhook `data`
+  # under `preferred_key` (falling back to `fallback_key` — providers
+  # disagree on which one they populate for a given event) together with
+  # the currency the SAME normalizer already attaches, and converts via
+  # `MinorUnits.from_minor_units/2`. `:indeterminate` covers every case
+  # this must not guess through: no usable amount field, no currency
+  # alongside it, or a currency this shop's `phoenix_kit_currencies`
+  # table does not recognize.
+  defp webhook_amount(data, preferred_key, fallback_key) do
+    with :error <- webhook_amount_for_key(data, preferred_key),
+         :error <- webhook_amount_for_key(data, fallback_key) do
+      :indeterminate
+    end
+  end
+
+  defp webhook_amount_for_key(data, key) do
+    case {Map.get(data, key), Map.get(data, :currency)} do
+      {amount_cents, currency} when is_integer(amount_cents) and is_binary(currency) ->
+        case MinorUnits.from_minor_units(amount_cents, currency) do
+          {:ok, amount} ->
+            {:ok, amount}
+
+          {:error, :unknown_currency} ->
+            Logger.warning(
+              "[Billing] webhook amount currency #{currency} is not in this shop's " <>
+                "currency table; using the invoice's own balance instead of the " <>
+                "webhook's reported amount"
+            )
+
+            :error
+        end
 
       _ ->
-        # Use remaining balance on invoice
-        Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
+        :error
     end
   end
 

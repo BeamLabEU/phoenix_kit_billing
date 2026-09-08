@@ -402,6 +402,11 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
          refund_id: refund["id"],
          charge_id: refund["payment_id"],
          amount_refunded: refund["amount"],
+         # Added alongside amount_refunded (§7/Э5): the payment-side
+         # handlers above already carry this from the same Razorpay
+         # entity shape; utils/webhook_processor.ex needs it to convert
+         # amount_refunded for any currency, not just two-decimal ones.
+         currency: refund["currency"],
          status: refund["status"]
        },
        raw_payload: raw_payload
@@ -420,6 +425,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
          refund_id: refund["id"],
          charge_id: refund["payment_id"],
          amount_refunded: refund["amount"],
+         currency: refund["currency"],
          status: "succeeded"
        },
        raw_payload: raw_payload

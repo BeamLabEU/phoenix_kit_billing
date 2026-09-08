@@ -57,11 +57,28 @@ defmodule PhoenixKitBilling.Providers.MinorUnits do
   @spec to_minor_units(Decimal.t(), String.t()) ::
           {:ok, integer()} | {:error, :unknown_currency | :fractional_amount}
   def to_minor_units(%Decimal{} = amount, currency_code) when is_binary(currency_code) do
+    with {:ok, minor_units, _places} <- to_minor_units_and_places(amount, currency_code) do
+      {:ok, minor_units}
+    end
+  end
+
+  @doc """
+  `to_minor_units/2` and `decimal_places/1` together, from a SINGLE
+  currency lookup — for a provider that needs both the minor-unit integer
+  and the raw decimal-place count to render its own wire format (PayPal:
+  the integer to validate/scale by, the count to place the decimal point
+  when rendering the string) without resolving the same currency code
+  twice. `to_minor_units/2` itself is a thin wrapper over this.
+  """
+  @spec to_minor_units_and_places(Decimal.t(), String.t()) ::
+          {:ok, integer(), non_neg_integer()} | {:error, :unknown_currency | :fractional_amount}
+  def to_minor_units_and_places(%Decimal{} = amount, currency_code)
+      when is_binary(currency_code) do
     with {:ok, places} <- decimal_places(currency_code) do
       scaled = Decimal.mult(amount, Integer.pow(10, places))
 
       if Decimal.integer?(scaled) do
-        {:ok, Decimal.to_integer(scaled)}
+        {:ok, Decimal.to_integer(scaled), places}
       else
         {:error, :fractional_amount}
       end

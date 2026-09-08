@@ -53,6 +53,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   }
 
   alias PhoenixKit.Settings
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -437,7 +438,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
          charge_id: payment["payment_reference"],
          invoice_uuid: payment["order_reference"],
          payment_state: state,
-         amount: amount_cents(payment["amount"]),
+         amount: amount_cents(payment["amount"], payment["currency"]),
          currency: payment["currency"]
        }
      }}
@@ -464,7 +465,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
          provider: :everypay,
          charge_id: payment["payment_reference"],
          refund_id: payment["payment_reference"],
-         amount: amount_cents(refunded_amount(payment)),
+         amount: amount_cents(refunded_amount(payment), payment["currency"]),
          currency: payment["currency"]
        }
      }}
@@ -472,19 +473,30 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
 
   defp normalize_payment(_state, _payment), do: {:error, :unknown_event}
 
-  # The processor's amount helpers expect integer minor units (cents).
-  defp amount_cents(nil), do: nil
+  # The processor expects an integer provider minor unit, converted via
+  # `currency`'s own `decimal_places` (§7/Э5) — a fixed ×100 here would
+  # silently mismatch `utils/webhook_processor.ex`'s currency-aware
+  # `MinorUnits.from_minor_units/2` on the other end. `nil` on a missing
+  # amount, a missing currency, an unrecognized currency code, or more
+  # precision than the currency allows — never a guessed factor — so the
+  # processor's `is_integer(...)` guard misses it and falls back to the
+  # invoice's own balance instead of a wrong number.
+  defp amount_cents(nil, _currency), do: nil
+  defp amount_cents(_amount, nil), do: nil
 
-  defp amount_cents(amount) when is_number(amount) do
-    amount |> Decimal.from_float() |> amount_cents()
+  defp amount_cents(amount, currency) when is_number(amount) do
+    amount |> Decimal.from_float() |> amount_cents(currency)
   end
 
-  defp amount_cents(amount) when is_binary(amount) do
-    amount |> Decimal.new() |> amount_cents()
+  defp amount_cents(amount, currency) when is_binary(amount) do
+    amount |> Decimal.new() |> amount_cents(currency)
   end
 
-  defp amount_cents(%Decimal{} = amount) do
-    amount |> Decimal.mult(100) |> Decimal.round() |> Decimal.to_integer()
+  defp amount_cents(%Decimal{} = amount, currency) when is_binary(currency) do
+    case MinorUnits.to_minor_units(amount, currency) do
+      {:ok, minor_units} -> minor_units
+      {:error, _reason} -> nil
+    end
   end
 
   defp refunded_amount(payment) do

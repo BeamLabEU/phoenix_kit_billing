@@ -342,6 +342,10 @@ defmodule PhoenixKitBilling.Providers.Stripe do
              }}
           end
 
+        {:ok, unexpected} ->
+          Logger.error("Stripe refund response missing an expected field: #{inspect(unexpected)}")
+          {:error, :unexpected_response}
+
         {:error, %{"code" => "charge_already_refunded"}} ->
           {:error, :already_refunded}
 
@@ -726,19 +730,12 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   # `amount_total` / `amount` / `amount_refunded` below are Stripe's OWN
-  # raw minor-unit integers, passed through unconverted — correct as-is
-  # for a two-decimal currency, since that is what Stripe itself sent.
-  # NOT part of the ×100 zero-decimal-currency fix (§7/Э5): the consumer
-  # of these fields, `calculate_payment_amount/2` and `refund_amount/3` in
-  # `utils/webhook_processor.ex`, still divides by a HARD-CODED 100
-  # regardless of currency, so a JPY (or BHD) webhook confirmation is
-  # still recorded at the wrong magnitude even after this fix —
-  # `charge_payment_method/3`/`create_refund/3` above now send the
-  # CORRECT amount to Stripe, but the ledger entry created from this
-  # webhook's own confirmed amount will not be. `webhook_processor.ex` is
-  # outside this task's file scope (also shared by Razorpay's own webhook
-  # data) — left unchanged here, flagged for a follow-up that fixes both
-  # sides together.
+  # raw minor-unit integers, passed through unconverted — Stripe already
+  # reports these at ITS OWN currency-correct scale (a JPY charge comes
+  # back as "1000", not "100000"), so no conversion belongs here. The
+  # `currency` carried alongside each one is what lets
+  # `utils/webhook_processor.ex` convert them back to a shop-side Decimal
+  # correctly for any currency, not just two-decimal ones (§7/Э5).
   defp normalize_event("checkout.session.completed", object) do
     {:ok,
      %{
