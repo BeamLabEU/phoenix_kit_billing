@@ -12,8 +12,9 @@ require Logger
 #   createdb phoenix_kit_billing_test
 #
 # After that, `mix test` boots the repo, runs core's versioned migrations
-# via `PhoenixKit.Migration.ensure_current/2`, and lets the Ecto sandbox
-# handle isolation. No module-owned DDL.
+# via `PhoenixKit.Migration.ensure_current/2`, then applies this module's
+# own chain (`PhoenixKitBilling.Migrations.up_statements/2`) on top, and
+# lets the Ecto sandbox handle isolation.
 
 # Elixir 1.19's `mix test` no longer auto-loads modules from
 # `:elixirc_paths` test directories at test-helper time — only files
@@ -87,6 +88,16 @@ repo_available =
       # re-applies any newly-shipped Vxxx migrations on every boot.
       PhoenixKit.Migration.ensure_current(TestRepo, log: false)
 
+      # Core's baseline is only half the shape. This module owns the rest
+      # through its own chain (V2 adds `rounding_rule` / `rate_updated_at`
+      # and the default-currency unique index to `phoenix_kit_currencies`),
+      # and `PhoenixKitBilling.Currency` declares those columns — without
+      # this, every currency insert in the suite raises `undefined_column`.
+      # `up/1` needs an `Ecto.Migrator` runner, so the statements are
+      # executed as data via the same `up_statements/2` the migration runs.
+      PhoenixKitBilling.Migrations.up_statements()
+      |> Enum.each(&Ecto.Adapters.SQL.query!(TestRepo, &1, []))
+
       Ecto.Adapters.SQL.Sandbox.mode(TestRepo, :manual)
       true
     rescue
@@ -116,6 +127,17 @@ Application.put_env(:phoenix_kit_billing, :test_repo_available, repo_available)
 
 # Minimal PhoenixKit services needed by the context layer.
 {:ok, _pid} = PhoenixKit.PubSub.Manager.start_link([])
+
+# §13 currency cache: production gets this via `PhoenixKitBilling.children/0`,
+# picked up by `PhoenixKit.Supervisor` (core's own tree, not started here).
+# This suite manually wires the same two pieces that supervisor would have
+# started, in the same order (Registry, then the named cache) — without
+# this, `get_base_currency/0`/`get_currency_by_code/1` degrade to their
+# unwarmed :noproc fallback (a permanent cache miss, silently) and
+# currency_query_count_test.exs would measure the un-cached number even
+# after caching is implemented.
+{:ok, _pid} = PhoenixKit.Cache.Registry.start_link()
+{:ok, _pid} = PhoenixKit.Cache.start_link(name: :billing_currencies, ttl: :timer.minutes(5))
 
 # The permission layer resolves a sub-permission through the module
 # registry: Scope.can?/2 requires feature_enabled?/1, which asks the

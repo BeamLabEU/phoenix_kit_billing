@@ -30,25 +30,93 @@ defmodule PhoenixKitBilling.Migrations do
 
   Because V1 changes no shape, core's `ExpectedSchema` manifest (which
   still audits the V135 shape of this table) stays accurate and NO core
-  release is required for this version. A version that DOES change shape
-  (V2+) is a separate, deliberate step — not in scope here.
+  release is required for this version.
 
   ## What `down/1` is NOT
 
   `down/1` unstamps the version marker; it NEVER drops
   `phoenix_kit_payment_provider_configs`. The table is core-created, and
   rolling back this module's chain must not destroy it — only core's own
-  baseline rollback does that.
+  baseline rollback does that. The same invariant holds for V2 below —
+  `down/1` never drops a core-created table, even one whose shape this
+  chain now owns.
 
   The migrated version is tracked as a `pkb_schema:<N>` COMMENT on
   `phoenix_kit_payment_provider_configs` (the marker convention from the
   projects/legal chains, namespaced). A marker-less table reads as
   version 0 — the core-baseline shape before this chain existed.
+
+  ## V2 — `phoenix_kit_currencies` gets a shape
+
+  `phoenix_kit_currencies` is likewise a core-created table (V31
+  baseline), and likewise untouched by V1 above (an unrelated table). V2
+  is this chain's first shape-CHANGING step, entirely on
+  `phoenix_kit_currencies`:
+
+    * a partial unique index `phoenix_kit_currencies_default_uidx` on
+      `(is_default) WHERE is_default` — today uniqueness of the default
+      currency is held only by the transaction in
+      `set_default_currency/1`, not by the database: two
+      `is_default = true` rows raise `Ecto.MultipleResultsError` out of
+      `get_default_currency/0` (`Ecto.Repo.one/2`). This index is also a
+      prerequisite for a `LIMIT`-less `WHERE is_default` backfill a future
+      chain runs against this table, so it must exist before that
+      backfill runs, not merely by the time it finishes.
+      A host can already BE in the two-default state the index forbids, so
+      V2 demotes every default but one (lowest `sort_order`, then oldest)
+      immediately before creating the index — otherwise `CREATE UNIQUE
+      INDEX` aborts the whole chain on exactly those databases. That
+      `UPDATE` is the one row-level write this chain makes to a
+      core-created table, and it only repairs a state no reader can
+      handle: `get_default_currency/0` raises on it today.
+    * `rounding_rule character varying(16) NOT NULL DEFAULT 'exact'` and
+      `rate_updated_at timestamp with time zone` — both additions with no
+      reader anywhere in this version; the default reproduces today's
+      rounding behavior exactly, so nothing observable changes for any
+      host that migrates to V2.
+
+  Both ride in the same chain version because this chain moves one
+  version per module per release, not one version per column. `down/1`
+  to below V2 drops the index and both columns — never the table.
+
+  ## V3 — `phoenix_kit_orders` gets its frozen-currency columns
+
+  `phoenix_kit_orders` is another core-created table this chain does not
+  otherwise own. `PhoenixKitBilling.Order` (§4.5/§9.1 of the per-domain-
+  currency spec) declares `base_currency`, `exchange_rate` and
+  `base_total` — the shop's base currency and the rate an order was
+  actually priced at, frozen at creation — but the core release that was
+  originally meant to add these columns (an unreleased "V186", adding the
+  identical three columns with the identical types) had not shipped to
+  Hex when the schema change did. Any host resolving the currently
+  published core got an `Order` struct whose SELECT lists columns the
+  database does not have, and `Ecto.Repo.all/2`/`get/2`/`one/2` on
+  `Order` — hit by `list_orders/1`, `get_order/1`, the user dashboard's
+  orders LiveView, `delete_order/1` — all raised
+  `Postgrex.Error (undefined_column)` instead of returning data.
+
+  V3 closes that gap the same way V2 closed one on `phoenix_kit_currencies`:
+  this chain adds the columns itself rather than waiting on a core
+  release. The three `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements
+  use the exact names and types core's own eventual migration does, so
+  the day that core release ships, its `ADD COLUMN IF NOT EXISTS` finds
+  the columns already here and no-ops — and its backfill (deriving
+  `base_currency`/`exchange_rate`/`base_total` for pre-existing rows from
+  `phoenix_kit_currencies`) still runs and still does useful work,
+  because V3 deliberately adds the columns nullable with NO backfill of
+  its own: inventing a derivation here would duplicate — and risk
+  disagreeing with — logic that belongs to whichever release actually
+  owns getting it right. Every reader of these three fields already
+  treats `nil` as "unknown", per `Order`'s own moduledoc, so an
+  unbackfilled column breaks nothing between V3 and that release.
+
+  `down/1` to below V3 drops the three columns — never the table, same
+  invariant as V1/V2.
   """
 
   use Ecto.Migration
 
-  @current_version 1
+  @current_version 3
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -96,11 +164,15 @@ defmodule PhoenixKitBilling.Migrations do
       0
   end
 
-  @doc "Applies every chain version up to `current_version/0` (idempotent)."
+  @doc "Applies every chain version up to `target` (`:version` in `opts`, default `current_version/0`); idempotent."
   def up(opts \\ []) do
-    opts
-    |> validated_prefix()
-    |> up_statements()
+    prefix = validated_prefix(opts)
+
+    target =
+      if is_list(opts), do: Keyword.get(opts, :version, @current_version), else: @current_version
+
+    prefix
+    |> up_statements(target)
     |> Enum.each(&execute/1)
   end
 
@@ -124,13 +196,23 @@ defmodule PhoenixKitBilling.Migrations do
   are core's V135 names, that the CREATE TABLE stays shape-identical to
   core's `ExpectedSchema` manifest, and that nothing here can drop the
   table.
+
+  `target` selects how much of the chain to emit (default
+  `current_version/0`): `1` is the pure V135-adoption step on
+  `phoenix_kit_payment_provider_configs`; `2` additionally shapes
+  `phoenix_kit_currencies` (partial unique default-currency index,
+  `rounding_rule`, `rate_updated_at`); `3` additionally adds
+  `phoenix_kit_orders`' frozen-currency columns (see the moduledoc).
   """
-  @spec up_statements(String.t()) :: [String.t()]
-  def up_statements(prefix \\ "public") do
+  @spec up_statements(String.t(), pos_integer()) :: [String.t()]
+  def up_statements(prefix \\ "public", target \\ @current_version)
+
+  def up_statements(prefix, target) when is_integer(target) and target >= 1 do
     prefix = validated_prefix(prefix: prefix)
     p = "#{prefix}."
+    target = min(target, @current_version)
 
-    [
+    v1 = [
       """
       CREATE TABLE IF NOT EXISTS #{p}#{@version_table} (
         "provider" character varying(20) NOT NULL,
@@ -167,23 +249,100 @@ defmodule PhoenixKitBilling.Migrations do
       $$
       """,
       "CREATE UNIQUE INDEX IF NOT EXISTS #{@version_table}_provider_uidx ON #{p}#{@version_table} USING btree (provider)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS #{@version_table}_uuid_idx ON #{p}#{@version_table} USING btree (uuid)",
-      "COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{@current_version}'"
+      "CREATE UNIQUE INDEX IF NOT EXISTS #{@version_table}_uuid_idx ON #{p}#{@version_table} USING btree (uuid)"
     ]
+
+    v2 =
+      if target >= 2 do
+        [
+          # The index below is created on a table that is ALREADY allowed
+          # to hold two `is_default` rows — that is the very defect V2
+          # exists to close, and `create_currency/1` / `update_currency/2`
+          # can still produce it today. `CREATE UNIQUE INDEX` on such a
+          # table aborts with a unique violation, so the migration would
+          # fail on precisely the databases that need it. Demote every
+          # default but one (lowest `sort_order`, then oldest) first. A
+          # table with zero or one default row is untouched: the subselect
+          # is NULL and `uuid <> NULL` matches nothing.
+          """
+          UPDATE #{p}phoenix_kit_currencies SET is_default = false
+          WHERE is_default
+            AND uuid <> (
+              SELECT uuid FROM #{p}phoenix_kit_currencies
+              WHERE is_default
+              ORDER BY sort_order, inserted_at, uuid
+              LIMIT 1
+            )
+          """,
+          # §9.1/§3.2 of the currency design spec: the index must exist
+          # before the core backfill that assumes a single `is_default`
+          # row runs — billing (this chain) migrates before core in the
+          # documented release order.
+          "CREATE UNIQUE INDEX IF NOT EXISTS phoenix_kit_currencies_default_uidx ON #{p}phoenix_kit_currencies USING btree (is_default) WHERE is_default",
+          "ALTER TABLE #{p}phoenix_kit_currencies ADD COLUMN IF NOT EXISTS rounding_rule character varying(16) DEFAULT 'exact' NOT NULL",
+          "ALTER TABLE #{p}phoenix_kit_currencies ADD COLUMN IF NOT EXISTS rate_updated_at timestamp with time zone"
+        ]
+      else
+        []
+      end
+
+    v3 =
+      if target >= 3 do
+        [
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_currency character varying(3)",
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS exchange_rate numeric(15,6)",
+          "ALTER TABLE #{p}phoenix_kit_orders ADD COLUMN IF NOT EXISTS base_total numeric(15,2)"
+        ]
+      else
+        []
+      end
+
+    v1 ++ v2 ++ v3 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
   end
 
-  @doc "The SQL `down/1` executes, as data (marker bookkeeping only)."
+  @doc """
+  The SQL `down/1` executes, as data. Below V2 this also drops the
+  `phoenix_kit_currencies` index and columns V2 added, and below V3 the
+  `phoenix_kit_orders` columns V3 added — never the
+  `phoenix_kit_payment_provider_configs` table itself.
+  """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ "public", target \\ 0)
-      when is_integer(target) and target >= 0 do
+
+  def down_statements(prefix, target) when is_integer(target) and target >= 0 do
     prefix = validated_prefix(prefix: prefix)
     p = "#{prefix}."
 
-    if target > 0 do
-      ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
-    else
-      ["COMMENT ON TABLE #{p}#{@version_table} IS NULL"]
-    end
+    drop_v3 =
+      if target < 3 do
+        [
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS base_currency",
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate",
+          "ALTER TABLE #{p}phoenix_kit_orders DROP COLUMN IF EXISTS base_total"
+        ]
+      else
+        []
+      end
+
+    drop_v2 =
+      if target < 2 do
+        [
+          "DROP INDEX IF EXISTS #{p}phoenix_kit_currencies_default_uidx",
+          "ALTER TABLE #{p}phoenix_kit_currencies DROP COLUMN IF EXISTS rounding_rule",
+          "ALTER TABLE #{p}phoenix_kit_currencies DROP COLUMN IF EXISTS rate_updated_at"
+        ]
+      else
+        []
+      end
+
+    marker =
+      if target > 0 do
+        "COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"
+      else
+        "COMMENT ON TABLE #{p}#{@version_table} IS NULL"
+      end
+
+    drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do

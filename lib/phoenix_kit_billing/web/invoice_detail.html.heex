@@ -126,7 +126,7 @@
             <h2 class="card-title">{gettext("Invoice Details")}</h2>
 
             <%!-- Line Items --%>
-            <div class="overflow-x-auto mt-4">
+            <div class="overflow-x-auto overflow-y-clip mt-4">
               <table class="table">
                 <thead>
                   <tr>
@@ -269,126 +269,110 @@
                 <p>{gettext("No transactions recorded yet")}</p>
               </div>
             <% else %>
-              <div class="overflow-x-auto mt-4">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>{gettext("Date")}</th>
-                      <th>{gettext("Number")}</th>
-                      <th>{gettext("Type")}</th>
-                      <th class="text-right">{gettext("Amount")}</th>
-                      <th>{gettext("Description")}</th>
-                      <th class="text-right">{gettext("Actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <%= for transaction <- @transactions do %>
-                      <tr>
-                        <td class="text-sm text-base-content/60">
-                          <.time_ago datetime={transaction.inserted_at} />
-                        </td>
-                        <td class="font-mono text-xs">{transaction.transaction_number}</td>
-                        <td>
-                          <.transaction_type_badge type={
-                            PhoenixKitBilling.Transaction.type(transaction)
-                          } />
-                        </td>
-                        <td class="text-right">
-                          <span class={[
-                            "font-mono font-medium",
-                            if(Decimal.positive?(transaction.amount),
-                              do: "text-success",
-                              else: "text-error"
-                            )
-                          ]}>
-                            <%= if Decimal.positive?(transaction.amount) do %>
-                              +<.currency_compact
-                                amount={transaction.amount}
-                                currency={transaction.currency}
-                              />
-                            <% else %>
-                              <.currency_compact
-                                amount={transaction.amount}
-                                currency={transaction.currency}
-                              />
-                            <% end %>
-                          </span>
-                        </td>
-                        <td class="max-w-[200px] truncate text-sm text-base-content/70">
-                          {transaction.description || "-"}
-                        </td>
-                        <td class="text-right">
-                          <div class="flex gap-1 justify-end">
-                            <%= if Decimal.negative?(transaction.amount) do %>
-                              <%!-- Refund: Credit Note buttons --%>
-                              <.link
-                                navigate={
-                                  PhoenixKit.Utils.Routes.path(
-                                    "/admin/billing/invoices/#{@invoice.uuid}/credit-note/#{transaction.uuid}"
-                                  )
-                                }
-                                class="btn btn-warning btn-xs tooltip tooltip-bottom"
-                                target="_blank"
-                                data-tip={gettext("Print Credit Note")}
-                              >
-                                <.icon name="hero-printer" class="w-3 h-3 hidden sm:inline" />
-                                <span class="sm:hidden whitespace-nowrap">
-                                  {gettext("Print Credit Note")}
-                                </span>
-                              </.link>
-                              <button
-                                phx-click="open_send_credit_note_modal"
-                                phx-value-transaction-uuid={transaction.uuid}
-                                class="btn btn-warning btn-outline btn-xs tooltip tooltip-bottom"
-                                data-tip={gettext("Send Credit Note")}
-                              >
-                                <.icon
-                                  name="hero-paper-airplane"
-                                  class="w-3 h-3 hidden sm:inline"
-                                />
-                                <span class="sm:hidden whitespace-nowrap">
-                                  {gettext("Send Credit Note")}
-                                </span>
-                              </button>
-                            <% else %>
-                              <%!-- Payment: Payment Confirmation buttons --%>
-                              <.link
-                                navigate={
-                                  PhoenixKit.Utils.Routes.path(
-                                    "/admin/billing/invoices/#{@invoice.uuid}/payment/#{transaction.uuid}"
-                                  )
-                                }
-                                class="btn btn-success btn-xs tooltip tooltip-bottom"
-                                target="_blank"
-                                data-tip={gettext("Print Payment Confirmation")}
-                              >
-                                <.icon name="hero-printer" class="w-3 h-3 hidden sm:inline" />
-                                <span class="sm:hidden whitespace-nowrap">
-                                  {gettext("Print Payment Confirmation")}
-                                </span>
-                              </.link>
-                              <button
-                                phx-click="open_send_payment_confirmation_modal"
-                                phx-value-transaction-uuid={transaction.uuid}
-                                class="btn btn-success btn-outline btn-xs tooltip tooltip-bottom"
-                                data-tip={gettext("Send Payment Confirmation")}
-                              >
-                                <.icon
-                                  name="hero-paper-airplane"
-                                  class="w-3 h-3 hidden sm:inline"
-                                />
-                                <span class="sm:hidden whitespace-nowrap">
-                                  {gettext("Send Payment Confirmation")}
-                                </span>
-                              </button>
-                            <% end %>
-                          </div>
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              </div>
+              <.table_default size="sm" wrapper_class="mt-4 overflow-x-auto overflow-y-clip">
+                <.table_default_header>
+                  <.table_default_row>
+                    <.table_default_header_cell>{gettext("Date")}</.table_default_header_cell>
+                    <.table_default_header_cell>{gettext("Number")}</.table_default_header_cell>
+                    <.table_default_header_cell>{gettext("Type")}</.table_default_header_cell>
+                    <.table_default_header_cell class="text-right">
+                      {gettext("Amount")}
+                    </.table_default_header_cell>
+                    <.table_default_header_cell>
+                      {gettext("Description")}
+                    </.table_default_header_cell>
+                    <.table_default_header_cell class="text-right">
+                      {gettext("Actions")}
+                    </.table_default_header_cell>
+                  </.table_default_row>
+                </.table_default_header>
+                <.table_default_body>
+                  <%= for transaction <- @transactions do %>
+                    <.table_default_row>
+                      <.table_default_cell class="text-sm text-base-content/60">
+                        <.time_ago datetime={transaction.inserted_at} />
+                      </.table_default_cell>
+                      <.table_default_cell class="font-mono text-xs">
+                        {transaction.transaction_number}
+                      </.table_default_cell>
+                      <.table_default_cell>
+                        <.transaction_type_badge type={
+                          PhoenixKitBilling.Transaction.type(transaction)
+                        } />
+                      </.table_default_cell>
+                      <.table_default_cell class="text-right">
+                        <span class={[
+                          "font-mono font-medium",
+                          if(Decimal.positive?(transaction.amount),
+                            do: "text-success",
+                            else: "text-error"
+                          )
+                        ]}>
+                          <%= if Decimal.positive?(transaction.amount) do %>
+                            +<.currency_compact
+                              amount={transaction.amount}
+                              currency={transaction.currency}
+                            />
+                          <% else %>
+                            <.currency_compact
+                              amount={transaction.amount}
+                              currency={transaction.currency}
+                            />
+                          <% end %>
+                        </span>
+                      </.table_default_cell>
+                      <.table_default_cell class="max-w-[200px] truncate text-sm text-base-content/70">
+                        {transaction.description || "-"}
+                      </.table_default_cell>
+                      <.table_default_cell class="text-right">
+                        <.table_row_menu id={"transaction-menu-#{transaction.uuid}"}>
+                          <%= if Decimal.negative?(transaction.amount) do %>
+                            <%!-- Refund: Credit Note actions --%>
+                            <.table_row_menu_link
+                              navigate={
+                                PhoenixKit.Utils.Routes.path(
+                                  "/admin/billing/invoices/#{@invoice.uuid}/credit-note/#{transaction.uuid}"
+                                )
+                              }
+                              target="_blank"
+                              icon="hero-printer"
+                              label={gettext("Print Credit Note")}
+                              variant="warning"
+                            />
+                            <.table_row_menu_button
+                              phx-click="open_send_credit_note_modal"
+                              phx-value-transaction-uuid={transaction.uuid}
+                              icon="hero-paper-airplane"
+                              label={gettext("Send Credit Note")}
+                              variant="warning"
+                            />
+                          <% else %>
+                            <%!-- Payment: Payment Confirmation actions --%>
+                            <.table_row_menu_link
+                              navigate={
+                                PhoenixKit.Utils.Routes.path(
+                                  "/admin/billing/invoices/#{@invoice.uuid}/payment/#{transaction.uuid}"
+                                )
+                              }
+                              target="_blank"
+                              icon="hero-printer"
+                              label={gettext("Print Payment Confirmation")}
+                              variant="success"
+                            />
+                            <.table_row_menu_button
+                              phx-click="open_send_payment_confirmation_modal"
+                              phx-value-transaction-uuid={transaction.uuid}
+                              icon="hero-paper-airplane"
+                              label={gettext("Send Payment Confirmation")}
+                              variant="success"
+                            />
+                          <% end %>
+                        </.table_row_menu>
+                      </.table_default_cell>
+                    </.table_default_row>
+                  <% end %>
+                </.table_default_body>
+              </.table_default>
             <% end %>
           </div>
         </div>

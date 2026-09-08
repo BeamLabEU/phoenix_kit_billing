@@ -97,7 +97,9 @@ defmodule PhoenixKitBilling.Providers.Provider do
 
   ## Parameters
 
-  - `invoice` - The invoice to pay (must include amount, currency, line_items)
+  - `invoice` - The invoice to pay (must include amount, currency, line_items —
+    a missing `invoice.currency` makes implementations raise `ArgumentError`
+    rather than defaulting it, §7.1)
   - `opts` - Options:
     - `:success_url` - URL to redirect after successful payment
     - `:cancel_url` - URL to redirect if user cancels
@@ -143,7 +145,8 @@ defmodule PhoenixKitBilling.Providers.Provider do
   - `payment_method` - The saved payment method record
   - `amount` - Amount to charge (Decimal)
   - `opts` - Options:
-    - `:currency` - Currency code (default: from payment method)
+    - `:currency` - Currency code, REQUIRED — implementations raise
+      (`KeyError`) rather than defaulting it (§7.1)
     - `:description` - Description for the charge
     - `:invoice_uuid` - Associated invoice UUID
     - `:metadata` - Additional metadata
@@ -208,6 +211,9 @@ defmodule PhoenixKitBilling.Providers.Provider do
   - `provider_transaction_id` - The provider's transaction/charge ID
   - `amount` - Amount to refund (Decimal, nil for full refund)
   - `opts` - Options:
+    - `:currency` - Currency code, required only where a partial `amount`
+      is given (a full refund needs none); implementations raise rather
+      than defaulting it when it IS needed (§7.1)
     - `:reason` - Reason for refund
     - `:metadata` - Additional metadata
 

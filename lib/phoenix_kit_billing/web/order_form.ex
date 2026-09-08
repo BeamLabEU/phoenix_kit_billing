@@ -30,7 +30,11 @@ defmodule PhoenixKitBilling.Web.OrderForm do
        |> assign(:project_title, nil)
        |> assign(:users, [])
        |> assign(:currencies, [])
-       |> assign(:default_currency, "EUR")
+       # No DB in mount (see above), so no real currency to offer yet —
+       # `nil`, not a currency literal (§3.3). `handle_params/3` sets the
+       # real base currency before `load_order/2` ever reads this assign,
+       # so no changeset is ever built against this placeholder.
+       |> assign(:default_currency, nil)
        |> assign(:billing_profiles, [])
        |> assign(:order, nil)
        |> assign(:form, nil)
@@ -54,7 +58,8 @@ defmodule PhoenixKitBilling.Web.OrderForm do
     project_title = Settings.get_project_title()
     %{users: users} = Auth.list_users_paginated(limit: 100)
     currencies = Billing.list_currencies(enabled: true)
-    default_currency = Settings.get_setting("billing_default_currency", "EUR")
+    # §3.3: base = is_default row (billing_default_currency is no longer read)
+    default_currency = (Billing.get_base_currency() || %{code: nil}).code
 
     socket =
       socket

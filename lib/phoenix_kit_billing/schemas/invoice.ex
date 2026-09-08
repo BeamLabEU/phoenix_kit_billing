@@ -76,7 +76,7 @@ defmodule PhoenixKitBilling.Invoice do
     field(:tax_rate, :decimal, default: Decimal.new("0"))
     field(:total, :decimal)
     field(:paid_amount, :decimal, default: Decimal.new("0"))
-    field(:currency, :string, default: "EUR")
+    field(:currency, :string)
     field(:due_date, :date)
 
     # Billing details (snapshot)

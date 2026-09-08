@@ -188,8 +188,14 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   """
   @impl true
   def charge_payment_method(payment_method, amount, opts) do
+    # Read BEFORE ensure_configured/0 so a missing :currency fails even on a
+    # host with no Stripe config at all — a caller must never see a silent
+    # "EUR" fallback just because the provider isn't set up yet (§7.1).
+    currency = opts |> Keyword.fetch!(:currency) |> String.downcase()
+
     with {:ok, config} <- ensure_configured() do
-      currency = Keyword.get(opts, :currency, "EUR") |> String.downcase()
+      # Known debt: assumes 2 minor units (zero-decimal currencies
+      # unsupported) — spec §2.6
       amount_cents = Decimal.mult(amount, 100) |> Decimal.round() |> Decimal.to_integer()
 
       params = %{
@@ -327,6 +333,8 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
       params =
         if amount do
+          # Known debt: assumes 2 minor units (zero-decimal currencies
+          # unsupported) — spec §2.6
           amount_cents = Decimal.mult(amount, 100) |> Decimal.round() |> Decimal.to_integer()
           Map.put(params, :amount, amount_cents)
         else
@@ -547,7 +555,11 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     |> Enum.map(fn item ->
       %{
         price_data: %{
-          currency: String.downcase(invoice.currency || "EUR"),
+          currency:
+            String.downcase(
+              invoice.currency ||
+                raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
+            ),
           product_data: %{
             name: item["name"] || "Item"
           },

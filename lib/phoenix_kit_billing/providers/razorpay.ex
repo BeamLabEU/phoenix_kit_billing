@@ -96,6 +96,12 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
 
   @impl true
   def charge_payment_method(payment_method, amount, opts) do
+    # Read BEFORE the request chain so a missing :currency fails even on a
+    # host with no Razorpay config at all — same rule as Stripe/PayPal, and
+    # a silent "INR" here would charge in a currency the invoice never
+    # named (§7.1).
+    _currency = Keyword.fetch!(opts, :currency)
+
     # Razorpay recurring payments use tokens
     token_id = payment_method.provider_payment_method_id
     customer_id = payment_method.provider_customer_id
@@ -192,7 +198,11 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
 
   defp create_order(opts) do
     amount = opts[:amount] || opts["amount"]
-    currency = opts[:currency] || opts["currency"] || "INR"
+
+    currency =
+      opts[:currency] || opts["currency"] ||
+        raise(ArgumentError, "Razorpay create_order: :currency is required")
+
     metadata = opts[:metadata] || opts["metadata"] || %{}
 
     # Razorpay expects amount in smallest currency unit (paise for INR)
@@ -214,7 +224,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
   end
 
   defp create_order_for_recurring(amount, opts) do
-    currency = Keyword.get(opts, :currency, "INR")
+    currency = Keyword.fetch!(opts, :currency)
     metadata = Keyword.get(opts, :metadata, %{})
 
     amount_paise =
@@ -491,12 +501,16 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
 
   defp invoice_to_opts(invoice) when is_map(invoice) do
     amount = invoice[:total] || invoice["total"] || Decimal.new(0)
-    # Razorpay expects amount in smallest currency unit (paise for INR, cents for others)
+    # Razorpay expects amount in smallest currency unit (paise for INR, cents
+    # for others). Known debt: assumes 2 minor units (zero-decimal currencies
+    # unsupported) — spec §2.6
     amount_paise = Decimal.to_integer(Decimal.mult(amount, 100))
 
     [
       amount: amount_paise,
-      currency: invoice[:currency] || invoice["currency"] || "INR",
+      currency:
+        invoice[:currency] || invoice["currency"] ||
+          raise(ArgumentError, "invoice has no currency"),
       description: "Invoice #{invoice[:invoice_number] || invoice["invoice_number"]}",
       metadata: %{
         invoice_uuid: invoice[:uuid] || invoice["uuid"] || invoice[:id] || invoice["id"],

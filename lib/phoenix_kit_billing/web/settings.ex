@@ -47,7 +47,14 @@ defmodule PhoenixKitBilling.Web.Settings do
 
     socket
     # General settings
-    |> assign(:default_currency, Settings.get_setting("billing_default_currency", "EUR"))
+    #
+    # §3.3: the shop's base currency is the `is_default` row of
+    # phoenix_kit_currencies (PhoenixKitBilling.get_base_currency/0), set
+    # via the currencies admin page — NOT this settings form.
+    # `billing_default_currency` used to back a "Default Currency" select
+    # here that wrote a setting nothing else read even before this change
+    # (§2.3); the select and its write are removed together with this
+    # assign rather than left pointing at a dead value.
     |> assign(:invoice_prefix, Settings.get_setting("billing_invoice_prefix", "INV"))
     |> assign(:order_prefix, Settings.get_setting("billing_order_prefix", "ORD"))
     |> assign(:receipt_prefix, Settings.get_setting("billing_receipt_prefix", "RCP"))
@@ -142,7 +149,8 @@ defmodule PhoenixKitBilling.Web.Settings do
     tax_enabled = if params["tax_enabled"] == "true", do: "true", else: "false"
 
     settings = [
-      {"billing_default_currency", params["default_currency"]},
+      # §3.3: no "default currency" setting is written here anymore — the
+      # base currency is the currencies admin page's is_default row.
       {"billing_invoice_prefix", params["invoice_prefix"]},
       {"billing_order_prefix", params["order_prefix"]},
       {"billing_receipt_prefix", params["receipt_prefix"]},

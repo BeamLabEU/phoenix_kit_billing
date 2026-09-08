@@ -2965,8 +2965,13 @@ msgstr "Testirežiim (demo)"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:262
 #, elixir-autogen, elixir-format
-msgid "The default currency is used for all new orders. Exchange rates are relative to the default currency (base rate = 1.0). Enable only the currencies you plan to accept for billing."
-msgstr "Vaikimisi valuutat kasutatakse kõigi uute tellimuste jaoks. Vahetuskursid on suhtelised vaikimisi valuuta suhtes (baaskurss = 1,0). Lubage ainult need valuutad, mida kavatsete arvelduses kasutada."
+msgid "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
+msgstr "Vaikimisi valuutat kasutatakse kõigi uute tellimuste jaoks. Vahetuskurss näitab, mitu ühikut valuutat ostab üks ühik vaikimisi valuutat; kui valuuta määratakse vaikimisi valuutaks, arvutatakse kõik kursid ümber nii, et selle enda kurss on 1,0. Lubage ainult need valuutad, mida kavatsete arvelduses kasutada."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:153
+#, elixir-autogen, elixir-format
+msgid "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize."
+msgstr "Baasvaluuta kurss peab olema 1,0 — praegu %{rate}. Kursside ümberarvutamiseks vajutage sellel „Määra vaikimisi“."
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:77
 #, elixir-autogen, elixir-format
@@ -3408,3 +3413,86 @@ msgstr "Tallinn"
 #, elixir-autogen, elixir-format
 msgid "Unnamed profile"
 msgstr "Nimeta profiil"
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Invoice {{invoice_number}} - {{company_name}}"
+msgstr "Arve {{invoice_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Receipt {{receipt_number}} - {{company_name}}"
+msgstr "Kviitung {{receipt_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Credit Note {{credit_note_number}} - Refund Issued - {{company_name}}"
+msgstr "Kreeditarve {{credit_note_number}} - tagasimakse tehtud - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
+msgstr "Makse laekunud - {{confirmation_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nINVOICE {{invoice_number}}\n=============================================\n\nBill To: {{user_name}}\nEmail: {{user_email}}\n\nInvoice Date: {{invoice_date}}\nDue Date: {{due_date}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL:       {{total}} {{currency}}\n---------------------------------------------\n\nPAYMENT DUE: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nBANK TRANSFER DETAILS\n---------------------------------------------\nBank:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nReference:   {{invoice_number}}\n\n---------------------------------------------\nView invoice online: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this invoice, please contact us."
+msgstr "=============================================\nARVE {{invoice_number}}\n=============================================\n\nSaaja: {{user_name}}\nE-post: {{user_email}}\n\nArve kuupäev: {{invoice_date}}\nMaksetähtaeg: {{due_date}}\nValuuta: {{currency}}\n\n---------------------------------------------\nREAD\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nKOKKUVÕTE\n---------------------------------------------\nVahesumma:   {{subtotal}} {{currency}}\nKäibemaks:   {{tax_amount}} {{currency}}\n---------------------------------------------\nKOKKU:       {{total}} {{currency}}\n---------------------------------------------\n\nMAKSETÄHTAEG: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nPANGAÜLEKANDE ANDMED\n---------------------------------------------\nPank:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nViide:       {{invoice_number}}\n\n---------------------------------------------\nVaata arvet veebis: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nKMKR: {{company_vat}}\n=============================================\n\nKui teil on selle arve kohta küsimusi, võtke meiega ühendust."
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nRECEIPT {{receipt_number}}\n=============================================\nSTATUS: PAID\n\nThank you for your payment!\nYour payment has been successfully processed.\n\n---------------------------------------------\nRECEIVED FROM\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\nPayment Date: {{payment_date}}\nInvoice: {{invoice_number}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL PAID:  {{paid_amount}} {{currency}}\n---------------------------------------------\n\nPAYMENT CONFIRMED: {{payment_date}}\n\n---------------------------------------------\nView receipt online: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nThank you for your business.\nIf you have any questions, please contact us."
+msgstr "=============================================\nKVIITUNG {{receipt_number}}\n=============================================\nOLEK: MAKSTUD\n\nTäname makse eest!\nTeie makse on edukalt töödeldud.\n\n---------------------------------------------\nMAKSJA\n---------------------------------------------\nNimi: {{user_name}}\nE-post: {{user_email}}\n\nMakse kuupäev: {{payment_date}}\nArve: {{invoice_number}}\nValuuta: {{currency}}\n\n---------------------------------------------\nREAD\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nKOKKUVÕTE\n---------------------------------------------\nVahesumma:   {{subtotal}} {{currency}}\nKäibemaks:   {{tax_amount}} {{currency}}\n---------------------------------------------\nMAKSTUD:     {{paid_amount}} {{currency}}\n---------------------------------------------\n\nMAKSE KINNITATUD: {{payment_date}}\n\n---------------------------------------------\nVaata kviitungit veebis: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nKMKR: {{company_vat}}\n=============================================\n\nTäname, et valisite meid.\nKui teil on küsimusi, võtke meiega ühendust."
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nCREDIT NOTE {{credit_note_number}}\n=============================================\nSTATUS: REFUND ISSUED\n\nA refund has been processed for your account.\n\nREFUND AMOUNT: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nISSUED BY (PAYER)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n\n---------------------------------------------\nISSUED TO (PAYEE)\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\n---------------------------------------------\nREFUND DETAILS\n---------------------------------------------\nCredit Note #:     {{credit_note_number}}\nRefund Date:       {{refund_date}}\nRefund Amount:     {{refund_amount}} {{currency}}\nOriginal Invoice:  {{invoice_number}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nREASON FOR REFUND\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nView credit note online: {{credit_note_url}}\n\nThe refund will be processed to your original payment method.\nPlease allow 5-10 business days for the refund to appear in your account.\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this refund, please contact us."
+msgstr "=============================================\nKREEDITARVE {{credit_note_number}}\n=============================================\nOLEK: TAGASIMAKSE TEHTUD\n\nTeie kontole on tehtud tagasimakse.\n\nTAGASIMAKSE SUMMA: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nVÄLJASTAJA (MAKSJA)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nKMKR: {{company_vat}}\n\n---------------------------------------------\nSAAJA\n---------------------------------------------\nNimi: {{user_name}}\nE-post: {{user_email}}\n\n---------------------------------------------\nTAGASIMAKSE ANDMED\n---------------------------------------------\nKreeditarve nr:    {{credit_note_number}}\nTagasimakse kuupäev: {{refund_date}}\nTagasimakse summa: {{refund_amount}} {{currency}}\nAlgne arve:        {{invoice_number}}\nTehingu nr:        {{transaction_number}}\n\n---------------------------------------------\nTAGASIMAKSE PÕHJUS\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nVaata kreeditarvet veebis: {{credit_note_url}}\n\nTagasimakse tehakse teie algsele makseviisile.\nPalun arvestage, et summa jõuab kontole 5-10 tööpäeva jooksul.\n\n=============================================\n{{company_name}}\n{{company_address}}\nKMKR: {{company_vat}}\n=============================================\n\nKui teil on selle tagasimakse kohta küsimusi, võtke meiega ühendust."
+
+#: lib/phoenix_kit_billing/email_defaults.ex
+msgid "=============================================\nPAYMENT CONFIRMATION {{confirmation_number}}\n=============================================\nSTATUS: PAYMENT RECEIVED\n\nThank you for your payment.\n\nPAYMENT AMOUNT: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nPAYMENT DETAILS\n---------------------------------------------\nConfirmation #:    {{confirmation_number}}\nInvoice #:         {{invoice_number}}\nPayment Date:      {{payment_date}}\nPayment Method:    {{payment_method}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nBALANCE SUMMARY\n---------------------------------------------\nInvoice Total:     {{invoice_total}} {{currency}}\nTotal Paid:        {{total_paid}} {{currency}}\nRemaining:         {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nView payment confirmation online: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nThank you for your business. If you have any questions, please contact us."
+msgstr "=============================================\nMAKSE KINNITUS {{confirmation_number}}\n=============================================\nOLEK: MAKSE LAEKUNUD\n\nTäname makse eest.\n\nMAKSE SUMMA: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nMAKSE ANDMED\n---------------------------------------------\nKinnituse nr:      {{confirmation_number}}\nArve nr:           {{invoice_number}}\nMakse kuupäev:     {{payment_date}}\nMakseviis:         {{payment_method}}\nTehingu nr:        {{transaction_number}}\n\n---------------------------------------------\nSALDO KOKKUVÕTE\n---------------------------------------------\nArve kogusumma:    {{invoice_total}} {{currency}}\nMakstud kokku:     {{total_paid}} {{currency}}\nJääk:              {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nVaata makse kinnitust veebis: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nTäname, et valisite meid. Kui teil on küsimusi, võtke meiega ühendust."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:380
+#, elixir-autogen, elixir-format
+msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
+msgstr "Rakendub sellesse valuutasse konverteeritud hindadele ja ostukorvi hetktõmmistele — mitte kunagi baasvaluutale."
+
+#: lib/phoenix_kit_billing/web/currencies.ex:214
+#, elixir-autogen, elixir-format
+msgid "Charm .90 — nearest X.90"
+msgstr "Charm .90 — lähima X.90-ni"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:213
+#, elixir-autogen, elixir-format
+msgid "Charm .99 — round down to X.99"
+msgstr "Charm .99 — allapoole lähima X.99-ni"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:212
+#, elixir-autogen, elixir-format
+msgid "Exact — no psychological rounding"
+msgstr "Täpne — ilma psühholoogilise ümardamiseta"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:59
+#: lib/phoenix_kit_billing/web/currencies.html.heex:128
+#, elixir-autogen, elixir-format
+msgid "Rounding"
+msgstr "Ümardamine"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:360
+#, elixir-autogen, elixir-format
+msgid "Rounding rule"
+msgstr "Ümardamisreegel"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:215
+#, elixir-autogen, elixir-format
+msgid "Whole units — no minor units"
+msgstr "Täisühikud — ilma sentideta"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+#, elixir-autogen, elixir-format
+msgid "Some exchange rates are out of date"
+msgstr "Mõned vahetuskursid on aegunud"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#, elixir-autogen, elixir-format
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr "Pole uuendatud üle %{days} päeva: %{codes}. Hindu konverteeritakse endiselt nende kursside järgi."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+#, elixir-autogen, elixir-format
+msgid "out of date"
+msgstr "aegunud"

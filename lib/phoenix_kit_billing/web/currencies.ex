@@ -16,6 +16,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   import PhoenixKitBilling.Web.Components.SettingsTabs
   import PhoenixKitWeb.Components.Core.TableDefault
   import PhoenixKitWeb.Components.Core.TableRowMenu
+  import PhoenixKitWeb.Components.Core.TimeDisplay
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
@@ -33,6 +34,8 @@ defmodule PhoenixKitBilling.Web.Currencies do
         |> assign(:page_title, gettext("Currencies"))
         |> assign(:project_title, project_title)
         |> assign(:currencies, [])
+        |> assign(:fx_rate_max_age_days, Billing.fx_rate_max_age_days())
+        |> assign(:stale_currencies, [])
         |> assign(:loading, true)
         |> assign(:show_form, false)
         |> assign(:editing_currency, nil)
@@ -57,9 +60,13 @@ defmodule PhoenixKitBilling.Web.Currencies do
 
   defp load_currencies(socket) do
     currencies = Billing.list_currencies(order_by: [asc: :sort_order, asc: :code])
+    max_age_days = Billing.fx_rate_max_age_days()
+    stale_currencies = Enum.filter(currencies, &Currency.stale?(&1, max_age_days))
 
     socket
     |> assign(:currencies, currencies)
+    |> assign(:fx_rate_max_age_days, max_age_days)
+    |> assign(:stale_currencies, stale_currencies)
     |> assign(:loading, false)
   end
 
@@ -205,6 +212,23 @@ defmodule PhoenixKitBilling.Web.Currencies do
   end
 
   # --- Helpers ---
+
+  @doc "The §5 rules as `{value, label}` pairs for the form select."
+  def rounding_rule_options do
+    [
+      {"exact", gettext("Exact — no psychological rounding")},
+      {"charm_99", gettext("Charm .99 — round down to X.99")},
+      {"charm_90", gettext("Charm .90 — nearest X.90")},
+      {"integer", gettext("Whole units — no minor units")}
+    ]
+  end
+
+  @doc "The translated label for a stored `rounding_rule` value (falls back to the raw value for an unknown rule)."
+  def rounding_rule_label(rule) do
+    rounding_rule_options()
+    |> List.keyfind(rule, 0, {rule, rule})
+    |> elem(1)
+  end
 
   def error_to_string([]), do: ""
 

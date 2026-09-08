@@ -15,6 +15,11 @@ defmodule PhoenixKitBillingTest do
     assert Billing.module_name() == "Billing"
   end
 
+  # The version is single-sourced in mix.exs; version/0 must never drift from it.
+  test "version/0 reports the package version from mix.exs" do
+    assert Billing.version() == Mix.Project.config()[:version]
+  end
+
   # Pins the exact shape the host's :phoenix_kit_css_sources compiler reads.
   # Losing this callback is silent — the compiler guards on
   # function_exported?/3 and simply emits no @source line — and the symptom

@@ -4,6 +4,186 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.13.0 - 2026-09-07
+
+Per-domain currency, stages Э2 and Э3 (PR #33, #34).
+
+### Added
+
+- **`rounding_rule` is now applied by `Currency.present/3`.** Four rules —
+  `"exact"` (default), `"charm_99"` (round down to X.99), `"charm_90"`
+  (nearest X.90), `"integer"` (whole units) — applied once to the raw
+  converted amount, identically on the live and frozen (order/cart snapshot)
+  paths, never to the base currency. A charm rule requires a currency with
+  exactly two decimal places; the changeset now rejects the combination.
+- **`{:currencies_changed, code}` PubSub event** (`Events.subscribe_currencies/0`)
+  — broadcast by every currency writer (create/update/set_default/delete/
+  change_base_currency) after its cache invalidation is guaranteed applied,
+  so a storefront tab can re-render converted prices live instead of on
+  reload.
+- **`PhoenixKitBilling.change_base_currency/2`** — switches the shop's base
+  currency: renormalizes every rate against the new base and promotes it to
+  `1.0`, inside one transaction with a caller-supplied `opts[:reprice]`
+  callback (for recomputing catalog/shipping prices, which this package does
+  not own) run strictly between those two steps. Requires an explicit
+  `opts[:catalog_size]` so a non-empty catalog can't be silently re-priced
+  by omission.
+- **Exchange-rate age tracking.** `rate_updated_at` is now stamped by every
+  currency write that actually changes the rate. `Currency.stale?/2` and
+  `PhoenixKitBilling.currencies_with_stale_rates/0` flag rates older than
+  the `fx_rate_max_age_days` setting (default 30 days) — a stale rate still
+  converts, it only surfaces a one-time-per-process log warning and an
+  admin banner/badge on the Currencies page.
+
+## 0.12.0 - 2026-09-07
+
+Phase B of retiring the `phoenix_kit_email_templates` table. Plan:
+`phoenix_kit/dev_docs/plans/2026-09-06-templates-table-split.md`.
+
+### Added
+
+- **`PhoenixKitBilling.EmailDefaults` — this package now owns the content of
+  its own four emails.** Invoice, receipt, credit note and payment
+  confirmation were seeded rows in a table belonging to `phoenix_kit_emails`,
+  which is why that package hardcoded billing's copy. That table is being
+  retired; without this, all four emails would stop sending when it goes.
+
+  The content is passed to core as `:defaults` (a zero-arity function, so core
+  evaluates it inside the *recipient's* locale rather than whatever locale a
+  background job happens to be in). Resolution order is unchanged: an active
+  database template, then a host override file, then this.
+
+  **Nothing changes for an existing install.** A host that customized one of
+  these templates keeps its customization, because the database row still
+  wins. Requires core ≥ 2.17 to take effect; older cores ignore the option, so
+  the pin stays at `~> 2.0`.
+
+- Subjects and bodies are now translated into `et` and `ru`. They were
+  English-only for every recipient before, because the seeded rows carried a
+  single `"en"` value.
+
+### Fixed
+
+- Ten `et`/`ru` strings were serving a translation matched from a *different*
+  msgid — "Manage invoices" read as *manage currencies*, and "Subscription
+  extended by %{days} days" had dropped the placeholder and hardcoded 30 days.
+  Rewritten by hand.
+
+### Known gap
+
+- **The four emails no longer carry an HTML body once the templates table is
+  dropped**, only plain text. The shipped HTML was roughly 200 lines each of
+  inline markup with the header and footer copy-pasted between them — the
+  duplication the shared layout layer exists to remove — and re-homing it here
+  would bake that into a second package immediately before deleting it. The
+  layout layer has to land before the table is dropped. Until then nothing
+  changes, because the database row still wins.
+
+## 0.11.0 - 2026-09-06
+
+PR #31, PR #32, plus the post-merge review of #32. Full findings in
+`dev_docs/pull_requests/2026/31-set-default-currency-repromote/CLAUDE_REVIEW.md`
+and `dev_docs/pull_requests/2026/32-currency-e1-display-currency-cache/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **Request-scoped display currency.** `Currency.put_request_currency/1` /
+  `get_request_currency/0` let a host set, per request, the currency a
+  shopper should see and be charged in, independent of the shop's base
+  currency. `get_base_currency/0` (cached), `get_display_currency/0` and
+  `resolve_display_currency/1` resolve it with a fail-safe: an unknown,
+  disabled, or non-positive-rate code falls back to the base currency and
+  logs once per process per offending code, rather than crashing or showing
+  a broken price.
+- **`Currency.present/3`** — the one place a base-currency amount becomes a
+  display-currency amount. Resolves the base and target fresh on every call
+  (a rate edit is visible on the next call), or, with `opts[:rate]`, uses a
+  caller's own frozen rate (a cart's or order's snapshot) without
+  re-checking the target's live usability — a frozen rate must survive the
+  target being disabled after the freeze.
+- **`Currency.effective_rate/2`** — the `base -> target` multiplier a cart
+  freezes at creation, rounded to six decimal places.
+- **Currency-table caching (§13).** `get_base_currency/0` and
+  `get_currency_by_code/1` are backed by a `PhoenixKit.Cache` instance
+  (5 minute TTL), invalidated wholesale by every currency writer. Cuts
+  `Currency.present/3`'s per-call query cost from 3 to ~0 once warm — a
+  catalog page converting dozens of prices no longer pays for it per price.
+- **Migration chain V3** — adds `phoenix_kit_orders.base_currency`,
+  `.exchange_rate` and `.base_total` (nullable, no backfill), the columns
+  `PhoenixKitBilling.Order` now declares for a later stage's frozen order
+  pricing. Added post-merge: PR #32 shipped the schema fields on the
+  assumption that a core release would add these columns, but the core
+  release in question had not been published, so every `Order` query broke
+  on the currently published core. This chain now adds them itself, using
+  the same names/types that core release will use, so its own
+  `ADD COLUMN IF NOT EXISTS` and backfill still work unchanged once it ships.
+
+### Changed
+
+- **`billing_default_currency` is no longer read.** Every internal reader
+  (order/subscription creation, dashboard stats, the order form) now uses
+  the `is_default` row of `phoenix_kit_currencies` via `get_base_currency/0`.
+  The dead "Default Currency" select on the settings page (it wrote a
+  setting nothing read) is removed along with it.
+
+### Fixed
+
+- **`set_default_currency/1`: re-promoting the currency that is already
+  default no longer clears `is_default` entirely.** The base-rate
+  renormalization added in 0.10.0 demoted the target's own row in the
+  database while the caller's in-memory struct still read `is_default:
+  true`, so Ecto's changeset diff saw no change and never re-promoted it.
+  The function now reloads the row before both the guard check and the
+  promoting changeset, and forces `:is_default`/`:exchange_rate` into the
+  changeset regardless of what the reload reports.
+
+## 0.10.0 - 2026-09-05
+
+PR #30, plus the post-merge review. Full findings in
+`dev_docs/pull_requests/2026/30-currency-hygiene-e0/CLAUDE_REVIEW.md`.
+
+### Added
+
+- **Migration chain V2** — a partial unique index
+  `phoenix_kit_currencies_default_uidx ON (is_default) WHERE is_default`, so
+  two default currencies can no longer coexist and crash
+  `get_default_currency/0`; plus `rounding_rule` and `rate_updated_at`
+  columns on `phoenix_kit_currencies` (no readers yet — `"exact"` reproduces
+  today's rounding). `up/1` now honours a `:version` target, and `down/1`
+  below V2 drops the index and both columns — never the core-created table.
+  V2 demotes surplus default rows immediately before creating the index, so
+  the migration also repairs a database that is already in the state the
+  index forbids.
+
+### Changed
+
+- **The base currency's rate is now an enforced invariant.**
+  `set_default_currency/1` renormalizes every `exchange_rate` against the
+  incoming base before promoting it at exactly `1.0`. Ratios are preserved,
+  so no converted amount moves — only the displayed numbers become honest.
+  A nil or non-positive base rate is refused with `{:error, :invalid_base_rate}`.
+  The admin currency list always shows the numeric rate and warns when the
+  base row's rate is not 1.0.
+- **Payment providers require an explicit `:currency`.** The hardcoded
+  fallbacks are gone from Stripe, PayPal and Razorpay: a caller that omits
+  the currency raises instead of silently charging in euros (or, on
+  Razorpay, rupees). EveryPay is exempt — it charges in the currency fixed
+  by the processing account. A full refund still needs no currency. The
+  `Provider` behaviour documents which calls raise.
+- **`Order.currency` and `Invoice.currency` lost their `"EUR"` schema
+  default**, so a missing currency is a loud changeset error rather than a
+  silent euro. `Transaction.currency` keeps its default until it gets the
+  same validation.
+
+### Fixed
+
+- **`Currency.changeset/2` declares the new default-currency constraint**, so
+  a second `is_default` row returns `{:error, changeset}` instead of raising
+  `Ecto.ConstraintError` out of `create_currency/1` / `update_currency/2`.
+- **The test harness applies this module's migration chain.** From V2 on the
+  `Currency` schema declares columns only the chain creates; without it every
+  DB-backed currency test raised `undefined_column`.
+
 ## 0.9.0 - 2026-08-26
 
 PR #29, plus the post-merge review. Full findings in

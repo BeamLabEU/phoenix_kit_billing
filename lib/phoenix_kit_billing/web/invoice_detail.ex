@@ -13,6 +13,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Icon
+  import PhoenixKitWeb.Components.Core.TableDefault
+  import PhoenixKitWeb.Components.Core.TableRowMenu
   import PhoenixKitWeb.Components.Core.TimeDisplay
   import PhoenixKitBilling.Web.Components.CurrencyDisplay
   import PhoenixKitBilling.Web.Components.InvoiceStatusBadge
