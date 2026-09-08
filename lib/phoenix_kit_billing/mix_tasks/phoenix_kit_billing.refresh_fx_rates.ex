@@ -21,10 +21,16 @@ defmodule Mix.Tasks.PhoenixKitBilling.RefreshFxRates do
       what would change, without writing anything — the same discipline
       the rest of this codebase uses for anything that touches money.
 
+  Both modes print the same thing — every changed currency's previous
+  rate and its new one — because nothing forces an operator to dry-run
+  first, and this task writes money-adjacent data.
+
   With no `:fx_rate_provider` configured this task prints a message and
   exits 0 — nothing to do is not a failure. A malformed or partially-bad
   provider response is refused as a whole (nothing written, in either
-  mode) and every problem found is printed; the task then exits non-zero.
+  mode, and never partially even when several currencies would
+  otherwise have been fine) and every problem found is printed; the
+  task then exits non-zero.
   """
 
   use Mix.Task
@@ -79,26 +85,41 @@ defmodule Mix.Tasks.PhoenixKitBilling.RefreshFxRates do
     Mix.raise("fx_rate_provider exited: #{inspect(reason)}")
   end
 
-  defp render({:ok, %{dry_run: true, would_update: would_update, skipped_base: skipped_base}}) do
-    if would_update == [] do
+  defp render({:error, {:write_failed, code, reason}}) do
+    Mix.raise(
+      "writing #{code}'s rate failed — nothing was written (the whole batch rolled back): #{inspect(reason)}"
+    )
+  end
+
+  defp render({:ok, %{dry_run: true, would_update: entries, skipped_base: skipped_base}}) do
+    if entries == [] do
       Mix.shell().info("No rates would change.")
     else
-      Enum.each(would_update, fn %{code: code, current_rate: current, new_rate: new} ->
-        Mix.shell().info("  #{code}: #{current} -> #{new}")
-      end)
+      print_rate_changes(entries)
     end
 
     print_skipped_base(skipped_base)
   end
 
-  defp render({:ok, %{updated: updated, skipped_base: skipped_base}}) do
-    if updated == [] do
+  defp render({:ok, %{updated: entries, skipped_base: skipped_base}}) do
+    if entries == [] do
       Mix.shell().info("No rates were updated.")
     else
-      Mix.shell().info("Updated: #{Enum.join(updated, ", ")}")
+      print_rate_changes(entries)
     end
 
     print_skipped_base(skipped_base)
+  end
+
+  # Same entry shape (`%{code:, previous_rate:, new_rate:}`) on both the
+  # dry-run and the `--apply` path — an operator sees exactly the same
+  # before/after numbers either way, not just a bare list of codes once
+  # money actually moves. Nothing here forces a dry run first, so this is
+  # the only safety net between "what would change" and "what changed".
+  defp print_rate_changes(entries) do
+    Enum.each(entries, fn %{code: code, previous_rate: previous, new_rate: new} ->
+      Mix.shell().info("  #{code}: #{previous} -> #{new}")
+    end)
   end
 
   defp print_skipped_base(codes) do

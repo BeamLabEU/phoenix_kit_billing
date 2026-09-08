@@ -88,7 +88,11 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
       assert {:ok, %{updated: updated, skipped_base: []}} =
                PhoenixKitBilling.refresh_rates_from_provider()
 
-      assert Enum.sort(updated) == ["EUR", "GBP"]
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
+
+      eur_entry = Enum.find(updated, &(&1.code == "EUR"))
+      assert Decimal.equal?(eur_entry.previous_rate, Decimal.new("0.9"))
+      assert Decimal.equal?(eur_entry.new_rate, Decimal.new("0.87"))
 
       refreshed_eur = PhoenixKitBilling.get_currency_by_code("EUR")
       assert Decimal.equal?(refreshed_eur.exchange_rate, Decimal.new("0.87"))
@@ -104,7 +108,7 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
       end)
 
       assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
-      assert Enum.sort(updated) == ["EUR", "GBP"]
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
 
       assert Decimal.equal?(
                PhoenixKitBilling.get_currency_by_code("GBP").exchange_rate,
@@ -170,6 +174,54 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
              )
     end
 
+    test "a rate too small to survive numeric(15,6) refuses the whole batch" do
+      # 0.0000001 rounds to exactly 0.000000 at 6 decimal places (confirmed
+      # against Postgres directly: `SELECT '0.0000001'::numeric(15,6)` ->
+      # 0.000000) — the same divide-by-zero :non_positive_rate exists to
+      # prevent, reached through the column's precision instead of the raw
+      # value.
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.0000001"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :rate_too_small))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "a rate too large for numeric(15,6) refuses the whole batch" do
+      # 1_000_000_000 (10^9) is exactly the boundary Postgres itself
+      # refuses for numeric(15,6): "numeric field overflow ... must round
+      # to an absolute value less than 10^9" (confirmed directly).
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "1000000000"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :rate_too_large))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "the largest value the column can actually hold is accepted" do
+      configure_provider(fn -> %{"EUR" => "999999999.999999"} end)
+
+      assert {:ok, %{updated: [%{code: "EUR"}]}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("999999999.999999")
+             )
+    end
+
     test "a non-map response is refused" do
       configure_provider(fn -> ["EUR", "0.5"] end)
 
@@ -189,7 +241,7 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
     test "a rate for the base is skipped while the others still apply" do
       configure_provider(fn -> %{"USD" => "1.3", "EUR" => "0.6"} end)
 
-      assert {:ok, %{updated: ["EUR"], skipped_base: ["USD"]}} =
+      assert {:ok, %{updated: [%{code: "EUR"}], skipped_base: ["USD"]}} =
                PhoenixKitBilling.refresh_rates_from_provider()
 
       assert Decimal.equal?(
@@ -201,6 +253,29 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
                PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
                Decimal.new("0.6")
              )
+    end
+  end
+
+  describe "case-insensitive currency codes" do
+    test "'eur' and 'EUR' from the same provider collapse to one write, not two" do
+      :ok = Events.subscribe_currencies()
+
+      configure_provider(fn -> %{"eur" => "0.5", "EUR" => "0.6"} end)
+
+      assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
+      assert [%{code: "EUR"}] = updated
+
+      # Exactly one write happened: one broadcast, and the table holds
+      # whichever of the two rates the normalization step kept (the map
+      # itself has no defined key order to prefer between them; the point
+      # is that there is exactly one write, not which one won).
+      assert_receive {:currencies_changed, "EUR"}
+      refute_receive {:currencies_changed, _}, 100
+
+      eur_rate = PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate
+
+      assert Decimal.equal?(eur_rate, Decimal.new("0.5")) or
+               Decimal.equal?(eur_rate, Decimal.new("0.6"))
     end
   end
 
@@ -241,7 +316,7 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
       configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.6"} end)
 
       assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
-      assert Enum.sort(updated) == ["EUR", "GBP"]
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
 
       assert_receive {:currencies_changed, code1}
       assert_receive {:currencies_changed, code2}

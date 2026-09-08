@@ -1482,14 +1482,22 @@ defmodule PhoenixKitBilling do
   must return a PLAIN MAP of `%{"CODE" => rate}`, one entry per currency
   it has an opinion about; `rate` may be a `Decimal`, a `float`, an
   `integer` or a `binary` (whatever the provider's own API hands back).
+  Prefer `Decimal` or a `binary` when the provider author has a choice —
+  a `float` carries its own binary-imprecision, which this function
+  cannot undo, only round.
+
+  Currency codes are case-normalized (`String.upcase/1`) before anything
+  else, so a provider returning both `"eur"` and `"EUR"` collapses to a
+  single entry for `"EUR"` rather than writing (and broadcasting) twice.
 
   Absent config resolves to `{:error, :no_provider}` — an explicit
   answer, never a silent no-op success.
 
   ## Validation — refused WHOLE, nothing partially applied
 
-  Every entry is checked BEFORE any write happens. A provider returning
-  even one bad entry refuses the entire batch with
+  Every entry is checked BEFORE any write happens, against the SAME
+  database snapshot the writes below then use (see "Atomicity"). A
+  provider returning even one bad entry refuses the entire batch with
   `{:error, {:invalid_rates, issues}}`, where `issues` is
   `[%{code: code, reason: reason}, ...]` — one entry per problem found,
   not just the first — and the table is left untouched:
@@ -1501,6 +1509,17 @@ defmodule PhoenixKitBilling do
     * `reason: :non_positive_rate` — parsed fine, but `<= 0` (a bad feed
       writing a zero rate would divide-by-zero the storefront the next
       time `Currency.present/3` converts through it);
+    * `reason: :rate_too_small` — parsed fine and is `> 0`, but
+      `phoenix_kit_currencies.exchange_rate` is `numeric(15,6)`: a value
+      like `0.0000001` rounds to exactly `0.000000` once it lands in
+      that column — the same divide-by-zero `:non_positive_rate` exists
+      to prevent, reached through the column's precision instead of the
+      raw value;
+    * `reason: :rate_too_large` — rounds (at 6 decimal places) to `1e9`
+      or more, which `numeric(15,6)` (9 integer digits, 6 fractional)
+      cannot hold at all; Postgres itself raises `numeric field
+      overflow` on a write this large, which this check catches before
+      that write is ever attempted;
     * `reason: :invalid_code` — the map key itself was not a string.
 
   The BASE currency (`is_default: true`) is never written — its rate is
@@ -1518,6 +1537,27 @@ defmodule PhoenixKitBilling do
     * the provider raises — `{:error, {:provider_raised, message}}`;
     * the provider exits — `{:error, {:provider_exited, reason}}`.
 
+  ## Atomicity
+
+  Validation and (on success) every write run inside ONE
+  `repo().transaction/1` — the base currency and the known-code set are
+  read fresh as the FIRST thing inside it, not reused from before the
+  transaction opened, so a `set_default_currency/1` or
+  `change_base_currency/2` racing this call can never straddle the
+  read that decides "is this the base" and the writes that act on it.
+  If any write fails after others in the same batch already succeeded
+  (an unexpected DB-level error — the precision checks above are what
+  keep this from happening on any input this function itself rejects),
+  the whole transaction rolls back rather than leaving a partial write
+  committed. One known, accepted gap: `update_currency/2`'s
+  `currencies_changed` broadcast (see "Writing" below) fires per write,
+  DURING the transaction, not after it commits — a rollback triggered by
+  a LATER write in the same batch means an EARLIER write's broadcast
+  already went out for a change that then never persisted. Reaching
+  that requires a DB-level failure on a value this function's own
+  validation already accepted, which the precision checks above make
+  very rare.
+
   ## Writing
 
   Accepted rates are written ONE AT A TIME through
@@ -1525,15 +1565,21 @@ defmodule PhoenixKitBilling do
   `rate_updated_at` gets stamped, the currency cache is invalidated, and
   `currencies_changed` broadcasts exactly as it does for a manual edit
   in the admin (one broadcast per updated currency, same as any other
-  currency writer in this module).
+  currency writer in this module). A write that itself fails —
+  `update_currency/2` returning `{:error, reason}`, or raising — rolls
+  back the whole transaction and surfaces as
+  `{:error, {:write_failed, code, reason}}` rather than crashing this
+  function outright.
 
   ## Options
 
     * `:dry_run` (default `false`) — runs the full fetch-and-validate
-      pass (so a bad provider is still caught and reported) but performs
-      no writes. On success returns
-      `{:ok, %{dry_run: true, would_update: [%{code:, current_rate:, new_rate:}, ...], skipped_base: [code, ...]}}`
-      instead of the normal `%{updated: [code, ...], skipped_base: [code, ...]}`.
+      pass inside the same transaction (so a bad provider is still
+      caught and reported) but performs no writes; the transaction
+      commits with nothing to commit. On success returns
+      `{:ok, %{dry_run: true, would_update: [%{code:, previous_rate:, new_rate:}, ...], skipped_base: [code, ...]}}`
+      instead of the normal
+      `%{updated: [%{code:, previous_rate:, new_rate:}, ...], skipped_base: [code, ...]}`.
   """
   @spec refresh_rates_from_provider(keyword()) :: {:ok, map()} | {:error, term()}
   def refresh_rates_from_provider(opts \\ []) do
@@ -1558,68 +1604,122 @@ defmodule PhoenixKitBilling do
   end
 
   defp apply_provider_rates({:ok, raw}, opts) do
+    dry_run? = Keyword.get(opts, :dry_run, false)
+    normalized = normalize_provider_keys(raw)
+
+    repo().transaction(fn -> classify_and_apply_provider_rates(normalized, dry_run?) end)
+  end
+
+  # Read fresh INSIDE the transaction, not reused from before it opened —
+  # see the moduledoc's "Atomicity" section. Both the skip/accept/reject
+  # decision below and (on the write path) the writes themselves are
+  # backed by this same snapshot.
+  defp classify_and_apply_provider_rates(normalized, dry_run?) do
     base = get_default_currency()
     known_by_code = Map.new(list_currencies(), &{&1.code, &1})
 
-    classified = Enum.map(raw, &classify_provider_entry(&1, base, known_by_code))
-
-    issues =
-      for {:error, code, reason} <- classified do
-        %{code: code, reason: reason}
-      end
+    classified = Enum.map(normalized, &classify_provider_entry(&1, base, known_by_code))
+    issues = for {:error, code, reason} <- classified, do: %{code: code, reason: reason}
 
     if issues != [] do
-      {:error, {:invalid_rates, issues}}
+      repo().rollback({:invalid_rates, issues})
     else
       accepted = for {:ok, currency, rate} <- classified, do: {currency, rate}
       skipped_base = for {:skip, code, :base_currency} <- classified, do: code
 
-      if Keyword.get(opts, :dry_run, false) do
-        would_update =
-          Enum.map(accepted, fn {currency, rate} ->
-            %{code: currency.code, current_rate: currency.exchange_rate, new_rate: rate}
-          end)
-
-        {:ok, %{dry_run: true, would_update: would_update, skipped_base: skipped_base}}
-      else
-        updated =
-          Enum.map(accepted, fn {currency, rate} ->
-            {:ok, updated_currency} = update_currency(currency, %{exchange_rate: rate})
-            updated_currency.code
-          end)
-
-        {:ok, %{updated: updated, skipped_base: skipped_base}}
-      end
+      apply_accepted_fx_rates(accepted, skipped_base, dry_run?)
     end
   end
 
+  defp apply_accepted_fx_rates(accepted, skipped_base, true = _dry_run?) do
+    would_update =
+      Enum.map(accepted, fn {currency, rate} ->
+        %{code: currency.code, previous_rate: currency.exchange_rate, new_rate: rate}
+      end)
+
+    %{dry_run: true, would_update: would_update, skipped_base: skipped_base}
+  end
+
+  defp apply_accepted_fx_rates(accepted, skipped_base, false = _dry_run?) do
+    updated = Enum.map(accepted, fn {currency, rate} -> write_fx_rate!(currency, rate) end)
+    %{updated: updated, skipped_base: skipped_base}
+  end
+
+  # Rolls the enclosing transaction back on a write failure instead of
+  # returning an error tuple to a caller that isn't set up to handle
+  # one mid-`Enum.map/2` — `apply_accepted_fx_rates/3`'s write branch is
+  # already inside `repo().transaction/1` (see `apply_provider_rates/2`).
+  defp write_fx_rate!(currency, rate) do
+    case write_fx_rate(currency, rate) do
+      {:ok, entry} -> entry
+      {:error, reason} -> repo().rollback(reason)
+    end
+  end
+
+  # Never a hard `{:ok, _} = ...` match: a changeset rejection (unexpected —
+  # everything reaching here already passed classification) or a raised
+  # DB-level error (e.g. a value this function's own checks somehow missed)
+  # both come back as a tagged error the caller rolls the transaction back
+  # with, instead of crashing this function outright (§ moduledoc "Writing").
+  defp write_fx_rate(%Currency{} = currency, rate) do
+    previous_rate = currency.exchange_rate
+
+    case update_currency(currency, %{exchange_rate: rate}) do
+      {:ok, updated_currency} ->
+        {:ok, %{code: updated_currency.code, previous_rate: previous_rate, new_rate: rate}}
+
+      {:error, reason} ->
+        {:error, {:write_failed, currency.code, reason}}
+    end
+  rescue
+    error -> {:error, {:write_failed, currency.code, Exception.message(error)}}
+  end
+
+  # Case-normalizes STRING keys only (binary codes are what this hook's
+  # contract expects) so `"eur"` and `"EUR"` collapse to one entry before
+  # classification ever runs — a raw `Enum.map/2` over the provider's map
+  # would otherwise treat them as two different currencies and write (and
+  # broadcast) the same row twice. A non-string key is left as-is;
+  # `classify_provider_entry/3`'s own catch-all clause reports it as
+  # `:invalid_code`.
+  defp normalize_provider_keys(raw) do
+    Enum.reduce(raw, %{}, fn
+      {code, value}, acc when is_binary(code) -> Map.put(acc, String.upcase(code), value)
+      {code, value}, acc -> Map.put(acc, code, value)
+    end)
+  end
+
   defp classify_provider_entry({code, value}, base, known_by_code) when is_binary(code) do
-    upcased = String.upcase(code)
-
     cond do
-      base != nil and base.code == upcased ->
-        {:skip, upcased, :base_currency}
+      base != nil and base.code == code ->
+        {:skip, code, :base_currency}
 
-      not Map.has_key?(known_by_code, upcased) ->
-        {:error, upcased, :unknown_currency}
+      not Map.has_key?(known_by_code, code) ->
+        {:error, code, :unknown_currency}
 
       true ->
         case parse_fx_rate(value) do
-          {:ok, rate} ->
-            if fx_rate_positive?(rate) do
-              {:ok, Map.fetch!(known_by_code, upcased), rate}
-            else
-              {:error, upcased, :non_positive_rate}
-            end
-
-          :error ->
-            {:error, upcased, :invalid_rate}
+          {:ok, rate} -> classify_fx_rate(code, rate, known_by_code)
+          :error -> {:error, code, :invalid_rate}
         end
     end
   end
 
   defp classify_provider_entry({code, _value}, _base, _known_by_code) do
     {:error, inspect(code), :invalid_code}
+  end
+
+  defp classify_fx_rate(code, rate, known_by_code) do
+    cond do
+      not fx_rate_positive?(rate) ->
+        {:error, code, :non_positive_rate}
+
+      (reason = fx_rate_column_precision_error(rate)) != nil ->
+        {:error, code, reason}
+
+      true ->
+        {:ok, Map.fetch!(known_by_code, code), rate}
+    end
   end
 
   defp parse_fx_rate(%Decimal{} = rate), do: {:ok, rate}
@@ -1639,6 +1739,33 @@ defmodule PhoenixKitBilling do
     Decimal.compare(rate, 0) == :gt
   rescue
     _error -> false
+  end
+
+  # `phoenix_kit_currencies.exchange_rate` is `numeric(15,6)` — 9 integer
+  # digits, 6 fractional (confirmed against Postgres directly: casting
+  # `1000000000` — 10^9 — to `numeric(15,6)` raises "numeric field
+  # overflow ... must round to an absolute value less than 10^9", and
+  # `0.0000001` silently rounds to `0.000000`). A rate that parses and is
+  # genuinely `> 0` can still be unusable once it lands in that column —
+  # too small and it rounds away to nothing (the exact divide-by-zero
+  # `:non_positive_rate` exists to prevent, just reached through a
+  # different door); too large and Postgres raises rather than returning
+  # a changeset error. Both are checked here, BEFORE any write is
+  # attempted, using the same rounding (`:half_up`, matching what
+  # Postgres itself does at the halfway point) the column will apply.
+  @fx_rate_column_scale 6
+  @fx_rate_column_max Decimal.new("1000000000")
+
+  defp fx_rate_column_precision_error(rate) do
+    rounded = Decimal.round(rate, @fx_rate_column_scale, :half_up)
+
+    cond do
+      Decimal.compare(rounded, 0) != :gt -> :rate_too_small
+      Decimal.compare(rounded, @fx_rate_column_max) != :lt -> :rate_too_large
+      true -> nil
+    end
+  rescue
+    _error -> :invalid_rate
   end
 
   # ============================================
