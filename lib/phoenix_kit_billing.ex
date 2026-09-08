@@ -1549,27 +1549,54 @@ defmodule PhoenixKitBilling do
   (an unexpected DB-level error — the precision checks above are what
   keep this from happening on any input this function itself rejects),
   the whole transaction rolls back rather than leaving a partial write
-  committed. One known, accepted gap: `update_currency/2`'s
-  `currencies_changed` broadcast (see "Writing" below) fires per write,
-  DURING the transaction, not after it commits — a rollback triggered by
-  a LATER write in the same batch means an EARLIER write's broadcast
-  already went out for a change that then never persisted. Reaching
-  that requires a DB-level failure on a value this function's own
-  validation already accepted, which the precision checks above make
-  very rare.
+  committed.
 
-  ## Writing
+  ## Writing, and announcing it AFTER it is real
 
-  Accepted rates are written ONE AT A TIME through
-  `update_currency/2` — never a direct `Repo` write — so
-  `rate_updated_at` gets stamped, the currency cache is invalidated, and
-  `currencies_changed` broadcasts exactly as it does for a manual edit
-  in the admin (one broadcast per updated currency, same as any other
-  currency writer in this module). A write that itself fails —
+  Accepted rates are written ONE AT A TIME through `update_currency/2`
+  — never a direct `Repo` write — so `rate_updated_at` gets stamped the
+  same way a manual admin edit stamps it. A write that itself fails —
   `update_currency/2` returning `{:error, reason}`, or raising — rolls
   back the whole transaction and surfaces as
   `{:error, {:write_failed, code, reason}}` rather than crashing this
   function outright.
+
+  `update_currency/2` ALSO invalidates the currency cache and broadcasts
+  `currencies_changed` on every write, same as it does for a manual
+  edit — but that happens DURING this function's transaction, before it
+  is known to ever commit. Under real Postgres (not the single shared
+  connection this file's own tests run against) a subscriber reacting
+  to that broadcast right then, under READ COMMITTED, cannot see this
+  still-open transaction's write — it re-reads the PRE-refresh row and
+  repopulates the cache with it, right as the cache was just cleared for
+  the opposite reason. Nothing would invalidate or broadcast again on
+  its own afterward, so that stale entry would sit there until an
+  unrelated write happened to clear it — not a rollback edge case, the
+  NORMAL every-thing-worked path, defeating the exact live re-render
+  this cache/broadcast pair exists to provide (§4.2.1, stage Э2).
+
+  So once `repo().transaction/1` has returned `{:ok, _}` — the write is
+  REALLY committed, not merely executed inside a transaction something
+  later in the batch could still roll back — this function invalidates
+  the cache and broadcasts `currencies_changed` again itself, once per
+  code it actually wrote, using the same clear-applied-before-broadcast
+  barrier every other writer in this module relies on
+  (`invalidate_currency_cache/0`). `update_currency/2`'s own
+  in-transaction pair becomes harmless noise once this runs: any
+  subscriber that reacted to it too early and cached the pre-refresh
+  rate gets corrected by this clear, and the broadcast that follows is
+  the one every subscriber can actually trust — the property that was
+  broken is restored by reacting a second time, not by trying to
+  suppress the first.
+
+  On a rolled-back batch (invalid data, or a write that failed) there is
+  nothing to announce here — an in-transaction broadcast that fired
+  before the failure already went out for a change that never
+  persisted, but every subscriber that reacted to it read the
+  UNCHANGED table (the write it announced never survived to be read)
+  and rendered the unchanged price; the only cost is one wasted
+  re-render, not a wrong one. `:dry_run` writes nothing, so nothing is
+  announced there either.
 
   ## Options
 
@@ -1607,8 +1634,29 @@ defmodule PhoenixKitBilling do
     dry_run? = Keyword.get(opts, :dry_run, false)
     normalized = normalize_provider_keys(raw)
 
-    repo().transaction(fn -> classify_and_apply_provider_rates(normalized, dry_run?) end)
+    fn -> classify_and_apply_provider_rates(normalized, dry_run?) end
+    |> repo().transaction()
+    |> announce_committed_fx_rates()
   end
+
+  # See the moduledoc's "Writing, and announcing it AFTER it is real" for
+  # why this exists: `update_currency/2`'s own invalidate+broadcast runs
+  # DURING the transaction above, before it is known to ever commit, and
+  # under real Postgres that is early enough for a subscriber to
+  # repopulate the cache with the pre-refresh row. This re-announces
+  # once the write is REALLY committed — nothing to do for a rolled-back
+  # batch or a dry run, neither of which wrote anything.
+  defp announce_committed_fx_rates({:ok, %{updated: updated} = result}) when updated != [] do
+    invalidate_currency_cache()
+
+    Enum.each(updated, fn %{code: code} ->
+      Events.broadcast_currencies_changed(%Currency{code: code})
+    end)
+
+    {:ok, result}
+  end
+
+  defp announce_committed_fx_rates(result), do: result
 
   # Read fresh INSIDE the transaction, not reused from before it opened —
   # see the moduledoc's "Atomicity" section. Both the skip/accept/reject

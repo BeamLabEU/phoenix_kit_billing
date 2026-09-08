@@ -265,10 +265,13 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
       assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
       assert [%{code: "EUR"}] = updated
 
-      # Exactly one write happened: one broadcast, and the table holds
+      # Exactly one write happened: two broadcasts (update_currency/2's
+      # own in-transaction one, plus the post-commit reconciliation —
+      # see the "events" describe block), not four, and the table holds
       # whichever of the two rates the normalization step kept (the map
       # itself has no defined key order to prefer between them; the point
       # is that there is exactly one write, not which one won).
+      assert_receive {:currencies_changed, "EUR"}
       assert_receive {:currencies_changed, "EUR"}
       refute_receive {:currencies_changed, _}, 100
 
@@ -310,7 +313,7 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
   end
 
   describe "events" do
-    test "fires exactly one currencies_changed broadcast per updated currency" do
+    test "fires update_currency/2's in-transaction broadcast AND a post-commit reconciliation broadcast per updated currency" do
       :ok = Events.subscribe_currencies()
 
       configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.6"} end)
@@ -318,9 +321,21 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
       assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
       assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
 
+      # update_currency/2's own broadcast, once per write, fired DURING
+      # the (by-then-committed) transaction.
       assert_receive {:currencies_changed, code1}
       assert_receive {:currencies_changed, code2}
       assert Enum.sort([code1, code2]) == ["EUR", "GBP"]
+
+      # The post-commit reconciliation broadcast this function adds —
+      # the one every subscriber can actually trust (see the dedicated
+      # test below for why the first pair alone is not enough under real
+      # Postgres, even though this single-connection sandbox can't
+      # reproduce the staleness itself).
+      assert_receive {:currencies_changed, code3}
+      assert_receive {:currencies_changed, code4}
+      assert Enum.sort([code3, code4]) == ["EUR", "GBP"]
+
       refute_receive {:currencies_changed, _}, 100
     end
 
@@ -331,6 +346,53 @@ defmodule PhoenixKitBilling.FxRateProviderTest do
 
       assert {:error, _} = PhoenixKitBilling.refresh_rates_from_provider()
       refute_receive {:currencies_changed, _}, 100
+    end
+
+    test "a subscriber reacting to every announcement sees the committed rate by the last one" do
+      # Prime the cache with the OLD value first, mirroring
+      # currency_events_test.exs's own pattern — otherwise the very
+      # first read after the write would go to the database regardless
+      # of ordering and this test could not tell early from late.
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+
+      parent = self()
+
+      # DataCase's shared sandbox (async: false) means this spawned
+      # process shares the SAME database connection as the test process
+      # — it can't reproduce a genuinely separate READ COMMITTED session
+      # seeing a pre-commit row the way a second pooled connection would
+      # in production. What IS reproducible, and is the actual property
+      # this test protects, is the count and ordering of announcements:
+      # there are exactly two per currency (see the test above), and the
+      # LAST one is only ever sent after `repo().transaction/1` has
+      # returned `{:ok, _}` — so a subscriber that reacts to every
+      # announcement (the normal way a LiveView's `handle_info/2` would)
+      # is guaranteed a correct read by the second one, whatever the
+      # first one's read happened to see.
+      _subscriber =
+        spawn_link(fn ->
+          :ok = Events.subscribe_currencies()
+          send(parent, :subscribed)
+
+          for _ <- 1..2 do
+            receive do
+              {:currencies_changed, "EUR"} ->
+                send(parent, {:seen, PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate})
+            end
+          end
+        end)
+
+      assert_receive :subscribed
+
+      configure_provider(fn -> %{"EUR" => "0.5"} end)
+      assert {:ok, _} = PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert_receive {:seen, _first}
+      assert_receive {:seen, second}
+      assert Decimal.equal?(second, Decimal.new("0.5"))
     end
   end
 end
