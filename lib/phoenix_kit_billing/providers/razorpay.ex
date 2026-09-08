@@ -49,6 +49,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
   }
 
   alias PhoenixKit.Settings
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -205,43 +206,40 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
 
     metadata = opts[:metadata] || opts["metadata"] || %{}
 
-    # Razorpay expects amount in smallest currency unit (paise for INR)
-    amount_paise =
-      if is_integer(amount) do
-        amount
-      else
-        Decimal.to_integer(Decimal.mult(amount, 100))
-      end
+    # Razorpay expects amount in the smallest currency unit (paise for
+    # INR) — via decimal_places, not a hard-coded 100 (§2.6/§7, Э5): a
+    # zero-decimal currency sent through a fixed 100 is charged ONE
+    # HUNDRED TIMES its intended amount.
+    with {:ok, amount_paise} <- MinorUnits.to_minor_units(amount, currency) do
+      body = %{
+        amount: amount_paise,
+        currency: String.upcase(currency),
+        notes: metadata,
+        receipt: "receipt_#{System.system_time(:millisecond)}"
+      }
 
-    body = %{
-      amount: amount_paise,
-      currency: String.upcase(currency),
-      notes: metadata,
-      receipt: "receipt_#{System.system_time(:millisecond)}"
-    }
-
-    request(:post, "/v1/orders", body)
+      request(:post, "/v1/orders", body)
+    end
   end
 
   defp create_order_for_recurring(amount, opts) do
     currency = Keyword.fetch!(opts, :currency)
     metadata = Keyword.get(opts, :metadata, %{})
 
-    amount_paise =
-      if is_integer(amount) do
-        amount
-      else
-        Decimal.to_integer(Decimal.mult(amount, 100))
-      end
+    # Same currency-aware conversion as create_order/1 above (§2.6/§7,
+    # Э5): `amount` here is always the public API's Decimal directly
+    # (charge_payment_method/3's caller), so the old hard-coded ×100 was
+    # live on every recurring charge, not just a dormant fallback branch.
+    with {:ok, amount_paise} <- MinorUnits.to_minor_units(amount, currency) do
+      body = %{
+        amount: amount_paise,
+        currency: String.upcase(currency),
+        notes: metadata,
+        receipt: "recurring_#{System.system_time(:millisecond)}"
+      }
 
-    body = %{
-      amount: amount_paise,
-      currency: String.upcase(currency),
-      notes: metadata,
-      receipt: "recurring_#{System.system_time(:millisecond)}"
-    }
-
-    request(:post, "/v1/orders", body)
+      request(:post, "/v1/orders", body)
+    end
   end
 
   defp create_payment_link(order, opts) do
@@ -282,24 +280,29 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
     request(:post, "/v1/payments/create/recurring", body)
   end
 
+  # :currency is only required for a partial refund (amount: nil sends no
+  # amount at all, so Razorpay refunds the full payment in whatever
+  # currency it was captured in) — same rule §7.1 already established for
+  # Stripe/PayPal. It was silently unused here before this fix, because
+  # the old `is_integer(amount)` branch never needed it; now it drives
+  # the same currency-aware conversion as create_order/1 above (§2.6/§7,
+  # Э5) instead of a hard-coded 100.
   defp do_create_refund(payment_id, amount, opts) do
     notes = Keyword.get(opts, :notes, %{})
 
-    body =
-      if amount do
-        amount_paise =
-          if is_integer(amount) do
-            amount
-          else
-            Decimal.to_integer(Decimal.mult(amount, 100))
-          end
+    with {:ok, body} <- build_refund_body(amount, opts, notes) do
+      request(:post, "/v1/payments/#{payment_id}/refund", body)
+    end
+  end
 
-        %{amount: amount_paise, notes: notes}
-      else
-        %{notes: notes}
-      end
+  defp build_refund_body(nil, _opts, notes), do: {:ok, %{notes: notes}}
 
-    request(:post, "/v1/payments/#{payment_id}/refund", body)
+  defp build_refund_body(amount, opts, notes) do
+    currency = Keyword.fetch!(opts, :currency)
+
+    with {:ok, amount_paise} <- MinorUnits.to_minor_units(amount, currency) do
+      {:ok, %{amount: amount_paise, notes: notes}}
+    end
   end
 
   # ============================================
@@ -402,6 +405,11 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
          refund_id: refund["id"],
          charge_id: refund["payment_id"],
          amount_refunded: refund["amount"],
+         # Added alongside amount_refunded (§7/Э5): the payment-side
+         # handlers above already carry this from the same Razorpay
+         # entity shape; utils/webhook_processor.ex needs it to convert
+         # amount_refunded for any currency, not just two-decimal ones.
+         currency: refund["currency"],
          status: refund["status"]
        },
        raw_payload: raw_payload
@@ -420,6 +428,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
          refund_id: refund["id"],
          charge_id: refund["payment_id"],
          amount_refunded: refund["amount"],
+         currency: refund["currency"],
          status: "succeeded"
        },
        raw_payload: raw_payload
@@ -501,13 +510,17 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
 
   defp invoice_to_opts(invoice) when is_map(invoice) do
     amount = invoice[:total] || invoice["total"] || Decimal.new(0)
-    # Razorpay expects amount in smallest currency unit (paise for INR, cents
-    # for others). Known debt: assumes 2 minor units (zero-decimal currencies
-    # unsupported) — spec §2.6
-    amount_paise = Decimal.to_integer(Decimal.mult(amount, 100))
 
+    # Was: an unconditional Decimal.mult(amount, 100) here, so create_order/1
+    # received an already-scaled integer and its own is_integer(amount)
+    # branch skipped conversion entirely — for a zero-decimal currency
+    # that meant charging 100x with no currency-aware step anywhere in
+    # the chain (§2.6/§7, Э5). Passing the Decimal straight through and
+    # letting create_order/1 do the ONE currency-aware conversion removes
+    # that duplicate, silently-wrong scaling step rather than just fixing
+    # its factor.
     [
-      amount: amount_paise,
+      amount: amount,
       currency:
         invoice[:currency] || invoice["currency"] ||
           raise(ArgumentError, "invoice has no currency"),

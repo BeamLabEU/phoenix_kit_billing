@@ -53,6 +53,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   }
 
   alias PhoenixKit.Settings
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -95,12 +96,13 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   """
   @impl true
   def create_checkout_session(invoice, opts) do
-    with {:ok, config} <- ensure_configured() do
+    with {:ok, config} <- ensure_configured(),
+         {:ok, amount} <- decimal_to_amount(invoice.total, invoice.currency) do
       params =
         %{
           api_username: config[:api_username],
           account_name: config[:account_name],
-          amount: decimal_to_amount(invoice.total),
+          amount: amount,
           order_reference: to_string(invoice.uuid),
           nonce: generate_nonce(),
           timestamp: timestamp(),
@@ -411,9 +413,33 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
 
   defp present?(value), do: is_binary(value) and value != ""
 
-  # EveryPay expects amounts as a decimal number with up to 2 fraction digits.
+  # `create_checkout_session/2` has the invoice's own currency on hand, so
+  # this rounds/validates against ITS `decimal_places` the way
+  # `MinorUnits` does for every other provider (§2.6/§7, Э5) — a
+  # hard-coded 2 here silently padded a zero-decimal currency and
+  # silently dropped a three-decimal one's third digit. Refuses rather
+  # than drops: `to_minor_units_and_places/2` already errors on a
+  # fraction the currency cannot represent.
+  defp decimal_to_amount(%Decimal{} = amount, currency_code) when is_binary(currency_code) do
+    with {:ok, _minor_units, places} <-
+           MinorUnits.to_minor_units_and_places(amount, currency_code) do
+      {:ok, amount |> Decimal.round(places) |> Decimal.to_float()}
+    end
+  end
+
+  # `charge_payment_method/3` and `create_refund/3` have NO currency to
+  # check against here: EveryPay's account fixes the currency
+  # server-side, and neither a saved payment method nor a bare refund
+  # amount carries one at these call sites — inventing one (the shop's
+  # base currency, say) would be exactly the kind of guess §7/Э5 forbids,
+  # since nothing here confirms it matches the account's actual currency.
+  # Rounding to a hard-coded 2 before this fix silently dropped a
+  # three-decimal currency's third digit; sending the caller's own
+  # `Decimal` precision unrounded is the honest alternative — a caller
+  # with a legitimately different precision must decide its own
+  # rounding, not have one guessed here.
   defp decimal_to_amount(%Decimal{} = amount) do
-    amount |> Decimal.round(2) |> Decimal.to_float()
+    Decimal.to_float(amount)
   end
 
   defp decimal_to_amount(amount) when is_number(amount), do: amount
@@ -437,7 +463,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
          charge_id: payment["payment_reference"],
          invoice_uuid: payment["order_reference"],
          payment_state: state,
-         amount: amount_cents(payment["amount"]),
+         amount: amount_cents(payment["amount"], payment["currency"]),
          currency: payment["currency"]
        }
      }}
@@ -464,7 +490,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
          provider: :everypay,
          charge_id: payment["payment_reference"],
          refund_id: payment["payment_reference"],
-         amount: amount_cents(refunded_amount(payment)),
+         amount: amount_cents(refunded_amount(payment), payment["currency"]),
          currency: payment["currency"]
        }
      }}
@@ -472,19 +498,30 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
 
   defp normalize_payment(_state, _payment), do: {:error, :unknown_event}
 
-  # The processor's amount helpers expect integer minor units (cents).
-  defp amount_cents(nil), do: nil
+  # The processor expects an integer provider minor unit, converted via
+  # `currency`'s own `decimal_places` (§7/Э5) — a fixed ×100 here would
+  # silently mismatch `utils/webhook_processor.ex`'s currency-aware
+  # `MinorUnits.from_minor_units/2` on the other end. `nil` on a missing
+  # amount, a missing currency, an unrecognized currency code, or more
+  # precision than the currency allows — never a guessed factor — so the
+  # processor's `is_integer(...)` guard misses it and falls back to the
+  # invoice's own balance instead of a wrong number.
+  defp amount_cents(nil, _currency), do: nil
+  defp amount_cents(_amount, nil), do: nil
 
-  defp amount_cents(amount) when is_number(amount) do
-    amount |> Decimal.from_float() |> amount_cents()
+  defp amount_cents(amount, currency) when is_number(amount) do
+    amount |> Decimal.from_float() |> amount_cents(currency)
   end
 
-  defp amount_cents(amount) when is_binary(amount) do
-    amount |> Decimal.new() |> amount_cents()
+  defp amount_cents(amount, currency) when is_binary(amount) do
+    amount |> Decimal.new() |> amount_cents(currency)
   end
 
-  defp amount_cents(%Decimal{} = amount) do
-    amount |> Decimal.mult(100) |> Decimal.round() |> Decimal.to_integer()
+  defp amount_cents(%Decimal{} = amount, currency) when is_binary(currency) do
+    case MinorUnits.to_minor_units(amount, currency) do
+      {:ok, minor_units} -> minor_units
+      {:error, _reason} -> nil
+    end
   end
 
   defp refunded_amount(payment) do

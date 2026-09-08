@@ -1,10 +1,30 @@
 defmodule PhoenixKitBilling.Providers.EveryPayTest do
-  use ExUnit.Case, async: true
+  # DataCase (not plain ExUnit.Case, was: async: true), because
+  # `handle_webhook_event/1` now resolves its currency's `decimal_places`
+  # (§7/Э5) via `PhoenixKitBilling.Providers.MinorUnits`, which reads
+  # `phoenix_kit_currencies`.
+  use PhoenixKitBilling.DataCase, async: false
 
+  alias PhoenixKitBilling.Currency
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
   alias PhoenixKitBilling.Providers.EveryPay
   alias PhoenixKitBilling.Providers.Types.WebhookEventData
+
+  setup do
+    Repo.delete_all(Currency)
+
+    {:ok, _eur} =
+      PhoenixKitBilling.create_currency(%{
+        code: "EUR",
+        name: "Euro",
+        symbol: "€",
+        is_default: true,
+        exchange_rate: "1.0"
+      })
+
+    :ok
+  end
 
   describe "provider identity" do
     test "provider_name/0 is :everypay" do
@@ -72,11 +92,25 @@ defmodule PhoenixKitBilling.Providers.EveryPayTest do
         "payment_reference" => "ref-3",
         "payment_state" => "refunded",
         "order_reference" => "invoice-uuid",
+        "currency" => "EUR",
         "refunds" => [%{"amount" => 10.0}]
       }
 
       assert {:ok,
               %WebhookEventData{type: "refund.created", data: %{charge_id: "ref-3", amount: 1000}}} =
+               EveryPay.handle_webhook_event(payment)
+    end
+
+    test "a currency this shop's table has never heard of does not guess an amount" do
+      payment = %{
+        "payment_reference" => "ref-5",
+        "payment_state" => "settled",
+        "order_reference" => "invoice-uuid",
+        "amount" => 10.0,
+        "currency" => "XXX"
+      }
+
+      assert {:ok, %WebhookEventData{data: %{amount: nil, currency: "XXX"}}} =
                EveryPay.handle_webhook_event(payment)
     end
 

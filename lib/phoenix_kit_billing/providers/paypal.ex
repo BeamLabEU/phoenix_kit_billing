@@ -44,6 +44,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   }
 
   alias PhoenixKit.Settings
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -68,8 +69,9 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     # Merge invoice data with opts
     merged_opts = Keyword.merge(opts, invoice_to_opts(invoice))
 
-    with {:ok, token} <- get_access_token(),
-         {:ok, order} <- create_order(token, merged_opts) do
+    with {:ok, amount_str} <- format_amount(merged_opts[:amount], merged_opts[:currency]),
+         {:ok, token} <- get_access_token(),
+         {:ok, order} <- create_order(token, amount_str, merged_opts) do
       # Find the approval URL
       approve_link =
         order["links"]
@@ -112,11 +114,17 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     # Read BEFORE get_access_token/0 so a missing :currency fails even
     # without configured PayPal credentials — otherwise the with-chain
     # below short-circuits on {:error, :not_configured} and the caller
-    # never learns :currency was missing at all (§7.1).
-    _currency = Keyword.fetch!(opts, :currency)
+    # never learns :currency was missing at all (§7.1). format_amount/2
+    # (which needs the currency too) runs before the token exchange for
+    # the same reason: a locally-knowable failure — an unrecognized
+    # currency code, or more precision than the currency allows — must
+    # not cost a network round trip before it is reported.
+    currency = Keyword.fetch!(opts, :currency)
 
-    with {:ok, token} <- get_access_token(),
-         {:ok, order} <- create_order_with_vault(token, payment_method, amount, opts),
+    with {:ok, amount_str} <- format_amount(amount, currency),
+         {:ok, token} <- get_access_token(),
+         {:ok, order} <-
+           create_order_with_vault(token, payment_method, amount_str, currency, opts),
          {:ok, capture} <- capture_order(token, order["id"]) do
       {:ok,
        %ChargeResult{
@@ -160,8 +168,9 @@ defmodule PhoenixKitBilling.Providers.PayPal do
 
   @impl true
   def create_refund(provider_transaction_id, amount, opts) do
-    with {:ok, token} <- get_access_token(),
-         {:ok, refund} <- do_create_refund(token, provider_transaction_id, amount, opts) do
+    with {:ok, refund_amount} <- maybe_format_refund_amount(amount, opts),
+         {:ok, token} <- get_access_token(),
+         {:ok, refund} <- do_create_refund(token, provider_transaction_id, refund_amount, opts) do
       {:ok,
        %RefundResult{
          id: refund["id"],
@@ -209,9 +218,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   # PayPal API Calls
   # ============================================
 
-  defp create_order(token, opts) do
-    amount = opts[:amount] || opts["amount"]
-
+  defp create_order(token, amount_str, opts) do
     currency =
       opts[:currency] || opts["currency"] ||
         raise(ArgumentError, "PayPal create_order: :currency is required")
@@ -220,9 +227,6 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     success_url = opts[:success_url] || opts["success_url"]
     cancel_url = opts[:cancel_url] || opts["cancel_url"]
     metadata = opts[:metadata] || opts["metadata"] || %{}
-
-    # Convert cents to decimal string
-    amount_str = format_amount(amount)
 
     body = %{
       intent: "CAPTURE",
@@ -254,18 +258,9 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     request(:post, "/v2/checkout/orders", token, body)
   end
 
-  defp create_order_with_vault(token, payment_method, amount, opts) do
-    currency = Keyword.fetch!(opts, :currency)
+  defp create_order_with_vault(token, payment_method, amount_str, currency, opts) do
     description = Keyword.get(opts, :description, "Payment")
     metadata = Keyword.get(opts, :metadata, %{})
-
-    amount_str =
-      if is_integer(amount) do
-        # Cents to dollars
-        :erlang.float_to_binary(amount / 100, decimals: 2)
-      else
-        Decimal.to_string(Decimal.round(amount, 2))
-      end
 
     body = %{
       intent: "CAPTURE",
@@ -323,34 +318,30 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     request(:get, "/v3/vault/payment-tokens/#{vault_id}", token)
   end
 
-  defp do_create_refund(token, capture_id, amount, opts) do
+  # :currency is only required for a partial refund — a full refund
+  # (amount: nil) sends no currency_code at all, so requiring it
+  # unconditionally would raise for nothing (§7.1: the invariant is
+  # "never silently default where it's used", not "require everywhere").
+  # `refund_amount` is `nil` (full refund) or `{amount_str, currency}`,
+  # already formatted by `maybe_format_refund_amount/2` in the caller —
+  # this function only builds the request body, so a currency-code or
+  # precision failure is reported before the token exchange, not here.
+  defp do_create_refund(token, capture_id, refund_amount, opts) do
     note = Keyword.get(opts, :note, "Refund")
 
     body =
-      if amount do
-        # :currency is only required here, in the partial-refund branch —
-        # a full refund (amount: nil) sends no currency_code at all, so
-        # requiring it unconditionally would raise for nothing (§7.1: the
-        # invariant is "never silently default where it's used", not
-        # "require everywhere").
-        currency = Keyword.fetch!(opts, :currency)
+      case refund_amount do
+        {amount_str, currency} ->
+          %{
+            amount: %{
+              currency_code: String.upcase(currency),
+              value: amount_str
+            },
+            note_to_payer: note
+          }
 
-        amount_str =
-          if is_integer(amount) do
-            :erlang.float_to_binary(amount / 100, decimals: 2)
-          else
-            Decimal.to_string(Decimal.round(amount, 2))
-          end
-
-        %{
-          amount: %{
-            currency_code: String.upcase(currency),
-            value: amount_str
-          },
-          note_to_payer: note
-        }
-      else
-        %{note_to_payer: note}
+        nil ->
+          %{note_to_payer: note}
       end
 
     request(:post, "/v2/payments/captures/#{capture_id}/refund", token, body)
@@ -419,7 +410,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
        data: %{
          charge_id: capture_id,
          invoice_uuid: custom_id["invoice_uuid"] || custom_id["invoice_id"],
-         amount: parse_amount(amount["value"]),
+         amount: parse_amount(amount["value"], amount["currency_code"]),
          currency: amount["currency_code"]
        },
        raw_payload: payload
@@ -455,7 +446,8 @@ defmodule PhoenixKitBilling.Providers.PayPal do
        data: %{
          refund_id: refund_id,
          charge_id: resource["links"] |> find_capture_id(),
-         amount_refunded: parse_amount(amount["value"])
+         amount_refunded: parse_amount(amount["value"], amount["currency_code"]),
+         currency: amount["currency_code"]
        },
        raw_payload: payload
      }}
@@ -553,25 +545,62 @@ defmodule PhoenixKitBilling.Providers.PayPal do
       Settings.get_setting("billing_paypal_client_secret", "") != ""
   end
 
-  defp format_amount(amount) when is_integer(amount) do
-    # Cents to dollars
-    :erlang.float_to_binary(amount / 100, decimals: 2)
+  # PayPal's Orders/Payments APIs take `amount.value` as a decimal STRING
+  # at the currency's own precision — not an integer minor unit the way
+  # Stripe does. A zero-decimal currency (JPY, ...) must be sent with no
+  # decimal point at all ("1000", not "1000.00"); a three-decimal one
+  # (BHD, ...) needs all three digits. The old code always formatted to
+  # exactly 2 decimals, which is wrong in both directions — spec §2.6/§7
+  # (Э5). Routed through `MinorUnits.to_minor_units_and_places/2` for the
+  # same refuse-rather-than-guess unknown-currency and no-silent-rounding
+  # behavior Stripe gets (one currency lookup, not two), then rendered
+  # back to a string at the exact digit count it reports — never via a
+  # float, so a large amount cannot lose precision in the round trip.
+  defp format_amount(%Decimal{} = amount, currency_code) do
+    with {:ok, minor_units, places} <- MinorUnits.to_minor_units_and_places(amount, currency_code) do
+      {:ok, minor_units_to_decimal_string(minor_units, places)}
+    end
   end
 
-  defp format_amount(%Decimal{} = amount) do
-    Decimal.to_string(Decimal.round(amount, 2))
+  defp minor_units_to_decimal_string(minor_units, 0), do: Integer.to_string(minor_units)
+
+  defp minor_units_to_decimal_string(minor_units, places) do
+    sign = if minor_units < 0, do: "-", else: ""
+
+    digits =
+      minor_units
+      |> abs()
+      |> Integer.to_string()
+      |> String.pad_leading(places + 1, "0")
+
+    {whole, fraction} = String.split_at(digits, byte_size(digits) - places)
+    sign <> whole <> "." <> fraction
   end
 
-  defp format_amount(amount) when is_float(amount) do
-    :erlang.float_to_binary(amount, decimals: 2)
+  # PayPal's own wire format never uses this integer — it is a purely
+  # internal minor-unit encoding this module produces so a webhook's
+  # amount can travel through `WebhookEventData.data[:amount]` /
+  # `[:amount_refunded]` the same shape Stripe's raw minor units already
+  # do, for `utils/webhook_processor.ex` to convert back with
+  # `MinorUnits.from_minor_units/2` (§7/Э5). It USED to be a fixed ×100
+  # regardless of currency, which only round-tripped correctly because
+  # the processor divided by the same fixed 100 on the other end; now
+  # that the processor is currency-aware, this must be too, or the pair
+  # would decode a currency-aware charge with a currency-blind confirmation
+  # (see `utils/webhook_processor.ex`'s `webhook_amount_for_key/2`).
+  #
+  # `nil` on an unrecognized currency or an over-precise amount — never a
+  # guessed factor — so the processor's `is_integer(...)` guard misses it
+  # and falls back to the invoice's own balance instead of a wrong number.
+  defp parse_amount(amount_str, currency_code)
+       when is_binary(amount_str) and is_binary(currency_code) do
+    case MinorUnits.to_minor_units(Decimal.new(amount_str), currency_code) do
+      {:ok, minor_units} -> minor_units
+      {:error, _reason} -> nil
+    end
   end
 
-  defp parse_amount(amount_str) when is_binary(amount_str) do
-    {float, _} = Float.parse(amount_str)
-    round(float * 100)
-  end
-
-  defp parse_amount(amount), do: amount
+  defp parse_amount(amount, _currency_code), do: amount
 
   defp get_custom_id(resource) do
     custom_id_json =
@@ -608,14 +637,26 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     "req_" <> (:crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false))
   end
 
+  # Fetches/validates :currency (fetch! only when a partial amount is
+  # given — a full refund needs none, same rule as `do_create_refund/4`
+  # documents) and pre-formats the decimal string BEFORE the token
+  # exchange, mirroring `charge_payment_method/3` (§7.1 + Э5: a locally
+  # knowable failure must not cost a network round trip first).
+  defp maybe_format_refund_amount(nil, _opts), do: {:ok, nil}
+
+  defp maybe_format_refund_amount(amount, opts) do
+    currency = Keyword.fetch!(opts, :currency)
+
+    with {:ok, amount_str} <- format_amount(amount, currency) do
+      {:ok, {amount_str, currency}}
+    end
+  end
+
   defp invoice_to_opts(invoice) when is_map(invoice) do
     amount = invoice[:total] || invoice["total"] || Decimal.new(0)
-    # Known debt: assumes 2 minor units (zero-decimal currencies
-    # unsupported) — spec §2.6
-    amount_cents = Decimal.to_integer(Decimal.mult(amount, 100))
 
     [
-      amount: amount_cents,
+      amount: amount,
       currency:
         invoice[:currency] || invoice["currency"] ||
           raise(ArgumentError, "invoice has no currency"),
