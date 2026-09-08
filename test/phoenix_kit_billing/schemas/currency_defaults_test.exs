@@ -2,10 +2,12 @@ defmodule PhoenixKitBilling.Schemas.CurrencyDefaultsTest do
   @moduledoc """
   Pins §7.3 of the currency design spec: a schema-level `default: "EUR"` is
   a silent answer to a question the caller must be forced to ask.
-  `Order`/`Invoice` lose the literal (their changesets already validate
-  `:currency`, so `nil` now fails loudly); `Transaction` keeps it until it
-  gets the same validation (Э5) — removing it first would trade a silent
-  "EUR" for an equally silent `nil`, which is worse, not better.
+  `Order`/`Invoice` lost the literal once their changesets validated
+  `:currency` (`nil` fails loudly). `Transaction` kept it until Э5 added
+  `validate_required(:currency)` + `validate_length(:currency, is: 3)` —
+  removing the literal first would have traded a silent "EUR" for an
+  equally silent `nil`, which is worse, not better. All three now fail
+  the same way.
   """
 
   use ExUnit.Case, async: true
@@ -26,7 +28,17 @@ defmodule PhoenixKitBilling.Schemas.CurrencyDefaultsTest do
     assert {"can't be blank", _} = cs.errors[:currency]
   end
 
-  test "Transaction keeps its schema default until it gets validation (§7.3, Э5)" do
-    assert %Transaction{currency: "EUR"} = %Transaction{}
+  test "Transaction without currency is a loud changeset error, not a silent EUR (§7.3, Э5)" do
+    cs =
+      Transaction.changeset(%Transaction{}, %{
+        transaction_number: "TXN-1",
+        amount: Decimal.new("10.00"),
+        payment_method: "bank",
+        invoice_uuid: Ecto.UUID.generate(),
+        user_uuid: Ecto.UUID.generate()
+      })
+
+    assert {"can't be blank", _} = cs.errors[:currency]
+    refute %Transaction{} |> Map.get(:currency)
   end
 end

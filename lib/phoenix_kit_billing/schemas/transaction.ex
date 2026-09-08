@@ -27,7 +27,7 @@ defmodule PhoenixKitBilling.Transaction do
   schema "phoenix_kit_transactions" do
     field(:transaction_number, :string)
     field(:amount, :decimal)
-    field(:currency, :string, default: "EUR")
+    field(:currency, :string)
     field(:payment_method, :string, default: "bank")
     field(:description, :string)
     field(:metadata, :map, default: %{})
@@ -70,6 +70,7 @@ defmodule PhoenixKitBilling.Transaction do
     ])
     |> validate_inclusion(:payment_method, @payment_methods)
     |> validate_number(:amount, not_equal_to: 0)
+    |> validate_length(:currency, is: 3)
     |> unique_constraint(:transaction_number)
     |> foreign_key_constraint(:invoice_uuid)
     |> foreign_key_constraint(:user_uuid)
