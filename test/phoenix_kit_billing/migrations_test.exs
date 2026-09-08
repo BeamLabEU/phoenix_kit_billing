@@ -39,9 +39,82 @@ defmodule PhoenixKitBilling.MigrationsTest do
   end
 
   describe "the coordinator implements the protocol" do
+    alias PhoenixKit.Migrations.Postgres.Helpers
+
     test "current_version/0 and version_table/0" do
       assert Migrations.current_version() == 3
       assert Migrations.version_table() == "phoenix_kit_payment_provider_configs"
+    end
+
+    # The marker decides whether any LATER version ever runs: core's
+    # `classify/2` reads it and answers `:up_to_date` for every version at
+    # or below it. Stamping a version this chain does not have therefore
+    # skips the next real version and everything after it, silently and
+    # permanently. Found by adversarial review.
+    test "refuses to stamp a version this chain does not have" do
+      too_high = Migrations.current_version() + 1
+
+      assert_raise ArgumentError, ~r/has no version #{too_high}/, fn ->
+        Migrations.up_statements("public", too_high)
+      end
+
+      assert_raise ArgumentError, ~r/has no version #{too_high}/, fn ->
+        Migrations.down_statements("public", too_high)
+      end
+
+      # The ceiling itself stays reachable, or the guard would just break
+      # the chain instead of bounding it.
+      assert Migrations.up_statements("public", Migrations.current_version()) != []
+    end
+
+    test "every public builder that emits SQL validates its own prefix" do
+      for fun <- [:up_statements, :down_statements] do
+        assert_raise ArgumentError, fn -> apply(Migrations, fun, ["EVIL\";DROP"]) end
+        assert_raise ArgumentError, fn -> apply(Migrations, fun, [String.duplicate("a", 30)]) end
+        assert_raise ArgumentError, fn -> apply(Migrations, fun, [123]) end
+      end
+    end
+
+    # This chain embeds the prefix into index NAMES, and Postgres TRUNCATES
+    # an identifier past 63 bytes silently rather than rejecting it — so a
+    # prefix core would refuse yields index names that differ from core's
+    # while every command still exits 0, breaking the contract adoption
+    # rests on. The rules are therefore core's, and this test compares
+    # against core rather than restating them: a local copy is exactly
+    # what drifted (upper case allowed, no length bound at all). Found by
+    # adversarial review.
+    test "the prefix rules are core's, case and length included" do
+      for prefix <- [
+            "public",
+            "billing_alt",
+            "Billing",
+            "9leading_digit",
+            "has-dash",
+            String.duplicate("a", 20),
+            String.duplicate("a", 21),
+            String.duplicate("a", 30)
+          ] do
+        core_accepts =
+          try do
+            Helpers.validate_prefix!(prefix)
+            true
+          rescue
+            ArgumentError -> false
+          end
+
+        ours_accepts =
+          try do
+            Migrations.up_statements(prefix)
+            true
+          rescue
+            ArgumentError -> false
+          end
+
+        assert ours_accepts == core_accepts,
+               "prefix #{inspect(prefix)}: core #{if core_accepts, do: "accepts", else: "rejects"}, " <>
+                 "this chain #{if ours_accepts, do: "accepts", else: "rejects"} — the two must agree, " <>
+                 "or the index names this chain creates stop matching core's"
+      end
     end
 
     test "rejects a prefix that cannot be safely interpolated into DDL" do
@@ -72,6 +145,32 @@ defmodule PhoenixKitBilling.MigrationsTest do
       assert List.last(statements) ==
                "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'",
              "the marker must be stamped after the DDL it certifies, not before"
+    end
+
+    # `up/1` and `down/1` accept a map as well as a keyword list, because
+    # `validated_prefix/1` does. A shape the function ACCEPTS must not
+    # silently lose `:version` — that is how `up/1` could contradict its
+    # own @doc, defaulting a map to the latest version while promising a
+    # pinned host would not be advanced. Found by independent review; the
+    # map-shape regression itself is exercised end-to-end (through a real
+    # migration run) in `migrations_money_safety_test.exs`, since `up/1`/
+    # `down/1` call `execute/1` and need a real migration context.
+    test "a target below current_version applies only that far" do
+      assert length(Migrations.up_statements("public", 1)) == 5
+      assert length(Migrations.up_statements("billing_alt", 1)) == 5
+
+      refute Enum.any?(
+               Migrations.up_statements("public", 1),
+               &String.contains?(&1, "phoenix_kit_currencies")
+             ),
+             "V1-only application emitted a V2 statement"
+
+      assert List.last(Migrations.up_statements("public", 1)) =~ "pkb_schema:1"
+    end
+
+    test "applying up to version 0 is not an operation" do
+      assert Migrations.up_statements("public", 0) == []
+      assert Migrations.up_statements("billing_alt", 0) == []
     end
 
     test "every up statement is guarded (IF NOT EXISTS / DO-block idempotence)" do
