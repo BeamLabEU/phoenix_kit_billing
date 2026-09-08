@@ -1461,6 +1461,186 @@ defmodule PhoenixKitBilling do
     |> repo().one()
   end
 
+  @doc """
+  Refreshes `phoenix_kit_currencies.exchange_rate` from the optional
+  `:fx_rate_provider` hook (per-domain-currency spec §6.1).
+
+  Rates stay MANUAL by default (the admin form at `web/currencies.ex`) —
+  this function exists only for a host that has explicitly configured a
+  feed and is not called from anywhere in this package on its own; the
+  mix task `phoenix_kit_billing.refresh_fx_rates` is the intended trigger,
+  and nothing schedules it.
+
+  ## The hook
+
+      config :phoenix_kit, :fx_rate_provider, {MyApp.FxFeed, :fetch_rates}
+
+  Matches the `:canonical_host_resolver` / `:sitemap_domains_provider`
+  convention already accepted in this application (a bare `{mod, fun}`
+  tuple, not a 3-element MFA with baked-in args) — nothing new to invent.
+  The function is called with NO arguments (`apply(mod, fun, [])`) and
+  must return a PLAIN MAP of `%{"CODE" => rate}`, one entry per currency
+  it has an opinion about; `rate` may be a `Decimal`, a `float`, an
+  `integer` or a `binary` (whatever the provider's own API hands back).
+
+  Absent config resolves to `{:error, :no_provider}` — an explicit
+  answer, never a silent no-op success.
+
+  ## Validation — refused WHOLE, nothing partially applied
+
+  Every entry is checked BEFORE any write happens. A provider returning
+  even one bad entry refuses the entire batch with
+  `{:error, {:invalid_rates, issues}}`, where `issues` is
+  `[%{code: code, reason: reason}, ...]` — one entry per problem found,
+  not just the first — and the table is left untouched:
+
+    * `reason: :unknown_currency` — this shop has no currency with that
+      code;
+    * `reason: :invalid_rate` — the value could not be parsed as a
+      number at all;
+    * `reason: :non_positive_rate` — parsed fine, but `<= 0` (a bad feed
+      writing a zero rate would divide-by-zero the storefront the next
+      time `Currency.present/3` converts through it);
+    * `reason: :invalid_code` — the map key itself was not a string.
+
+  The BASE currency (`is_default: true`) is never written — its rate is
+  `1.0` by definition and renormalization on a base change depends on
+  that staying true. An entry for the base is silently accepted (not an
+  error) and reported back under `:skipped_base` instead.
+
+  Other malformed shapes, checked before any per-entry validation runs:
+
+    * the provider's return value is not a map at all —
+      `{:error, {:invalid_provider_response, raw}}` (`raw` is exactly
+      what the provider returned, for debugging a provider that, say,
+      signals its own failure as `{:error, reason}` instead of the map
+      this hook expects);
+    * the provider raises — `{:error, {:provider_raised, message}}`;
+    * the provider exits — `{:error, {:provider_exited, reason}}`.
+
+  ## Writing
+
+  Accepted rates are written ONE AT A TIME through
+  `update_currency/2` — never a direct `Repo` write — so
+  `rate_updated_at` gets stamped, the currency cache is invalidated, and
+  `currencies_changed` broadcasts exactly as it does for a manual edit
+  in the admin (one broadcast per updated currency, same as any other
+  currency writer in this module).
+
+  ## Options
+
+    * `:dry_run` (default `false`) — runs the full fetch-and-validate
+      pass (so a bad provider is still caught and reported) but performs
+      no writes. On success returns
+      `{:ok, %{dry_run: true, would_update: [%{code:, current_rate:, new_rate:}, ...], skipped_base: [code, ...]}}`
+      instead of the normal `%{updated: [code, ...], skipped_base: [code, ...]}`.
+  """
+  @spec refresh_rates_from_provider(keyword()) :: {:ok, map()} | {:error, term()}
+  def refresh_rates_from_provider(opts \\ []) do
+    case Application.get_env(:phoenix_kit, :fx_rate_provider) do
+      {mod, fun} -> mod |> call_fx_rate_provider(fun) |> apply_provider_rates(opts)
+      _ -> {:error, :no_provider}
+    end
+  end
+
+  defp call_fx_rate_provider(mod, fun) do
+    {:ok, apply(mod, fun, [])}
+  rescue
+    error -> {:error, {:provider_raised, Exception.message(error)}}
+  catch
+    :exit, reason -> {:error, {:provider_exited, reason}}
+  end
+
+  defp apply_provider_rates({:error, _} = error, _opts), do: error
+
+  defp apply_provider_rates({:ok, raw}, _opts) when not is_map(raw) do
+    {:error, {:invalid_provider_response, raw}}
+  end
+
+  defp apply_provider_rates({:ok, raw}, opts) do
+    base = get_default_currency()
+    known_by_code = Map.new(list_currencies(), &{&1.code, &1})
+
+    classified = Enum.map(raw, &classify_provider_entry(&1, base, known_by_code))
+
+    issues =
+      for {:error, code, reason} <- classified do
+        %{code: code, reason: reason}
+      end
+
+    if issues != [] do
+      {:error, {:invalid_rates, issues}}
+    else
+      accepted = for {:ok, currency, rate} <- classified, do: {currency, rate}
+      skipped_base = for {:skip, code, :base_currency} <- classified, do: code
+
+      if Keyword.get(opts, :dry_run, false) do
+        would_update =
+          Enum.map(accepted, fn {currency, rate} ->
+            %{code: currency.code, current_rate: currency.exchange_rate, new_rate: rate}
+          end)
+
+        {:ok, %{dry_run: true, would_update: would_update, skipped_base: skipped_base}}
+      else
+        updated =
+          Enum.map(accepted, fn {currency, rate} ->
+            {:ok, updated_currency} = update_currency(currency, %{exchange_rate: rate})
+            updated_currency.code
+          end)
+
+        {:ok, %{updated: updated, skipped_base: skipped_base}}
+      end
+    end
+  end
+
+  defp classify_provider_entry({code, value}, base, known_by_code) when is_binary(code) do
+    upcased = String.upcase(code)
+
+    cond do
+      base != nil and base.code == upcased ->
+        {:skip, upcased, :base_currency}
+
+      not Map.has_key?(known_by_code, upcased) ->
+        {:error, upcased, :unknown_currency}
+
+      true ->
+        case parse_fx_rate(value) do
+          {:ok, rate} ->
+            if fx_rate_positive?(rate) do
+              {:ok, Map.fetch!(known_by_code, upcased), rate}
+            else
+              {:error, upcased, :non_positive_rate}
+            end
+
+          :error ->
+            {:error, upcased, :invalid_rate}
+        end
+    end
+  end
+
+  defp classify_provider_entry({code, _value}, _base, _known_by_code) do
+    {:error, inspect(code), :invalid_code}
+  end
+
+  defp parse_fx_rate(%Decimal{} = rate), do: {:ok, rate}
+  defp parse_fx_rate(n) when is_float(n), do: {:ok, Decimal.from_float(n)}
+  defp parse_fx_rate(n) when is_integer(n), do: {:ok, Decimal.new(n)}
+
+  defp parse_fx_rate(s) when is_binary(s) do
+    case Decimal.parse(s) do
+      {%Decimal{} = rate, ""} -> {:ok, rate}
+      _ -> :error
+    end
+  end
+
+  defp parse_fx_rate(_), do: :error
+
+  defp fx_rate_positive?(%Decimal{} = rate) do
+    Decimal.compare(rate, 0) == :gt
+  rescue
+    _error -> false
+  end
+
   # ============================================
   # BILLING PROFILES
   # ============================================
