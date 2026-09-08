@@ -51,6 +51,7 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   }
 
   alias PhoenixKit.Settings
+  alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
 
@@ -84,9 +85,8 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   """
   @impl true
   def create_checkout_session(invoice, opts) do
-    with {:ok, config} <- ensure_configured() do
-      line_items = build_line_items(invoice)
-
+    with {:ok, config} <- ensure_configured(),
+         {:ok, line_items} <- build_line_items(invoice) do
       params = %{
         mode: "payment",
         line_items: line_items,
@@ -193,11 +193,8 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     # "EUR" fallback just because the provider isn't set up yet (§7.1).
     currency = opts |> Keyword.fetch!(:currency) |> String.downcase()
 
-    with {:ok, config} <- ensure_configured() do
-      # Known debt: assumes 2 minor units (zero-decimal currencies
-      # unsupported) — spec §2.6
-      amount_cents = Decimal.mult(amount, 100) |> Decimal.round() |> Decimal.to_integer()
-
+    with {:ok, config} <- ensure_configured(),
+         {:ok, amount_cents} <- MinorUnits.to_minor_units(amount, currency) do
       params = %{
         amount: amount_cents,
         currency: currency,
@@ -316,47 +313,34 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
   ## Options
 
+  - `:currency` - Currency code, required only when `amount` is given (a
+    full refund needs none) — used to convert `amount` to Stripe's minor
+    unit; never sent to Stripe itself, since a refund's currency is fixed
+    by the charge it reverses
   - `:reason` - Reason for refund ("duplicate", "fraudulent", "requested_by_customer")
   - `:metadata` - Additional metadata
 
   ## Examples
 
-      iex> create_refund("ch_xxx", Decimal.new("50.00"), reason: "requested_by_customer")
+      iex> create_refund("ch_xxx", Decimal.new("50.00"), currency: "EUR", reason: "requested_by_customer")
       {:ok, %{id: "re_...", provider_refund_id: "re_...", amount: #Decimal<50.00>}}
   """
   @impl true
   def create_refund(provider_transaction_id, amount, opts) do
-    with {:ok, config} <- ensure_configured() do
-      params = %{
-        charge: provider_transaction_id
-      }
-
-      params =
-        if amount do
-          # Known debt: assumes 2 minor units (zero-decimal currencies
-          # unsupported) — spec §2.6
-          amount_cents = Decimal.mult(amount, 100) |> Decimal.round() |> Decimal.to_integer()
-          Map.put(params, :amount, amount_cents)
-        else
-          params
-        end
-
-      params =
-        case Keyword.get(opts, :reason) do
-          nil -> params
-          reason -> Map.put(params, :reason, reason)
-        end
-
+    with {:ok, config} <- ensure_configured(),
+         {:ok, params} <- build_refund_params(provider_transaction_id, amount, opts) do
       case stripe_request(:post, "/refunds", params, config) do
-        {:ok, %{"id" => id, "amount" => amount_cents, "status" => status}} ->
-          {:ok,
-           %RefundResult{
-             id: id,
-             provider_refund_id: id,
-             amount: Decimal.div(Decimal.new(amount_cents), 100),
-             status: status,
-             metadata: %{}
-           }}
+        {:ok, %{"id" => id, "amount" => amount_cents, "currency" => currency, "status" => status}} ->
+          with {:ok, refunded_amount} <- MinorUnits.from_minor_units(amount_cents, currency) do
+            {:ok,
+             %RefundResult{
+               id: id,
+               provider_refund_id: id,
+               amount: refunded_amount,
+               status: status,
+               metadata: %{}
+             }}
+          end
 
         {:error, %{"code" => "charge_already_refunded"}} ->
           {:error, :already_refunded}
@@ -365,6 +349,30 @@ defmodule PhoenixKitBilling.Providers.Stripe do
           Logger.error("Stripe refund failed: #{inspect(reason)}")
           {:error, reason}
       end
+    end
+  end
+
+  defp build_refund_params(provider_transaction_id, amount, opts) do
+    with {:ok, params} <-
+           maybe_put_refund_amount(%{charge: provider_transaction_id}, amount, opts) do
+      {:ok, maybe_put_refund_reason(params, opts)}
+    end
+  end
+
+  defp maybe_put_refund_amount(params, nil, _opts), do: {:ok, params}
+
+  defp maybe_put_refund_amount(params, amount, opts) do
+    currency = Keyword.fetch!(opts, :currency)
+
+    with {:ok, amount_cents} <- MinorUnits.to_minor_units(amount, currency) do
+      {:ok, Map.put(params, :amount, amount_cents)}
+    end
+  end
+
+  defp maybe_put_refund_reason(params, opts) do
+    case Keyword.get(opts, :reason) do
+      nil -> params
+      reason -> Map.put(params, :reason, reason)
     end
   end
 
@@ -551,45 +559,40 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   defp build_line_items(invoice) do
+    currency =
+      invoice.currency || raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
+
     (invoice.line_items || [])
-    |> Enum.map(fn item ->
-      %{
-        price_data: %{
-          currency:
-            String.downcase(
-              invoice.currency ||
-                raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
-            ),
-          product_data: %{
-            name: item["name"] || "Item"
-          },
-          unit_amount: parse_amount_cents(item["unit_price"])
-        },
-        quantity: item["quantity"] || 1
-      }
+    |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
+      case MinorUnits.to_minor_units(parse_decimal_amount(item["unit_price"]), currency) do
+        {:ok, unit_amount} ->
+          line_item = %{
+            price_data: %{
+              currency: String.downcase(currency),
+              product_data: %{
+                name: item["name"] || "Item"
+              },
+              unit_amount: unit_amount
+            },
+            quantity: item["quantity"] || 1
+          }
+
+          {:cont, {:ok, [line_item | acc]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
     end)
+    |> case do
+      {:ok, items} -> {:ok, Enum.reverse(items)}
+      {:error, _reason} = error -> error
+    end
   end
 
-  defp parse_amount_cents(nil), do: 0
-
-  defp parse_amount_cents(amount) when is_binary(amount) do
-    amount
-    |> Decimal.new()
-    |> Decimal.mult(100)
-    |> Decimal.round()
-    |> Decimal.to_integer()
-  end
-
-  defp parse_amount_cents(%Decimal{} = amount) do
-    amount
-    |> Decimal.mult(100)
-    |> Decimal.round()
-    |> Decimal.to_integer()
-  end
-
-  defp parse_amount_cents(amount) when is_number(amount) do
-    round(amount * 100)
-  end
+  defp parse_decimal_amount(nil), do: Decimal.new(0)
+  defp parse_decimal_amount(%Decimal{} = amount), do: amount
+  defp parse_decimal_amount(amount) when is_binary(amount), do: Decimal.new(amount)
+  defp parse_decimal_amount(amount) when is_number(amount), do: Decimal.from_float(amount * 1.0)
 
   defp maybe_add_customer_email(params, invoice, opts) do
     email = Keyword.get(opts, :customer_email) || get_invoice_email(invoice)
@@ -722,6 +725,20 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     end
   end
 
+  # `amount_total` / `amount` / `amount_refunded` below are Stripe's OWN
+  # raw minor-unit integers, passed through unconverted — correct as-is
+  # for a two-decimal currency, since that is what Stripe itself sent.
+  # NOT part of the ×100 zero-decimal-currency fix (§7/Э5): the consumer
+  # of these fields, `calculate_payment_amount/2` and `refund_amount/3` in
+  # `utils/webhook_processor.ex`, still divides by a HARD-CODED 100
+  # regardless of currency, so a JPY (or BHD) webhook confirmation is
+  # still recorded at the wrong magnitude even after this fix —
+  # `charge_payment_method/3`/`create_refund/3` above now send the
+  # CORRECT amount to Stripe, but the ledger entry created from this
+  # webhook's own confirmed amount will not be. `webhook_processor.ex` is
+  # outside this task's file scope (also shared by Razorpay's own webhook
+  # data) — left unchanged here, flagged for a follow-up that fixes both
+  # sides together.
   defp normalize_event("checkout.session.completed", object) do
     {:ok,
      %{
