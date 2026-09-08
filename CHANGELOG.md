@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.14.0 - 2026-09-08
+
+Per-domain currency, stage Э5: exchange-rate provider hook and provider
+minor units (PR #38, #40).
+
+### Added
+
+- **`PhoenixKitBilling.refresh_rates_from_provider/1`** — an optional
+  `:fx_rate_provider` hook (`config :phoenix_kit, :fx_rate_provider, {mod,
+  fun}`) for a host that wants to pull exchange rates from an external
+  feed. Rates otherwise stay manual, as before. Validates every entry
+  before any write and refuses the whole batch on a single bad one
+  (unknown currency, non-numeric, non-positive, or more/less precision
+  than `phoenix_kit_currencies.exchange_rate`'s `numeric(15,6)` column can
+  hold), skips the base currency, and runs inside one transaction with the
+  base currency row locked so it cannot straddle a concurrent
+  `set_default_currency/1` or `change_base_currency/2`. Ships with `mix
+  phoenix_kit_billing.refresh_fx_rates` (dry-run by default, `--apply` to
+  write) as the intended trigger — nothing schedules it automatically.
+- **`PhoenixKitBilling.Providers.MinorUnits`** — converts between a
+  shop-side `Decimal` amount and a payment provider's integer minor unit
+  using the currency's own `decimal_places`, the single place this
+  conversion now happens.
+
+### Fixed
+
+- **Every payment provider (Stripe, PayPal, Razorpay, EveryPay) converted
+  amounts using a hard-coded ×100 factor**, correct only for two-decimal
+  currencies. A zero-decimal currency (JPY, KRW) was charged **100×** its
+  intended amount; a three-decimal one (BHD, KWD) was silently truncated.
+  All four providers' outbound (checkout/charge/refund) and inbound
+  (webhook confirmation) amount conversions now go through `MinorUnits`,
+  keyed off each currency's actual `decimal_places`.
+- **`Transaction.currency` no longer silently defaults to `"EUR"`.** A
+  caller that omits it now gets a validation error instead of a
+  transaction honestly mislabeled with the wrong currency.
+
 ## 0.13.0 - 2026-09-07
 
 Per-domain currency, stages Э2 and Э3 (PR #33, #34).
