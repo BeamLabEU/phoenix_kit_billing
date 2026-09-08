@@ -1,0 +1,398 @@
+defmodule PhoenixKitBilling.FxRateProviderTest do
+  @moduledoc """
+  §6.1: rates stay MANUAL by default; `:fx_rate_provider` is an optional
+  MFA hook (`{mod, fun}`, matching the `:canonical_host_resolver` /
+  `:sitemap_domains_provider` convention already accepted in this
+  application) for a host that wants to plug in an automatic feed.
+
+  `PhoenixKitBilling.refresh_rates_from_provider/1` must never write a
+  partial result: every code the provider returns is validated BEFORE
+  anything touches the table, and a single bad entry refuses the whole
+  batch.
+  """
+  use PhoenixKitBilling.DataCase, async: false
+
+  alias PhoenixKitBilling.Currency
+  alias PhoenixKitBilling.Events
+  alias PhoenixKitBilling.Test.StaticFxRateProvider
+
+  setup do
+    PhoenixKit.Cache.clear(:billing_currencies)
+    Repo.delete_all(Currency)
+
+    {:ok, usd} =
+      PhoenixKitBilling.create_currency(%{
+        code: "USD",
+        name: "Dollar",
+        symbol: "$",
+        is_default: true,
+        exchange_rate: "1.0"
+      })
+
+    {:ok, eur} =
+      PhoenixKitBilling.create_currency(%{
+        code: "EUR",
+        name: "Euro",
+        symbol: "€",
+        exchange_rate: "0.9"
+      })
+
+    {:ok, gbp} =
+      PhoenixKitBilling.create_currency(%{
+        code: "GBP",
+        name: "Pound",
+        symbol: "£",
+        exchange_rate: "0.75"
+      })
+
+    on_exit(fn -> Application.delete_env(:phoenix_kit, :fx_rate_provider) end)
+
+    %{usd: usd, eur: eur, gbp: gbp}
+  end
+
+  defp configure_provider(fun) when is_function(fun, 0) do
+    Application.put_env(:phoenix_kit, :fx_rate_provider, {StaticFxRateProvider, :fetch})
+    StaticFxRateProvider.set(fun)
+  end
+
+  describe "no provider configured" do
+    test "returns the explicit error and writes nothing" do
+      assert Application.get_env(:phoenix_kit, :fx_rate_provider) == nil
+      assert PhoenixKitBilling.refresh_rates_from_provider() == {:error, :no_provider}
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+  end
+
+  describe "a valid provider" do
+    test "updates the rates and stamps rate_updated_at", %{eur: eur} do
+      # Compare against the BACKDATED stamp, not the original one: setup and
+      # this test body both run well within the same wall-clock second, so
+      # a fresh `DateTime.utc_now(:second)` stamp can equal (not exceed) the
+      # original creation stamp at second precision. 40 days of backdating
+      # makes ":gt" unambiguous regardless of that (see
+      # `currency_rate_age_test.exs` for the same pattern).
+      backdated = DateTime.add(eur.rate_updated_at, -40 * 86_400, :second)
+
+      Repo.update_all(Ecto.Query.from(c in Currency, where: c.code == "EUR"),
+        set: [rate_updated_at: backdated]
+      )
+
+      PhoenixKit.Cache.clear(:billing_currencies)
+
+      configure_provider(fn -> %{"EUR" => "0.87", "GBP" => 0.7} end)
+
+      assert {:ok, %{updated: updated, skipped_base: []}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
+
+      eur_entry = Enum.find(updated, &(&1.code == "EUR"))
+      assert Decimal.equal?(eur_entry.previous_rate, Decimal.new("0.9"))
+      assert Decimal.equal?(eur_entry.new_rate, Decimal.new("0.87"))
+
+      refreshed_eur = PhoenixKitBilling.get_currency_by_code("EUR")
+      assert Decimal.equal?(refreshed_eur.exchange_rate, Decimal.new("0.87"))
+      assert DateTime.compare(refreshed_eur.rate_updated_at, backdated) == :gt
+
+      refreshed_gbp = PhoenixKitBilling.get_currency_by_code("GBP")
+      assert Decimal.equal?(refreshed_gbp.exchange_rate, Decimal.new("0.7"))
+    end
+
+    test "accepts Decimal, float, integer and binary rate shapes" do
+      configure_provider(fn ->
+        %{"EUR" => Decimal.new("0.91"), "GBP" => 2}
+      end)
+
+      assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("GBP").exchange_rate,
+               Decimal.new("2")
+             )
+    end
+  end
+
+  describe "invalid data is refused whole" do
+    test "an unknown currency code leaves the table unchanged" do
+      configure_provider(fn -> %{"EUR" => "0.5", "ZZZ" => "1.5"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "ZZZ" and &1.reason == :unknown_currency))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "a zero rate refuses the whole batch" do
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :non_positive_rate))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "a negative rate refuses the whole batch" do
+      configure_provider(fn -> %{"EUR" => "-1.2", "GBP" => "0.7"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "EUR" and &1.reason == :non_positive_rate))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("GBP").exchange_rate,
+               Decimal.new("0.75")
+             )
+    end
+
+    test "a non-numeric rate refuses the whole batch" do
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "not-a-number"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :invalid_rate))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "a rate too small to survive numeric(15,6) refuses the whole batch" do
+      # 0.0000001 rounds to exactly 0.000000 at 6 decimal places (confirmed
+      # against Postgres directly: `SELECT '0.0000001'::numeric(15,6)` ->
+      # 0.000000) — the same divide-by-zero :non_positive_rate exists to
+      # prevent, reached through the column's precision instead of the raw
+      # value.
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.0000001"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :rate_too_small))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "a rate too large for numeric(15,6) refuses the whole batch" do
+      # 1_000_000_000 (10^9) is exactly the boundary Postgres itself
+      # refuses for numeric(15,6): "numeric field overflow ... must round
+      # to an absolute value less than 10^9" (confirmed directly).
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "1000000000"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Enum.any?(issues, &(&1.code == "GBP" and &1.reason == :rate_too_large))
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+    end
+
+    test "the largest value the column can actually hold is accepted" do
+      configure_provider(fn -> %{"EUR" => "999999999.999999"} end)
+
+      assert {:ok, %{updated: [%{code: "EUR"}]}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("999999999.999999")
+             )
+    end
+
+    test "a non-map response is refused" do
+      configure_provider(fn -> ["EUR", "0.5"] end)
+
+      assert {:error, {:invalid_provider_response, _raw}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+    end
+
+    test "a raising provider is reported, not crashed on" do
+      configure_provider(fn -> raise "boom" end)
+
+      assert {:error, {:provider_raised, "boom"}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+    end
+  end
+
+  describe "base currency" do
+    test "a rate for the base is skipped while the others still apply" do
+      configure_provider(fn -> %{"USD" => "1.3", "EUR" => "0.6"} end)
+
+      assert {:ok, %{updated: [%{code: "EUR"}], skipped_base: ["USD"]}} =
+               PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("USD").exchange_rate,
+               Decimal.new("1.0")
+             )
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.6")
+             )
+    end
+  end
+
+  describe "case-insensitive currency codes" do
+    test "'eur' and 'EUR' from the same provider collapse to one write, not two" do
+      :ok = Events.subscribe_currencies()
+
+      configure_provider(fn -> %{"eur" => "0.5", "EUR" => "0.6"} end)
+
+      assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
+      assert [%{code: "EUR"}] = updated
+
+      # Exactly one write happened: two broadcasts (update_currency/2's
+      # own in-transaction one, plus the post-commit reconciliation —
+      # see the "events" describe block), not four, and the table holds
+      # whichever of the two rates the normalization step kept (the map
+      # itself has no defined key order to prefer between them; the point
+      # is that there is exactly one write, not which one won).
+      assert_receive {:currencies_changed, "EUR"}
+      assert_receive {:currencies_changed, "EUR"}
+      refute_receive {:currencies_changed, _}, 100
+
+      eur_rate = PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate
+
+      assert Decimal.equal?(eur_rate, Decimal.new("0.5")) or
+               Decimal.equal?(eur_rate, Decimal.new("0.6"))
+    end
+  end
+
+  describe "dry_run: true" do
+    test "computes and validates without writing anything" do
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.6"} end)
+
+      assert {:ok, %{dry_run: true, would_update: would_update, skipped_base: []}} =
+               PhoenixKitBilling.refresh_rates_from_provider(dry_run: true)
+
+      assert Enum.sort(Enum.map(would_update, & &1.code)) == ["EUR", "GBP"]
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("GBP").exchange_rate,
+               Decimal.new("0.75")
+             )
+    end
+
+    test "still refuses invalid data and reports the same issues" do
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "-1"} end)
+
+      assert {:error, {:invalid_rates, issues}} =
+               PhoenixKitBilling.refresh_rates_from_provider(dry_run: true)
+
+      assert Enum.any?(issues, &(&1.code == "GBP"))
+    end
+  end
+
+  describe "events" do
+    test "fires update_currency/2's in-transaction broadcast AND a post-commit reconciliation broadcast per updated currency" do
+      :ok = Events.subscribe_currencies()
+
+      configure_provider(fn -> %{"EUR" => "0.5", "GBP" => "0.6"} end)
+
+      assert {:ok, %{updated: updated}} = PhoenixKitBilling.refresh_rates_from_provider()
+      assert Enum.sort(Enum.map(updated, & &1.code)) == ["EUR", "GBP"]
+
+      # update_currency/2's own broadcast, once per write, fired DURING
+      # the (by-then-committed) transaction.
+      assert_receive {:currencies_changed, code1}
+      assert_receive {:currencies_changed, code2}
+      assert Enum.sort([code1, code2]) == ["EUR", "GBP"]
+
+      # The post-commit reconciliation broadcast this function adds —
+      # the one every subscriber can actually trust (see the dedicated
+      # test below for why the first pair alone is not enough under real
+      # Postgres, even though this single-connection sandbox can't
+      # reproduce the staleness itself).
+      assert_receive {:currencies_changed, code3}
+      assert_receive {:currencies_changed, code4}
+      assert Enum.sort([code3, code4]) == ["EUR", "GBP"]
+
+      refute_receive {:currencies_changed, _}, 100
+    end
+
+    test "a refused batch broadcasts nothing" do
+      :ok = Events.subscribe_currencies()
+
+      configure_provider(fn -> %{"EUR" => "0.5", "ZZZ" => "1.5"} end)
+
+      assert {:error, _} = PhoenixKitBilling.refresh_rates_from_provider()
+      refute_receive {:currencies_changed, _}, 100
+    end
+
+    test "a subscriber reacting to every announcement sees the committed rate by the last one" do
+      # Prime the cache with the OLD value first, mirroring
+      # currency_events_test.exs's own pattern — otherwise the very
+      # first read after the write would go to the database regardless
+      # of ordering and this test could not tell early from late.
+      assert Decimal.equal?(
+               PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate,
+               Decimal.new("0.9")
+             )
+
+      parent = self()
+
+      # DataCase's shared sandbox (async: false) means this spawned
+      # process shares the SAME database connection as the test process
+      # — it can't reproduce a genuinely separate READ COMMITTED session
+      # seeing a pre-commit row the way a second pooled connection would
+      # in production. What IS reproducible, and is the actual property
+      # this test protects, is the count and ordering of announcements:
+      # there are exactly two per currency (see the test above), and the
+      # LAST one is only ever sent after `repo().transaction/1` has
+      # returned `{:ok, _}` — so a subscriber that reacts to every
+      # announcement (the normal way a LiveView's `handle_info/2` would)
+      # is guaranteed a correct read by the second one, whatever the
+      # first one's read happened to see.
+      _subscriber =
+        spawn_link(fn ->
+          :ok = Events.subscribe_currencies()
+          send(parent, :subscribed)
+
+          for _ <- 1..2 do
+            receive do
+              {:currencies_changed, "EUR"} ->
+                send(parent, {:seen, PhoenixKitBilling.get_currency_by_code("EUR").exchange_rate})
+            end
+          end
+        end)
+
+      assert_receive :subscribed
+
+      configure_provider(fn -> %{"EUR" => "0.5"} end)
+      assert {:ok, _} = PhoenixKitBilling.refresh_rates_from_provider()
+
+      assert_receive {:seen, _first}
+      assert_receive {:seen, second}
+      assert Decimal.equal?(second, Decimal.new("0.5"))
+    end
+  end
+end

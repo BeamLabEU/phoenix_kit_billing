@@ -1461,6 +1461,390 @@ defmodule PhoenixKitBilling do
     |> repo().one()
   end
 
+  @doc """
+  Refreshes `phoenix_kit_currencies.exchange_rate` from the optional
+  `:fx_rate_provider` hook (per-domain-currency spec §6.1).
+
+  Rates stay MANUAL by default (the admin form at `web/currencies.ex`) —
+  this function exists only for a host that has explicitly configured a
+  feed and is not called from anywhere in this package on its own; the
+  mix task `phoenix_kit_billing.refresh_fx_rates` is the intended trigger,
+  and nothing schedules it.
+
+  ## The hook
+
+      config :phoenix_kit, :fx_rate_provider, {MyApp.FxFeed, :fetch_rates}
+
+  Matches the `:canonical_host_resolver` / `:sitemap_domains_provider`
+  convention already accepted in this application (a bare `{mod, fun}`
+  tuple, not a 3-element MFA with baked-in args) — nothing new to invent.
+  The function is called with NO arguments (`apply(mod, fun, [])`) and
+  must return a PLAIN MAP of `%{"CODE" => rate}`, one entry per currency
+  it has an opinion about; `rate` may be a `Decimal`, a `float`, an
+  `integer` or a `binary` (whatever the provider's own API hands back).
+  Prefer `Decimal` or a `binary` when the provider author has a choice —
+  a `float` carries its own binary-imprecision, which this function
+  cannot undo, only round.
+
+  Currency codes are case-normalized (`String.upcase/1`) before anything
+  else, so a provider returning both `"eur"` and `"EUR"` collapses to a
+  single entry for `"EUR"` rather than writing (and broadcasting) twice.
+
+  Absent config resolves to `{:error, :no_provider}` — an explicit
+  answer, never a silent no-op success.
+
+  ## Validation — refused WHOLE, nothing partially applied
+
+  Every entry is checked BEFORE any write happens, against the SAME
+  database snapshot the writes below then use (see "Atomicity"). A
+  provider returning even one bad entry refuses the entire batch with
+  `{:error, {:invalid_rates, issues}}`, where `issues` is
+  `[%{code: code, reason: reason}, ...]` — one entry per problem found,
+  not just the first — and the table is left untouched:
+
+    * `reason: :unknown_currency` — this shop has no currency with that
+      code;
+    * `reason: :invalid_rate` — the value could not be parsed as a
+      number at all;
+    * `reason: :non_positive_rate` — parsed fine, but `<= 0` (a bad feed
+      writing a zero rate would divide-by-zero the storefront the next
+      time `Currency.present/3` converts through it);
+    * `reason: :rate_too_small` — parsed fine and is `> 0`, but
+      `phoenix_kit_currencies.exchange_rate` is `numeric(15,6)`: a value
+      like `0.0000001` rounds to exactly `0.000000` once it lands in
+      that column — the same divide-by-zero `:non_positive_rate` exists
+      to prevent, reached through the column's precision instead of the
+      raw value;
+    * `reason: :rate_too_large` — rounds (at 6 decimal places) to `1e9`
+      or more, which `numeric(15,6)` (9 integer digits, 6 fractional)
+      cannot hold at all; Postgres itself raises `numeric field
+      overflow` on a write this large, which this check catches before
+      that write is ever attempted;
+    * `reason: :invalid_code` — the map key itself was not a string.
+
+  The BASE currency (`is_default: true`) is never written — its rate is
+  `1.0` by definition and renormalization on a base change depends on
+  that staying true. An entry for the base is silently accepted (not an
+  error) and reported back under `:skipped_base` instead.
+
+  Other malformed shapes, checked before any per-entry validation runs:
+
+    * the provider's return value is not a map at all —
+      `{:error, {:invalid_provider_response, raw}}` (`raw` is exactly
+      what the provider returned, for debugging a provider that, say,
+      signals its own failure as `{:error, reason}` instead of the map
+      this hook expects);
+    * the provider raises — `{:error, {:provider_raised, message}}`;
+    * the provider exits — `{:error, {:provider_exited, reason}}`.
+
+  ## Atomicity
+
+  Validation and (on success) every write run inside ONE
+  `repo().transaction/1` — the base currency is read fresh as the FIRST
+  thing inside it, `SELECT ... FOR UPDATE`, not the plain unlocked
+  `get_default_currency/0` every other caller in this module gets, and
+  not reused from before the transaction opened. Holding that row's lock
+  for the life of this transaction is what makes a straddle actually
+  impossible rather than merely narrowed: `set_default_currency/1` and
+  `change_base_currency/2` both renormalize EVERY currency's rate via a
+  table-wide `update_all` (no `WHERE`) as their first write, which always
+  touches whichever row is currently the default — so once this function
+  holds that row's lock, either call has already fully committed before
+  this read ran, or it blocks on that renormalization until this
+  transaction ends. A lock-free `SELECT` (or a read taken before the
+  transaction opened) would not give that guarantee — nothing stops a
+  promotion from committing, and releasing its locks, in the gap between
+  such a read and this function's own writes on the very row it just
+  promoted.
+
+  The known-code set is also read fresh, inside the same transaction,
+  right after the locked base read. If any write fails after others in
+  the same batch already succeeded (an unexpected DB-level error — the
+  precision checks above are what keep this from happening on any input
+  this function itself rejects), the whole transaction rolls back rather
+  than leaving a partial write committed.
+
+  ## Writing, and announcing it AFTER it is real
+
+  Accepted rates are written ONE AT A TIME through `update_currency/2`
+  — never a direct `Repo` write — so `rate_updated_at` gets stamped the
+  same way a manual admin edit stamps it. A write that itself fails —
+  `update_currency/2` returning `{:error, reason}`, or raising — rolls
+  back the whole transaction and surfaces as
+  `{:error, {:write_failed, code, reason}}` rather than crashing this
+  function outright.
+
+  `update_currency/2` ALSO invalidates the currency cache and broadcasts
+  `currencies_changed` on every write, same as it does for a manual
+  edit — but that happens DURING this function's transaction, before it
+  is known to ever commit. Under real Postgres (not the single shared
+  connection this file's own tests run against) a subscriber reacting
+  to that broadcast right then, under READ COMMITTED, cannot see this
+  still-open transaction's write — it re-reads the PRE-refresh row and
+  repopulates the cache with it, right as the cache was just cleared for
+  the opposite reason. Nothing would invalidate or broadcast again on
+  its own afterward, so that stale entry would sit there until an
+  unrelated write happened to clear it — not a rollback edge case, the
+  NORMAL every-thing-worked path, defeating the exact live re-render
+  this cache/broadcast pair exists to provide (§4.2.1, stage Э2).
+
+  So once `repo().transaction/1` has returned `{:ok, _}` — the write is
+  REALLY committed, not merely executed inside a transaction something
+  later in the batch could still roll back — this function invalidates
+  the cache and broadcasts `currencies_changed` again itself, once per
+  code it actually wrote, using the same clear-applied-before-broadcast
+  barrier every other writer in this module relies on
+  (`invalidate_currency_cache/0`). `update_currency/2`'s own
+  in-transaction pair becomes harmless noise once this runs: any
+  subscriber that reacted to it too early and cached the pre-refresh
+  rate gets corrected by this clear, and the broadcast that follows is
+  the one every subscriber can actually trust — the property that was
+  broken is restored by reacting a second time, not by trying to
+  suppress the first.
+
+  On a rolled-back batch (invalid data, or a write that failed) there is
+  nothing to announce here — an in-transaction broadcast that fired
+  before the failure already went out for a change that never
+  persisted, but every subscriber that reacted to it read the
+  UNCHANGED table (the write it announced never survived to be read)
+  and rendered the unchanged price; the only cost is one wasted
+  re-render, not a wrong one. `:dry_run` writes nothing, so nothing is
+  announced there either.
+
+  ## Options
+
+    * `:dry_run` (default `false`) — runs the full fetch-and-validate
+      pass inside the same transaction (so a bad provider is still
+      caught and reported) but performs no writes; the transaction
+      commits with nothing to commit. On success returns
+      `{:ok, %{dry_run: true, would_update: [%{code:, previous_rate:, new_rate:}, ...], skipped_base: [code, ...]}}`
+      instead of the normal
+      `%{updated: [%{code:, previous_rate:, new_rate:}, ...], skipped_base: [code, ...]}`.
+  """
+  @spec refresh_rates_from_provider(keyword()) :: {:ok, map()} | {:error, term()}
+  def refresh_rates_from_provider(opts \\ []) do
+    case Application.get_env(:phoenix_kit, :fx_rate_provider) do
+      {mod, fun} -> mod |> call_fx_rate_provider(fun) |> apply_provider_rates(opts)
+      _ -> {:error, :no_provider}
+    end
+  end
+
+  defp call_fx_rate_provider(mod, fun) do
+    {:ok, apply(mod, fun, [])}
+  rescue
+    error -> {:error, {:provider_raised, Exception.message(error)}}
+  catch
+    :exit, reason -> {:error, {:provider_exited, reason}}
+  end
+
+  defp apply_provider_rates({:error, _} = error, _opts), do: error
+
+  defp apply_provider_rates({:ok, raw}, _opts) when not is_map(raw) do
+    {:error, {:invalid_provider_response, raw}}
+  end
+
+  defp apply_provider_rates({:ok, raw}, opts) do
+    dry_run? = Keyword.get(opts, :dry_run, false)
+    normalized = normalize_provider_keys(raw)
+
+    fn -> classify_and_apply_provider_rates(normalized, dry_run?) end
+    |> repo().transaction()
+    |> announce_committed_fx_rates()
+  end
+
+  # See the moduledoc's "Writing, and announcing it AFTER it is real" for
+  # why this exists: `update_currency/2`'s own invalidate+broadcast runs
+  # DURING the transaction above, before it is known to ever commit, and
+  # under real Postgres that is early enough for a subscriber to
+  # repopulate the cache with the pre-refresh row. This re-announces
+  # once the write is REALLY committed — nothing to do for a rolled-back
+  # batch or a dry run, neither of which wrote anything.
+  defp announce_committed_fx_rates({:ok, %{updated: updated} = result}) when updated != [] do
+    invalidate_currency_cache()
+
+    Enum.each(updated, fn %{code: code} ->
+      Events.broadcast_currencies_changed(%Currency{code: code})
+    end)
+
+    {:ok, result}
+  end
+
+  defp announce_committed_fx_rates(result), do: result
+
+  # `FOR UPDATE`, deliberately not the plain, unlocked `get_default_currency/0`
+  # every other caller in this module gets — see the moduledoc's
+  # "Atomicity" section for why holding this specific row's lock for the
+  # life of the transaction is what makes "a concurrent promotion cannot
+  # straddle this call" true rather than merely likely. Written locally
+  # instead of adding a lock option to the shared function, so no other
+  # caller's behavior changes. A locked `SELECT` matching zero rows (no
+  # default currency at all — a pathological, out-of-scope state) simply
+  # returns `nil`, same as the unlocked query.
+  defp lock_default_currency_for_update do
+    Currency
+    |> where([c], c.is_default == true)
+    |> lock("FOR UPDATE")
+    |> repo().one()
+  end
+
+  # Read fresh INSIDE the transaction, not reused from before it opened —
+  # see the moduledoc's "Atomicity" section. Both the skip/accept/reject
+  # decision below and (on the write path) the writes themselves are
+  # backed by this same snapshot.
+  defp classify_and_apply_provider_rates(normalized, dry_run?) do
+    base = lock_default_currency_for_update()
+    known_by_code = Map.new(list_currencies(), &{&1.code, &1})
+
+    classified = Enum.map(normalized, &classify_provider_entry(&1, base, known_by_code))
+    issues = for {:error, code, reason} <- classified, do: %{code: code, reason: reason}
+
+    if issues != [] do
+      repo().rollback({:invalid_rates, issues})
+    else
+      accepted = for {:ok, currency, rate} <- classified, do: {currency, rate}
+      skipped_base = for {:skip, code, :base_currency} <- classified, do: code
+
+      apply_accepted_fx_rates(accepted, skipped_base, dry_run?)
+    end
+  end
+
+  defp apply_accepted_fx_rates(accepted, skipped_base, true = _dry_run?) do
+    would_update =
+      Enum.map(accepted, fn {currency, rate} ->
+        %{code: currency.code, previous_rate: currency.exchange_rate, new_rate: rate}
+      end)
+
+    %{dry_run: true, would_update: would_update, skipped_base: skipped_base}
+  end
+
+  defp apply_accepted_fx_rates(accepted, skipped_base, false = _dry_run?) do
+    updated = Enum.map(accepted, fn {currency, rate} -> write_fx_rate!(currency, rate) end)
+    %{updated: updated, skipped_base: skipped_base}
+  end
+
+  # Rolls the enclosing transaction back on a write failure instead of
+  # returning an error tuple to a caller that isn't set up to handle
+  # one mid-`Enum.map/2` — `apply_accepted_fx_rates/3`'s write branch is
+  # already inside `repo().transaction/1` (see `apply_provider_rates/2`).
+  defp write_fx_rate!(currency, rate) do
+    case write_fx_rate(currency, rate) do
+      {:ok, entry} -> entry
+      {:error, reason} -> repo().rollback(reason)
+    end
+  end
+
+  # Never a hard `{:ok, _} = ...` match: a changeset rejection (unexpected —
+  # everything reaching here already passed classification) or a raised
+  # DB-level error (e.g. a value this function's own checks somehow missed)
+  # both come back as a tagged error the caller rolls the transaction back
+  # with, instead of crashing this function outright (§ moduledoc "Writing").
+  defp write_fx_rate(%Currency{} = currency, rate) do
+    previous_rate = currency.exchange_rate
+
+    case update_currency(currency, %{exchange_rate: rate}) do
+      {:ok, updated_currency} ->
+        {:ok, %{code: updated_currency.code, previous_rate: previous_rate, new_rate: rate}}
+
+      {:error, reason} ->
+        {:error, {:write_failed, currency.code, reason}}
+    end
+  rescue
+    error -> {:error, {:write_failed, currency.code, Exception.message(error)}}
+  end
+
+  # Case-normalizes STRING keys only (binary codes are what this hook's
+  # contract expects) so `"eur"` and `"EUR"` collapse to one entry before
+  # classification ever runs — a raw `Enum.map/2` over the provider's map
+  # would otherwise treat them as two different currencies and write (and
+  # broadcast) the same row twice. A non-string key is left as-is;
+  # `classify_provider_entry/3`'s own catch-all clause reports it as
+  # `:invalid_code`.
+  defp normalize_provider_keys(raw) do
+    Enum.reduce(raw, %{}, fn
+      {code, value}, acc when is_binary(code) -> Map.put(acc, String.upcase(code), value)
+      {code, value}, acc -> Map.put(acc, code, value)
+    end)
+  end
+
+  defp classify_provider_entry({code, value}, base, known_by_code) when is_binary(code) do
+    cond do
+      base != nil and base.code == code ->
+        {:skip, code, :base_currency}
+
+      not Map.has_key?(known_by_code, code) ->
+        {:error, code, :unknown_currency}
+
+      true ->
+        case parse_fx_rate(value) do
+          {:ok, rate} -> classify_fx_rate(code, rate, known_by_code)
+          :error -> {:error, code, :invalid_rate}
+        end
+    end
+  end
+
+  defp classify_provider_entry({code, _value}, _base, _known_by_code) do
+    {:error, inspect(code), :invalid_code}
+  end
+
+  defp classify_fx_rate(code, rate, known_by_code) do
+    cond do
+      not fx_rate_positive?(rate) ->
+        {:error, code, :non_positive_rate}
+
+      (reason = fx_rate_column_precision_error(rate)) != nil ->
+        {:error, code, reason}
+
+      true ->
+        {:ok, Map.fetch!(known_by_code, code), rate}
+    end
+  end
+
+  defp parse_fx_rate(%Decimal{} = rate), do: {:ok, rate}
+  defp parse_fx_rate(n) when is_float(n), do: {:ok, Decimal.from_float(n)}
+  defp parse_fx_rate(n) when is_integer(n), do: {:ok, Decimal.new(n)}
+
+  defp parse_fx_rate(s) when is_binary(s) do
+    case Decimal.parse(s) do
+      {%Decimal{} = rate, ""} -> {:ok, rate}
+      _ -> :error
+    end
+  end
+
+  defp parse_fx_rate(_), do: :error
+
+  defp fx_rate_positive?(%Decimal{} = rate) do
+    Decimal.compare(rate, 0) == :gt
+  rescue
+    _error -> false
+  end
+
+  # `phoenix_kit_currencies.exchange_rate` is `numeric(15,6)` — 9 integer
+  # digits, 6 fractional (confirmed against Postgres directly: casting
+  # `1000000000` — 10^9 — to `numeric(15,6)` raises "numeric field
+  # overflow ... must round to an absolute value less than 10^9", and
+  # `0.0000001` silently rounds to `0.000000`). A rate that parses and is
+  # genuinely `> 0` can still be unusable once it lands in that column —
+  # too small and it rounds away to nothing (the exact divide-by-zero
+  # `:non_positive_rate` exists to prevent, just reached through a
+  # different door); too large and Postgres raises rather than returning
+  # a changeset error. Both are checked here, BEFORE any write is
+  # attempted, using the same rounding (`:half_up`, matching what
+  # Postgres itself does at the halfway point) the column will apply.
+  @fx_rate_column_scale 6
+  @fx_rate_column_max Decimal.new("1000000000")
+
+  defp fx_rate_column_precision_error(rate) do
+    rounded = Decimal.round(rate, @fx_rate_column_scale, :half_up)
+
+    cond do
+      Decimal.compare(rounded, 0) != :gt -> :rate_too_small
+      Decimal.compare(rounded, @fx_rate_column_max) != :lt -> :rate_too_large
+      true -> nil
+    end
+  rescue
+    _error -> :invalid_rate
+  end
+
   # ============================================
   # BILLING PROFILES
   # ============================================
