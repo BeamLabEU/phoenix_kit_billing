@@ -105,7 +105,8 @@ repo_available =
       e ->
         IO.puts("""
 
-          Could not connect to test database — integration tests excluded.          The reason is printed above.
+          Could not connect to test database — integration tests excluded.
+          The reason is printed above.
           Error: #{Exception.message(e)}
         """)
 
@@ -114,7 +115,8 @@ repo_available =
       :exit, reason ->
         IO.puts("""
 
-          Could not connect to test database — integration tests excluded.          The reason is printed above.
+          Could not connect to test database — integration tests excluded.
+          The reason is printed above.
           Error: #{inspect(reason)}
         """)
 
