@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.1 - 2026-09-09
+
+Fail-closed PayPal webhook signature verification (PR #41).
+
+### Fixed
+
+- **Security:** `PhoenixKitBilling.Providers.PayPal.verify_webhook_signature/3`
+  no longer accepts a PayPal webhook unconditionally when the signature
+  argument isn't a headers map. The webhook controller always passes the
+  signature as a plain string (same as Stripe/Razorpay), so this catch-all
+  was the only path ever exercised in production and used to return `:ok`
+  unconditionally — any forged request, signed or not, was accepted and
+  processed as a genuine payment event. It now returns
+  `{:error, :invalid_signature}` (fail-closed), and the webhook controller
+  responds `401`. Full PayPal signature verification (collecting PayPal's
+  five `paypal-transmission-*`/`paypal-cert-url` headers into a map) is
+  separate, larger work, not included here — until it ships, the PayPal
+  webhook endpoint rejects all requests, including genuine ones, which is
+  the correct trade-off for a payments webhook.
+
 ## 0.15.0 - 2026-09-09
 
 Migration chain hardening plus V4 adoption of the ten remaining
