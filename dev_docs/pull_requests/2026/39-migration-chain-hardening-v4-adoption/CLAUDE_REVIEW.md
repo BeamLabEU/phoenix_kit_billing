@@ -127,17 +127,20 @@ already established.
 
 ## Issues Found
 
-None that block approval. Two residual, non-blocking notes:
+None that block approval. One residual, non-blocking note:
 
-- **[INFO] The money-safety test suite and the map-opts-in-`down/1`
-  integration test are unverified in this review**, not because of anything
-  wrong with the PR but because of a pre-existing container database
-  limitation the PR's own commit messages already disclose. The equivalent
-  *static* guarantee (no `DROP`/`TRUNCATE`/`DELETE` token reachable in
-  `up/1`/`down/1`'s own source) did run and pass, but the PR's own strongest
-  safety proof — real rows surviving a real rollback — is unconfirmed here.
-  Recommend confirming these pass in CI or on a host with a working local
-  Postgres (`mix test.setup`) before merge, if not already done.
+- **[INFO — resolved 2026-09-09]** The money-safety test suite and the
+  map-opts-in-`down/1` integration test could not be run in the original
+  review environment (container Postgres permissions). Re-run post-merge on
+  a session with a reachable `phoenix_kit_billing_test` database
+  (`PGHOST`/`PGUSER` pointed at the real database instead of `template1`,
+  which this container's role cannot connect to): `mix test` —
+  **567 tests, 0 failures, 4 skipped** (the four pre-existing
+  `subscription_type_uuid` landmine skips, unrelated to this PR). Both
+  `migrations_test.exs` and `migrations_money_safety_test.exs` run in full,
+  including the real-rows-survive-a-real-rollback assertions and the
+  negative control. The PR's strongest safety claim is now confirmed, not
+  just plausible.
 - **[INFO — already disclosed, not a defect]**
   `lib/phoenix_kit_billing/migrations.ex:147-161` — the moduledoc honestly
   documents a real ordering gap: on a hypothetical future core baseline that
@@ -170,23 +173,20 @@ None that block approval. Two residual, non-blocking notes:
   included.
 - The moduledoc's V1-V3-ordering-gap disclosure (rather than silence) is
   exactly the right way to carry a known, low-priority limitation forward.
-- `migrations_money_safety_test.exs`'s design is sound even though it could
-  not be executed here: real rows, the real `Ecto.Migration.Runner`
-  (correctly avoiding the `Ecto.Migrator`'s `Task`-based sandbox-checkout
-  deadlock), and a deliberate negative control proving the survival
-  assertions have teeth.
+- `migrations_money_safety_test.exs`'s design held up once it could actually
+  run: real rows, the real `Ecto.Migration.Runner` (correctly avoiding the
+  `Ecto.Migrator`'s `Task`-based sandbox-checkout deadlock), and a
+  deliberate negative control proving the survival assertions have teeth —
+  confirmed passing post-merge (see Issues Found).
 - `mix precommit` is fully clean (compile, format, credo --strict, dialyzer,
-  hex.audit, deps.unlock --check-unused) and `mix test` is 487/487 passing on
-  everything that could run in this environment.
+  hex.audit, deps.unlock --check-unused) and `mix test` is 567/567 passing
+  (4 pre-existing, unrelated skips) once run against a reachable database.
 
 ## Verdict
 
 **Approved.** No changes made. Every DDL statement, boundary condition, and
 claimed defect fix was independently verified against core's actual source
 (the Hex-resolved dependency this project uses), `mix precommit` is clean,
-and 487/487 runnable tests pass. The one open item — the money-safety
-integration tests could not be executed against a real database in this
-review environment — is a pre-existing, already-disclosed container
-limitation, not a defect in the PR; the design of that test suite is sound
-and the equivalent static safety checks (no destructive SQL token reachable
-in `up/1`/`down/1`) did run and pass. Safe to un-draft.
+and the full suite — including the money-safety integration tests, rerun
+post-merge once a working database was available — passes: 567/567 (4
+pre-existing, unrelated skips). Merged.

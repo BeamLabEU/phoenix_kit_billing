@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.0 - 2026-09-09
+
+Migration chain hardening plus V4 adoption of the ten remaining
+core-baseline tables (PR #39).
+
+### Added
+
+- **V4** adopts `phoenix_kit_billing_profiles`, `phoenix_kit_currencies`,
+  `phoenix_kit_invoices`, `phoenix_kit_orders`, `phoenix_kit_transactions`,
+  `phoenix_kit_payment_methods`, `phoenix_kit_subscriptions`,
+  `phoenix_kit_webhook_events`, `phoenix_kit_payment_options` and
+  `phoenix_kit_subscription_types` under core's exact object names — the
+  same pure-adoption contract V1 already established for
+  `phoenix_kit_payment_provider_configs`. A no-op on any host where core
+  already created these tables; creates them on a future baseline that
+  doesn't. `current_version/0` is now `4`.
+
+### Fixed
+
+- `up_statements/2`/`down_statements/2` reject an out-of-range `:version`
+  target instead of silently clamping it — a hand-written call passing a
+  too-high target used to stamp a `pkb_schema:` marker the chain doesn't
+  have, permanently hiding every later real version.
+- `up/1`/`down/1` now read `:version` from a map `opts` as well as a
+  keyword list; a map-shaped call used to silently default to the latest
+  (or oldest) version instead of the one requested.
+- `up_statements(prefix, 0)` no longer raises `FunctionClauseError` —
+  "apply up to version 0" is now a defined no-op.
+- The schema-prefix fallback validator (used when core's own
+  `validate_prefix!/1` isn't loaded) now matches core's rule byte-for-byte
+  (lower-case only, 20-byte cap) instead of a looser, uppercase-permitting,
+  unbounded regex.
+
 ## 0.14.0 - 2026-09-08
 
 Per-domain currency, stage Э5: exchange-rate provider hook and provider
