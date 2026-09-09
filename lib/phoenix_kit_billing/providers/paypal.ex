@@ -371,7 +371,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     # If signature is just a string, we can't verify properly
     # In production, headers should be passed
     Logger.warning("PayPal webhook verification requires full headers map")
-    :ok
+    {:error, :invalid_signature}
   end
 
   # ============================================
@@ -467,14 +467,27 @@ defmodule PhoenixKitBilling.Providers.PayPal do
     else
       auth = Base.encode64("#{client_id}:#{client_secret}")
 
-      case Req.post(
-             "#{base_url()}/v1/oauth2/token",
-             headers: [
-               {"Authorization", "Basic #{auth}"},
-               {"Content-Type", "application/x-www-form-urlencoded"}
-             ],
-             body: "grant_type=client_credentials"
-           ) do
+      # TEST-ONLY seam: `:paypal_req_options` is never set in any shipped
+      # config (config.exs / runtime.exs) — this merge is a no-op in
+      # production. It exists so tests can point this one Req call at a
+      # `Req.Test` stub instead of PayPal's real OAuth endpoint, without a
+      # real network call or real credentials. Whoever can write
+      # Application env for this node already controls far bigger levers
+      # (the Repo URL, the endpoint's secret_key_base, ...), so this key
+      # does not expand what such an attacker can already do.
+      opts =
+        Keyword.merge(
+          [
+            headers: [
+              {"Authorization", "Basic #{auth}"},
+              {"Content-Type", "application/x-www-form-urlencoded"}
+            ],
+            body: "grant_type=client_credentials"
+          ],
+          Application.get_env(:phoenix_kit_billing, :paypal_req_options, [])
+        )
+
+      case Req.post("#{base_url()}/v1/oauth2/token", opts) do
         {:ok, %{status: 200, body: body}} ->
           {:ok, body["access_token"]}
 
