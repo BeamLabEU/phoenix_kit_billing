@@ -202,8 +202,17 @@ defmodule PhoenixKitBilling.Web.Settings do
       {:error, :out_of_range} ->
         # Nothing is persisted — same outcome the browser's native min/max
         # validation produced before this field became a `<.decimal_input>`.
+        # Re-assign every submitted field, not just tax_rate: load_settings/1
+        # (which would normally refresh all of them from the DB) is skipped
+        # here since nothing was saved, so without this the rest of the form
+        # would silently revert to stale server values on a rejected submit.
         {:noreply,
          socket
+         |> assign(:invoice_prefix, params["invoice_prefix"])
+         |> assign(:order_prefix, params["order_prefix"])
+         |> assign(:receipt_prefix, params["receipt_prefix"])
+         |> assign(:invoice_due_days, params["invoice_due_days"])
+         |> assign(:tax_enabled, tax_enabled == "true")
          |> assign(:tax_rate, params["tax_rate"])
          |> put_flash(:error, gettext("Tax rate must be between 0 and 100"))}
     end

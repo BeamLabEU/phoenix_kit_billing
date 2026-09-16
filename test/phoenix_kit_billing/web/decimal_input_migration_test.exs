@@ -69,6 +69,60 @@ defmodule PhoenixKitBilling.Web.DecimalInputMigrationTest do
       assert Settings.get_setting("billing_default_tax_rate") == "not-a-number"
     end
 
+    test "a blank rate takes the same non-rejected path as before the migration", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/en/admin/settings/billing")
+
+      html =
+        view
+        |> form("form[phx-submit=save_general]", %{
+          "invoice_prefix" => "INV",
+          "receipt_prefix" => "RCP",
+          "invoice_due_days" => "14",
+          "tax_enabled" => "true",
+          "tax_rate" => ""
+        })
+        |> render_submit()
+
+      # Blank is neither below the 0-100 bound nor above it, so
+      # normalize_tax_rate/1's :below_min/:above_max guard does not fire —
+      # the submit takes the same success path a garbage value does, not
+      # the out-of-range rejection.
+      assert html =~ "General settings saved"
+      refute html =~ "Tax rate must be between 0 and 100"
+    end
+
+    test "a rejected out-of-range submit preserves the other unsaved field edits in the form",
+         %{conn: conn} do
+      Settings.update_setting("billing_invoice_prefix", "INV")
+      Settings.update_setting("billing_order_prefix", "ORD")
+      Settings.update_setting("billing_default_tax_rate", "20")
+
+      {:ok, view, _html} = live(conn, "/en/admin/settings/billing")
+
+      html =
+        view
+        |> form("form[phx-submit=save_general]", %{
+          "invoice_prefix" => "NEWINV",
+          "order_prefix" => "NEWORD",
+          "receipt_prefix" => "RCP",
+          "invoice_due_days" => "30",
+          "tax_enabled" => "true",
+          "tax_rate" => "500"
+        })
+        |> render_submit()
+
+      # Rejected: nothing persisted...
+      assert Settings.get_setting("billing_invoice_prefix") == "INV"
+      assert Settings.get_setting("billing_order_prefix") == "ORD"
+      assert Settings.get_setting("billing_invoice_due_days") == "14"
+
+      # ...but the other edits the user just typed are still on screen,
+      # not reverted to the stale server values above.
+      assert html =~ "NEWINV"
+      assert html =~ "NEWORD"
+      assert html =~ "value=\"30\""
+    end
+
     test "a rate above 100 is rejected, same as the old browser min/max guard", %{conn: conn} do
       Settings.update_setting("billing_default_tax_rate", "20")
 
