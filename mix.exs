@@ -111,7 +111,7 @@ defmodule PhoenixKitBilling.MixProject do
       # transitively via ex_aws/stripity_stripe - so scoping it to the environments
       # that actually resolve it costs consumers nothing.
       {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
-      pk_dep(:phoenix_kit, "~> 2.0"),
+      pk_dep(:phoenix_kit, "~> 2.26"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just

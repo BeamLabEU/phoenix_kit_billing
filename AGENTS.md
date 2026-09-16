@@ -11,7 +11,7 @@ they live in this module's tables and providers only collect money. Ships admin
 LiveViews for every entity, two customer pages, print views, provider webhook
 endpoints, and Oban workers for renewals and dunning.
 
-- **Depends on:** `phoenix_kit` `~> 2.0` (Hex). No sibling `phoenix_kit_*` deps.
+- **Depends on:** `phoenix_kit` `~> 2.26` (Hex). No sibling `phoenix_kit_*` deps.
   Runtime libraries: `phoenix_live_view ~> 1.1`, `phoenix ~> 1.7`,
   `ecto_sql ~> 3.12`, `oban ~> 2.20`, `uuidv7 ~> 1.0`, `stripity_stripe ~> 3.2`,
   `req ~> 0.5`, `jason ~> 1.4`, `gettext ~> 1.0`.
@@ -306,13 +306,17 @@ setting.
 
 ### Core compatibility
 
-`mix.exs` requires `phoenix_kit ~> 2.0` — every core 2.x and nothing else. Core
-1.7 is excluded because core 2.0.0 squashed the migration chain into a single
-`V135` baseline and made it the floor, and this module is verified only against
-that baseline. `test/core_pin_conformance_test.exs` guards the requirement in both
-directions: it fails if the pin is re-narrowed to a single minor (`~> 2.0.x`
-admits no 2.1), if it re-admits 1.7, or if a local `path:` override reaches a
-commit.
+`mix.exs` requires `phoenix_kit ~> 2.26` — every core 2.x from 2.26 on and
+nothing else. Core 1.7 is excluded because core 2.0.0 squashed the migration chain
+into a single `V135` baseline, and this module is verified only against that
+baseline. The 2.26 floor is where `<.decimal_input>` and
+`PhoenixKit.Utils.Number.parse_decimal/2` first shipped; the component is imported
+at compile time, so an older core does not compile this package. Adopting a newer
+core API means raising the floor in the same commit.
+`test/core_pin_conformance_test.exs` guards the requirement in both directions:
+it fails if the pin is re-narrowed to a single minor (`~> 2.26.x` admits no
+2.27), if it re-admits a core below the floor or 1.7, or if a local `path:`
+override reaches a commit.
 
 That covers *which* core resolves, not whether it still exports what this package
 calls. `PhoenixKitBilling.CoreCompat` declares that surface in four lists —

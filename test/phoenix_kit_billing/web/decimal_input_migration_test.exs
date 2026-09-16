@@ -291,6 +291,24 @@ defmodule PhoenixKitBilling.Web.DecimalInputMigrationTest do
       assert Billing.get_subscription_type_by_slug("bad-price") ==
                {:error, :subscription_type_not_found}
     end
+
+    # Core's <.input> and <.decimal_input> render their own required marker, so
+    # a label string ending in " *" showed two asterisks.
+    test "required labels carry exactly one asterisk", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/en/admin/billing/subscription-types/new")
+
+      doc = LazyHTML.from_fragment(html)
+
+      for id <- ["subscription_type_name", "subscription_type_slug", "subscription_type_price"] do
+        label_text =
+          doc
+          |> LazyHTML.query("label[for='#{id}']")
+          |> LazyHTML.text()
+
+        assert label_text =~ "*", "expected a required marker on #{id}"
+        refute label_text =~ ~r/\*.*\*/s, "label for #{id} renders two asterisks"
+      end
+    end
   end
 
   describe "invoice payment / refund amounts" do

@@ -25,7 +25,7 @@
                   <.input
                     field={@form[:name]}
                     type="text"
-                    label={gettext("Name") <> " *"}
+                    label={gettext("Name")}
                     placeholder={gettext("Pro Plan")}
                     required
                   />
@@ -35,7 +35,7 @@
                   <.input
                     field={@form[:slug]}
                     type="text"
-                    label={gettext("Slug") <> " *"}
+                    label={gettext("Slug")}
                     class="font-mono"
                     placeholder="pro-monthly"
                     required
@@ -68,7 +68,7 @@
                 <div class="fieldset">
                   <.decimal_input
                     field={@form[:price]}
-                    label={gettext("Price") <> " *"}
+                    label={gettext("Price")}
                     placeholder="9.99"
                     required
                   />
