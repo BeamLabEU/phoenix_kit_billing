@@ -68,6 +68,46 @@ defmodule PhoenixKitBilling.Web.DecimalInputMigrationTest do
 
       assert Settings.get_setting("billing_default_tax_rate") == "not-a-number"
     end
+
+    test "a rate above 100 is rejected, same as the old browser min/max guard", %{conn: conn} do
+      Settings.update_setting("billing_default_tax_rate", "20")
+
+      {:ok, view, _html} = live(conn, "/en/admin/settings/billing")
+
+      html =
+        view
+        |> form("form[phx-submit=save_general]", %{
+          "invoice_prefix" => "INV",
+          "receipt_prefix" => "RCP",
+          "invoice_due_days" => "14",
+          "tax_enabled" => "true",
+          "tax_rate" => "500"
+        })
+        |> render_submit()
+
+      assert html =~ "Tax rate must be between 0 and 100"
+      assert Settings.get_setting("billing_default_tax_rate") == "20"
+    end
+
+    test "a negative rate is rejected, same as the old browser min/max guard", %{conn: conn} do
+      Settings.update_setting("billing_default_tax_rate", "20")
+
+      {:ok, view, _html} = live(conn, "/en/admin/settings/billing")
+
+      html =
+        view
+        |> form("form[phx-submit=save_general]", %{
+          "invoice_prefix" => "INV",
+          "receipt_prefix" => "RCP",
+          "invoice_due_days" => "14",
+          "tax_enabled" => "true",
+          "tax_rate" => "-5"
+        })
+        |> render_submit()
+
+      assert html =~ "Tax rate must be between 0 and 100"
+      assert Settings.get_setting("billing_default_tax_rate") == "20"
+    end
   end
 
   describe "currencies — exchange rate" do
