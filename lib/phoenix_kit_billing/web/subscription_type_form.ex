@@ -9,6 +9,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Input
   import PhoenixKitWeb.Components.Core.Select
@@ -16,6 +17,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   import PhoenixKitBilling.Web.Components.CurrencyDisplay
 
   alias PhoenixKit.Settings
+  alias PhoenixKit.Utils.Number
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
@@ -109,18 +111,27 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
 
-    # Parse price from string to decimal
+    # Parse price from string to decimal. On garbage input, pass the raw
+    # string through so Ecto's own :decimal cast rejects it as a normal
+    # changeset error instead of `Decimal.new/1` raising.
     price =
       case params["price"] do
         "" -> nil
         nil -> nil
-        p when is_binary(p) -> Decimal.new(p)
+        p when is_binary(p) -> normalize_price(p)
         p -> p
       end
 
     params
     |> Map.put("features", features)
     |> Map.put("price", price)
+  end
+
+  defp normalize_price(p) do
+    case Number.parse_decimal(p) do
+      {:ok, decimal} -> decimal
+      {:error, _reason} -> p
+    end
   end
 
   defp format_features(nil), do: ""

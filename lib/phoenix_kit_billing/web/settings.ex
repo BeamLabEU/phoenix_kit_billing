@@ -10,11 +10,13 @@ defmodule PhoenixKitBilling.Web.Settings do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.Checkbox
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitBilling.Web.Components.SettingsTabs
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.CountryData
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitWeb.Live.Settings.Organization
@@ -135,38 +137,85 @@ defmodule PhoenixKitBilling.Web.Settings do
   end
 
   defp parse_tax_rate(rate) when is_binary(rate) do
-    case Float.parse(rate) do
-      {value, _} -> if value == trunc(value), do: trunc(value), else: value
-      :error -> 0
+    case Number.parse_decimal(rate) do
+      {:ok, decimal} ->
+        value = Decimal.to_float(decimal)
+        if value == trunc(value), do: trunc(value), else: value
+
+      {:error, _reason} ->
+        0
     end
   end
 
   defp parse_tax_rate(rate) when is_number(rate), do: rate
   defp parse_tax_rate(_), do: 0
 
+  # Stored as a plain setting string, later read back by `Billing.get_tax_rate/0`
+  # (`Decimal.parse/1`, dot only). Normalize a comma-typed rate to canonical
+  # dot form here so it round-trips; leave blank/garbage untouched — the
+  # reader already falls back to 0 with a warning for those.
+  #
+  # A rate outside 0-100 is rejected here rather than stored: before the
+  # `<.decimal_input>` migration this field was a real `<input type="number"
+  # min="0" max="100">`, and the browser's native constraint validation blocked
+  # an out-of-range submit before it ever reached the server. `decimal_input`
+  # renders `type="text"`, so that guard is gone and nothing downstream
+  # (`Billing.get_tax_rate/0`, invoice tax calculation) checks the range —
+  # without this, a typo like "500" would save silently and multiply invoice
+  # tax by 5x.
+  defp normalize_tax_rate(rate) when is_binary(rate) do
+    case Number.parse_decimal(rate, min: 0, max: 100) do
+      {:ok, decimal} -> {:ok, Decimal.to_string(decimal)}
+      {:error, reason} when reason in [:below_min, :above_max] -> {:error, :out_of_range}
+      {:error, _reason} -> {:ok, rate}
+    end
+  end
+
+  defp normalize_tax_rate(rate), do: {:ok, rate}
+
   defp gated_event("save_general", params, socket) do
     # Convert checkbox value to "true"/"false" string
     tax_enabled = if params["tax_enabled"] == "true", do: "true", else: "false"
 
-    settings = [
-      # §3.3: no "default currency" setting is written here anymore — the
-      # base currency is the currencies admin page's is_default row.
-      {"billing_invoice_prefix", params["invoice_prefix"]},
-      {"billing_order_prefix", params["order_prefix"]},
-      {"billing_receipt_prefix", params["receipt_prefix"]},
-      {"billing_invoice_due_days", params["invoice_due_days"]},
-      {"billing_tax_enabled", tax_enabled},
-      {"billing_default_tax_rate", params["tax_rate"]}
-    ]
+    case normalize_tax_rate(params["tax_rate"]) do
+      {:ok, tax_rate} ->
+        settings = [
+          # §3.3: no "default currency" setting is written here anymore — the
+          # base currency is the currencies admin page's is_default row.
+          {"billing_invoice_prefix", params["invoice_prefix"]},
+          {"billing_order_prefix", params["order_prefix"]},
+          {"billing_receipt_prefix", params["receipt_prefix"]},
+          {"billing_invoice_due_days", params["invoice_due_days"]},
+          {"billing_tax_enabled", tax_enabled},
+          {"billing_default_tax_rate", tax_rate}
+        ]
 
-    Enum.each(settings, fn {key, value} ->
-      Settings.update_setting(key, value)
-    end)
+        Enum.each(settings, fn {key, value} ->
+          Settings.update_setting(key, value)
+        end)
 
-    {:noreply,
-     socket
-     |> load_settings()
-     |> put_flash(:info, gettext("General settings saved"))}
+        {:noreply,
+         socket
+         |> load_settings()
+         |> put_flash(:info, gettext("General settings saved"))}
+
+      {:error, :out_of_range} ->
+        # Nothing is persisted — same outcome the browser's native min/max
+        # validation produced before this field became a `<.decimal_input>`.
+        # Re-assign every submitted field, not just tax_rate: load_settings/1
+        # (which would normally refresh all of them from the DB) is skipped
+        # here since nothing was saved, so without this the rest of the form
+        # would silently revert to stale server values on a rejected submit.
+        {:noreply,
+         socket
+         |> assign(:invoice_prefix, params["invoice_prefix"])
+         |> assign(:order_prefix, params["order_prefix"])
+         |> assign(:receipt_prefix, params["receipt_prefix"])
+         |> assign(:invoice_due_days, params["invoice_due_days"])
+         |> assign(:tax_enabled, tax_enabled == "true")
+         |> assign(:tax_rate, params["tax_rate"])
+         |> put_flash(:error, gettext("Tax rate must be between 0 and 100"))}
+    end
   end
 
   defp gated_event("apply_suggested_tax", _params, socket) do

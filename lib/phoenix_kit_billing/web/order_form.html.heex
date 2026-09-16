@@ -156,10 +156,10 @@
                       />
                     </td>
                     <td>
-                      <input
-                        type="text"
+                      <.decimal_input
+                        id={"line-item-#{item.id}-price"}
                         value={item.unit_price}
-                        class="input input-sm w-full font-mono"
+                        class="input-sm w-full font-mono"
                         placeholder="0.00"
                         phx-blur="update_line_item"
                         phx-value-id={item.id}

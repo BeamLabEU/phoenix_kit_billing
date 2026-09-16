@@ -66,12 +66,9 @@
 
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div class="fieldset">
-                  <.input
+                  <.decimal_input
                     field={@form[:price]}
-                    type="number"
                     label={gettext("Price") <> " *"}
-                    step="0.01"
-                    min="0"
                     placeholder="9.99"
                     required
                   />

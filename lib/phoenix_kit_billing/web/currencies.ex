@@ -12,6 +12,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
   import PhoenixKitWeb.Components.Core.Checkbox
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitBilling.Web.Components.SettingsTabs
   import PhoenixKitWeb.Components.Core.TableDefault
@@ -19,6 +20,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   import PhoenixKitWeb.Components.Core.TimeDisplay
 
   alias PhoenixKit.Settings
+  alias PhoenixKit.Utils.Number
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
@@ -127,7 +129,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   def handle_event("validate", %{"currency" => params}, socket) do
     changeset =
       (socket.assigns.editing_currency || %Currency{})
-      |> Currency.changeset(params)
+      |> Currency.changeset(normalize_currency_params(params))
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :form, to_form(changeset))}
@@ -244,6 +246,19 @@ defmodule PhoenixKitBilling.Web.Currencies do
     end)
   end
 
+  # The form's exchange rate field is free text ("1,5" or "1.5"); normalize
+  # it to a canonical dot string before it reaches `Currency.changeset/2`'s
+  # `:decimal` cast, which does not understand a comma. Left untouched on
+  # a blank/garbage value — the changeset already rejects those.
+  defp normalize_currency_params(%{"exchange_rate" => rate} = params) when is_binary(rate) do
+    case Number.parse_decimal(rate) do
+      {:ok, decimal} -> Map.put(params, "exchange_rate", Decimal.to_string(decimal))
+      {:error, _reason} -> params
+    end
+  end
+
+  defp normalize_currency_params(params), do: params
+
   # Gets currency codes for a country from BeamLabCountries (primary + alternative)
   defp get_country_currency_codes(country_code)
        when is_binary(country_code) and country_code != "" do
@@ -324,6 +339,8 @@ defmodule PhoenixKitBilling.Web.Currencies do
   end
 
   defp gated_event("save", %{"currency" => params}, socket) do
+    params = normalize_currency_params(params)
+
     result =
       case socket.assigns.editing_currency do
         nil -> Billing.create_currency(params)
