@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.16.0 - 2026-09-16
+
+Free-typed decimal form fields via core's `<.decimal_input>` (PR #42).
+
+### Changed
+
+- **Requires `phoenix_kit ~> 2.26`** (was `~> 2.0`). `<.decimal_input>` and
+  `PhoenixKit.Utils.Number.parse_decimal/2` first shipped in core 2.26.0 and the
+  component is imported at compile time, so an older core cannot compile this
+  release. Hosts on core 2.0–2.25 must upgrade core first.
+- Tax rate (settings), exchange rate (currencies), subscription type price,
+  invoice payment and refund amounts, and order line-item unit price now use
+  `<.decimal_input>`: a comma or a dot both work, nothing is rounded, and the
+  browser no longer blocks a submit over `step`/locale mismatches.
+- `record_payment/3`, `record_refund/3` and the order form parse amounts with
+  `Number.parse_decimal/2`, so `"12,50"` is 12.50 instead of 12.
+
+### Fixed
+
+- A default tax rate outside 0–100 is rejected with a flash instead of saved
+  (the browser's `min`/`max` guard went away with `type="number"`), and the rest
+  of the submitted settings form stays as typed.
+- A garbage subscription type price shows "is invalid" instead of crashing the
+  LiveView (`Decimal.new/1` raised).
+- The subscription type form's Name, Slug and Price labels showed two required
+  asterisks.
+
 ## 0.15.1 - 2026-09-09
 
 Fail-closed PayPal webhook signature verification (PR #41).
