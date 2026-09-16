@@ -8,6 +8,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Select
   import PhoenixKitWeb.Components.Core.Textarea
@@ -15,6 +16,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   alias PhoenixKit.Settings
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.CountryData
+  alias PhoenixKit.Utils.Number
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
@@ -350,9 +352,9 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   defp parse_number(_, default), do: default
 
   defp parse_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, _} -> decimal
-      :error -> Decimal.new(0)
+    case Number.parse_decimal(value) do
+      {:ok, decimal} -> decimal
+      {:error, _reason} -> Decimal.new(0)
     end
   end
 

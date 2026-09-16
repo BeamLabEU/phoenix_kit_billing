@@ -41,6 +41,7 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Settings, :get_project_title, 0},
     {PhoenixKit.Settings, :update_setting, 2},
     {PhoenixKit.Settings, :update_boolean_setting_with_module, 3},
+    {PhoenixKit.Utils.Number, :parse_decimal, 1},
     {PhoenixKit.Utils.Routes, :path, 1},
     {PhoenixKit.Utils.Routes, :url, 1},
     {PhoenixKit.Utils.Date, :utc_now, 0},

@@ -10,11 +10,13 @@ defmodule PhoenixKitBilling.Web.Settings do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.Checkbox
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitBilling.Web.Components.SettingsTabs
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.CountryData
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitWeb.Live.Settings.Organization
@@ -135,14 +137,31 @@ defmodule PhoenixKitBilling.Web.Settings do
   end
 
   defp parse_tax_rate(rate) when is_binary(rate) do
-    case Float.parse(rate) do
-      {value, _} -> if value == trunc(value), do: trunc(value), else: value
-      :error -> 0
+    case Number.parse_decimal(rate) do
+      {:ok, decimal} ->
+        value = Decimal.to_float(decimal)
+        if value == trunc(value), do: trunc(value), else: value
+
+      {:error, _reason} ->
+        0
     end
   end
 
   defp parse_tax_rate(rate) when is_number(rate), do: rate
   defp parse_tax_rate(_), do: 0
+
+  # Stored as a plain setting string, later read back by `Billing.get_tax_rate/0`
+  # (`Decimal.parse/1`, dot only). Normalize a comma-typed rate to canonical
+  # dot form here so it round-trips; leave blank/garbage untouched — the
+  # reader already falls back to 0 with a warning for those.
+  defp normalize_tax_rate(rate) when is_binary(rate) do
+    case Number.parse_decimal(rate) do
+      {:ok, decimal} -> Decimal.to_string(decimal)
+      {:error, _reason} -> rate
+    end
+  end
+
+  defp normalize_tax_rate(rate), do: rate
 
   defp gated_event("save_general", params, socket) do
     # Convert checkbox value to "true"/"false" string
@@ -156,7 +175,7 @@ defmodule PhoenixKitBilling.Web.Settings do
       {"billing_receipt_prefix", params["receipt_prefix"]},
       {"billing_invoice_due_days", params["invoice_due_days"]},
       {"billing_tax_enabled", tax_enabled},
-      {"billing_default_tax_rate", params["tax_rate"]}
+      {"billing_default_tax_rate", normalize_tax_rate(params["tax_rate"])}
     ]
 
     Enum.each(settings, fn {key, value} ->

@@ -367,12 +367,12 @@
               <%!-- Exchange Rate --%>
               <div class="fieldset">
                 <label class="label"><span class="fieldset-legend">{gettext("Exchange Rate")}</span></label>
-                <input
-                  type="text"
+                <.decimal_input
+                  id="currency-exchange-rate"
                   name="currency[exchange_rate]"
                   value={@form[:exchange_rate].value}
                   placeholder="1.0"
-                  class="input w-full"
+                  class="w-full"
                 />
               </div>
             </div>

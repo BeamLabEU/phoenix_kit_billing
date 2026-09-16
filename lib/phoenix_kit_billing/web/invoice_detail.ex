@@ -9,6 +9,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
+  import PhoenixKitWeb.Components.Core.DecimalInput
   import PhoenixKitWeb.Components.Core.UserInfo
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz

@@ -49,6 +49,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKit.Utils.Date, as: UtilsDate
+  alias PhoenixKit.Utils.Number
   alias PhoenixKit.Utils.UUID, as: UUIDUtils
   alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Currency
@@ -4283,9 +4284,9 @@ defmodule PhoenixKitBilling do
   end
 
   defp parse_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, _} -> decimal
-      :error -> Decimal.new(0)
+    case Number.parse_decimal(value) do
+      {:ok, decimal} -> decimal
+      {:error, _reason} -> Decimal.new(0)
     end
   end
 
