@@ -70,9 +70,12 @@ defmodule PhoenixKitBilling.Transaction do
       :amount,
       :currency,
       :payment_method,
-      :invoice_uuid,
-      :user_uuid
+      :invoice_uuid
     ])
+    # No user required: a provider-confirmed payment on a GUEST invoice has
+    # neither an admin actor nor an invoice user. Requiring one failed the
+    # insert after the card was charged (billing V5 dropped the column's
+    # NOT NULL for the same reason).
     |> validate_inclusion(:payment_method, @payment_methods)
     |> validate_number(:amount, not_equal_to: 0)
     |> validate_length(:currency, is: 3)

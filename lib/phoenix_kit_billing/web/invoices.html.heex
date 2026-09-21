@@ -150,7 +150,14 @@
                           <div class="font-medium text-sm">{invoice.user.email}</div>
                         </div>
                       <% else %>
-                        <span class="text-base-content/50">-</span>
+                        <%= if payer = PhoenixKitBilling.Invoice.payer_email(invoice.billing_details) do %>
+                          <div class="text-sm">
+                            {payer}
+                            <span class="badge badge-ghost badge-xs ml-1">{gettext("guest")}</span>
+                          </div>
+                        <% else %>
+                          <span class="text-base-content/50">-</span>
+                        <% end %>
                       <% end %>
                     </.table_default_cell>
                     <.table_default_cell>

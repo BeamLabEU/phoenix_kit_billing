@@ -11,13 +11,38 @@ defmodule PhoenixKitBilling.Schemas.InvoiceTest do
       assert Invoice.changeset(%Invoice{}, @valid).valid?
     end
 
-    test "requires user_uuid, total AND currency (no schema default)" do
+    test "requires a payer, total AND currency (no schema default)" do
       errors = errors_on(Invoice.changeset(%Invoice{}, %{}))
-      assert "can't be blank" in errors.user_uuid
+      assert "an invoice needs a user or a billing email" in errors.user_uuid
       assert "can't be blank" in errors.total
       # The schema default was removed (§7.3): a missing currency is a loud
       # changeset error, not a silent "EUR".
       assert "can't be blank" in errors.currency
+    end
+
+    # Billing V5: a guest paying for something (a booking) has no account,
+    # and inventing one splits their history. A billing email is enough.
+    test "a guest payer — billing email, no user — is valid" do
+      attrs =
+        @valid
+        |> Map.delete(:user_uuid)
+        |> Map.put(:billing_details, %{"email" => "guest@example.com"})
+
+      assert Invoice.changeset(%Invoice{}, attrs).valid?
+    end
+
+    test "a blank billing email is not a payer" do
+      attrs = @valid |> Map.delete(:user_uuid) |> Map.put(:billing_details, %{"email" => "   "})
+
+      assert %{user_uuid: ["an invoice needs a user or a billing email"]} =
+               errors_on(Invoice.changeset(%Invoice{}, attrs))
+    end
+
+    test "payer_email/1 reads string or atom keys and ignores blanks" do
+      assert Invoice.payer_email(%{"email" => " a@b.co "}) == "a@b.co"
+      assert Invoice.payer_email(%{email: "a@b.co"}) == "a@b.co"
+      assert Invoice.payer_email(%{"email" => ""}) == nil
+      assert Invoice.payer_email(nil) == nil
     end
 
     test "rejects invalid status" do

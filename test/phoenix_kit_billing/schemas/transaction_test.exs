@@ -17,13 +17,16 @@ defmodule PhoenixKitBilling.Schemas.TransactionTest do
       assert Transaction.changeset(%Transaction{}, @valid).valid?
     end
 
-    test "requires transaction_number, amount, currency, invoice_uuid, user_uuid" do
+    test "requires transaction_number, amount, currency, invoice_uuid — not a user" do
       errors = errors_on(Transaction.changeset(%Transaction{}, %{}))
       assert "can't be blank" in errors.transaction_number
       assert "can't be blank" in errors.amount
       assert "can't be blank" in errors.currency
       assert "can't be blank" in errors.invoice_uuid
-      assert "can't be blank" in errors.user_uuid
+      # Billing V5: a provider-confirmed payment on a guest invoice has no
+      # admin actor and no invoice user. Requiring one failed the insert
+      # after the card was charged.
+      refute Map.has_key?(errors, :user_uuid)
       # payment_method ("bank") still has a schema default, so even
       # though it's in validate_required it's never blank. currency's own
       # literal default was removed once this validation existed (§7.3,

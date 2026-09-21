@@ -42,7 +42,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
     alias PhoenixKit.Migrations.Postgres.Helpers
 
     test "current_version/0 and version_table/0" do
-      assert Migrations.current_version() == 4
+      assert Migrations.current_version() == 5
       assert Migrations.version_table() == "phoenix_kit_payment_provider_configs"
     end
 
@@ -220,7 +220,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
       statements = Migrations.up_statements()
 
       assert List.last(statements) ==
-               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:4'",
+               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:5'",
              "the marker must be stamped after the DDL it certifies, not before"
     end
 
@@ -305,6 +305,9 @@ defmodule PhoenixKitBilling.MigrationsTest do
     # phoenix_kit_payment_provider_configs table), and the other test
     # proves nothing MORE destructive slips in anywhere.
     test "down/1 emits exactly the marker bookkeeping, in every target and prefix" do
+      v5_undo_public = v5_undo("public")
+      v5_undo_alt = v5_undo("billing_alt")
+
       v3_drops_public = [
         "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS base_currency",
         "ALTER TABLE public.phoenix_kit_orders DROP COLUMN IF EXISTS exchange_rate",
@@ -330,43 +333,76 @@ defmodule PhoenixKitBilling.MigrationsTest do
       ]
 
       assert Migrations.down_statements("public", 0) ==
-               v3_drops_public ++
+               v5_undo_public ++
+                 v3_drops_public ++
                  v2_drops_public ++
                  ["COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS NULL"]
 
       assert Migrations.down_statements("public", 1) ==
-               v3_drops_public ++
+               v5_undo_public ++
+                 v3_drops_public ++
                  v2_drops_public ++
                  [
                    "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:1'"
                  ]
 
       assert Migrations.down_statements("billing_alt", 0) ==
-               v3_drops_alt ++
+               v5_undo_alt ++
+                 v3_drops_alt ++
                  v2_drops_alt ++
                  ["COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS NULL"]
 
       # target 2: below V3, so the orders columns still get dropped, but
       # the currencies index/columns (added at V2, kept at target >= 2) do not.
       assert Migrations.down_statements("billing_alt", 2) ==
-               v3_drops_alt ++
+               v5_undo_alt ++
+                 v3_drops_alt ++
                  [
                    "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:2'"
                  ]
 
-      # target 3: nothing left to drop (V3's own additions are kept).
+      # target 3: V3's own additions are kept; only V5 is undone.
       assert Migrations.down_statements("billing_alt", 3) ==
-               [
-                 "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'"
-               ]
+               v5_undo_alt ++
+                 [
+                   "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'"
+                 ]
 
-      # target 4 == current_version: nothing to drop, marker only. V4 is
-      # pure adoption (like V1) — it changes no shape of its own, so there
-      # is nothing below it to drop either.
+      # target 4: V5 undone. V4 itself is pure adoption (like V1) — it
+      # changes no shape of its own, so it contributes nothing to drop.
       assert Migrations.down_statements("billing_alt", 4) ==
+               v5_undo_alt ++
+                 [
+                   "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:4'"
+                 ]
+
+      # target 5 == current_version: nothing to undo, marker only.
+      assert Migrations.down_statements("billing_alt", 5) ==
                [
-                 "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:4'"
+                 "COMMENT ON TABLE billing_alt.phoenix_kit_payment_provider_configs IS 'pkb_schema:5'"
                ]
+    end
+
+    # V5's rollback, pinned verbatim — the drift guard's job is to make any
+    # change to what a rollback executes a deliberate edit here. It REFUSES
+    # while guest payers exist rather than deleting or re-attributing money
+    # records, and it drops only the CHECK V5 added — never a table.
+    defp v5_undo(schema) do
+      [
+        """
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM #{schema}.phoenix_kit_invoices WHERE user_uuid IS NULL)
+             OR EXISTS (SELECT 1 FROM #{schema}.phoenix_kit_transactions WHERE user_uuid IS NULL) THEN
+            RAISE EXCEPTION 'phoenix_kit_billing: cannot roll back below V5 while invoices or transactions without a user exist (guest payers). Attribute them to a user or stay on V5.';
+          END IF;
+        END
+        $$
+        """,
+        "ALTER TABLE #{schema}.phoenix_kit_invoices DROP CONSTRAINT IF EXISTS phoenix_kit_invoices_payer_check",
+        "ALTER TABLE #{schema}.phoenix_kit_invoices ALTER COLUMN user_uuid SET NOT NULL",
+        "ALTER TABLE #{schema}.phoenix_kit_transactions ALTER COLUMN user_uuid SET NOT NULL"
+      ]
     end
 
     # For `up/1` the expected content is the full set of OPERATIONS rather
@@ -929,12 +965,19 @@ defmodule PhoenixKitBilling.MigrationsTest do
       assert List.last(stmts) =~ "pkb_schema:3"
     end
 
-    test "down_statements/2 to 3 drops nothing beyond the marker (V4 is pure adoption)" do
-      stmts = Migrations.down_statements("public", 3)
+    test "down_statements/2 to 3 drops nothing V4 added (V4 is pure adoption)" do
+      # Rolling back to 3 and to 4 differ ONLY in the marker: V4 changed no
+      # shape, so it adds nothing to undo. (Both undo V5.)
+      [marker3 | rest3] = Enum.reverse(Migrations.down_statements("public", 3))
+      [marker4 | rest4] = Enum.reverse(Migrations.down_statements("public", 4))
 
-      assert stmts == [
+      assert rest3 == rest4
+
+      assert marker3 ==
                "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:3'"
-             ]
+
+      assert marker4 ==
+               "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:4'"
     end
 
     # Same guard as V1's "every column core declares matches V1's, in
