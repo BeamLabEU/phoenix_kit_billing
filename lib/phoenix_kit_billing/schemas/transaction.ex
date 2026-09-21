@@ -20,7 +20,12 @@ defmodule PhoenixKitBilling.Transaction do
 
   alias PhoenixKitBilling.Invoice
 
-  @payment_methods ~w(bank stripe paypal razorpay)
+  # Every provider a payment can arrive through must be listed: the webhook
+  # processor records a provider payment with `payment_method: "<provider>"`.
+  # EveryPay was added as a provider without being added here, so every
+  # EveryPay payment failed its insert — the customer charged, the invoice
+  # left unpaid. `Providers.all_providers/0` is pinned to this list by a test.
+  @payment_methods ~w(bank stripe paypal razorpay everypay)
 
   @primary_key {:uuid, UUIDv7, autogenerate: true}
 
