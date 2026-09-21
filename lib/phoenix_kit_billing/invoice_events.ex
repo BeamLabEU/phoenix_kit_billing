@@ -3,6 +3,10 @@ defmodule PhoenixKitBilling.InvoiceEvents do
   A durable way for OTHER modules to learn that an invoice was paid,
   refunded or voided.
 
+  `:refunded` fires for every refund, partial or full — read the invoice's
+  `paid_amount` and `status` to tell them apart (a full refund also leaves
+  it `"void"`, without a separate `:voided` event).
+
   Billing always recorded a payment durably, but told the rest of the
   system only through `Phoenix.PubSub` — a notification, not a delivery: a
   listener that was restarting when the webhook landed never heard, and the
@@ -63,8 +67,13 @@ defmodule PhoenixKitBilling.InvoiceEvents do
     |> Enum.filter(&handler?/1)
   end
 
+  # The registry, not `ModuleDiscovery.discover_external_modules/0`: that
+  # one walks every dependency's ebin directory on disk, and this runs on
+  # every payment — inside the transaction holding the invoice's row lock —
+  # and again on every job. The registry is a `:persistent_term` read of
+  # the same set, built once at boot.
   defp discovered do
-    PhoenixKit.ModuleDiscovery.discover_external_modules()
+    PhoenixKit.ModuleRegistry.all_modules()
     |> Enum.filter(fn mod ->
       Code.ensure_loaded?(mod) and function_exported?(mod, :billing_invoice_event_handlers, 0)
     end)

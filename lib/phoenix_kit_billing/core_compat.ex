@@ -35,7 +35,7 @@ defmodule PhoenixKitBilling.CoreCompat do
   # hand, so pipes and aliases are accounted for.
   @runtime_calls [
     # InvoiceEvents finds modules declaring billing_invoice_event_handlers/0.
-    {PhoenixKit.ModuleDiscovery, :discover_external_modules, 0},
+    {PhoenixKit.ModuleRegistry, :all_modules, 0},
     {PhoenixKit.RepoHelper, :repo, 0},
     {PhoenixKit.Settings, :get_setting, 2},
     {PhoenixKit.Settings, :get_setting_cached, 2},

@@ -3496,3 +3496,13 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "out of date"
 msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex
+#, elixir-autogen, elixir-format
+msgid "Guest payer — no account"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex
+#, elixir-autogen, elixir-format
+msgid "guest"
+msgstr ""

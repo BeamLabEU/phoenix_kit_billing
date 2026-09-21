@@ -114,6 +114,24 @@ defmodule PhoenixKitBilling.InvoiceEventsTest do
     end
   end
 
+  describe "handler discovery" do
+    defmodule DeclaringModule do
+      @moduledoc false
+      def billing_invoice_event_handlers,
+        do: [PhoenixKitBilling.InvoiceEventsTest.FailingHandler]
+    end
+
+    # Read from the runtime registry (a :persistent_term), not by scanning
+    # ebin directories on disk — this runs inside the payment transaction.
+    test "a module registered with PhoenixKit contributes its declared handlers" do
+      PhoenixKit.ModuleRegistry.register(DeclaringModule)
+      on_exit(fn -> PhoenixKit.ModuleRegistry.unregister(DeclaringModule) end)
+
+      assert FailingHandler in InvoiceEvents.handlers()
+      assert Handler in InvoiceEvents.handlers()
+    end
+  end
+
   describe "delivered by the worker" do
     test "the handler gets the invoice as it is now, not a snapshot", %{invoice: invoice} do
       {:ok, _} = Billing.mark_invoice_paid(invoice)

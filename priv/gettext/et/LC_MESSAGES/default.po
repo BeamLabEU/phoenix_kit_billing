@@ -3496,3 +3496,13 @@ msgstr "Pole uuendatud üle %{days} päeva: %{codes}. Hindu konverteeritakse end
 #, elixir-autogen, elixir-format
 msgid "out of date"
 msgstr "aegunud"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex
+#, elixir-autogen, elixir-format
+msgid "Guest payer — no account"
+msgstr "Külaline maksja — kontota"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex
+#, elixir-autogen, elixir-format
+msgid "guest"
+msgstr "külaline"

@@ -193,6 +193,7 @@ lib/phoenix_kit_billing/
 ├── errors.ex                            # Atom errors -> gettext strings
 ├── events.ex                            # PubSub broadcasts
 ├── gettext.ex                           # Module gettext backend
+├── invoice_events.ex                    # Durable paid/refunded/voided hook for other modules (Oban)
 ├── migrations.ex                        # Module-owned migration chain
 ├── notifications.ex                     # Audience resolution + copy for core notifications
 ├── paths.ex                             # Centralized URL helpers
@@ -353,7 +354,7 @@ in `README.md`.
 
 Owns a versioned chain: `PhoenixKitBilling.Migrations` via `migration_module/0`,
 marker `pkb_schema:<N>` as a `COMMENT ON TABLE
-phoenix_kit_payment_provider_configs`, currently **V3**. A marker-less table reads
+phoenix_kit_payment_provider_configs`, currently **V5**. A marker-less table reads
 as version 0 (the core-baseline shape). `mix phoenix_kit.update` applies the chain
 in hosts; the test suite applies it by executing
 `Migrations.up_statements/2` as data (see Testing).
@@ -382,6 +383,12 @@ in hosts; the test suite applies it by executing
   inventing a derivation here would duplicate — and risk disagreeing with — logic
   that belongs to whichever release owns getting it right. Every reader treats
   `nil` as "unknown".
+- **V4 adopts the remaining core-baseline billing tables** (no shape change).
+- **V5 lets a payer be a billing email instead of an account**:
+  `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`
+  drop `NOT NULL`, and `phoenix_kit_invoices_payer_check` requires a user or a
+  non-blank `billing_details->>'email'`. `down/1` below V5 raises while guest
+  rows exist rather than deleting or re-attributing money records.
 - **One chain version per release, not one per column.** Related changes ride in
   the same version.
 - **`down/1` never drops a table.** It unstamps the marker and reverses the

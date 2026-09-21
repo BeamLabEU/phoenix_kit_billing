@@ -207,6 +207,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Helpers do
   def format_payment_method_name("stripe"), do: "Stripe"
   def format_payment_method_name("paypal"), do: "PayPal"
   def format_payment_method_name("razorpay"), do: "Razorpay"
+  def format_payment_method_name("everypay"), do: "EveryPay"
   def format_payment_method_name(other) when is_binary(other), do: String.capitalize(other)
   def format_payment_method_name(_), do: "Unknown"
 end

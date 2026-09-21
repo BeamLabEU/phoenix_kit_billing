@@ -3510,3 +3510,13 @@ msgstr "Не обновлялись более %{days} дней: %{codes}. Це�
 #, elixir-autogen, elixir-format
 msgid "out of date"
 msgstr "устарел"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex
+#, elixir-autogen, elixir-format
+msgid "Guest payer — no account"
+msgstr "Гость — без учётной записи"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex
+#, elixir-autogen, elixir-format
+msgid "guest"
+msgstr "гость"

@@ -50,7 +50,9 @@
                     },
                     %{
                       label: gettext("Customer"),
-                      value: if(invoice.user, do: invoice.user.email, else: "-")
+                      value:
+                        (invoice.user && invoice.user.email) ||
+                          PhoenixKitBilling.Invoice.payer_email(invoice.billing_details) || "-"
                     },
                     %{
                       label: gettext("Due Date"),

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.17.0 - 2026-09-21
+
+Guest payers, a durable invoice-event hook for other modules, and EveryPay
+payments that record (PR #43).
+
+### Added
+
+- **`PhoenixKitBilling.InvoiceEvents`** — a durable way for other modules to
+  learn that an invoice was paid, refunded or voided. A PhoenixKit module
+  exports `billing_invoice_event_handlers/0` (or a host sets
+  `config :phoenix_kit_billing, invoice_event_handlers: [...]`); each handler
+  implements `handle_invoice_event/2`. Events are enqueued as one
+  `InvoiceEventWorker` Oban job per handler (queue `:billing`) in the same
+  transaction as the invoice change, delivered at least once with the invoice
+  as it is at delivery. `:refunded` fires for partial and full refunds alike.
+- **Guest payers (migration V5).** An invoice's payer is either a user or a
+  billing email: `phoenix_kit_invoices.user_uuid` and
+  `phoenix_kit_transactions.user_uuid` become nullable, guarded by the
+  `phoenix_kit_invoices_payer_check` CHECK and the changeset. Invoice, receipt,
+  credit-note and payment-confirmation emails go to the billing email; the
+  admin list, detail and print views show it. Rolling back below V5 refuses
+  while guest rows exist. Run `mix phoenix_kit.update` to apply.
+- `Invoice.payer_email/1` and `Invoice.payer_name/1`.
+
+### Fixed
+
+- EveryPay payments failed to record (`"everypay"` was missing from the
+  transaction payment-method whitelist): the customer was charged and the
+  invoice stayed unpaid. EveryPay now also displays as "EveryPay".
+- A provider-confirmed payment that settles an invoice now broadcasts
+  `{:invoice_paid, _}` (only the admin *Mark paid* action did), and
+  `record_payment/3` broadcasts after commit instead of inside the transaction.
+
 ## 0.16.0 - 2026-09-16
 
 Free-typed decimal form fields via core's `<.decimal_input>` (PR #42).

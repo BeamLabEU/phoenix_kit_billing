@@ -201,6 +201,27 @@ defmodule PhoenixKitBilling.Invoice do
 
   def payer_email(_), do: nil
 
+  @doc """
+  The name to print for an individual payer: `first_name last_name`, else
+  `name`, else — for a guest who gave only an email — `payer_email/1`.
+  """
+  def payer_name(%{} = details) do
+    full =
+      [details["first_name"], details["last_name"]]
+      |> Enum.filter(&present?/1)
+      |> Enum.join(" ")
+
+    cond do
+      full != "" -> full
+      present?(details["name"]) -> details["name"]
+      true -> payer_email(details)
+    end
+  end
+
+  def payer_name(_), do: nil
+
+  defp present?(value), do: is_binary(value) and String.trim(value) != ""
+
   defp validate_line_items(changeset) do
     case get_change(changeset, :line_items) do
       nil ->

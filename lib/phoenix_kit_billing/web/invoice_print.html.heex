@@ -475,9 +475,7 @@
                   <% end %>
                 <% else %>
                   <span class="company-name">
-                    {@invoice.billing_details["first_name"]} {@invoice.billing_details[
-                      "last_name"
-                    ]}
+                    {PhoenixKitBilling.Invoice.payer_name(@invoice.billing_details)}
                   </span>
                   <br />
                 <% end %>

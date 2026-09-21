@@ -45,6 +45,19 @@ defmodule PhoenixKitBilling.Schemas.InvoiceTest do
       assert Invoice.payer_email(nil) == nil
     end
 
+    # Print views render this for an individual payer; a guest who gave only
+    # an email used to print as a blank name.
+    test "payer_name/1 prefers first + last, then name, then the guest's email" do
+      assert Invoice.payer_name(%{"first_name" => "Ada", "last_name" => "Lovelace"}) ==
+               "Ada Lovelace"
+
+      assert Invoice.payer_name(%{"first_name" => "Ada", "last_name" => " "}) == "Ada"
+      assert Invoice.payer_name(%{"name" => "Walk-in", "email" => "g@b.co"}) == "Walk-in"
+      assert Invoice.payer_name(%{"email" => "g@b.co"}) == "g@b.co"
+      assert Invoice.payer_name(%{}) == nil
+      assert Invoice.payer_name(nil) == nil
+    end
+
     test "rejects invalid status" do
       cs = Invoice.changeset(%Invoice{}, Map.put(@valid, :status, "bogus"))
       assert %{status: [_ | _]} = errors_on(cs)

@@ -3495,3 +3495,13 @@ msgstr "Not updated for more than %{days} days: %{codes}. Prices are still conve
 #, elixir-autogen, elixir-format
 msgid "out of date"
 msgstr "out of date"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex
+#, elixir-autogen, elixir-format
+msgid "Guest payer — no account"
+msgstr "Guest payer — no account"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex
+#, elixir-autogen, elixir-format
+msgid "guest"
+msgstr "guest"
