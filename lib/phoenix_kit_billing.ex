@@ -56,6 +56,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.EmailDefaults
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Invoice
+  alias PhoenixKitBilling.InvoiceEvents
   alias PhoenixKitBilling.Order
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
@@ -2828,7 +2829,7 @@ defmodule PhoenixKitBilling do
     invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Determine recipient email
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     if is_nil(recipient_email) do
       {:error, :no_recipient_email}
@@ -2898,7 +2899,7 @@ defmodule PhoenixKitBilling do
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     case recipient_email do
       nil ->
@@ -2952,7 +2953,7 @@ defmodule PhoenixKitBilling do
     invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     if is_nil(recipient_email) do
       {:error, :no_recipient_email}
@@ -3003,7 +3004,7 @@ defmodule PhoenixKitBilling do
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     case recipient_email do
       nil ->
@@ -3063,7 +3064,7 @@ defmodule PhoenixKitBilling do
     invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     if is_nil(recipient_email) do
       {:error, :no_recipient_email}
@@ -3120,7 +3121,7 @@ defmodule PhoenixKitBilling do
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     case recipient_email do
       nil ->
@@ -3154,7 +3155,7 @@ defmodule PhoenixKitBilling do
     company = get_company_details()
 
     %{
-      "user_email" => user && user.email,
+      "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
       "user_name" => extract_user_name(billing_details, user),
       "credit_note_number" => credit_note_number,
       "invoice_number" => invoice.invoice_number,
@@ -3202,7 +3203,7 @@ defmodule PhoenixKitBilling do
     invoice = ensure_preloaded(invoice, [:order, :user])
 
     # Get recipient email
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     if is_nil(recipient_email) do
       {:error, :no_recipient_email}
@@ -3260,7 +3261,7 @@ defmodule PhoenixKitBilling do
 
     # Use to_email from opts, or fall back to user email
     to_email = Keyword.get(opts, :to_email)
-    recipient_email = to_email || (invoice.user && invoice.user.email)
+    recipient_email = to_email || invoice_recipient(invoice)
 
     case recipient_email do
       nil ->
@@ -3298,7 +3299,7 @@ defmodule PhoenixKitBilling do
     is_final_payment = Decimal.lte?(remaining_balance, Decimal.new(0))
 
     %{
-      "user_email" => user && user.email,
+      "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
       "user_name" => extract_user_name(billing_details, user),
       "confirmation_number" => confirmation_number,
       "invoice_number" => invoice.invoice_number,
@@ -3429,7 +3430,7 @@ defmodule PhoenixKitBilling do
     company = get_company_details()
 
     %{
-      "user_email" => user.email,
+      "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
       "user_name" => extract_user_name(billing_details, user),
       "receipt_number" => invoice.receipt_number,
       "invoice_number" => invoice.invoice_number,
@@ -3465,7 +3466,7 @@ defmodule PhoenixKitBilling do
     bank = Organization.get_bank_details()
 
     %{
-      "user_email" => user.email,
+      "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
       "user_name" => extract_user_name(billing_details, user),
       "invoice_number" => invoice.invoice_number,
       "invoice_date" => format_date(invoice.inserted_at),
@@ -3500,6 +3501,12 @@ defmodule PhoenixKitBilling do
        when is_binary(first) and first != "",
        do: "#{first} #{last}"
 
+  defp extract_user_name(%{"name" => name}, _user) when is_binary(name) and name != "",
+    do: name
+
+  # A guest payer (billing V5) has no user — their details are the invoice's.
+  defp extract_user_name(billing, nil), do: Invoice.payer_email(billing)
+
   defp extract_user_name(_billing, user), do: user.email
 
   defp format_line_items_html(nil), do: ""
@@ -3532,6 +3539,11 @@ defmodule PhoenixKitBilling do
       "#{item["name"]} x #{item["quantity"]} @ #{item["unit_price"]} = #{item["total"]}"
     end)
   end
+
+  # Who an invoice's mail goes to: the user's address, or — for a guest
+  # payer (billing V5) — the email on the invoice's billing details.
+  defp invoice_recipient(%Invoice{user: %{email: email}}) when is_binary(email), do: email
+  defp invoice_recipient(%Invoice{billing_details: details}), do: Invoice.payer_email(details)
 
   defp format_date(nil), do: "-"
   defp format_date(%Date{} = date), do: Calendar.strftime(date, "%B %d, %Y")
@@ -3574,9 +3586,14 @@ defmodule PhoenixKitBilling do
               repo().rollback(reason)
 
             _recorded_or_nothing_to_record ->
-              locked
-              |> Invoice.paid_changeset(receipt_number)
-              |> repo().update!()
+              paid =
+                locked
+                |> Invoice.paid_changeset(receipt_number)
+                |> repo().update!()
+
+              # Committed with the payment or not at all — see InvoiceEvents.
+              InvoiceEvents.enqueue(:paid, paid)
+              paid
           end
         end)
 
@@ -3629,7 +3646,18 @@ defmodule PhoenixKitBilling do
           changeset
         end
 
-      result = repo().update(changeset)
+      # A transaction so the durable event commits with the void.
+      result =
+        repo().transaction(fn ->
+          case repo().update(changeset) do
+            {:ok, voided} ->
+              InvoiceEvents.enqueue(:voided, voided)
+              voided
+
+            {:error, cs} ->
+              repo().rollback(cs)
+          end
+        end)
 
       case result do
         {:ok, voided_invoice} ->
@@ -4171,58 +4199,86 @@ defmodule PhoenixKitBilling do
   defp do_record_transaction(invoice, amount, attrs, admin_user) do
     transaction_attrs = build_transaction_attrs(invoice, amount, attrs, admin_user)
 
-    repo().transaction(fn ->
-      # Re-check the balance on the LOCKED invoice. The caller's check runs
-      # on an invoice read before the transaction, so two concurrent
-      # payments could each see the same remaining balance and both pass -
-      # check-then-act on money. A positive amount that no longer fits
-      # rolls the whole thing back.
-      locked = lock_invoice_for_update(invoice)
+    result =
+      repo().transaction(fn ->
+        # Re-check the balance on the LOCKED invoice. The caller's check runs
+        # on an invoice read before the transaction, so two concurrent
+        # payments could each see the same remaining balance and both pass -
+        # check-then-act on money. A positive amount that no longer fits
+        # rolls the whole thing back.
+        locked = lock_invoice_for_update(invoice)
 
-      if Decimal.positive?(amount) and
-           Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt do
-        repo().rollback(:exceeds_remaining)
-      end
+        if Decimal.positive?(amount) and
+             Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt do
+          repo().rollback(:exceeds_remaining)
+        end
 
-      # Create transaction
-      case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
-        {:ok, transaction} ->
-          # Update invoice paid_amount
-          new_paid_amount = calculate_invoice_paid_amount(invoice.uuid)
+        case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
+          {:ok, transaction} ->
+            invoice_broadcasts = apply_transaction_to_invoice(invoice, amount)
 
-          invoice
-          |> Invoice.paid_amount_changeset(new_paid_amount)
+            transaction_broadcast =
+              if Decimal.negative?(amount),
+                do: {:broadcast_transaction_refunded, transaction},
+                else: {:broadcast_transaction_created, transaction}
+
+            {transaction, [transaction_broadcast | invoice_broadcasts]}
+
+          {:error, changeset} ->
+            repo().rollback(changeset)
+        end
+      end)
+
+    # PubSub only AFTER the commit: broadcasting inside the transaction let
+    # a listener read the invoice before the change was visible. The
+    # durable events were enqueued inside it (InvoiceEvents).
+    case result do
+      {:ok, {transaction, broadcasts}} ->
+        Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+        {:ok, transaction}
+
+      error ->
+        error
+    end
+  end
+
+  # Inside the transaction: brings the invoice in line with its ledger and
+  # returns the broadcasts to send once it commits.
+  defp apply_transaction_to_invoice(invoice, amount) do
+    new_paid_amount = calculate_invoice_paid_amount(invoice.uuid)
+
+    invoice
+    |> Invoice.paid_amount_changeset(new_paid_amount)
+    |> repo().update!()
+
+    updated_invoice = get_invoice!(invoice.uuid)
+
+    became_paid =
+      if Invoice.fully_paid?(updated_invoice) && updated_invoice.status in ["sent", "overdue"] do
+        config = get_config()
+        receipt_number = generate_receipt_number(config.receipt_prefix)
+
+        paid =
+          updated_invoice
+          |> Invoice.paid_changeset(receipt_number)
           |> repo().update!()
 
-          # Check if fully paid and update status
-          updated_invoice = get_invoice!(invoice.uuid)
-
-          if Invoice.fully_paid?(updated_invoice) && updated_invoice.status in ["sent", "overdue"] do
-            config = get_config()
-            receipt_number = generate_receipt_number(config.receipt_prefix)
-
-            updated_invoice
-            |> Invoice.paid_changeset(receipt_number)
-            |> repo().update!()
-
-            # Mark linked order as paid if applicable
-            maybe_mark_linked_order_paid(updated_invoice)
-          end
-
-          # Handle refund: update receipt status and check for full refund
-          if Decimal.negative?(amount) do
-            handle_refund_transaction(invoice.uuid)
-            Events.broadcast_transaction_refunded(transaction)
-          else
-            Events.broadcast_transaction_created(transaction)
-          end
-
-          transaction
-
-        {:error, changeset} ->
-          repo().rollback(changeset)
+        maybe_mark_linked_order_paid(paid)
+        InvoiceEvents.enqueue(:paid, paid)
+        # A provider-confirmed payment arrives HERE (webhooks call
+        # record_payment/3), and never used to announce the invoice as paid
+        # at all — only the admin "Mark paid" action did.
+        [{:broadcast_invoice_paid, paid}]
+      else
+        []
       end
-    end)
+
+    if Decimal.negative?(amount) do
+      handle_refund_transaction(invoice.uuid)
+      InvoiceEvents.enqueue(:refunded, get_invoice!(invoice.uuid))
+    end
+
+    became_paid
   end
 
   @doc """
