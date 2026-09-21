@@ -483,7 +483,16 @@
                 </div>
               </div>
             <% else %>
-              <p class="text-base-content/50 mt-2">{gettext("No customer linked")}</p>
+              <%= if payer = PhoenixKitBilling.Invoice.payer_email(@invoice.billing_details) do %>
+                <div class="mt-2">
+                  <div class="font-medium">{payer}</div>
+                  <div class="text-sm text-base-content/60">
+                    {gettext("Guest payer — no account")}
+                  </div>
+                </div>
+              <% else %>
+                <p class="text-base-content/50 mt-2">{gettext("No customer linked")}</p>
+              <% end %>
             <% end %>
           </div>
         </div>

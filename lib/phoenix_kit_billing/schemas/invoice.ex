@@ -146,7 +146,8 @@ defmodule PhoenixKitBilling.Invoice do
       :paid_at,
       :voided_at
     ])
-    |> validate_required([:user_uuid, :total, :currency])
+    |> validate_required([:total, :currency])
+    |> validate_payer()
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_length(:currency, is: 3)
     |> validate_number(:total, greater_than_or_equal_to: 0)
@@ -159,7 +160,46 @@ defmodule PhoenixKitBilling.Invoice do
     # `Ecto.ConstraintError` (a 500) instead of returning a changeset error.
     |> foreign_key_constraint(:user_uuid, name: :fk_invoices_user_uuid)
     |> foreign_key_constraint(:order_uuid, name: :fk_invoices_order_uuid)
+    |> check_constraint(:user_uuid,
+      name: :phoenix_kit_invoices_payer_check,
+      message: "an invoice needs a user or a billing email"
+    )
   end
+
+  # A payer is EITHER a registered user OR someone reachable by email —
+  # a guest paying for a booking has no account, and inventing one for
+  # them splits their history and answers GDPR requests wrongly. The same
+  # rule is a CHECK in the database (billing V5), so a direct insert cannot
+  # skip it either.
+  defp validate_payer(changeset) do
+    user = get_field(changeset, :user_uuid)
+    email = changeset |> get_field(:billing_details) |> payer_email()
+
+    if is_nil(user) and is_nil(email) do
+      add_error(changeset, :user_uuid, "an invoice needs a user or a billing email")
+    else
+      changeset
+    end
+  end
+
+  @doc """
+  The email a guest invoice is addressed to — `billing_details["email"]`
+  (string or atom key), or nil when blank.
+  """
+  def payer_email(%{} = details) do
+    case Map.get(details, "email") || Map.get(details, :email) do
+      email when is_binary(email) ->
+        case String.trim(email) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  def payer_email(_), do: nil
 
   defp validate_line_items(changeset) do
     case get_change(changeset, :line_items) do

@@ -20,7 +20,12 @@ defmodule PhoenixKitBilling.Transaction do
 
   alias PhoenixKitBilling.Invoice
 
-  @payment_methods ~w(bank stripe paypal razorpay)
+  # Every provider a payment can arrive through must be listed: the webhook
+  # processor records a provider payment with `payment_method: "<provider>"`.
+  # EveryPay was added as a provider without being added here, so every
+  # EveryPay payment failed its insert — the customer charged, the invoice
+  # left unpaid. `Providers.all_providers/0` is pinned to this list by a test.
+  @payment_methods ~w(bank stripe paypal razorpay everypay)
 
   @primary_key {:uuid, UUIDv7, autogenerate: true}
 
@@ -65,9 +70,12 @@ defmodule PhoenixKitBilling.Transaction do
       :amount,
       :currency,
       :payment_method,
-      :invoice_uuid,
-      :user_uuid
+      :invoice_uuid
     ])
+    # No user required: a provider-confirmed payment on a GUEST invoice has
+    # neither an admin actor nor an invoice user. Requiring one failed the
+    # insert after the card was charged (billing V5 dropped the column's
+    # NOT NULL for the same reason).
     |> validate_inclusion(:payment_method, @payment_methods)
     |> validate_number(:amount, not_equal_to: 0)
     |> validate_length(:currency, is: 3)

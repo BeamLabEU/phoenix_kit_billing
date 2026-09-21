@@ -164,11 +164,35 @@ defmodule PhoenixKitBilling.Migrations do
   invariant as V1/V2/V3, and, like V1, V4 changes no shape of its own
   (it only creates what core's baseline already creates), so there is
   nothing for `down/1` to undo beyond the marker.
+
+  ## V5 — a payer need not have an account
+
+  `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`
+  drop `NOT NULL`. An invoice's payer is now EITHER a user OR a billing
+  email in `billing_details` — enforced by the
+  `phoenix_kit_invoices_payer_check` CHECK as well as the changeset — so a
+  module can take money from someone who never registered (a guest paying
+  for a booking) without inventing an account for them. Existing rows all
+  have a user; nothing is rewritten.
+
+  Transactions follow: a provider-confirmed payment on a guest invoice has
+  no admin actor and no invoice user, and with `NOT NULL` its insert failed
+  — the card charged, the invoice left unpaid.
+
+  Core's `ExpectedSchema` still records both columns as `NOT NULL`, but
+  its differ deliberately does not compare `not_null` for a `NOT NULL`
+  column with no default (its own repair can never re-create one), so
+  `mix phoenix_kit.repair` reports nothing here.
+
+  `down/1` to below V5 **refuses** while guest invoices or transactions
+  exist: re-adding `NOT NULL` would fail anyway, and the only way to make
+  it succeed would be to delete or re-attribute money records, which a
+  rollback must never do silently.
   """
 
   use Ecto.Migration
 
-  @current_version 4
+  @current_version 5
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -354,10 +378,67 @@ defmodule PhoenixKitBilling.Migrations do
 
       v4 = if target >= 4, do: v4_statements(prefix, p), else: []
 
+      v5 = if target >= 5, do: v5_statements(prefix, p), else: []
+
       v1 ++
         v2 ++
-        v3 ++ v4 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
+        v3 ++
+        v4 ++ v5 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
     end
+  end
+
+  # V5 — a payer need not have an account (see the moduledoc). Each step is
+  # guarded by the catalog, the same DO-block idempotence V1 uses: the
+  # column is made nullable only while it is NOT NULL, and the CHECK is
+  # added only while it is absent — so a replay does nothing, and never
+  # re-validates the CHECK against the whole table.
+  defp v5_statements(prefix, p) do
+    [
+      """
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = '#{prefix}' AND table_name = 'phoenix_kit_invoices'
+            AND column_name = 'user_uuid' AND is_nullable = 'YES'
+        ) THEN
+          ALTER TABLE #{p}phoenix_kit_invoices ALTER COLUMN user_uuid DROP NOT NULL;
+        END IF;
+      END
+      $$
+      """,
+      """
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE c.conname = 'phoenix_kit_invoices_payer_check'
+            AND t.relname = 'phoenix_kit_invoices'
+            AND n.nspname = '#{prefix}'
+        ) THEN
+          ALTER TABLE #{p}phoenix_kit_invoices ADD CONSTRAINT phoenix_kit_invoices_payer_check
+            CHECK (user_uuid IS NOT NULL OR NULLIF(billing_details->>'email', '') IS NOT NULL);
+        END IF;
+      END
+      $$
+      """,
+      """
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = '#{prefix}' AND table_name = 'phoenix_kit_transactions'
+            AND column_name = 'user_uuid' AND is_nullable = 'YES'
+        ) THEN
+          ALTER TABLE #{p}phoenix_kit_transactions ALTER COLUMN user_uuid DROP NOT NULL;
+        END IF;
+      END
+      $$
+      """
+    ]
   end
 
   # V4 — adoption of the remaining ten core-baseline tables. `prefix` and
@@ -1033,6 +1114,28 @@ defmodule PhoenixKitBilling.Migrations do
     prefix = validated_prefix(prefix: prefix)
     p = "#{prefix}."
 
+    # Refuses rather than deletes: see the moduledoc's V5 section.
+    drop_v5 =
+      if target < 5 do
+        [
+          """
+          DO $$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM #{p}phoenix_kit_invoices WHERE user_uuid IS NULL)
+               OR EXISTS (SELECT 1 FROM #{p}phoenix_kit_transactions WHERE user_uuid IS NULL) THEN
+              RAISE EXCEPTION 'phoenix_kit_billing: cannot roll back below V5 while invoices or transactions without a user exist (guest payers). Attribute them to a user or stay on V5.';
+            END IF;
+          END
+          $$
+          """,
+          "ALTER TABLE #{p}phoenix_kit_invoices DROP CONSTRAINT IF EXISTS phoenix_kit_invoices_payer_check",
+          "ALTER TABLE #{p}phoenix_kit_invoices ALTER COLUMN user_uuid SET NOT NULL",
+          "ALTER TABLE #{p}phoenix_kit_transactions ALTER COLUMN user_uuid SET NOT NULL"
+        ]
+      else
+        []
+      end
+
     drop_v3 =
       if target < 3 do
         [
@@ -1062,7 +1165,7 @@ defmodule PhoenixKitBilling.Migrations do
         "COMMENT ON TABLE #{p}#{@version_table} IS NULL"
       end
 
-    drop_v3 ++ drop_v2 ++ [marker]
+    drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do
