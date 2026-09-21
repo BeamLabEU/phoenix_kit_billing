@@ -112,9 +112,9 @@ alone.
 - **`enabled?/0` rescues and returns `false`** (the database may not be up).
 - **Activity logging goes through `PhoenixKitBilling.Activity`**, at the LiveView
   layer, on the `{:ok, _}` branch of a successful mutation — never inside context
-  functions, which stay pure and scope-less. The wrapper centralizes the
-  `Code.ensure_loaded?/1` guard, the rescue and the default metadata
-  (`module: "billing"`, actor role), so logging failures never crash the caller.
+  functions, which stay pure and scope-less. The wrapper adds the module key
+  and the actor role to core's `PhoenixKit.Activity.log/3`, which never
+  raises; the actor and role come from `PhoenixKitWeb.Actor`.
   Actions read `billing.<resource>_<verb>`. **PII rule:** log uuids, statuses,
   amounts, currency codes, document numbers and counts only — never email, phone,
   names, card data, tokens or free text.
@@ -186,7 +186,7 @@ that core auto-discovers by scanning `.beam` files at startup.
 ```
 lib/phoenix_kit_billing.ex               # PhoenixKit.Module behaviour + main context
 lib/phoenix_kit_billing/
-├── activity.ex                          # Activity-log wrapper (guard + rescue + metadata)
+├── activity.ex                          # Activity-log wrapper (module key + actor role)
 ├── application_integration.ex           # Provider registration at boot
 ├── core_compat.ex                       # Declared core API surface + boot report
 ├── email_defaults.ex                    # Default invoice/receipt email copy

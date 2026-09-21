@@ -17,7 +17,7 @@ defmodule PhoenixKitBilling.CoreCompat do
     * `runtime_calls/0` — called unguarded. A gap here is a broken feature.
     * `optional_calls/0` — already behind `Code.ensure_loaded?/1` or
       `function_exported?/3` at the call site, so a gap degrades quietly by
-      design (activity logging, dashboard registry).
+      design (the dashboard registry).
     * `compile_time_modules/0` — `use`d or `import`ed. A gap here fails the
       build before any check in this module can run; they are listed so the
       inventory of what core owes this package is complete in one place.
@@ -34,6 +34,7 @@ defmodule PhoenixKitBilling.CoreCompat do
   # Unguarded calls into core. Extracted from the source AST rather than by
   # hand, so pipes and aliases are accounted for.
   @runtime_calls [
+    {PhoenixKit.Activity, :log, 3},
     # InvoiceEvents finds modules declaring billing_invoice_event_handlers/0.
     {PhoenixKit.ModuleRegistry, :all_modules, 0},
     {PhoenixKit.RepoHelper, :repo, 0},
@@ -66,6 +67,8 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Notifications, :create, 1},
     {PhoenixKit.Notifications, :create_many, 2},
     {PhoenixKit.Dashboard.Tab, :new!, 1},
+    {PhoenixKitWeb.Actor, :role, 1},
+    {PhoenixKitWeb.Actor, :uuid, 1},
     # §13 currency cache — get_base_currency/0, get_currency_by_code/1,
     # invalidate_currency_cache/0 in phoenix_kit_billing.ex.
     {PhoenixKit.Cache, :get, 3},
@@ -87,7 +90,6 @@ defmodule PhoenixKitBilling.CoreCompat do
   # Guarded at the call site — listed so an upgrade shows what quietly stopped
   # working, which is otherwise invisible precisely because it fails open.
   @optional_calls [
-    {PhoenixKit.Activity, :log, 1},
     {PhoenixKit.Dashboard.Registry, :initialized?, 0},
     {PhoenixKit.Dashboard.Registry, :load_defaults, 0}
   ]
