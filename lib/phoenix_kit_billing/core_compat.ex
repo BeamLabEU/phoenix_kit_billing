@@ -32,7 +32,9 @@ defmodule PhoenixKitBilling.CoreCompat do
   require Logger
 
   # Unguarded calls into core. Extracted from the source AST rather than by
-  # hand, so pipes and aliases are accounted for.
+  # hand, so pipes and aliases are accounted for — except the `defdelegate`
+  # targets, which the extractor does not see as calls and which are listed
+  # by hand below.
   @runtime_calls [
     {PhoenixKit.Activity, :log, 3},
     # InvoiceEvents finds modules declaring billing_invoice_event_handlers/0.
