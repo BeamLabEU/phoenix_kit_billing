@@ -21,6 +21,8 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Order
+  alias PhoenixKitBilling.Paths
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -45,8 +47,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
        |> assign(:selected_billing_profile_uuid, nil)
        |> assign(:country_tax_rate, nil)
        |> assign(:country_name, nil)
-       |> assign(:country_vat_percent, nil)
-       |> assign(:page_title, gettext("Order"))}
+       |> assign(:country_vat_percent, nil)}
     else
       {:ok,
        socket
@@ -83,7 +84,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
       })
 
     socket
-    |> assign(:page_title, gettext("New Order"))
+    |> Trail.billing(gettext("New order"), [Trail.orders()])
     |> assign(:order, nil)
     |> assign(:form, to_form(changeset))
     |> assign(:line_items, [%{id: 0, name: "", description: "", quantity: 1, unit_price: "0.00"}])
@@ -117,7 +118,10 @@ defmodule PhoenixKitBilling.Web.OrderForm do
           end
 
         socket
-        |> assign(:page_title, gettext("Edit Order %{number}", number: order.order_number))
+        |> Trail.billing(gettext("Edit"), [
+          Trail.orders(),
+          Trail.crumb(order.order_number, Paths.order_detail(order.uuid))
+        ])
         |> assign(:order, order)
         |> assign(:form, to_form(changeset))
         |> assign(:line_items, line_items)

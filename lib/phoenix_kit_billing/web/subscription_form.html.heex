@@ -1,7 +1,11 @@
   <div class="container mx-auto px-4 py-6">
     <%!-- Header --%>
     <.admin_page_header back={PhoenixKit.Utils.Routes.path("/admin/billing/subscriptions")}>
-      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">{@page_title}</h1>
+      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">
+        {if @live_action == :edit,
+          do: gettext("Edit Subscription"),
+          else: gettext("Create Subscription")}
+      </h1>
       <p class="text-sm text-base-content/60 mt-0.5">
         <%= if @live_action == :edit do %>
           {gettext("Edit subscription settings")}

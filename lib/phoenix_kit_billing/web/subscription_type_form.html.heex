@@ -1,7 +1,11 @@
   <div class="container mx-auto px-4 py-6">
     <%!-- Header --%>
     <.admin_page_header back={PhoenixKit.Utils.Routes.path("/admin/billing/subscription-types")}>
-      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">{@page_title}</h1>
+      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">
+        {if @mode == :new,
+          do: gettext("Create Subscription Type"),
+          else: gettext("Edit Subscription Type")}
+      </h1>
       <p class="text-sm text-base-content/60 mt-0.5">
         <%= if @mode == :new do %>
           {gettext("Create a new subscription type")}

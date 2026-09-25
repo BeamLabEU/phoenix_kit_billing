@@ -27,8 +27,10 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
+  alias PhoenixKitBilling.Paths
   alias PhoenixKitBilling.SubscriptionType
   alias PhoenixKitBilling.Web.Authz
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -38,7 +40,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
 
       socket =
         socket
-        |> assign(:page_title, gettext("Create Subscription"))
+        |> Trail.billing(gettext("New subscription"), [Trail.subscriptions()])
         |> assign(:project_title, project_title)
         |> assign(:subscription_types, types)
         |> assign(:user_search, "")
@@ -75,7 +77,13 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
 
         {:noreply,
          socket
-         |> assign(:page_title, gettext("Edit Subscription"))
+         |> Trail.billing(gettext("Edit"), [
+           Trail.subscriptions(),
+           Trail.crumb(
+             subscription_name(subscription),
+             Paths.subscription_detail(subscription.uuid)
+           )
+         ])
          |> assign(:subscription, subscription)
          |> assign(:selected_user, subscription.user)
          |> assign(

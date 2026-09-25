@@ -21,6 +21,7 @@ defmodule PhoenixKitBilling.Web.Index do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -29,7 +30,7 @@ defmodule PhoenixKitBilling.Web.Index do
 
       socket =
         socket
-        |> assign(:page_title, gettext("Billing Dashboard"))
+        |> Trail.landing()
         |> assign(:project_title, project_title)
         |> load_dashboard_data()
 

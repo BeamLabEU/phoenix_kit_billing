@@ -9,6 +9,13 @@ defmodule PhoenixKitBilling.Web.Components.SubscriptionHelpers do
   use Gettext, backend: PhoenixKitBilling.Gettext
 
   @doc """
+  The name a subscription goes by in the header trail: its type's name.
+  A subscription has no number of its own.
+  """
+  def subscription_name(%{subscription_type: %{name: name}}) when is_binary(name), do: name
+  def subscription_name(_subscription), do: gettext("Subscription")
+
+  @doc """
   Returns the daisyUI badge class for a subscription status.
   """
   def status_badge_class(status) do

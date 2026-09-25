@@ -23,6 +23,7 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Events
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -59,7 +60,7 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
           else
             socket
             |> assign(:loaded?, true)
-            |> assign(:page_title, gettext("Order %{number}", number: order.order_number))
+            |> Trail.billing(order.order_number, [Trail.orders()])
             |> assign(:project_title, Settings.get_project_title())
             |> assign(:order, order)
             |> assign(:invoices, order.invoices)

@@ -23,6 +23,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.SubscriptionType
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(params, _session, socket) do
@@ -31,12 +32,12 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
       # §3.3: base = is_default row (billing_default_currency is no longer read)
       default_currency = (Billing.get_base_currency() || %{code: nil}).code
 
-      {type, title, mode} =
+      {type, mode} =
         case params do
           %{"id" => id} ->
             case Billing.get_subscription_type(id) do
-              {:ok, type} -> {type, gettext("Edit Subscription Type"), :edit}
-              {:error, _} -> {nil, gettext("Subscription Type Not Found"), :not_found}
+              {:ok, type} -> {type, :edit}
+              {:error, _} -> {nil, :not_found}
             end
 
           _ ->
@@ -45,7 +46,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
                interval: "month",
                interval_count: 1,
                active: true
-             }, gettext("Create Subscription Type"), :new}
+             }, :new}
         end
 
       if type do
@@ -53,7 +54,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
 
         socket =
           socket
-          |> assign(:page_title, title)
+          |> assign_trail(type, mode)
           |> assign(:project_title, project_title)
           |> assign(:mode, mode)
           |> assign(:subscription_type, type)
@@ -80,6 +81,14 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypeForm do
   def handle_params(_params, _url, socket) do
     {:noreply, socket}
   end
+
+  # A type has no page of its own, so on the edit page its crumb is text.
+  defp assign_trail(socket, _type, :new),
+    do: Trail.billing(socket, gettext("New subscription type"), [Trail.subscription_types()])
+
+  defp assign_trail(socket, type, :edit),
+    do:
+      Trail.billing(socket, gettext("Edit"), [Trail.subscription_types(), Trail.crumb(type.name)])
 
   @impl true
   def handle_event("validate", %{"subscription_type" => params}, socket) do

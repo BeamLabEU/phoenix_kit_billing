@@ -25,6 +25,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Currency
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -33,7 +34,7 @@ defmodule PhoenixKitBilling.Web.Currencies do
 
       socket =
         socket
-        |> assign(:page_title, gettext("Currencies"))
+        |> Trail.billing(gettext("Currencies"))
         |> assign(:project_title, project_title)
         |> assign(:currencies, [])
         |> assign(:fx_rate_max_age_days, Billing.fx_rate_max_age_days())

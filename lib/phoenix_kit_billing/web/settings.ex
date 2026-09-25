@@ -19,6 +19,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   alias PhoenixKit.Utils.Number
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Web.Authz
+  alias PhoenixKitBilling.Web.Trail
   alias PhoenixKitWeb.Live.Settings.Organization
 
   @impl true
@@ -28,7 +29,7 @@ defmodule PhoenixKitBilling.Web.Settings do
 
     socket =
       socket
-      |> assign(:page_title, gettext("Billing Settings"))
+      |> Trail.settings(gettext("Billing"))
       |> assign(:project_title, project_title)
       |> assign(:billing_enabled, billing_enabled)
       |> load_settings()
