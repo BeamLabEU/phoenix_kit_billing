@@ -11,7 +11,7 @@ they live in this module's tables and providers only collect money. Ships admin
 LiveViews for every entity, two customer pages, print views, provider webhook
 endpoints, and Oban workers for renewals and dunning.
 
-- **Depends on:** `phoenix_kit` `~> 2.26` (Hex). No sibling `phoenix_kit_*` deps.
+- **Depends on:** `phoenix_kit` `>= 2.38.0 and < 3.0.0` (Hex). No sibling `phoenix_kit_*` deps.
   Runtime libraries: `phoenix_live_view ~> 1.1`, `phoenix ~> 1.7`,
   `ecto_sql ~> 3.12`, `oban ~> 2.20`, `uuidv7 ~> 1.0`, `stripity_stripe ~> 3.2`,
   `req ~> 0.5`, `jason ~> 1.4`, `gettext ~> 1.0`.
@@ -112,9 +112,9 @@ alone.
 - **`enabled?/0` rescues and returns `false`** (the database may not be up).
 - **Activity logging goes through `PhoenixKitBilling.Activity`**, at the LiveView
   layer, on the `{:ok, _}` branch of a successful mutation — never inside context
-  functions, which stay pure and scope-less. The wrapper centralizes the
-  `Code.ensure_loaded?/1` guard, the rescue and the default metadata
-  (`module: "billing"`, actor role), so logging failures never crash the caller.
+  functions, which stay pure and scope-less. The wrapper adds the module key
+  and the actor role to core's `PhoenixKit.Activity.log/3`, which never
+  raises; the actor and role come from `PhoenixKitWeb.Actor`.
   Actions read `billing.<resource>_<verb>`. **PII rule:** log uuids, statuses,
   amounts, currency codes, document numbers and counts only — never email, phone,
   names, card data, tokens or free text.
@@ -186,7 +186,7 @@ that core auto-discovers by scanning `.beam` files at startup.
 ```
 lib/phoenix_kit_billing.ex               # PhoenixKit.Module behaviour + main context
 lib/phoenix_kit_billing/
-├── activity.ex                          # Activity-log wrapper (guard + rescue + metadata)
+├── activity.ex                          # Activity-log wrapper (module key + actor role)
 ├── application_integration.ex           # Provider registration at boot
 ├── core_compat.ex                       # Declared core API surface + boot report
 ├── email_defaults.ex                    # Default invoice/receipt email copy
@@ -307,17 +307,17 @@ setting.
 
 ### Core compatibility
 
-`mix.exs` requires `phoenix_kit ~> 2.26` — every core 2.x from 2.26 on and
-nothing else. Core 1.7 is excluded because core 2.0.0 squashed the migration chain
-into a single `V135` baseline, and this module is verified only against that
-baseline. The 2.26 floor is where `<.decimal_input>` and
-`PhoenixKit.Utils.Number.parse_decimal/2` first shipped; the component is imported
-at compile time, so an older core does not compile this package. Adopting a newer
-core API means raising the floor in the same commit.
+`mix.exs` requires `phoenix_kit >= 2.38.0 and < 3.0.0` — every core 2.x from
+2.38.0 on and nothing else. Core 1.7 is excluded because core 2.0.0 squashed the
+migration chain into a single `V135` baseline, and this module is verified only
+against that baseline. The 2.38.0 floor is where `PhoenixKitWeb.Actor` and
+`PhoenixKit.Activity.log/3` first shipped, called here without a guard; 2.26's
+`<.decimal_input>` and `PhoenixKit.Utils.Number.parse_decimal/2` are subsumed.
+Adopting a newer core API means raising the floor in the same commit.
 `test/core_pin_conformance_test.exs` guards the requirement in both directions:
-it fails if the pin is re-narrowed to a single minor (`~> 2.26.x` admits no
-2.27), if it re-admits a core below the floor or 1.7, or if a local `path:`
-override reaches a commit.
+it fails if the pin is re-narrowed to a single minor (a three-segment `~> 2.38.0`
+admits no 2.39), if it re-admits a core below the floor or 1.7, or if a local
+`path:` override reaches a commit.
 
 That covers *which* core resolves, not whether it still exports what this package
 calls. `PhoenixKitBilling.CoreCompat` declares that surface in four lists —

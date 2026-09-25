@@ -22,6 +22,7 @@ defmodule PhoenixKitBilling.Web.Transactions do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Transaction
+  alias PhoenixKitBilling.Web.Trail
 
   @default_per_page 25
 
@@ -34,7 +35,7 @@ defmodule PhoenixKitBilling.Web.Transactions do
 
       socket =
         socket
-        |> assign(:page_title, gettext("Transactions"))
+        |> Trail.billing(gettext("Transactions"))
         |> assign(:project_title, nil)
         |> assign(:transactions, [])
         |> assign(:total_count, 0)

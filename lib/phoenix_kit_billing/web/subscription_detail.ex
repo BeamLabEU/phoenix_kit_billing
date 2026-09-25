@@ -21,6 +21,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.Subscription
   alias PhoenixKitBilling.Web.Authz
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -38,7 +39,7 @@ defmodule PhoenixKitBilling.Web.SubscriptionDetail do
 
           socket =
             socket
-            |> assign(:page_title, gettext("Subscription #%{uuid}", uuid: subscription.uuid))
+            |> Trail.billing(subscription_name(subscription), [Trail.subscriptions()])
             |> assign(:project_title, project_title)
             |> assign(:subscription, subscription)
             |> assign(:subscription_types, types)

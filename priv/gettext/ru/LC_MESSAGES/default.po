@@ -12,7 +12,11 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: lib/phoenix_kit_billing.ex:131
+#: lib/phoenix_kit_billing.ex:205
+#: lib/phoenix_kit_billing/web/settings.ex:32
+#: lib/phoenix_kit_billing/web/trail.ex:33
+#: lib/phoenix_kit_billing/web/trail.ex:42
+#: lib/phoenix_kit_billing/web/trail.ex:79
 #, elixir-autogen
 msgid "Billing"
 msgstr "Биллинг"
@@ -21,77 +25,73 @@ msgstr "Биллинг"
 msgid "Dashboard"
 msgstr "Панель управления"
 
-#: lib/phoenix_kit_billing.ex:144
-#: lib/phoenix_kit_billing/web/orders.ex:38
+#: lib/phoenix_kit_billing.ex:256
+#: lib/phoenix_kit_billing/web/orders.ex:39
 #: lib/phoenix_kit_billing/web/orders.html.heex:4
+#: lib/phoenix_kit_billing/web/trail.ex:72
 #, elixir-autogen
 msgid "Orders"
 msgstr "Заказы"
 
-#: lib/phoenix_kit_billing.ex:145
-#: lib/phoenix_kit_billing/web/invoices.ex:37
+#: lib/phoenix_kit_billing.ex:257
+#: lib/phoenix_kit_billing/web/invoices.ex:38
 #: lib/phoenix_kit_billing/web/invoices.html.heex:4
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:171
+#: lib/phoenix_kit_billing/web/trail.ex:73
 #, elixir-autogen
 msgid "Invoices"
 msgstr "Счета"
 
-#: lib/phoenix_kit_billing/web/transactions.ex:37
+#: lib/phoenix_kit_billing/web/transactions.ex:38
 #: lib/phoenix_kit_billing/web/transactions.html.heex:4
 #, elixir-autogen
 msgid "Transactions"
 msgstr "Транзакции"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:212
-#: lib/phoenix_kit_billing/web/subscriptions.ex:37
+#: lib/phoenix_kit_billing/web/subscriptions.ex:41
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:5
+#: lib/phoenix_kit_billing/web/trail.ex:74
 #, elixir-autogen
 msgid "Subscriptions"
 msgstr "Подписки"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:103
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:67
 #: lib/phoenix_kit_billing/web/index.html.heex:218
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:33
-#: lib/phoenix_kit_billing/web/settings.html.heex:33
-#: lib/phoenix_kit_billing/web/settings.html.heex:317
-#: lib/phoenix_kit_billing/web/subscription_types.ex:27
+#: lib/phoenix_kit_billing/web/settings.html.heex:269
+#: lib/phoenix_kit_billing/web/subscription_types.ex:32
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:5
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:42
+#: lib/phoenix_kit_billing/web/trail.ex:75
 #, elixir-autogen
 msgid "Subscription Types"
 msgstr "Типы подписок"
 
-#: lib/phoenix_kit_billing/web/billing_profiles.ex:36
+#: lib/phoenix_kit_billing/web/billing_profiles.ex:37
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:5
 #: lib/phoenix_kit_billing/web/index.html.heex:224
+#: lib/phoenix_kit_billing/web/trail.ex:76
 #, elixir-autogen
 msgid "Billing Profiles"
 msgstr "Платёжные профили"
 
-#: lib/phoenix_kit_billing.ex:146
-#: lib/phoenix_kit_billing/web/currencies.ex:29
+#: lib/phoenix_kit_billing.ex:258
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:61
+#: lib/phoenix_kit_billing/web/currencies.ex:37
 #: lib/phoenix_kit_billing/web/currencies.html.heex:5
-#: lib/phoenix_kit_billing/web/currencies.html.heex:97
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:27
-#: lib/phoenix_kit_billing/web/settings.html.heex:27
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:36
 #, elixir-autogen
 msgid "Currencies"
 msgstr "Валюты"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:91
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:55
 #: lib/phoenix_kit_billing/web/index.html.heex:236
-#: lib/phoenix_kit_billing/web/provider_settings.ex:27
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:5
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:21
-#: lib/phoenix_kit_billing/web/settings.html.heex:21
-#: lib/phoenix_kit_billing/web/settings.html.heex:305
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:30
+#: lib/phoenix_kit_billing/web/settings.html.heex:257
 #, elixir-autogen
 msgid "Payment Providers"
 msgstr "Платёжные системы"
 
-#: lib/phoenix_kit_billing.ex
+#: lib/phoenix_kit_billing/web/user_orders.ex:47
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:4
 msgid "My Orders"
 msgstr "Мои заказы"
 
@@ -116,7 +116,7 @@ msgstr "%{count} в этом месяце"
 msgid "%{count} total profiles"
 msgstr "%{count} профилей всего"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:93
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Activate"
 msgstr "Активировать"
@@ -126,79 +126,78 @@ msgstr "Активировать"
 msgid "Active Currencies"
 msgstr "Активные валюты"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:169
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:277
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:175
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:283
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to cancel this subscription?"
 msgstr "Вы уверены, что хотите отменить эту подписку?"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:99
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:73
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this subscription type?"
 msgstr "Вы уверены, что хотите удалить этот тип подписки?"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:140
-#: lib/phoenix_kit_billing/web/currencies.html.heex:239
+#: lib/phoenix_kit_billing/web/currencies.html.heex:133
+#: lib/phoenix_kit_billing/web/currencies.html.heex:250
 #, elixir-autogen, elixir-format
 msgid "Are you sure?"
 msgstr "Вы уверены?"
 
-#: lib/phoenix_kit_billing/web/index.ex:32
 #: lib/phoenix_kit_billing/web/index.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "Billing Dashboard"
 msgstr "Панель биллинга"
 
-#: lib/phoenix_kit_billing/web/settings.ex:26
 #: lib/phoenix_kit_billing/web/settings.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "Billing Settings"
 msgstr "Настройки биллинга"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:38
-#: lib/phoenix_kit_billing/web/billing_profiles.ex:51
-#: lib/phoenix_kit_billing/web/currencies.ex:44
-#: lib/phoenix_kit_billing/web/index.ex:40
-#: lib/phoenix_kit_billing/web/invoice_detail.ex:43
-#: lib/phoenix_kit_billing/web/invoices.ex:49
-#: lib/phoenix_kit_billing/web/order_detail.ex:37
-#: lib/phoenix_kit_billing/web/order_form.ex:43
-#: lib/phoenix_kit_billing/web/orders.ex:50
-#: lib/phoenix_kit_billing/web/provider_settings.ex:35
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:50
-#: lib/phoenix_kit_billing/web/subscription_form.ex:54
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:64
-#: lib/phoenix_kit_billing/web/subscription_types.ex:35
-#: lib/phoenix_kit_billing/web/subscriptions.ex:46
-#: lib/phoenix_kit_billing/web/transactions.ex:49
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:26
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:43
+#: lib/phoenix_kit_billing/web/billing_profiles.ex:52
+#: lib/phoenix_kit_billing/web/currencies.ex:54
+#: lib/phoenix_kit_billing/web/index.ex:41
+#: lib/phoenix_kit_billing/web/invoice_detail.ex:48
+#: lib/phoenix_kit_billing/web/invoices.ex:50
+#: lib/phoenix_kit_billing/web/order_detail.ex:40
+#: lib/phoenix_kit_billing/web/order_form.ex:54
+#: lib/phoenix_kit_billing/web/orders.ex:51
+#: lib/phoenix_kit_billing/web/provider_settings.ex:37
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:54
+#: lib/phoenix_kit_billing/web/subscription_form.ex:61
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:75
+#: lib/phoenix_kit_billing/web/subscription_types.ex:40
+#: lib/phoenix_kit_billing/web/subscriptions.ex:50
+#: lib/phoenix_kit_billing/web/transactions.ex:50
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:28
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:26
+#: lib/phoenix_kit_billing/web/user_orders.ex:33
 #, elixir-autogen, elixir-format
 msgid "Billing module is not enabled"
 msgstr "Модуль биллинга не включён"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:434
-#: lib/phoenix_kit_billing/web/currencies.html.heex:396
-#: lib/phoenix_kit_billing/web/currencies.html.heex:471
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:771
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:844
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:884
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:921
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:958
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:999
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:344
+#: lib/phoenix_kit_billing/web/currencies.html.heex:429
+#: lib/phoenix_kit_billing/web/currencies.html.heex:504
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:758
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:827
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:867
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:904
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:941
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:982
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:50
-#: lib/phoenix_kit_billing/web/order_form.html.heex:268
+#: lib/phoenix_kit_billing/web/order_form.html.heex:255
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:48
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:59
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:380
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:214
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:230
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:239
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:338
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:253
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:171
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:280
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:521
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:213
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:229
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:238
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:337
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:192
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:177
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:286
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:530
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Отмена"
@@ -213,8 +212,8 @@ msgstr "Настройка параметров модуля биллинга"
 msgid "Create First Order"
 msgstr "Создать первый заказ"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:38
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:257
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:6
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Create Subscription Type"
@@ -226,16 +225,18 @@ msgid "Create an order first to generate invoices"
 msgstr "Создайте заказ, чтобы сформировать счета"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:111
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:276
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:275
 #: lib/phoenix_kit_billing/web/orders.html.heex:67
 #: lib/phoenix_kit_billing/web/orders.html.heex:135
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:114
 #: lib/phoenix_kit_billing/web/transactions.html.heex:51
 #: lib/phoenix_kit_billing/web/transactions.html.heex:116
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr "Дата"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:93
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Deactivate"
 msgstr "Деактивировать"
@@ -245,23 +246,23 @@ msgstr "Деактивировать"
 msgid "Default Currency"
 msgstr "Валюта по умолчанию"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:142
-#: lib/phoenix_kit_billing/web/currencies.html.heex:241
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:101
+#: lib/phoenix_kit_billing/web/currencies.html.heex:135
+#: lib/phoenix_kit_billing/web/currencies.html.heex:252
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:75
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:219
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Удалить"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:126
-#: lib/phoenix_kit_billing/web/currencies.html.heex:225
+#: lib/phoenix_kit_billing/web/currencies.html.heex:119
+#: lib/phoenix_kit_billing/web/currencies.html.heex:236
 #, elixir-autogen, elixir-format
 msgid "Disable"
 msgstr "Отключить"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:165
-#: lib/phoenix_kit_billing/web/invoices.html.heex:56
-#: lib/phoenix_kit_billing/web/invoices.html.heex:125
+#: lib/phoenix_kit_billing/web/invoices.html.heex:58
+#: lib/phoenix_kit_billing/web/invoices.html.heex:127
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:192
 #, elixir-autogen, elixir-format
 msgid "Due Date"
@@ -272,22 +273,26 @@ msgstr "Срок оплаты"
 msgid "EUR - Euro"
 msgstr "EUR - Евро"
 
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:71
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:112
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:182
-#: lib/phoenix_kit_billing/web/currencies.html.heex:120
-#: lib/phoenix_kit_billing/web/currencies.html.heex:219
+#: lib/phoenix_kit_billing/web/currencies.html.heex:113
+#: lib/phoenix_kit_billing/web/currencies.html.heex:230
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:26
+#: lib/phoenix_kit_billing/web/order_form.ex:121
 #: lib/phoenix_kit_billing/web/orders.html.heex:124
 #: lib/phoenix_kit_billing/web/orders.html.heex:187
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:87
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:269
+#: lib/phoenix_kit_billing/web/subscription_form.ex:80
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:91
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:61
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:275
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:200
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Редактировать"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:126
-#: lib/phoenix_kit_billing/web/currencies.html.heex:225
+#: lib/phoenix_kit_billing/web/currencies.html.heex:119
+#: lib/phoenix_kit_billing/web/currencies.html.heex:236
 #, elixir-autogen, elixir-format
 msgid "Enable"
 msgstr "Включить"
@@ -297,32 +302,29 @@ msgstr "Включить"
 msgid "GBP - British Pound"
 msgstr "GBP - Британский фунт"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:85
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:15
-#: lib/phoenix_kit_billing/web/settings.html.heex:15
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:24
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:49
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "Общие"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:41
+#: lib/phoenix_kit_billing/web/settings.html.heex:15
 #, elixir-autogen, elixir-format
 msgid "General Settings"
 msgstr "Общие настройки"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:162
-#: lib/phoenix_kit_billing/web/invoices.html.heex:120
+#: lib/phoenix_kit_billing/web/invoices.html.heex:122
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:189
 #, elixir-autogen, elixir-format
 msgid "Invoice #"
 msgstr "Счёт №"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:97
+#: lib/phoenix_kit_billing/web/settings.html.heex:58
 #, elixir-autogen, elixir-format
 msgid "Invoice Due Days"
 msgstr "Срок оплаты счёта (дней)"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:71
+#: lib/phoenix_kit_billing/web/settings.html.heex:32
 #, elixir-autogen, elixir-format
 msgid "Invoice Prefix"
 msgstr "Префикс счёта"
@@ -339,7 +341,7 @@ msgstr "Управление ценами и возможностями подп
 
 #: lib/phoenix_kit_billing/web/index.html.heex:16
 #: lib/phoenix_kit_billing/web/index.html.heex:206
-#: lib/phoenix_kit_billing/web/order_form.ex:75
+#: lib/phoenix_kit_billing/web/order_form.html.heex:7
 #: lib/phoenix_kit_billing/web/orders.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "New Order"
@@ -351,7 +353,7 @@ msgstr "Новый заказ"
 msgid "New Profile"
 msgstr "Новый профиль"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:35
+#: lib/phoenix_kit_billing/web/currencies.html.heex:52
 #: lib/phoenix_kit_billing/web/index.html.heex:259
 #, elixir-autogen, elixir-format
 msgid "No currencies configured"
@@ -363,19 +365,20 @@ msgid "No invoices yet"
 msgstr "Счетов пока нет"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:95
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:12
 #, elixir-autogen, elixir-format
 msgid "No orders yet"
 msgstr "Заказов пока нет"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:108
 #: lib/phoenix_kit_billing/web/invoices.html.heex:48
-#: lib/phoenix_kit_billing/web/invoices.html.heex:121
+#: lib/phoenix_kit_billing/web/invoices.html.heex:123
 #: lib/phoenix_kit_billing/web/orders.html.heex:130
 #, elixir-autogen, elixir-format
 msgid "Order #"
 msgstr "Заказ №"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:59
+#: lib/phoenix_kit_billing/web/settings.html.heex:20
 #, elixir-autogen, elixir-format
 msgid "Order Prefix"
 msgstr "Префикс заказа"
@@ -391,26 +394,24 @@ msgid "Paid Revenue"
 msgstr "Оплаченная выручка"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:65
-#: lib/phoenix_kit_billing/web/order_form.html.heex:218
+#: lib/phoenix_kit_billing/web/order_form.html.heex:213
 #: lib/phoenix_kit_billing/web/orders.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Pending"
 msgstr "В ожидании"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:114
-#: lib/phoenix_kit_billing/web/invoices.html.heex:188
+#: lib/phoenix_kit_billing/web/invoices.html.heex:116
+#: lib/phoenix_kit_billing/web/invoices.html.heex:197
 #, elixir-autogen, elixir-format
 msgid "Print"
 msgstr "Печать"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:332
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:336
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:339
 #, elixir-autogen, elixir-format
 msgid "Print Credit Note"
 msgstr "Распечатать кредит-ноту"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:363
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:367
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:359
 #, elixir-autogen, elixir-format
 msgid "Print Payment Confirmation"
 msgstr "Распечатать подтверждение оплаты"
@@ -420,7 +421,7 @@ msgstr "Распечатать подтверждение оплаты"
 msgid "Quick Actions"
 msgstr "Быстрые действия"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:83
+#: lib/phoenix_kit_billing/web/settings.html.heex:44
 #, elixir-autogen, elixir-format
 msgid "Receipt Prefix"
 msgstr "Префикс квитанции"
@@ -437,70 +438,70 @@ msgstr "Последние заказы"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:10
 #: lib/phoenix_kit_billing/web/index.html.heex:10
-#: lib/phoenix_kit_billing/web/invoices.html.heex:92
+#: lib/phoenix_kit_billing/web/invoices.html.heex:94
 #: lib/phoenix_kit_billing/web/orders.html.heex:102
 #: lib/phoenix_kit_billing/web/transactions.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Refresh"
 msgstr "Обновить"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:343
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:350
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:936
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:961
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:346
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:919
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:944
 #, elixir-autogen, elixir-format
 msgid "Send Credit Note"
 msgstr "Отправить кредит-ноту"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:374
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:381
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:974
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:366
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:957
 #, elixir-autogen, elixir-format
 msgid "Send Payment Confirmation"
 msgstr "Отправить подтверждение оплаты"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:203
-#: lib/phoenix_kit_billing/web/currencies.html.heex:207
+#: lib/phoenix_kit_billing/web/currencies.html.heex:214
+#: lib/phoenix_kit_billing/web/currencies.html.heex:218
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:209
 #, elixir-autogen, elixir-format
 msgid "Set Default"
 msgstr "Сделать по умолчанию"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:133
-#: lib/phoenix_kit_billing/web/currencies.html.heex:232
+#: lib/phoenix_kit_billing/web/currencies.html.heex:126
+#: lib/phoenix_kit_billing/web/currencies.html.heex:243
 #, elixir-autogen, elixir-format
 msgid "Set as Default"
 msgstr "Установить по умолчанию"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:230
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:206
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:159
+#: lib/phoenix_kit_billing/web/trail.ex:55
 #, elixir-autogen, elixir-format
 msgid "Settings"
 msgstr "Настройки"
 
-#: lib/phoenix_kit_billing/web/order_form.ex:290
+#: lib/phoenix_kit_billing/web/order_form.ex:323
 #, elixir-autogen, elixir-format
 msgid "Something went wrong. Please try again."
 msgstr "Что-то пошло не так. Попробуйте ещё раз."
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:68
-#: lib/phoenix_kit_billing/web/currencies.html.heex:153
+#: lib/phoenix_kit_billing/web/currencies.html.heex:86
+#: lib/phoenix_kit_billing/web/currencies.html.heex:148
 #: lib/phoenix_kit_billing/web/index.html.heex:109
 #: lib/phoenix_kit_billing/web/index.html.heex:163
-#: lib/phoenix_kit_billing/web/invoices.html.heex:123
+#: lib/phoenix_kit_billing/web/invoices.html.heex:125
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:190
 #: lib/phoenix_kit_billing/web/order_form.html.heex:209
 #: lib/phoenix_kit_billing/web/orders.html.heex:132
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:112
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:292
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:431
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:430
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:77
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:179
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:185
 #: lib/phoenix_kit_billing/web/transactions.html.heex:50
 #, elixir-autogen, elixir-format
 msgid "Status"
 msgstr "Статус"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:109
+#: lib/phoenix_kit_billing/web/settings.html.heex:70
 #, elixir-autogen, elixir-format
 msgid "Tax Settings"
 msgstr "Настройки налогов"
@@ -510,11 +511,12 @@ msgstr "Настройки налогов"
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:136
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:187
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:214
-#: lib/phoenix_kit_billing/web/invoices.html.heex:124
+#: lib/phoenix_kit_billing/web/invoices.html.heex:126
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:72
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:135
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:191
 #: lib/phoenix_kit_billing/web/orders.html.heex:134
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:113
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Total"
@@ -535,12 +537,12 @@ msgstr "Всего заказов"
 msgid "USD - US Dollar"
 msgstr "USD - Доллар США"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:109
-#: lib/phoenix_kit_billing/web/invoices.html.heex:183
+#: lib/phoenix_kit_billing/web/invoices.html.heex:111
+#: lib/phoenix_kit_billing/web/invoices.html.heex:192
 #: lib/phoenix_kit_billing/web/orders.html.heex:119
 #: lib/phoenix_kit_billing/web/orders.html.heex:182
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:162
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:260
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:168
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:266
 #, elixir-autogen, elixir-format
 msgid "View"
 msgstr "Просмотр"
@@ -560,23 +562,23 @@ msgstr "Смотреть все"
 msgid "View Invoice"
 msgstr "Открыть счёт"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:184
+#: lib/phoenix_kit_billing/web/currencies.ex:400
 #, elixir-autogen, elixir-format
 msgid "%{code} deleted"
 msgstr "%{code} удалена"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:89
+#: lib/phoenix_kit_billing/web/currencies.ex:335
 #, elixir-autogen, elixir-format
 msgid "%{code} set as default currency"
 msgstr "%{code} установлена как валюта по умолчанию"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:285
+#: lib/phoenix_kit_billing/web/currencies.ex:452
 #, elixir-autogen, elixir-format
 msgid "%{count} currencies imported"
 msgstr "%{count} валют импортировано"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:296
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:118
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:235
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:92
 #, elixir-autogen, elixir-format
 msgid "%{count} day trial"
 msgid_plural "%{count} day trial"
@@ -584,7 +586,7 @@ msgstr[0] "Пробный период %{count} день"
 msgstr[1] "Пробный период %{count} дня"
 msgstr[2] "Пробный период %{count} дней"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:408
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:407
 #, elixir-autogen, elixir-format
 msgid "%{count} days"
 msgstr "%{count} дн."
@@ -604,12 +606,12 @@ msgstr "Всего заказов: %{count}"
 msgid "%{count} total transactions"
 msgstr "Всего транзакций: %{count}"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:287
+#: lib/phoenix_kit_billing/web/currencies.ex:454
 #, elixir-autogen, elixir-format
 msgid "%{ok} imported, %{fail} failed"
 msgstr "%{ok} импортировано, %{fail} не удалось"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:421
+#: lib/phoenix_kit_billing/web/currencies.html.heex:454
 #, elixir-autogen, elixir-format
 msgid "%{selected} of %{total} selected"
 msgstr "%{selected} из %{total} выбрано"
@@ -620,91 +622,91 @@ msgstr "%{selected} из %{total} выбрано"
 msgid "(%{count} days remaining)"
 msgstr "(%{count} дн. осталось)"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:64
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:316
+#: lib/phoenix_kit_billing/web/order_form.html.heex:68
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:315
 #, elixir-autogen, elixir-format
 msgid "(Default)"
 msgstr "(По умолчанию)"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:82
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "A brief description of this plan"
 msgstr "Краткое описание этого тарифа"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:453
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:427
 #, elixir-autogen, elixir-format
 msgid "API Secret"
 msgstr "API-секрет"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:435
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:409
 #, elixir-autogen, elixir-format
 msgid "API Username"
 msgstr "Имя пользователя API"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:73
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:75
 #, elixir-autogen, elixir-format
 msgid "Access denied"
 msgstr "Доступ запрещён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:471
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:445
 #, elixir-autogen, elixir-format
 msgid "Account Name"
 msgstr "Название аккаунта"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:415
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Account:"
 msgstr "Счёт:"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:155
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:281
+#: lib/phoenix_kit_billing/web/currencies.html.heex:150
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:285
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr "Действия"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:451
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:235
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:450
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:176
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:31
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:104
 #, elixir-autogen, elixir-format
 msgid "Active"
 msgstr "Активна"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:41
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:15
 #, elixir-autogen, elixir-format
 msgid "Active Providers:"
 msgstr "Активные провайдеры:"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:13
-#: lib/phoenix_kit_billing/web/currencies.html.heex:41
-#: lib/phoenix_kit_billing/web/currencies.html.heex:273
+#: lib/phoenix_kit_billing/web/currencies.html.heex:58
+#: lib/phoenix_kit_billing/web/currencies.html.heex:286
 #, elixir-autogen, elixir-format
 msgid "Add Currency"
 msgstr "Добавить валюту"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:104
+#: lib/phoenix_kit_billing/web/order_form.html.heex:108
 #, elixir-autogen, elixir-format
 msgid "Add Item"
 msgstr "Добавить позицию"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:37
+#: lib/phoenix_kit_billing/web/currencies.html.heex:54
 #, elixir-autogen, elixir-format
 msgid "Add currencies manually or import from the ISO 4217 library"
 msgstr "Добавьте валюты вручную или импортируйте из библиотеки ISO 4217"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:318
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:405
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:264
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:424
 #, elixir-autogen, elixir-format
 msgid "Address Line 1"
 msgstr "Адрес, строка 1"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:331
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:418
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:273
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:437
 #, elixir-autogen, elixir-format
 msgid "Address Line 2"
 msgstr "Адрес, строка 2"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:255
+#: lib/phoenix_kit_billing/web/order_form.html.heex:242
 #, elixir-autogen, elixir-format
 msgid "Admin-only notes..."
 msgstr "Заметки только для администраторов..."
@@ -719,12 +721,12 @@ msgstr "Все"
 msgid "All Methods"
 msgstr "Все методы"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:320
+#: lib/phoenix_kit_billing/web/settings.html.heex:272
 #, elixir-autogen, elixir-format
 msgid "All Modules"
 msgstr "Все модули"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:78
+#: lib/phoenix_kit_billing/web/invoices.html.heex:80
 #: lib/phoenix_kit_billing/web/orders.html.heex:83
 #, elixir-autogen, elixir-format
 msgid "All Statuses"
@@ -736,26 +738,27 @@ msgstr "Все статусы"
 msgid "All Types"
 msgstr "Все типы"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:416
+#: lib/phoenix_kit_billing/web/currencies.html.heex:449
 #, elixir-autogen, elixir-format
 msgid "All available currencies have already been added"
 msgstr "Все доступные валюты уже добавлены"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:279
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:721
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:714
 #: lib/phoenix_kit_billing/web/transactions.html.heex:43
 #: lib/phoenix_kit_billing/web/transactions.html.heex:113
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Amount"
 msgstr "Сумма"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:338
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:425
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:274
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:444
 #, elixir-autogen, elixir-format
 msgid "Apartment, suite, etc."
 msgstr "Квартира, офис и т. д."
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:153
+#: lib/phoenix_kit_billing/web/settings.html.heex:105
 #, elixir-autogen, elixir-format
 msgid "Apply"
 msgstr "Применить"
@@ -775,8 +778,8 @@ msgstr "Вы уверены, что хотите удалить этот пла�
 msgid "Are you sure you want to void this invoice?"
 msgstr "Вы уверены, что хотите аннулировать этот счёт?"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:409
-#: lib/phoenix_kit_billing/web/settings.html.heex:249
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:393
+#: lib/phoenix_kit_billing/web/settings.html.heex:201
 #, elixir-autogen, elixir-format
 msgid "Bank Details"
 msgstr "Банковские реквизиты"
@@ -786,34 +789,34 @@ msgstr "Банковские реквизиты"
 msgid "Bank Transfer"
 msgstr "Банковский перевод"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:287
+#: lib/phoenix_kit_billing/web/settings.html.heex:239
 #, elixir-autogen, elixir-format
 msgid "Bank details not configured (optional)"
 msgstr "Банковские реквизиты не настроены (необязательно)"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:412
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:396
 #, elixir-autogen, elixir-format
 msgid "Bank:"
 msgstr "Банк:"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:63
-#: lib/phoenix_kit_billing/web/currencies.html.heex:177
+#: lib/phoenix_kit_billing/web/currencies.html.heex:81
+#: lib/phoenix_kit_billing/web/currencies.html.heex:178
 #, elixir-autogen, elixir-format
 msgid "Base"
 msgstr "Базовая"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:21
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "Basic Information"
 msgstr "Основные сведения"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:298
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:385
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:247
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:404
 #, elixir-autogen, elixir-format
 msgid "Billing Address"
 msgstr "Платёжный адрес"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:510
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:503
 #, elixir-autogen, elixir-format
 msgid "Billing Details"
 msgstr "Платёжные данные"
@@ -823,7 +826,7 @@ msgstr "Платёжные данные"
 msgid "Billing Information"
 msgstr "Платёжная информация"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:147
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:104
 #, elixir-autogen, elixir-format
 msgid "Billing Interval"
 msgstr "Период биллинга"
@@ -833,34 +836,33 @@ msgstr "Период биллинга"
 msgid "Billing Period"
 msgstr "Расчётный период"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:34
-#: lib/phoenix_kit_billing/web/order_form.html.heex:43
+#: lib/phoenix_kit_billing/web/order_form.html.heex:47
 #, elixir-autogen, elixir-format
 msgid "Billing Profile"
 msgstr "Платёжный профиль"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:169
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:149
 #, elixir-autogen, elixir-format
 msgid "Billing email (can differ from account email)"
 msgstr "Email для счетов (может отличаться от email аккаунта)"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:132
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:151
 #, elixir-autogen, elixir-format
 msgid "Billing profile created successfully"
 msgstr "Платёжный профиль успешно создан"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:59
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:66
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:64
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:68
 #, elixir-autogen, elixir-format
 msgid "Billing profile not found"
 msgstr "Платёжный профиль не найден"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:146
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:181
 #, elixir-autogen, elixir-format
 msgid "Billing profile saved successfully"
 msgstr "Платёжный профиль успешно сохранён"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:131
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:150
 #, elixir-autogen, elixir-format
 msgid "Billing profile updated successfully"
 msgstr "Платёжный профиль успешно обновлён"
@@ -870,12 +872,12 @@ msgstr "Платёжный профиль успешно обновлён"
 msgid "Billing profiles are created by users"
 msgstr "Платёжные профили создаются пользователями"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:93
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
 #, elixir-autogen, elixir-format
 msgid "Business billing profile (EU)"
 msgstr "Корпоративный платёжный профиль (ЕС)"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:489
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format
 msgid "Callback URL"
 msgstr "URL обратного вызова"
@@ -906,13 +908,13 @@ msgstr "Немедленно отменить подписку?"
 msgid "Cancel subscription?"
 msgstr "Отменить подписку?"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:211
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:227
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:210
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:226
 #, elixir-autogen, elixir-format
 msgid "Cancel this subscription? It will end at the current period."
 msgstr "Отменить эту подписку? Она завершится в конце текущего периода."
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:236
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:235
 #, elixir-autogen, elixir-format
 msgid "Cancel this subscription? The trial will end immediately."
 msgstr "Отменить эту подписку? Пробный период завершится немедленно."
@@ -931,37 +933,37 @@ msgstr "Отмена"
 msgid "Cancelled"
 msgstr "Отменён"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:224
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:230
 #, elixir-autogen, elixir-format
 msgid "Cancels at end"
 msgstr "Отменяется по окончании"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:194
+#: lib/phoenix_kit_billing/web/currencies.ex:410
 #, elixir-autogen, elixir-format
 msgid "Cannot delete currency — it is used by existing orders"
 msgstr "Невозможно удалить валюту — она используется в существующих заказах"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:98
+#: lib/phoenix_kit_billing/web/subscription_types.ex:133
 #, elixir-autogen, elixir-format
 msgid "Cannot delete subscription type with active subscriptions. Deactivate it instead."
 msgstr "Невозможно удалить тип подписки с активными подписками. Деактивируйте его."
 
-#: lib/phoenix_kit_billing/web/currencies.ex:187
+#: lib/phoenix_kit_billing/web/currencies.ex:403
 #, elixir-autogen, elixir-format
 msgid "Cannot delete the default currency"
 msgstr "Невозможно удалить валюту по умолчанию"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:407
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:381
 #, elixir-autogen, elixir-format
 msgid "Card payments (Baltics)"
 msgstr "Карточные платежи (Прибалтика)"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:68
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Cards, Apple Pay, Google Pay"
 msgstr "Карты, Apple Pay, Google Pay"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:56
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "Change"
 msgstr "Изменить"
@@ -973,72 +975,72 @@ msgstr "Изменить"
 msgid "Change Subscription Type"
 msgstr "Изменить тип подписки"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:119
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:123
 #, elixir-autogen, elixir-format
 msgid "Change subscription type"
 msgstr "Изменить тип подписки"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:354
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:130
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:134
 #, elixir-autogen, elixir-format
 msgid "Choose a subscription type..."
 msgstr "Выберите тип подписки..."
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:345
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:432
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:283
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:451
 #, elixir-autogen, elixir-format
 msgid "City"
 msgstr "Город"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:89
-#: lib/phoenix_kit_billing/web/invoices.html.heex:86
+#: lib/phoenix_kit_billing/web/invoices.html.heex:88
 #: lib/phoenix_kit_billing/web/orders.html.heex:96
 #: lib/phoenix_kit_billing/web/transactions.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Clear Filters"
 msgstr "Сбросить фильтры"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:207
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:181
 #, elixir-autogen, elixir-format
 msgid "Client ID"
 msgstr "Идентификатор клиента"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:225
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:199
 #, elixir-autogen, elixir-format
 msgid "Client Secret"
 msgstr "Секрет клиента"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:438
+#: lib/phoenix_kit_billing/web/currencies.html.heex:471
 #, elixir-autogen, elixir-format
 msgid "Code"
 msgstr "Код"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:91
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:93
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:86
-#: lib/phoenix_kit_billing/web/settings.html.heex:185
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:202
+#: lib/phoenix_kit_billing/web/settings.html.heex:137
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:221
 #, elixir-autogen, elixir-format
 msgid "Company"
 msgstr "Компания"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:171
+#: lib/phoenix_kit_billing/web/settings.html.heex:123
 #, elixir-autogen, elixir-format
 msgid "Company & Bank Information"
 msgstr "Реквизиты компании и банка"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:196
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:286
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:172
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:305
 #, elixir-autogen, elixir-format
 msgid "Company Information"
 msgstr "Реквизиты компании"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:201
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:291
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
 #, elixir-autogen, elixir-format
 msgid "Company Name *"
 msgstr "Название компании *"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:242
+#: lib/phoenix_kit_billing/web/settings.html.heex:194
 #, elixir-autogen, elixir-format
 msgid "Company information not configured"
 msgstr "Реквизиты компании не настроены"
@@ -1048,7 +1050,7 @@ msgstr "Реквизиты компании не настроены"
 msgid "Configure online payment integrations"
 msgstr "Настройте интеграции онлайн-платежей"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:540
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:514
 #, elixir-autogen, elixir-format
 msgid "Configure webhook with events: CHECKOUT.ORDER.*, PAYMENT.*"
 msgstr "Настройте вебхук с событиями: CHECKOUT.ORDER.*, PAYMENT.*"
@@ -1060,86 +1062,86 @@ msgid "Confirm Order"
 msgstr "Подтвердить заказ"
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:328
-#: lib/phoenix_kit_billing/web/order_form.html.heex:221
+#: lib/phoenix_kit_billing/web/order_form.html.heex:214
 #: lib/phoenix_kit_billing/web/orders.html.heex:87
 #, elixir-autogen, elixir-format
 msgid "Confirmed"
 msgstr "Подтверждён"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:261
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:348
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:218
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:367
 #, elixir-autogen, elixir-format
 msgid "Contact"
 msgstr "Контакт"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:266
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:353
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:225
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:372
 #, elixir-autogen, elixir-format
 msgid "Contact Email"
 msgstr "Контактный email"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:541
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:515
 #, elixir-autogen, elixir-format
 msgid "Copy Webhook ID"
 msgstr "Скопировать ID вебхука"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:561
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:535
 #, elixir-autogen, elixir-format
 msgid "Copy the processing account name (e.g. EUR3D1)"
 msgstr "Скопируйте название обрабатывающего аккаунта (например, EUR3D1)"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:153
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:274
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:383
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:502
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:127
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:248
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:357
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:476
 #, elixir-autogen, elixir-format
 msgid "Copy to clipboard"
 msgstr "Скопировать в буфер обмена"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:552
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:526
 #, elixir-autogen, elixir-format
 msgid "Copy webhook secret"
 msgstr "Скопировать секрет вебхука"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:530
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:504
 #, elixir-autogen, elixir-format
 msgid "Copy webhook signing secret"
 msgstr "Скопировать секрет подписи вебхука"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:304
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:254
 #, elixir-autogen, elixir-format
 msgid "Country"
 msgstr "Страна"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:391
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
 #, elixir-autogen, elixir-format
 msgid "Country *"
 msgstr "Страна *"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:398
+#: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
 msgid "Create"
 msgstr "Создать"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:60
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "Create First Subscription Type"
 msgstr "Создать первый тип подписки"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:276
+#: lib/phoenix_kit_billing/web/order_form.html.heex:263
 #: lib/phoenix_kit_billing/web/orders.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Create Order"
 msgstr "Создать заказ"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:438
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:525
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Create Profile"
 msgstr "Создать профиль"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:36
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:356
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:7
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:355
 #, elixir-autogen, elixir-format
 msgid "Create Subscription"
 msgstr "Создать подписку"
@@ -1154,64 +1156,64 @@ msgstr "Создайте первый профиль"
 msgid "Create a billing profile to use for your orders"
 msgstr "Создайте платёжный профиль для использования в заказах"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:9
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Create a new billing profile for a user"
 msgstr "Создание нового платёжного профиля для пользователя"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:165
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:184
 #, elixir-autogen, elixir-format
 msgid "Create a new billing profile for orders"
 msgstr "Создание нового платёжного профиля для заказов"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:6
+#: lib/phoenix_kit_billing/web/order_form.html.heex:10
 #, elixir-autogen, elixir-format
 msgid "Create a new order"
 msgstr "Создание нового заказа"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:7
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Create a new subscription type"
 msgstr "Создание нового типа подписки"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:549
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:523
 #, elixir-autogen, elixir-format
 msgid "Create account at razorpay.com"
 msgstr "Создайте аккаунт на razorpay.com"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:527
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:501
 #, elixir-autogen, elixir-format
 msgid "Create account at stripe.com"
 msgstr "Создайте аккаунт на stripe.com"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:538
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:512
 #, elixir-autogen, elixir-format
 msgid "Create app at developer.paypal.com"
 msgstr "Создайте приложение на developer.paypal.com"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:86
+#: lib/phoenix_kit_billing/web/order_form.html.heex:90
 #, elixir-autogen, elixir-format
 msgid "Create one now"
 msgstr "Создать сейчас"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:529
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:503
 #, elixir-autogen, elixir-format
 msgid "Create webhook with events: checkout.session.completed, payment_intent.*"
 msgstr "Создайте вебхук с событиями: checkout.session.completed, payment_intent.*"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:551
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:525
 #, elixir-autogen, elixir-format
 msgid "Create webhook with events: payment.*, order.paid"
 msgstr "Создайте вебхук с событиями: payment.*, order.paid"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:53
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Create your first subscription type to start accepting recurring payments."
 msgstr "Создайте первый тип подписки, чтобы начать принимать регулярные платежи."
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:123
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:11
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:563
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:556
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:11
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:13
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:298
@@ -1219,45 +1221,45 @@ msgstr "Создайте первый тип подписки, чтобы нач
 msgid "Created"
 msgstr "Создан"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:661
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:654
 #, elixir-autogen, elixir-format
 msgid "Credit Note Sent"
 msgstr "Кредит-нота отправлена"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:149
+#: lib/phoenix_kit_billing/web/currencies.html.heex:142
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:323
-#: lib/phoenix_kit_billing/web/order_form.html.heex:196
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:119
+#: lib/phoenix_kit_billing/web/order_form.html.heex:201
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Currency"
 msgstr "Валюта"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:279
+#: lib/phoenix_kit_billing/web/currencies.html.heex:292
 #, elixir-autogen, elixir-format
 msgid "Currency Code"
 msgstr "Код валюты"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:260
+#: lib/phoenix_kit_billing/web/currencies.html.heex:271
 #, elixir-autogen, elixir-format
 msgid "Currency Configuration"
 msgstr "Настройка валют"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:158
+#: lib/phoenix_kit_billing/web/currencies.ex:369
 #, elixir-autogen, elixir-format
 msgid "Currency created successfully"
 msgstr "Валюта успешно создана"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:73
+#: lib/phoenix_kit_billing/web/currencies.ex:312
 #, elixir-autogen, elixir-format
 msgid "Currency updated"
 msgstr "Валюта обновлена"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:157
+#: lib/phoenix_kit_billing/web/currencies.ex:368
 #, elixir-autogen, elixir-format
 msgid "Currency updated successfully"
 msgstr "Валюта успешно обновлена"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:180
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:186
 #, elixir-autogen, elixir-format
 msgid "Current Period"
 msgstr "Текущий период"
@@ -1267,46 +1269,46 @@ msgstr "Текущий период"
 msgid "Current Subscription Type"
 msgstr "Текущий тип подписки"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:422
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:509
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:332
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:518
 #, elixir-autogen, elixir-format
 msgid "Custom name to identify this profile"
 msgstr "Произвольное название для идентификации профиля"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:485
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:469
 #: lib/phoenix_kit_billing/web/invoices.html.heex:52
-#: lib/phoenix_kit_billing/web/invoices.html.heex:122
+#: lib/phoenix_kit_billing/web/invoices.html.heex:124
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:246
-#: lib/phoenix_kit_billing/web/order_form.html.heex:14
+#: lib/phoenix_kit_billing/web/order_form.html.heex:18
 #: lib/phoenix_kit_billing/web/orders.html.heex:56
 #: lib/phoenix_kit_billing/web/orders.html.heex:131
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:235
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:32
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:371
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:177
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:36
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:370
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:183
 #, elixir-autogen, elixir-format
 msgid "Customer"
 msgstr "Клиент"
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:153
-#: lib/phoenix_kit_billing/web/order_form.html.heex:237
+#: lib/phoenix_kit_billing/web/order_form.html.heex:231
 #, elixir-autogen, elixir-format
 msgid "Customer Notes"
 msgstr "Примечания для клиента"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:150
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:106
 #, elixir-autogen, elixir-format
 msgid "Day"
 msgstr "День"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:58
-#: lib/phoenix_kit_billing/web/currencies.html.heex:151
-#: lib/phoenix_kit_billing/web/currencies.html.heex:343
+#: lib/phoenix_kit_billing/web/currencies.html.heex:75
+#: lib/phoenix_kit_billing/web/currencies.html.heex:144
+#: lib/phoenix_kit_billing/web/currencies.html.heex:356
 #, elixir-autogen, elixir-format
 msgid "Decimal Places"
 msgstr "Знаков после запятой"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:441
+#: lib/phoenix_kit_billing/web/currencies.html.heex:474
 #, elixir-autogen, elixir-format
 msgid "Decimals"
 msgstr "Знаки"
@@ -1314,15 +1316,15 @@ msgstr "Знаки"
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:64
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:122
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:171
-#: lib/phoenix_kit_billing/web/currencies.html.heex:72
-#: lib/phoenix_kit_billing/web/currencies.html.heex:154
-#: lib/phoenix_kit_billing/web/currencies.html.heex:197
+#: lib/phoenix_kit_billing/web/currencies.html.heex:90
+#: lib/phoenix_kit_billing/web/currencies.html.heex:149
+#: lib/phoenix_kit_billing/web/currencies.html.heex:208
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:161
 #, elixir-autogen, elixir-format
 msgid "Default"
 msgstr "По умолчанию"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:126
+#: lib/phoenix_kit_billing/web/settings.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Default Tax Rate (%)"
 msgstr "Ставка налога по умолчанию (%)"
@@ -1332,27 +1334,27 @@ msgstr "Ставка налога по умолчанию (%)"
 msgid "Default profile updated"
 msgstr "Профиль по умолчанию обновлён"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:280
-#: lib/phoenix_kit_billing/web/order_form.html.heex:113
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:76
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:272
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:282
+#: lib/phoenix_kit_billing/web/order_form.html.heex:117
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:58
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:211
 #: lib/phoenix_kit_billing/web/transactions.html.heex:115
 #, elixir-autogen, elixir-format
 msgid "Description"
 msgstr "Описание"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:759
-#: lib/phoenix_kit_billing/web/order_form.html.heex:139
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:746
+#: lib/phoenix_kit_billing/web/order_form.html.heex:143
 #, elixir-autogen, elixir-format
 msgid "Description (optional)"
 msgstr "Описание (необязательно)"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:428
+#: lib/phoenix_kit_billing/web/currencies.html.heex:461
 #, elixir-autogen, elixir-format
 msgid "Deselect All"
 msgstr "Снять выделение"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:69
+#: lib/phoenix_kit_billing/web/currencies.html.heex:87
 #, elixir-autogen, elixir-format
 msgid "Disabled"
 msgstr "Отключена"
@@ -1362,86 +1364,86 @@ msgstr "Отключена"
 msgid "Discount"
 msgstr "Скидка"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:79
-#: lib/phoenix_kit_billing/web/order_form.html.heex:216
+#: lib/phoenix_kit_billing/web/invoices.html.heex:81
+#: lib/phoenix_kit_billing/web/order_form.html.heex:212
 #: lib/phoenix_kit_billing/web/orders.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr "Черновик"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:228
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:318
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:194
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:337
 #, elixir-autogen, elixir-format
 msgid "EU VAT format: Country code + number"
 msgstr "Формат НДС ЕС: код страны + номер"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:66
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:79
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:81
 #, elixir-autogen, elixir-format
 msgid "Edit Billing Profile"
 msgstr "Редактировать платёжный профиль"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:273
+#: lib/phoenix_kit_billing/web/currencies.html.heex:286
 #, elixir-autogen, elixir-format
 msgid "Edit Currency"
 msgstr "Редактировать валюту"
 
-#: lib/phoenix_kit_billing/web/order_form.ex:109
+#: lib/phoenix_kit_billing/web/order_form.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Edit Order %{number}"
 msgstr "Редактировать заказ %{number}"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:73
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Edit Subscription"
 msgstr "Редактировать подписку"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:28
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:7
 #, elixir-autogen, elixir-format
 msgid "Edit Subscription Type"
 msgstr "Редактировать тип подписки"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:7
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:9
 #, elixir-autogen, elixir-format
 msgid "Edit billing profile details"
 msgstr "Редактирование данных платёжного профиля"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:178
+#: lib/phoenix_kit_billing/web/settings.html.heex:130
 #, elixir-autogen, elixir-format
 msgid "Edit in Organization"
 msgstr "Редактировать в организации"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:7
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Edit subscription settings"
 msgstr "Редактирование параметров подписки"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:9
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Edit subscription type details and pricing"
 msgstr "Редактирование типа подписки и тарификации"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:158
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:253
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:144
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:272
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr "Email"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:871
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:908
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:944
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:985
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:854
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:891
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:927
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:968
 #, elixir-autogen, elixir-format
 msgid "Email Address"
 msgstr "Адрес электронной почты"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:121
+#: lib/phoenix_kit_billing/web/settings.html.heex:77
 #, elixir-autogen, elixir-format
 msgid "Enable Tax"
 msgstr "Включить налог"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:69
-#: lib/phoenix_kit_billing/web/currencies.html.heex:390
+#: lib/phoenix_kit_billing/web/currencies.html.heex:87
+#: lib/phoenix_kit_billing/web/currencies.html.heex:424
 #, elixir-autogen, elixir-format
 msgid "Enabled"
 msgstr "Включена"
@@ -1451,77 +1453,77 @@ msgstr "Включена"
 msgid "Ended"
 msgstr "Завершена"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:74
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Enter email address..."
 msgstr "Введите адрес электронной почты..."
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:811
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:794
 #, elixir-autogen, elixir-format
 msgid "Enter refund amount"
 msgstr "Введите сумму возврата"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:197
+#: lib/phoenix_kit_billing/web/provider_settings.ex:261
 #, elixir-autogen, elixir-format
 msgid "EveryPay disabled"
 msgstr "EveryPay отключён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:197
+#: lib/phoenix_kit_billing/web/provider_settings.ex:261
 #, elixir-autogen, elixir-format
 msgid "EveryPay enabled"
 msgstr "EveryPay включён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:217
+#: lib/phoenix_kit_billing/web/provider_settings.ex:280
 #, elixir-autogen, elixir-format
 msgid "EveryPay settings saved"
 msgstr "Настройки EveryPay сохранены"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:60
-#: lib/phoenix_kit_billing/web/currencies.html.heex:152
-#: lib/phoenix_kit_billing/web/currencies.html.heex:356
+#: lib/phoenix_kit_billing/web/currencies.html.heex:78
+#: lib/phoenix_kit_billing/web/currencies.html.heex:146
+#: lib/phoenix_kit_billing/web/currencies.html.heex:369
 #, elixir-autogen, elixir-format
 msgid "Exchange Rate"
 msgstr "Курс обмена"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:282
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:281
 #, elixir-autogen, elixir-format
 msgid "Extend 30 days"
 msgstr "Продлить на 30 дней"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:140
+#: lib/phoenix_kit_billing/web/order_detail.ex:176
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel order: %{reason}"
 msgstr "Не удалось отменить заказ: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:74
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:93
-#: lib/phoenix_kit_billing/web/subscription_form.ex:304
-#: lib/phoenix_kit_billing/web/subscriptions.ex:142
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:163
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:185
+#: lib/phoenix_kit_billing/web/subscription_form.ex:351
+#: lib/phoenix_kit_billing/web/subscriptions.ex:202
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel: %{reason}"
 msgstr "Не удалось отменить: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:174
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:255
 #, elixir-autogen, elixir-format
 msgid "Failed to change subscription type: %{reason}"
 msgstr "Не удалось изменить тип подписки: %{reason}"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:110
+#: lib/phoenix_kit_billing/web/order_detail.ex:125
 #, elixir-autogen, elixir-format
 msgid "Failed to confirm order: %{reason}"
 msgstr "Не удалось подтвердить заказ: %{reason}"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:159
+#: lib/phoenix_kit_billing/web/order_detail.ex:215
 #, elixir-autogen, elixir-format
 msgid "Failed to create invoice: %{errors}"
 msgstr "Не удалось создать счёт: %{errors}"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:251
+#: lib/phoenix_kit_billing/web/subscription_form.ex:277
 #, elixir-autogen, elixir-format
 msgid "Failed to create subscription: %{reason}"
 msgstr "Не удалось создать подписку: %{reason}"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:198
+#: lib/phoenix_kit_billing/web/currencies.ex:414
 #, elixir-autogen, elixir-format
 msgid "Failed to delete currency"
 msgstr "Не удалось удалить валюту"
@@ -1531,39 +1533,39 @@ msgstr "Не удалось удалить валюту"
 msgid "Failed to delete profile"
 msgstr "Не удалось удалить профиль"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:108
+#: lib/phoenix_kit_billing/web/subscription_types.ex:143
 #, elixir-autogen, elixir-format
 msgid "Failed to delete subscription type: %{reason}"
 msgstr "Не удалось удалить тип подписки: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:322
+#: lib/phoenix_kit_billing/web/subscription_form.ex:394
 #, elixir-autogen, elixir-format
 msgid "Failed to extend: %{reason}"
 msgstr "Не удалось продлить: %{reason}"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:125
+#: lib/phoenix_kit_billing/web/order_detail.ex:151
 #, elixir-autogen, elixir-format
 msgid "Failed to mark as paid: %{reason}"
 msgstr "Не удалось отметить как оплаченный: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:128
-#: lib/phoenix_kit_billing/web/subscription_form.ex:270
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:225
+#: lib/phoenix_kit_billing/web/subscription_form.ex:303
 #, elixir-autogen, elixir-format
 msgid "Failed to pause: %{reason}"
 msgstr "Не удалось приостановить: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:112
-#: lib/phoenix_kit_billing/web/subscription_form.ex:287
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:205
+#: lib/phoenix_kit_billing/web/subscription_form.ex:326
 #, elixir-autogen, elixir-format
 msgid "Failed to resume: %{reason}"
 msgstr "Не удалось возобновить: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:116
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:227
 #, elixir-autogen, elixir-format
 msgid "Failed to save subscription type: %{reason}"
 msgstr "Не удалось сохранить тип подписки: %{reason}"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:92
+#: lib/phoenix_kit_billing/web/currencies.ex:338
 #, elixir-autogen, elixir-format
 msgid "Failed to set default currency"
 msgstr "Не удалось установить валюту по умолчанию"
@@ -1573,44 +1575,44 @@ msgstr "Не удалось установить валюту по умолча�
 msgid "Failed to set default profile"
 msgstr "Не удалось установить профиль по умолчанию"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:76
+#: lib/phoenix_kit_billing/web/currencies.ex:315
 #, elixir-autogen, elixir-format
 msgid "Failed to update currency"
 msgstr "Не удалось обновить валюту"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:73
+#: lib/phoenix_kit_billing/web/subscription_types.ex:99
 #, elixir-autogen, elixir-format
 msgid "Failed to update subscription type: %{reason}"
 msgstr "Не удалось обновить тип подписки: %{reason}"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:202
+#: lib/phoenix_kit_billing/web/subscription_form.ex:429
 #, elixir-autogen, elixir-format
 msgid "Failed to update subscription: %{reason}"
 msgstr "Не удалось обновить подписку: %{reason}"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:108
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:185
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:137
 #, elixir-autogen, elixir-format
 msgid "Features"
 msgstr "Возможности"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:112
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:219
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
 #, elixir-autogen, elixir-format
 msgid "First Name *"
 msgstr "Имя *"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:610
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
 #, elixir-autogen, elixir-format
 msgid "Fully Paid"
 msgstr "Полностью оплачен"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:698
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:691
 #, elixir-autogen, elixir-format
 msgid "Fully Refunded"
 msgstr "Полностью возвращён"
 
-#: lib/phoenix_kit_billing/web/settings.ex:98
+#: lib/phoenix_kit_billing/web/settings.ex:201
 #, elixir-autogen, elixir-format
 msgid "General settings saved"
 msgstr "Общие настройки сохранены"
@@ -1633,27 +1635,27 @@ msgstr "Сформировать частичную квитанцию"
 msgid "Generate Receipt"
 msgstr "Сформировать квитанцию"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:446
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:430
 #, elixir-autogen, elixir-format
 msgid "Generated"
 msgstr "Сформирована"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:528
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:502
 #, elixir-autogen, elixir-format
 msgid "Get API keys from Dashboard → Developers"
 msgstr "Получите API-ключи в разделе Dashboard → Developers"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:560
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:534
 #, elixir-autogen, elixir-format
 msgid "Get API username and secret from the EveryPay merchant portal"
 msgstr "Получите имя пользователя и секрет API в портале EveryPay для продавцов"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:539
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:513
 #, elixir-autogen, elixir-format
 msgid "Get Client ID and Secret"
 msgstr "Получите Client ID и Secret"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:550
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:524
 #, elixir-autogen, elixir-format
 msgid "Get Key ID and Secret from Settings → API Keys"
 msgstr "Получите Key ID и Secret в разделе Settings → API Keys"
@@ -1673,79 +1675,75 @@ msgstr "Льготный период"
 msgid "Grace period ends"
 msgstr "Льготный период заканчивается"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:418
-#: lib/phoenix_kit_billing/web/settings.html.heex:266
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:402
+#: lib/phoenix_kit_billing/web/settings.html.heex:218
 #, elixir-autogen, elixir-format
 msgid "IBAN:"
 msgstr "IBAN:"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:41
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:52
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:90
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:45
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:56
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:94
 #, elixir-autogen, elixir-format
 msgid "ID:"
 msgstr "ID:"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:10
-#: lib/phoenix_kit_billing/web/currencies.html.heex:44
+#: lib/phoenix_kit_billing/web/currencies.html.heex:61
 #, elixir-autogen, elixir-format
 msgid "Import"
 msgstr "Импорт"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:478
+#: lib/phoenix_kit_billing/web/currencies.html.heex:511
 #, elixir-autogen, elixir-format
 msgid "Import %{count} Currencies"
 msgstr "Импортировать %{count} валют"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:411
+#: lib/phoenix_kit_billing/web/currencies.html.heex:444
 #, elixir-autogen, elixir-format
 msgid "Import Currencies"
 msgstr "Импортировать валюты"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:286
+#: lib/phoenix_kit_billing/web/currencies.ex:453
 #, elixir-autogen, elixir-format
 msgid "Import failed for %{count} currencies"
 msgstr "Не удалось импортировать %{count} валют"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:78
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:52
 #, elixir-autogen, elixir-format
 msgid "Inactive"
 msgstr "Неактивна"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:298
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:272
 #, elixir-autogen, elixir-format
 msgid "India payments (UPI, Cards)"
 msgstr "Платежи в Индии (UPI, карты)"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:75
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:77
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:84
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:190
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:209
 #, elixir-autogen, elixir-format
 msgid "Individual"
 msgstr "Физическое лицо"
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:159
-#: lib/phoenix_kit_billing/web/order_form.html.heex:249
+#: lib/phoenix_kit_billing/web/order_form.html.heex:240
 #, elixir-autogen, elixir-format
 msgid "Internal Notes"
 msgstr "Внутренние примечания"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:161
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:118
 #, elixir-autogen, elixir-format
 msgid "Interval Count"
 msgstr "Количество периодов"
 
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:111
 #: lib/phoenix_kit_billing/web/transactions.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "Invoice"
 msgstr "Счёт"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.ex:69
-#, elixir-autogen, elixir-format
-msgid "Invoice %{number}"
-msgstr "Счёт %{number}"
-
-#: lib/phoenix_kit_billing/web/order_detail.ex:153
+#: lib/phoenix_kit_billing/web/order_detail.ex:205
 #, elixir-autogen, elixir-format
 msgid "Invoice %{number} created"
 msgstr "Счёт %{number} создан"
@@ -1755,18 +1753,18 @@ msgstr "Счёт %{number} создан"
 msgid "Invoice Details"
 msgstr "Детали счёта"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:572
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:582
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:565
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:575
 #, elixir-autogen, elixir-format
 msgid "Invoice Sent"
 msgstr "Счёт отправлен"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.ex:54
+#: lib/phoenix_kit_billing/web/invoice_detail.ex:59
 #, elixir-autogen, elixir-format
 msgid "Invoice not found"
 msgstr "Счёт не найден"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:73
+#: lib/phoenix_kit_billing/web/invoices.html.heex:75
 #, elixir-autogen, elixir-format
 msgid "Invoice number, customer..."
 msgstr "Номер счёта, клиент..."
@@ -1777,13 +1775,13 @@ msgid "Invoices are generated from orders"
 msgstr "Счета формируются на основании заказов"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:65
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:786
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:846
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:773
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:829
 #, elixir-autogen, elixir-format
 msgid "Issue Refund"
 msgstr "Оформить возврат"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:788
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:775
 #, elixir-autogen, elixir-format
 msgid "Issue refund for invoice %{number}"
 msgstr "Возврат по счёту %{number}"
@@ -1794,45 +1792,45 @@ msgstr "Возврат по счёту %{number}"
 msgid "Item"
 msgstr "Позиция"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:127
+#: lib/phoenix_kit_billing/web/order_form.html.heex:131
 #, elixir-autogen, elixir-format
 msgid "Item name"
 msgstr "Название позиции"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:316
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:290
 #, elixir-autogen, elixir-format
 msgid "Key ID"
 msgstr "Идентификатор ключа"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:334
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:308
 #, elixir-autogen, elixir-format
 msgid "Key Secret"
 msgstr "Секрет ключа"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:140
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:235
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
 #, elixir-autogen, elixir-format
 msgid "Last Name *"
 msgstr "Фамилия *"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:251
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:338
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
 #, elixir-autogen, elixir-format
 msgid "Legal Address"
 msgstr "Юридический адрес"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:102
+#: lib/phoenix_kit_billing/web/order_form.html.heex:106
 #, elixir-autogen, elixir-format
 msgid "Line Items"
 msgstr "Позиции заказа"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:187
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:139
 #, elixir-autogen, elixir-format
 msgid "List the features included in this plan (one per line)"
 msgstr "Перечислите возможности тарифа (по одной на строку)"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:201
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:429
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:175
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:403
 #, elixir-autogen, elixir-format
 msgid "Live (Production)"
 msgstr "Боевой режим (Production)"
@@ -1843,12 +1841,12 @@ msgstr "Боевой режим (Production)"
 msgid "Location"
 msgstr "Местоположение"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:222
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:171
 #, elixir-autogen, elixir-format
 msgid "Lower numbers appear first"
 msgstr "Меньшие числа отображаются первыми"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:311
+#: lib/phoenix_kit_billing/web/settings.html.heex:263
 #, elixir-autogen, elixir-format
 msgid "Manage Currencies"
 msgstr "Управление валютами"
@@ -1873,7 +1871,7 @@ msgstr "Управление поддерживаемыми валютами д�
 msgid "Manage your billing information for orders and invoices"
 msgstr "Управляйте платёжными данными для заказов и счетов"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:9
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Manually create a subscription for a customer"
 msgstr "Вручную создайте подписку для клиента"
@@ -1883,7 +1881,7 @@ msgstr "Вручную создайте подписку для клиента"
 msgid "Mark as Paid"
 msgstr "Отметить как оплаченный"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:796
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:783
 #, elixir-autogen, elixir-format
 msgid "Max:"
 msgstr "Макс.:"
@@ -1894,23 +1892,23 @@ msgstr "Макс.:"
 msgid "Method"
 msgstr "Метод"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:128
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Middle Name"
 msgstr "Отчество"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:195
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:425
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:169
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Mode"
 msgstr "Режим"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:6
+#: lib/phoenix_kit_billing/web/order_form.html.heex:10
 #, elixir-autogen, elixir-format
 msgid "Modify order details"
 msgstr "Редактирование данных заказа"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:153
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:108
 #, elixir-autogen, elixir-format
 msgid "Month"
 msgstr "Месяц"
@@ -1921,11 +1919,11 @@ msgstr "Месяц"
 msgid "My Billing Profiles"
 msgstr "Мои платёжные профили"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:303
-#: lib/phoenix_kit_billing/web/currencies.html.heex:439
-#: lib/phoenix_kit_billing/web/order_form.html.heex:112
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:26
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:270
+#: lib/phoenix_kit_billing/web/currencies.html.heex:316
+#: lib/phoenix_kit_billing/web/currencies.html.heex:472
+#: lib/phoenix_kit_billing/web/order_form.html.heex:116
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:32
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:209
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr "Название"
@@ -1940,8 +1938,8 @@ msgstr "Имя / Компания"
 msgid "Name, email, company..."
 msgstr "Имя, email, компания..."
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:48
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:57
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:59
 #, elixir-autogen, elixir-format
 msgid "New Billing Profile"
 msgstr "Новый платёжный профиль"
@@ -1952,17 +1950,17 @@ msgid "New Subscription"
 msgstr "Новая подписка"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
-#: lib/phoenix_kit_billing/web/currencies.html.heex:73
+#: lib/phoenix_kit_billing/web/currencies.html.heex:91
 #, elixir-autogen, elixir-format
 msgid "No"
 msgstr "Нет"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:51
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "No Subscription Types Created"
 msgstr "Типы подписок не созданы"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:539
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:532
 #, elixir-autogen, elixir-format
 msgid "No billing details"
 msgstr "Платёжные данные отсутствуют"
@@ -1972,7 +1970,7 @@ msgstr "Платёжные данные отсутствуют"
 msgid "No billing information"
 msgstr "Платёжная информация отсутствует"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:75
+#: lib/phoenix_kit_billing/web/order_form.html.heex:79
 #, elixir-autogen, elixir-format
 msgid "No billing profile found"
 msgstr "Платёжный профиль не найден"
@@ -1987,12 +1985,12 @@ msgstr "Платёжные профили не найдены"
 msgid "No billing profiles yet"
 msgstr "Платёжных профилей пока нет"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:187
+#: lib/phoenix_kit_billing/web/subscription_form.ex:207
 #, elixir-autogen, elixir-format
 msgid "No changes to save"
 msgstr "Нет изменений для сохранения"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:502
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:494
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:261
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:252
 #, elixir-autogen, elixir-format
@@ -2015,12 +2013,12 @@ msgid "No orders found"
 msgstr "Заказы не найдены"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:280
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:308
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:307
 #, elixir-autogen, elixir-format
 msgid "No payment method"
 msgstr "Способ оплаты не указан"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:216
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:222
 #, elixir-autogen, elixir-format
 msgid "No subscription type"
 msgstr "Тип подписки не указан"
@@ -2041,27 +2039,28 @@ msgid "No transactions found"
 msgstr "Транзакции не найдены"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:269
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "No transactions recorded yet"
 msgstr "Транзакции ещё не записаны"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:201
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:207
 #, elixir-autogen, elixir-format
 msgid "No user"
 msgstr "Пользователь не указан"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:98
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:102
 #, elixir-autogen, elixir-format
 msgid "No users found matching \"%{query}\""
 msgstr "Пользователи по запросу \"%{query}\" не найдены"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:43
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:17
 #, elixir-autogen, elixir-format
 msgid "None configured"
 msgstr "Не настроено"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:375
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:400
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:374
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Not selected"
 msgstr "Не выбрано"
@@ -2077,50 +2076,40 @@ msgstr "Не задано"
 msgid "Not specified"
 msgstr "Не указано"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:428
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:412
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:150
-#: lib/phoenix_kit_billing/web/order_form.html.heex:232
+#: lib/phoenix_kit_billing/web/order_form.html.heex:225
 #, elixir-autogen, elixir-format
 msgid "Notes"
 msgstr "Примечания"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:243
+#: lib/phoenix_kit_billing/web/order_form.html.heex:233
 #, elixir-autogen, elixir-format
 msgid "Notes visible to customer..."
 msgstr "Примечания для клиента..."
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:277
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:276
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr "Номер"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:239
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:178
 #, elixir-autogen, elixir-format
 msgid "Only active plans are shown to customers"
 msgstr "Клиентам отображаются только активные тарифы"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:296
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:295
 #, elixir-autogen, elixir-format
 msgid "Optional"
 msgstr "Необязательно"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:389
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:476
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:313
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:495
 #, elixir-autogen, elixir-format
 msgid "Options"
 msgstr "Параметры"
 
-#: lib/phoenix_kit_billing/web/order_form.ex:39
-#, elixir-autogen, elixir-format
-msgid "Order"
-msgstr "Заказ"
-
-#: lib/phoenix_kit_billing/web/order_detail.ex:60
-#, elixir-autogen, elixir-format
-msgid "Order %{number}"
-msgstr "Заказ %{number}"
-
-#: lib/phoenix_kit_billing/web/order_form.html.heex:191
+#: lib/phoenix_kit_billing/web/order_form.html.heex:195
 #, elixir-autogen, elixir-format
 msgid "Order Settings"
 msgstr "Параметры заказа"
@@ -2130,23 +2119,23 @@ msgstr "Параметры заказа"
 msgid "Order Summary"
 msgstr "Сводка по заказу"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:136
+#: lib/phoenix_kit_billing/web/order_detail.ex:172
 #, elixir-autogen, elixir-format
 msgid "Order cancelled"
 msgstr "Заказ отменён"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:106
+#: lib/phoenix_kit_billing/web/order_detail.ex:118
 #, elixir-autogen, elixir-format
 msgid "Order confirmed successfully"
 msgstr "Заказ успешно подтверждён"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:121
+#: lib/phoenix_kit_billing/web/order_detail.ex:147
 #, elixir-autogen, elixir-format
 msgid "Order marked as paid"
 msgstr "Заказ отмечен как оплаченный"
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:48
-#: lib/phoenix_kit_billing/web/order_form.ex:90
+#: lib/phoenix_kit_billing/web/order_detail.ex:51
+#: lib/phoenix_kit_billing/web/order_form.ex:102
 #, elixir-autogen, elixir-format
 msgid "Order not found"
 msgstr "Заказ не найден"
@@ -2156,20 +2145,21 @@ msgstr "Заказ не найден"
 msgid "Order number, customer..."
 msgstr "Номер заказа, клиент..."
 
-#: lib/phoenix_kit_billing/web/order_form.ex:280
+#: lib/phoenix_kit_billing/web/order_form.ex:313
 #, elixir-autogen, elixir-format
 msgid "Order saved successfully"
 msgstr "Заказ успешно сохранён"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:83
+#: lib/phoenix_kit_billing/web/invoices.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Overdue"
 msgstr "Просрочен"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:220
-#: lib/phoenix_kit_billing/web/invoices.html.heex:81
+#: lib/phoenix_kit_billing/web/invoices.html.heex:83
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:336
 #: lib/phoenix_kit_billing/web/orders.html.heex:89
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "Paid"
 msgstr "Оплачен"
@@ -2181,12 +2171,12 @@ msgid "Past Due"
 msgstr "Просрочена"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:32
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:206
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:205
 #, elixir-autogen, elixir-format
 msgid "Pause"
 msgstr "Приостановить"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:203
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:202
 #, elixir-autogen, elixir-format
 msgid "Pause this subscription? The customer will lose access."
 msgstr "Приостановить подписку? Клиент потеряет доступ."
@@ -2196,30 +2186,31 @@ msgstr "Приостановить подписку? Клиент потеряе
 msgid "Pay with %{provider}"
 msgstr "Оплатить через %{provider}"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:130
+#: lib/phoenix_kit_billing/web/provider_settings.ex:198
 #, elixir-autogen, elixir-format
 msgid "PayPal disabled"
 msgstr "PayPal отключён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:130
+#: lib/phoenix_kit_billing/web/provider_settings.ex:198
 #, elixir-autogen, elixir-format
 msgid "PayPal enabled"
 msgstr "PayPal включён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:150
+#: lib/phoenix_kit_billing/web/provider_settings.ex:217
 #, elixir-autogen, elixir-format
 msgid "PayPal settings saved"
 msgstr "Настройки PayPal сохранены"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:177
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:151
 #, elixir-autogen, elixir-format
 msgid "PayPal, Venmo, Cards"
 msgstr "PayPal, Venmo, карты"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:591
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:584
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:312
 #: lib/phoenix_kit_billing/web/orders.html.heex:60
 #: lib/phoenix_kit_billing/web/orders.html.heex:133
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Payment"
 msgstr "Платёж"
@@ -2229,35 +2220,35 @@ msgstr "Платёж"
 msgid "Payment Failed - Grace Period Active"
 msgstr "Платёж не прошёл — льготный период активен"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:400
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:384
 #, elixir-autogen, elixir-format
 msgid "Payment Information"
 msgstr "Платёжная информация"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:746
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:733
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:260
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:295
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:415
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:294
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:414
 #, elixir-autogen, elixir-format
 msgid "Payment Method"
 msgstr "Способ оплаты"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:403
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:387
 #, elixir-autogen, elixir-format
 msgid "Payment Terms"
 msgstr "Условия оплаты"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:324
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:323
 #, elixir-autogen, elixir-format
 msgid "Payment method is optional for manually created subscriptions"
 msgstr "Способ оплаты необязателен для подписок, созданных вручную"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:244
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:243
 #, elixir-autogen, elixir-format
 msgid "Payment overdue — renewal will be retried automatically"
 msgstr "Платёж просрочен — продление будет повторено автоматически"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:765
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:752
 #, elixir-autogen, elixir-format
 msgid "Payment reference, notes..."
 msgstr "Реквизиты платежа, примечания..."
@@ -2278,32 +2269,32 @@ msgid "Period"
 msgstr "Период"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:143
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:263
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:262
 #, elixir-autogen, elixir-format
 msgid "Period End"
 msgstr "Конец периода"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:133
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:253
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:252
 #, elixir-autogen, elixir-format
 msgid "Period Start"
 msgstr "Начало периода"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:106
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:213
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:108
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:232
 #, elixir-autogen, elixir-format
 msgid "Personal Information"
 msgstr "Личные данные"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:76
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Personal billing profile"
 msgstr "Личный платёжный профиль"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:176
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:279
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:266
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:366
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:158
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:234
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:285
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:385
 #, elixir-autogen, elixir-format
 msgid "Phone"
 msgstr "Телефон"
@@ -2318,7 +2309,7 @@ msgstr "Тариф"
 msgid "Plan change takes effect immediately. The billing period will be adjusted."
 msgstr "Изменение тарифа вступает в силу немедленно. Расчётный период будет скорректирован."
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:32
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:34
 #, elixir-autogen, elixir-format
 msgid "Please log in to manage billing profiles"
 msgstr "Пожалуйста, войдите, чтобы управлять платёжными профилями"
@@ -2328,44 +2319,44 @@ msgstr "Пожалуйста, войдите, чтобы управлять пл
 msgid "Please log in to view your billing profiles"
 msgstr "Пожалуйста, войдите для просмотра платёжных профилей"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:220
+#: lib/phoenix_kit_billing/web/subscription_form.ex:235
 #, elixir-autogen, elixir-format
 msgid "Please select a customer"
 msgstr "Пожалуйста, выберите клиента"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:179
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:262
 #, elixir-autogen, elixir-format
 msgid "Please select a different subscription type"
 msgstr "Пожалуйста, выберите другой тип подписки"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:223
+#: lib/phoenix_kit_billing/web/subscription_form.ex:238
 #, elixir-autogen, elixir-format
 msgid "Please select a subscription type"
 msgstr "Пожалуйста, выберите тип подписки"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:150
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:185
 #, elixir-autogen, elixir-format
 msgid "Please select a user"
 msgstr "Пожалуйста, выберите пользователя"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:371
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:301
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:477
 #, elixir-autogen, elixir-format
 msgid "Postal Code"
 msgstr "Почтовый индекс"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:267
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:206
 #, elixir-autogen, elixir-format
 msgid "Preview"
 msgstr "Предпросмотр"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:96
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:181
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:75
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:187
 #, elixir-autogen, elixir-format
 msgid "Price"
 msgstr "Цена"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:91
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Pricing"
 msgstr "Тарификация"
@@ -2380,14 +2371,14 @@ msgstr "Печать / PDF"
 msgid "Pro Plan"
 msgstr "Профессиональный тариф"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:412
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:499
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:328
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:508
 #, elixir-autogen, elixir-format
 msgid "Profile Name (Optional)"
 msgstr "Название профиля (необязательно)"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:60
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:176
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:62
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:195
 #, elixir-autogen, elixir-format
 msgid "Profile Type"
 msgstr "Тип профиля"
@@ -2408,14 +2399,14 @@ msgstr "Профиль не найден"
 msgid "Provider:"
 msgstr "Провайдер:"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:104
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Publishable Key"
 msgstr "Публичный ключ"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:134
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:70
-#: lib/phoenix_kit_billing/web/order_form.html.heex:114
+#: lib/phoenix_kit_billing/web/order_form.html.heex:118
 #, elixir-autogen, elixir-format
 msgid "Qty"
 msgstr "Кол-во"
@@ -2425,65 +2416,66 @@ msgstr "Кол-во"
 msgid "Quick Info"
 msgstr "Краткая информация"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:164
+#: lib/phoenix_kit_billing/web/provider_settings.ex:230
 #, elixir-autogen, elixir-format
 msgid "Razorpay disabled"
 msgstr "Razorpay отключён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:164
+#: lib/phoenix_kit_billing/web/provider_settings.ex:230
 #, elixir-autogen, elixir-format
 msgid "Razorpay enabled"
 msgstr "Razorpay включён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:183
+#: lib/phoenix_kit_billing/web/provider_settings.ex:248
 #, elixir-autogen, elixir-format
 msgid "Razorpay settings saved"
 msgstr "Настройки Razorpay сохранены"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:818
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:801
 #, elixir-autogen, elixir-format
 msgid "Reason"
 msgstr "Причина"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:824
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:807
 #, elixir-autogen, elixir-format
 msgid "Reason for refund (required)"
 msgstr "Причина возврата (обязательно)"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:443
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:620
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:427
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:613
 #, elixir-autogen, elixir-format
 msgid "Receipt Generated"
 msgstr "Квитанция сформирована"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:631
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:624
 #, elixir-autogen, elixir-format
 msgid "Receipt Sent"
 msgstr "Квитанция отправлена"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:25
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:713
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:773
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:706
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:760
 #, elixir-autogen, elixir-format
 msgid "Record Payment"
 msgstr "Записать платёж"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:715
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:708
 #, elixir-autogen, elixir-format
 msgid "Recording payment for invoice %{number}"
 msgstr "Запись платежа по счёту %{number}"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:642
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:635
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Refund"
 msgstr "Возврат"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:794
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:781
 #, elixir-autogen, elixir-format
 msgid "Refund Amount"
 msgstr "Сумма возврата"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:832
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:815
 #, elixir-autogen, elixir-format
 msgid "Refund Method"
 msgstr "Способ возврата"
@@ -2498,36 +2490,36 @@ msgstr "Возвращён"
 msgid "Refunds"
 msgstr "Возвраты"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:197
+#: lib/phoenix_kit_billing/web/settings.html.heex:149
 #, elixir-autogen, elixir-format
 msgid "Reg. No:"
 msgstr "Рег. №:"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:33
-#: lib/phoenix_kit_billing/web/billing_profile_form.ex:52
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:44
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:39
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:57
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:46
 #, elixir-autogen, elixir-format
 msgid "Region"
 msgstr "Регион"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:257
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:344
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:214
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:363
 #, elixir-autogen, elixir-format
 msgid "Registered legal address"
 msgstr "Зарегистрированный юридический адрес"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:237
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:324
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:202
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:343
 #, elixir-autogen, elixir-format
 msgid "Registration Number"
 msgstr "Регистрационный номер"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:461
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:445
 #, elixir-autogen, elixir-format
 msgid "Related Order"
 msgstr "Связанный заказ"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:299
+#: lib/phoenix_kit_billing/web/settings.html.heex:251
 #, elixir-autogen, elixir-format
 msgid "Related Settings"
 msgstr "Связанные настройки"
@@ -2537,7 +2529,7 @@ msgstr "Связанные настройки"
 msgid "Remaining"
 msgstr "Остаток"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:723
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:716
 #, elixir-autogen, elixir-format
 msgid "Remaining:"
 msgstr "Остаток:"
@@ -2548,91 +2540,91 @@ msgid "Renewal attempts:"
 msgstr "Попытки продления:"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:860
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:887
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
 #, elixir-autogen, elixir-format
 msgid "Resend Invoice"
 msgstr "Отправить счёт повторно"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:865
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:848
 #, elixir-autogen, elixir-format
 msgid "Resend invoice to customer's email address"
 msgstr "Повторно отправить счёт на email клиента"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:28
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:52
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:222
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:221
 #, elixir-autogen, elixir-format
 msgid "Resume"
 msgstr "Возобновить"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:421
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:405
 #, elixir-autogen, elixir-format
 msgid "SWIFT/BIC:"
 msgstr "SWIFT/BIC:"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:278
+#: lib/phoenix_kit_billing/web/settings.html.heex:230
 #, elixir-autogen, elixir-format
 msgid "SWIFT:"
 msgstr "SWIFT:"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:199
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:173
 #, elixir-autogen, elixir-format
 msgid "Sandbox (Test)"
 msgstr "Тестовый режим (Sandbox)"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:347
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:525
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:346
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Save Changes"
 msgstr "Сохранить изменения"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:510
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:484
 #, elixir-autogen, elixir-format
 msgid "Save EveryPay"
 msgstr "Сохранить EveryPay"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:160
+#: lib/phoenix_kit_billing/web/settings.html.heex:112
 #, elixir-autogen, elixir-format
 msgid "Save General Settings"
 msgstr "Сохранить общие настройки"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:282
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:256
 #, elixir-autogen, elixir-format
 msgid "Save PayPal"
 msgstr "Сохранить PayPal"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:391
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:365
 #, elixir-autogen, elixir-format
 msgid "Save Razorpay"
 msgstr "Сохранить Razorpay"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:161
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:135
 #, elixir-autogen, elixir-format
 msgid "Save Stripe"
 msgstr "Сохранить Stripe"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:63
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Search by email"
 msgstr "Поиск по email"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:136
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:141
 #, elixir-autogen, elixir-format
 msgid "Search by email..."
 msgstr "Поиск по email..."
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:86
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "Secret Key"
 msgstr "Секретный ключ"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:425
+#: lib/phoenix_kit_billing/web/currencies.html.heex:458
 #, elixir-autogen, elixir-format
 msgid "Select All"
 msgstr "Выбрать все"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:19
+#: lib/phoenix_kit_billing/web/order_form.html.heex:23
 #, elixir-autogen, elixir-format
 msgid "Select Customer"
 msgstr "Выберите клиента"
@@ -2642,140 +2634,140 @@ msgstr "Выберите клиента"
 msgid "Select New Subscription Type"
 msgstr "Выберите новый тип подписки"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:24
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:26
 #, elixir-autogen, elixir-format
 msgid "Select User *"
 msgstr "Выберите пользователя *"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:26
+#: lib/phoenix_kit_billing/web/order_form.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Select a customer..."
 msgstr "Выберите клиента..."
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:301
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:300
 #, elixir-autogen, elixir-format
 msgid "Select a saved payment method"
 msgstr "Выберите сохранённый способ оплаты"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:121
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Select a subscription type"
 msgstr "Выберите тип подписки"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:32
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "Select a user..."
 msgstr "Выберите пользователя..."
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:307
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:394
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:255
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:413
 #, elixir-autogen, elixir-format
 msgid "Select country..."
 msgstr "Выберите страну..."
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1002
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:985
 #, elixir-autogen, elixir-format
 msgid "Send Confirmation"
 msgstr "Отправить подтверждение"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:860
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:887
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
 #, elixir-autogen, elixir-format
 msgid "Send Invoice"
 msgstr "Отправить счёт"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:114
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:900
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:923
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:883
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:906
 #, elixir-autogen, elixir-format
 msgid "Send Receipt"
 msgstr "Отправить квитанцию"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:938
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:921
 #, elixir-autogen, elixir-format
 msgid "Send credit note (refund document) to customer's email address"
 msgstr "Отправить кредит-ноту (документ о возврате) на email клиента"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:864
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:847
 #, elixir-autogen, elixir-format
 msgid "Send invoice to customer's email address"
 msgstr "Отправить счёт на email клиента"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:976
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:959
 #, elixir-autogen, elixir-format
 msgid "Send payment confirmation to customer's email address"
 msgstr "Отправить подтверждение оплаты на email клиента"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:902
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:885
 #, elixir-autogen, elixir-format
 msgid "Send payment receipt to customer's email address"
 msgstr "Отправить квитанцию об оплате на email клиента"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex:80
+#: lib/phoenix_kit_billing/web/invoices.html.heex:82
 #, elixir-autogen, elixir-format
 msgid "Sent"
 msgstr "Отправлен"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:89
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:107
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:125
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:210
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:228
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:246
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:319
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:337
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:355
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:438
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:456
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:474
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:63
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:81
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:99
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:184
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:202
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:220
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:293
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:311
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:329
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:412
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:430
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:448
 #, elixir-autogen, elixir-format
 msgid "Set"
 msgstr "Задать"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:402
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:489
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:317
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:499
 #, elixir-autogen, elixir-format
 msgid "Set as default profile"
 msgstr "Использовать по умолчанию"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:562
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:536
 #, elixir-autogen, elixir-format
 msgid "Set the Callback URL in E-shop settings to the URL above"
 msgstr "Укажите URL обратного вызова в настройках интернет-магазина"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:520
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:494
 #, elixir-autogen, elixir-format
 msgid "Setup Instructions"
 msgstr "Инструкция по настройке"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:172
+#: lib/phoenix_kit_billing/web/settings.html.heex:124
 #, elixir-autogen, elixir-format
 msgid "Shown on invoices and receipts"
 msgstr "Отображается в счетах и квитанциях"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:47
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Slug"
 msgstr "Slug"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:138
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:112
 #, elixir-autogen, elixir-format
 msgid "Slug:"
 msgstr "Slug:"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:369
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:211
+#: lib/phoenix_kit_billing/web/currencies.html.heex:412
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:166
 #, elixir-autogen, elixir-format
 msgid "Sort Order"
 msgstr "Порядок сортировки"
 
-#: lib/phoenix_kit_billing/web/subscription_types.html.heex:143
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:117
 #, elixir-autogen, elixir-format
 msgid "Sort Order:"
 msgstr "Порядок:"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:158
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:155
 #, elixir-autogen, elixir-format
 msgid "Start with trial period"
 msgstr "Начать с пробного периода"
@@ -2785,46 +2777,46 @@ msgstr "Начать с пробного периода"
 msgid "Started"
 msgstr "Начата"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:189
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
 msgstr "Статус и период"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:325
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:412
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:265
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:431
 #, elixir-autogen, elixir-format
 msgid "Street address"
 msgstr "Улица и дом"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:97
+#: lib/phoenix_kit_billing/web/provider_settings.ex:167
 #, elixir-autogen, elixir-format
 msgid "Stripe disabled"
 msgstr "Stripe отключён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:97
+#: lib/phoenix_kit_billing/web/provider_settings.ex:167
 #, elixir-autogen, elixir-format
 msgid "Stripe enabled"
 msgstr "Stripe включён"
 
-#: lib/phoenix_kit_billing/web/provider_settings.ex:116
+#: lib/phoenix_kit_billing/web/provider_settings.ex:185
 #, elixir-autogen, elixir-format
 msgid "Stripe settings saved"
 msgstr "Настройки Stripe сохранены"
 
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:148
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:16
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:154
 #, elixir-autogen, elixir-format
 msgid "Subscription"
 msgstr "Подписка"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:38
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Subscription #%{uuid}"
 msgstr "Подписка #%{uuid}"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:112
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:383
-#: lib/phoenix_kit_billing/web/subscriptions.html.heex:178
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:116
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:382
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:184
 #, elixir-autogen, elixir-format
 msgid "Subscription Type"
 msgstr "Тип подписки"
@@ -2834,17 +2826,12 @@ msgstr "Тип подписки"
 msgid "Subscription Type Details"
 msgstr "Детали типа подписки"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:29
-#, elixir-autogen, elixir-format
-msgid "Subscription Type Not Found"
-msgstr "Тип подписки не найден"
-
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:67
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:156
 #, elixir-autogen, elixir-format
 msgid "Subscription cancelled immediately"
 msgstr "Подписка немедленно отменена"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:237
+#: lib/phoenix_kit_billing/web/subscription_form.ex:263
 #, elixir-autogen, elixir-format
 msgid "Subscription created successfully"
 msgstr "Подписка успешно создана"
@@ -2854,74 +2841,74 @@ msgstr "Подписка успешно создана"
 msgid "Subscription extended by 30 days"
 msgstr "Подписка продлена на 30 дней"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:29
-#: lib/phoenix_kit_billing/web/subscription_form.ex:65
-#: lib/phoenix_kit_billing/web/subscriptions.ex:146
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:33
+#: lib/phoenix_kit_billing/web/subscription_form.ex:72
+#: lib/phoenix_kit_billing/web/subscriptions.ex:206
 #, elixir-autogen, elixir-format
 msgid "Subscription not found"
 msgstr "Подписка не найдена"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:124
-#: lib/phoenix_kit_billing/web/subscription_form.ex:263
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:218
+#: lib/phoenix_kit_billing/web/subscription_form.ex:296
 #, elixir-autogen, elixir-format
 msgid "Subscription paused"
 msgstr "Подписка приостановлена"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:105
-#: lib/phoenix_kit_billing/web/subscription_form.ex:280
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:198
+#: lib/phoenix_kit_billing/web/subscription_form.ex:319
 #, elixir-autogen, elixir-format
 msgid "Subscription resumed"
 msgstr "Подписка возобновлена"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:64
+#: lib/phoenix_kit_billing/web/subscription_types.ex:90
 #, elixir-autogen, elixir-format
 msgid "Subscription type activated"
 msgstr "Тип подписки активирован"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:167
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:248
 #, elixir-autogen, elixir-format
 msgid "Subscription type changed successfully"
 msgstr "Тип подписки успешно изменён"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:147
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:150
 #, elixir-autogen, elixir-format
 msgid "Subscription type created successfully"
 msgstr "Тип подписки успешно создан"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:63
+#: lib/phoenix_kit_billing/web/subscription_types.ex:89
 #, elixir-autogen, elixir-format
 msgid "Subscription type deactivated"
 msgstr "Тип подписки деактивирован"
 
-#: lib/phoenix_kit_billing/web/subscription_types.ex:91
+#: lib/phoenix_kit_billing/web/subscription_types.ex:126
 #, elixir-autogen, elixir-format
 msgid "Subscription type deleted"
 msgstr "Тип подписки удалён"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:58
-#: lib/phoenix_kit_billing/web/subscription_types.ex:77
-#: lib/phoenix_kit_billing/web/subscription_types.ex:112
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:69
+#: lib/phoenix_kit_billing/web/subscription_types.ex:105
+#: lib/phoenix_kit_billing/web/subscription_types.ex:149
 #, elixir-autogen, elixir-format
 msgid "Subscription type not found"
 msgstr "Тип подписки не найден"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:148
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:151
 #, elixir-autogen, elixir-format
 msgid "Subscription type updated successfully"
 msgstr "Тип подписки успешно обновлён"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:194
+#: lib/phoenix_kit_billing/web/subscription_form.ex:421
 #, elixir-autogen, elixir-format
 msgid "Subscription updated successfully"
 msgstr "Подписка успешно обновлена"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:297
-#: lib/phoenix_kit_billing/web/subscriptions.ex:135
+#: lib/phoenix_kit_billing/web/subscription_form.ex:344
+#: lib/phoenix_kit_billing/web/subscriptions.ex:195
 #, elixir-autogen, elixir-format
 msgid "Subscription will be cancelled at period end"
 msgstr "Подписка будет отменена по окончании периода"
 
-#: lib/phoenix_kit_billing/web/subscription_detail.ex:86
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:178
 #, elixir-autogen, elixir-format
 msgid "Subscription will cancel at period end"
 msgstr "Подписка отменится по окончании периода"
@@ -2937,19 +2924,19 @@ msgstr "Подписки появятся здесь, когда клиенты 
 msgid "Subtotal"
 msgstr "Промежуточный итог"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:146
+#: lib/phoenix_kit_billing/web/settings.html.heex:98
 #, elixir-autogen, elixir-format
 msgid "Suggested rate for selected country:"
 msgstr "Рекомендуемая ставка для выбранной страны:"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:366
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:365
 #, elixir-autogen, elixir-format
 msgid "Summary"
 msgstr "Сводка"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:150
-#: lib/phoenix_kit_billing/web/currencies.html.heex:322
-#: lib/phoenix_kit_billing/web/currencies.html.heex:440
+#: lib/phoenix_kit_billing/web/currencies.html.heex:143
+#: lib/phoenix_kit_billing/web/currencies.html.heex:335
+#: lib/phoenix_kit_billing/web/currencies.html.heex:473
 #, elixir-autogen, elixir-format
 msgid "Symbol"
 msgstr "Символ"
@@ -2960,28 +2947,28 @@ msgstr "Символ"
 msgid "Tax"
 msgstr "Налог"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:428
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:402
 #, elixir-autogen, elixir-format
 msgid "Test (Demo)"
 msgstr "Тестовый режим (Demo)"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:262
+#: lib/phoenix_kit_billing/web/currencies.html.heex:273
 #, elixir-autogen, elixir-format
 msgid "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
 msgstr "Валюта по умолчанию используется для всех новых заказов. Курс обмена показывает, сколько единиц валюты покупает одна единица валюты по умолчанию; при назначении валюты дефолтной все курсы пересчитываются так, чтобы её собственный курс стал равен 1,0. Включайте только те валюты, которые планируете принимать."
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:153
+#: lib/phoenix_kit_billing/web/currencies.html.heex:181
 #, elixir-autogen, elixir-format
 msgid "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize."
 msgstr "Курс базовой валюты должен быть равен 1,0 — сейчас %{rate}. Нажмите «Сделать по умолчанию» на ней, чтобы пересчитать курсы."
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:77
+#: lib/phoenix_kit_billing/web/order_form.html.heex:81
 #, elixir-autogen, elixir-format
 msgid "This customer has no billing profile. A billing profile is required to create an order."
 msgstr "У этого клиента нет платёжного профиля. Для создания заказа необходим платёжный профиль."
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:404
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:491
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:319
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:501
 #, elixir-autogen, elixir-format
 msgid "This profile will be used by default for new orders"
 msgstr "Этот профиль будет использоваться по умолчанию для новых заказов"
@@ -2991,7 +2978,7 @@ msgstr "Этот профиль будет использоваться по у�
 msgid "This subscription will cancel at the end of the current billing period."
 msgstr "Эта подписка будет отменена в конце текущего расчётного периода."
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:547
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:540
 #, elixir-autogen, elixir-format
 msgid "Timeline"
 msgstr "История"
@@ -3011,7 +2998,7 @@ msgstr "Транзакция №, счёт №..."
 msgid "Transactions will appear here when payments or refunds are recorded"
 msgstr "Транзакции появятся здесь при регистрации платежей или возвратов"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:131
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:93
 #, elixir-autogen, elixir-format
 msgid "Trial Days"
 msgstr "Дней пробного периода"
@@ -3022,7 +3009,7 @@ msgid "Trial End"
 msgstr "Конец пробного периода"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:162
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:407
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:406
 #, elixir-autogen, elixir-format
 msgid "Trial Period"
 msgstr "Пробный период"
@@ -3032,12 +3019,12 @@ msgstr "Пробный период"
 msgid "Trial Start"
 msgstr "Начало пробного периода"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:165
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:164
 #, elixir-autogen, elixir-format
 msgid "Trial days"
 msgstr "Дней пробного периода"
 
-#: lib/phoenix_kit_billing/web/subscription_form.html.heex:449
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:448
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:35
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:111
 #, elixir-autogen, elixir-format
@@ -3053,71 +3040,72 @@ msgid "Try adjusting your filters or search terms"
 msgstr "Попробуйте изменить фильтры или поисковый запрос"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:119
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:278
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:277
 #: lib/phoenix_kit_billing/web/transactions.html.heex:41
 #: lib/phoenix_kit_billing/web/transactions.html.heex:112
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:68
 #, elixir-autogen, elixir-format
 msgid "Type"
 msgstr "Тип"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:68
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:49
 #, elixir-autogen, elixir-format
 msgid "URL-friendly unique identifier"
 msgstr "Уникальный идентификатор для URL"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:308
+#: lib/phoenix_kit_billing/web/currencies.html.heex:321
 #, elixir-autogen, elixir-format
 msgid "US Dollar"
 msgstr "Доллар США"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:135
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:71
-#: lib/phoenix_kit_billing/web/order_form.html.heex:115
+#: lib/phoenix_kit_billing/web/order_form.html.heex:119
 #, elixir-autogen, elixir-format
 msgid "Unit Price"
 msgstr "Цена за единицу"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:682
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:675
 #, elixir-autogen, elixir-format
 msgid "Unknown Event"
 msgstr "Неизвестное событие"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:197
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:150
 #, elixir-autogen, elixir-format
 msgid "Unlimited users\nPriority support\nAdvanced analytics\nCustom integrations"
 msgstr "Неограниченное число пользователей\nПриоритетная поддержка\nРасширенная аналитика\nИндивидуальные интеграции"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:398
+#: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
 msgid "Update"
 msgstr "Обновить"
 
-#: lib/phoenix_kit_billing/web/order_form.html.heex:276
+#: lib/phoenix_kit_billing/web/order_form.html.heex:263
 #, elixir-autogen, elixir-format
 msgid "Update Order"
 msgstr "Обновить заказ"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:438
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
 #, elixir-autogen, elixir-format
 msgid "Update Profile"
 msgstr "Обновить профиль"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:257
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
 #, elixir-autogen, elixir-format
 msgid "Update Subscription Type"
 msgstr "Обновить тип подписки"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:163
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:182
 #, elixir-autogen, elixir-format
 msgid "Update your billing information"
 msgstr "Обновите платёжную информацию"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:563
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:537
 #, elixir-autogen, elixir-format
 msgid "Use Test mode against the demo gateway first"
 msgstr "Сначала проверьте работу в тестовом режиме"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:19
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:21
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:52
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:118
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:70
@@ -3125,26 +3113,26 @@ msgstr "Сначала проверьте работу в тестовом ре�
 msgid "User"
 msgstr "Пользователь"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:48
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:50
 #, elixir-autogen, elixir-format
 msgid "User cannot be changed after creation"
 msgstr "Пользователь не может быть изменён после создания"
 
-#: lib/phoenix_kit_billing/web/subscription_form.ex:109
+#: lib/phoenix_kit_billing/web/subscription_form.ex:122
 #, elixir-autogen, elixir-format
 msgid "User not found"
 msgstr "Пользователь не найден"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:218
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:308
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:189
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:327
 #, elixir-autogen, elixir-format
 msgid "VAT Number"
 msgstr "Номер НДС"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:150
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:517
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:510
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:276
-#: lib/phoenix_kit_billing/web/settings.html.heex:232
+#: lib/phoenix_kit_billing/web/settings.html.heex:184
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:169
 #, elixir-autogen, elixir-format
 msgid "VAT:"
@@ -3160,7 +3148,7 @@ msgstr "Открыть платёжный профиль"
 msgid "View Orders"
 msgstr "К заказам"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:497
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:481
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:256
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:247
 #, elixir-autogen, elixir-format
@@ -3173,66 +3161,66 @@ msgid "View Receipt"
 msgstr "Открыть квитанцию"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:88
-#: lib/phoenix_kit_billing/web/invoices.html.heex:82
+#: lib/phoenix_kit_billing/web/invoices.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Void"
 msgstr "Аннулировать"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:674
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:667
 #, elixir-autogen, elixir-format
 msgid "Voided"
 msgstr "Аннулирован"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:243
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:217
 #, elixir-autogen, elixir-format
 msgid "Webhook ID"
 msgstr "ID вебхука"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:122
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:352
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:96
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:326
 #, elixir-autogen, elixir-format
 msgid "Webhook Secret"
 msgstr "Секрет вебхука"
 
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:140
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:261
-#: lib/phoenix_kit_billing/web/provider_settings.html.heex:370
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:114
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:235
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:344
 #, elixir-autogen, elixir-format
 msgid "Webhook URL"
 msgstr "URL вебхука"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:151
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:107
 #, elixir-autogen, elixir-format
 msgid "Week"
 msgstr "Неделя"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:155
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:109
 #, elixir-autogen, elixir-format
 msgid "Year"
 msgstr "Год"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
-#: lib/phoenix_kit_billing/web/currencies.html.heex:73
+#: lib/phoenix_kit_billing/web/currencies.html.heex:91
 #, elixir-autogen, elixir-format
 msgid "Yes"
 msgstr "Да"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:174
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr "напр., 3 месяца = интервал «month», количество 3"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:506
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr "напр., Домашний адрес, Работа"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:419
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work, Company HQ"
 msgstr "напр., Домашний адрес, Работа, Офис компании"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:154
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format
 msgid "per %{count} days"
 msgid_plural "per %{count} days"
@@ -3240,7 +3228,7 @@ msgstr[0] "каждый %{count} день"
 msgstr[1] "каждые %{count} дня"
 msgstr[2] "каждые %{count} дней"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:164
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:167
 #, elixir-autogen, elixir-format
 msgid "per %{count} months"
 msgid_plural "per %{count} months"
@@ -3248,7 +3236,7 @@ msgstr[0] "каждый %{count} месяц"
 msgstr[1] "каждые %{count} месяца"
 msgstr[2] "каждые %{count} месяцев"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:159
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:162
 #, elixir-autogen, elixir-format
 msgid "per %{count} weeks"
 msgid_plural "per %{count} weeks"
@@ -3256,7 +3244,7 @@ msgstr[0] "каждую %{count} неделю"
 msgstr[1] "каждые %{count} недели"
 msgstr[2] "каждые %{count} недель"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:169
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:172
 #, elixir-autogen, elixir-format
 msgid "per %{count} years"
 msgid_plural "per %{count} years"
@@ -3264,7 +3252,7 @@ msgstr[0] "каждый %{count} год"
 msgstr[1] "каждые %{count} года"
 msgstr[2] "каждые %{count} лет"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:151
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:154
 #, elixir-autogen, elixir-format
 msgid "per day"
 msgid_plural "per day"
@@ -3272,7 +3260,7 @@ msgstr[0] "ежедневно"
 msgstr[1] "ежедневно"
 msgstr[2] "ежедневно"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:161
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:164
 #, elixir-autogen, elixir-format
 msgid "per month"
 msgid_plural "per month"
@@ -3280,7 +3268,7 @@ msgstr[0] "ежемесячно"
 msgstr[1] "ежемесячно"
 msgstr[2] "ежемесячно"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:156
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:159
 #, elixir-autogen, elixir-format
 msgid "per week"
 msgid_plural "per week"
@@ -3288,7 +3276,7 @@ msgstr[0] "еженедельно"
 msgstr[1] "еженедельно"
 msgstr[2] "еженедельно"
 
-#: lib/phoenix_kit_billing/web/subscription_type_form.ex:166
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:169
 #, elixir-autogen, elixir-format
 msgid "per year"
 msgid_plural "per year"
@@ -3296,12 +3284,12 @@ msgstr[0] "ежегодно"
 msgstr[1] "ежегодно"
 msgstr[2] "ежегодно"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:39
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:46
 #, elixir-autogen, elixir-format
 msgid "Daily"
 msgstr "Ежедневно"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:40
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:47
 #, elixir-autogen, elixir-format
 msgid "Every %{count} days"
 msgid_plural "Every %{count} days"
@@ -3309,7 +3297,7 @@ msgstr[0] "каждый %{count} день"
 msgstr[1] "каждые %{count} дня"
 msgstr[2] "каждые %{count} дней"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:34
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:41
 #, elixir-autogen, elixir-format
 msgid "Every %{count} months"
 msgid_plural "Every %{count} months"
@@ -3317,7 +3305,7 @@ msgstr[0] "каждый %{count} месяц"
 msgstr[1] "каждые %{count} месяца"
 msgstr[2] "каждые %{count} месяцев"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:38
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:45
 #, elixir-autogen, elixir-format
 msgid "Every %{count} weeks"
 msgid_plural "Every %{count} weeks"
@@ -3325,7 +3313,7 @@ msgstr[0] "каждую %{count} неделю"
 msgstr[1] "каждые %{count} недели"
 msgstr[2] "каждые %{count} недель"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:36
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:43
 #, elixir-autogen, elixir-format
 msgid "Every %{count} years"
 msgid_plural "Every %{count} years"
@@ -3333,114 +3321,114 @@ msgstr[0] "каждый %{count} год"
 msgstr[1] "каждые %{count} года"
 msgstr[2] "каждые %{count} лет"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:33
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:40
 #, elixir-autogen, elixir-format
 msgid "Monthly"
 msgstr "Ежемесячно"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:37
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:44
 #, elixir-autogen, elixir-format
 msgid "Weekly"
 msgstr "Еженедельно"
 
-#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:35
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:42
 #, elixir-autogen, elixir-format
 msgid "Yearly"
 msgstr "Ежегодно"
 
-#: lib/phoenix_kit_billing.ex:133
+#: lib/phoenix_kit_billing.ex:207
 #, elixir-autogen, elixir-format
 msgid "Orders, invoices, billing profiles and multi-currency support"
 msgstr "Заказы, счета, платёжные профили и поддержка нескольких валют"
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Customer billing — everything on this customer's profile, not a per-project total."
 msgstr "Биллинг клиента — всё, что относится к профилю этого клиента, а не итог по проекту."
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "Open in Billing"
 msgstr "Открыть в биллинге"
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "No invoices for this customer yet."
 msgstr "У этого клиента пока нет счетов."
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:146
 #, elixir-autogen, elixir-format
 msgid "Showing the %{count} most recent invoices."
 msgstr "Показаны последние %{count} счетов."
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:153
 #, elixir-autogen, elixir-format
 msgid "No customer linked to this project yet."
 msgstr "К этому проекту ещё не привязан клиент."
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Paste a billing profile UUID into this tab's settings in the project's Modules & features panel."
 msgstr "Укажите UUID платёжного профиля в настройках этой вкладки в панели «Модули и функции» проекта."
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:159
 #, elixir-autogen, elixir-format
 msgid "Find it on the profile page in"
 msgstr "Найти его можно на странице профиля в"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:178
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:180
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:317
 #, elixir-autogen, elixir-format
 msgid "Acme Corp OÜ"
 msgstr "Acme Corp OÜ"
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:161
 #, elixir-autogen, elixir-format
 msgid "Billing › Profiles"
 msgstr "Биллинг › Платёжные профили"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:132
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:134
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:261
 #, elixir-autogen, elixir-format
 msgid "Doe"
 msgstr "Иванов"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:291
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:293
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:471
 #, elixir-autogen, elixir-format
 msgid "Harju"
 msgstr "Харью"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:115
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:117
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:245
 #, elixir-autogen, elixir-format
 msgid "John"
 msgstr "Иван"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:282
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:284
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
 #, elixir-autogen, elixir-format
 msgid "Tallinn"
 msgstr "Таллинн"
 
-#: lib/phoenix_kit_billing/web/project_billing_live.ex
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:173
 #, elixir-autogen, elixir-format
 msgid "Unnamed profile"
 msgstr "Профиль без названия"
 
-#: lib/phoenix_kit_billing/email_defaults.ex
+#: lib/phoenix_kit_billing/email_defaults.ex:54
 msgid "Invoice {{invoice_number}} - {{company_name}}"
 msgstr "Счёт {{invoice_number}} - {{company_name}}"
 
-#: lib/phoenix_kit_billing/email_defaults.ex
+#: lib/phoenix_kit_billing/email_defaults.ex:109
 msgid "Receipt {{receipt_number}} - {{company_name}}"
 msgstr "Квитанция {{receipt_number}} - {{company_name}}"
 
-#: lib/phoenix_kit_billing/email_defaults.ex
+#: lib/phoenix_kit_billing/email_defaults.ex:163
 msgid "Credit Note {{credit_note_number}} - Refund Issued - {{company_name}}"
 msgstr "Кредит-нота {{credit_note_number}} - возврат оформлен - {{company_name}}"
 
-#: lib/phoenix_kit_billing/email_defaults.ex
+#: lib/phoenix_kit_billing/email_defaults.ex:221
 msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
 msgstr "Платёж получен - {{confirmation_number}} - {{company_name}}"
 
@@ -3460,38 +3448,38 @@ msgstr "=============================================\nКРЕДИТ-НОТА {{c
 msgid "=============================================\nPAYMENT CONFIRMATION {{confirmation_number}}\n=============================================\nSTATUS: PAYMENT RECEIVED\n\nThank you for your payment.\n\nPAYMENT AMOUNT: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nPAYMENT DETAILS\n---------------------------------------------\nConfirmation #:    {{confirmation_number}}\nInvoice #:         {{invoice_number}}\nPayment Date:      {{payment_date}}\nPayment Method:    {{payment_method}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nBALANCE SUMMARY\n---------------------------------------------\nInvoice Total:     {{invoice_total}} {{currency}}\nTotal Paid:        {{total_paid}} {{currency}}\nRemaining:         {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nView payment confirmation online: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nThank you for your business. If you have any questions, please contact us."
 msgstr "=============================================\nПОДТВЕРЖДЕНИЕ ПЛАТЕЖА {{confirmation_number}}\n=============================================\nСТАТУС: ПЛАТЁЖ ПОЛУЧЕН\n\nБлагодарим за оплату.\n\nСУММА ПЛАТЕЖА: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nДЕТАЛИ ПЛАТЕЖА\n---------------------------------------------\nПодтверждение №:   {{confirmation_number}}\nСчёт №:            {{invoice_number}}\nДата платежа:      {{payment_date}}\nСпособ оплаты:     {{payment_method}}\nТранзакция №:      {{transaction_number}}\n\n---------------------------------------------\nСОСТОЯНИЕ БАЛАНСА\n---------------------------------------------\nСумма счёта:       {{invoice_total}} {{currency}}\nОплачено всего:    {{total_paid}} {{currency}}\nОстаток:           {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nПосмотреть подтверждение онлайн: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nБлагодарим за сотрудничество. Если у вас есть вопросы, свяжитесь с нами."
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:380
+#: lib/phoenix_kit_billing/web/currencies.html.heex:404
 #, elixir-autogen, elixir-format
 msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
 msgstr "Применяется к ценам, конвертированным в эту валюту, и к снапшотам корзины — никогда к базовой валюте."
 
-#: lib/phoenix_kit_billing/web/currencies.ex:214
+#: lib/phoenix_kit_billing/web/currencies.ex:224
 #, elixir-autogen, elixir-format
 msgid "Charm .90 — nearest X.90"
 msgstr "Charm .90 — к ближайшему X.90"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:213
+#: lib/phoenix_kit_billing/web/currencies.ex:223
 #, elixir-autogen, elixir-format
 msgid "Charm .99 — round down to X.99"
 msgstr "Charm .99 — вниз до X.99"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:212
+#: lib/phoenix_kit_billing/web/currencies.ex:222
 #, elixir-autogen, elixir-format
 msgid "Exact — no psychological rounding"
 msgstr "Точно — без психологического округления"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:59
-#: lib/phoenix_kit_billing/web/currencies.html.heex:128
+#: lib/phoenix_kit_billing/web/currencies.html.heex:76
+#: lib/phoenix_kit_billing/web/currencies.html.heex:145
 #, elixir-autogen, elixir-format
 msgid "Rounding"
 msgstr "Округление"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:360
+#: lib/phoenix_kit_billing/web/currencies.html.heex:384
 #, elixir-autogen, elixir-format
 msgid "Rounding rule"
 msgstr "Правило округления"
 
-#: lib/phoenix_kit_billing/web/currencies.ex:215
+#: lib/phoenix_kit_billing/web/currencies.ex:225
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
 msgstr "Целые единицы — без копеек"
@@ -3501,7 +3489,7 @@ msgstr "Целые единицы — без копеек"
 msgid "Some exchange rates are out of date"
 msgstr "Некоторые курсы устарели"
 
-#: lib/phoenix_kit_billing/web/currencies.html.heex:29
+#: lib/phoenix_kit_billing/web/currencies.html.heex:28
 #, elixir-autogen, elixir-format
 msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
 msgstr "Не обновлялись более %{days} дней: %{codes}. Цены по-прежнему конвертируются по этим курсам."
@@ -3511,12 +3499,37 @@ msgstr "Не обновлялись более %{days} дней: %{codes}. Це�
 msgid "out of date"
 msgstr "устарел"
 
-#: lib/phoenix_kit_billing/web/invoice_detail.html.heex
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:490
 #, elixir-autogen, elixir-format
 msgid "Guest payer — no account"
 msgstr "Гость — без учётной записи"
 
-#: lib/phoenix_kit_billing/web/invoices.html.heex
+#: lib/phoenix_kit_billing/web/invoices.html.heex:158
 #, elixir-autogen, elixir-format
 msgid "guest"
 msgstr "гость"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:53
+#, elixir-autogen, elixir-format
+msgid "New billing profile"
+msgstr "Новый платёжный профиль"
+
+#: lib/phoenix_kit_billing/web/order_form.ex:87
+#, elixir-autogen, elixir-format
+msgid "New order"
+msgstr "Новый заказ"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:43
+#, elixir-autogen, elixir-format
+msgid "New subscription"
+msgstr "Новая подписка"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:87
+#, elixir-autogen, elixir-format
+msgid "New subscription type"
+msgstr "Новый тип подписки"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:29
+#, elixir-autogen, elixir-format
+msgid "Providers"
+msgstr "Провайдеры"

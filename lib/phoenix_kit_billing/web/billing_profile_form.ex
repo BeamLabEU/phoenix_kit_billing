@@ -21,6 +21,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.BillingProfile
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -35,8 +36,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
        |> assign(:profile, nil)
        |> assign(:form, nil)
        |> assign(:selected_user_uuid, nil)
-       |> assign(:subdivision_label, gettext("Region"))
-       |> assign(:page_title, gettext("Billing Profile"))}
+       |> assign(:subdivision_label, gettext("Region"))}
     else
       {:ok,
        socket
@@ -50,7 +50,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
     changeset = Billing.change_billing_profile(%BillingProfile{type: "individual"})
 
     socket
-    |> assign(:page_title, gettext("New Billing Profile"))
+    |> Trail.billing(gettext("New billing profile"), [Trail.billing_profiles()])
     |> assign(:profile, nil)
     |> assign(:form, to_form(changeset))
     |> assign(:selected_user_uuid, nil)
@@ -68,7 +68,10 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
         changeset = Billing.change_billing_profile(profile)
 
         socket
-        |> assign(:page_title, gettext("Edit Billing Profile"))
+        |> Trail.billing(gettext("Edit"), [
+          Trail.billing_profiles(),
+          Trail.crumb(profile_name(profile))
+        ])
         |> assign(:profile, profile)
         |> assign(:form, to_form(changeset))
         |> assign(:selected_user_uuid, profile.user_uuid)
@@ -92,6 +95,14 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
 
     {:noreply, socket}
   end
+
+  # A profile has no page of its own, so on the edit page its crumb is text:
+  # the company, or the person, the profile belongs to.
+  defp profile_name(%{type: "company", company_name: name}) when is_binary(name) and name != "",
+    do: name
+
+  defp profile_name(profile),
+    do: String.trim("#{profile.first_name} #{profile.last_name}")
 
   @impl true
   def handle_event("select_user", %{"user_uuid" => user_uuid}, socket) do

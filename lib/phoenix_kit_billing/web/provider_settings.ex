@@ -17,6 +17,7 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Providers
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -25,7 +26,7 @@ defmodule PhoenixKitBilling.Web.ProviderSettings do
 
       socket =
         socket
-        |> assign(:page_title, gettext("Payment Providers"))
+        |> Trail.settings(gettext("Providers"), [Trail.billing_settings()])
         |> assign(:project_title, project_title)
         |> load_provider_settings()
 

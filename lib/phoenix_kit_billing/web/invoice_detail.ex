@@ -29,6 +29,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.Providers
   alias PhoenixKitBilling.Web.InvoiceDetail.Actions
+  alias PhoenixKitBilling.Web.Trail
 
   import PhoenixKitBilling.Web.InvoiceDetail.Helpers
 
@@ -70,7 +71,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
           else
             socket
             |> assign(:loaded?, true)
-            |> assign(:page_title, gettext("Invoice %{number}", number: invoice.invoice_number))
+            |> Trail.billing(invoice.invoice_number, [Trail.invoices()])
             |> assign(:project_title, project_title)
             |> assign(:invoice, invoice)
             |> assign(:transactions, invoice.transactions)

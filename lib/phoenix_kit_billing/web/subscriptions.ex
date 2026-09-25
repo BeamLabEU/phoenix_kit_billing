@@ -24,6 +24,7 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.Events
+  alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
@@ -37,7 +38,7 @@ defmodule PhoenixKitBilling.Web.Subscriptions do
       # navigation and where the URL-driven filters live anyway.
       {:ok,
        socket
-       |> assign(:page_title, gettext("Subscriptions"))
+       |> Trail.billing(gettext("Subscriptions"))
        |> assign(:project_title, nil)
        |> assign(:status_filter, "all")
        |> assign(:search, "")

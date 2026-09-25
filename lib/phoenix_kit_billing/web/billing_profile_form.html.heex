@@ -1,7 +1,9 @@
   <div class="container mx-auto px-4 py-6 max-w-4xl">
     <%!-- Header --%>
     <.admin_page_header back={PhoenixKit.Utils.Routes.path("/admin/billing/profiles")}>
-      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">{@page_title}</h1>
+      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">
+        {if @profile, do: gettext("Edit Billing Profile"), else: gettext("New Billing Profile")}
+      </h1>
       <p class="text-sm text-base-content/60 mt-0.5">
         <%= if @profile do %>
           {gettext("Edit billing profile details")}
