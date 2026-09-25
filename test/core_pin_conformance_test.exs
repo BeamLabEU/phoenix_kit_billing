@@ -19,12 +19,19 @@ defmodule PhoenixKitBilling.CorePinConformanceTest do
   first shipped in core 2.26.0, and five LiveViews import the component at compile
   time — an older core fails to compile this package outright. Raise the floor
   (never the ceiling) when a new core API is adopted.
+
+  The floor is `>= 2.38.0 and < 3.0.0` now: the actor and the activity log
+  come from `PhoenixKitWeb.Actor` and `Activity.log/3`, first shipped in core
+  2.38.0 and no longer feature-detected — an older core does not compile the
+  package. Any earlier floor's reasons above still hold below it. Keep the
+  compound form: patch-precise at the bottom, open through every later 2.x
+  minor at the top.
   """
 
-  @must_admit ["2.26.0", "2.26.1", "2.27.0", "2.99.4"]
-  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.25.0", "3.0.0"]
+  @must_admit ["2.38.0", "2.38.1", "2.39.0", "2.99.4"]
+  @must_reject ["1.7.236", "2.0.0", "2.26.0", "2.26.1", "2.27.0", "2.37.5", "3.0.0"]
 
-  test "the :phoenix_kit requirement admits every core 2.x from the floor and nothing else" do
+  test "the :phoenix_kit requirement admits every core >= 2.38.0 minor and nothing else" do
     requirement = core_requirement()
 
     assert match?({:ok, _parsed}, Version.parse_requirement(requirement)),
@@ -34,7 +41,7 @@ defmodule PhoenixKitBilling.CorePinConformanceTest do
       assert Version.match?(version, requirement),
              "`:phoenix_kit` requirement #{inspect(requirement)} rejects core #{version}. " <>
                "A pin that excludes a core minor breaks `mix deps.get` for every host " <>
-               "running this module alongside that core. Keep it a two-segment `~> 2.<floor>`."
+               "running this module alongside that core. Keep the floor patch-precise and the ceiling open (`>= 2.38.0 and < 3.0.0`)."
     end
 
     for version <- @must_reject do
