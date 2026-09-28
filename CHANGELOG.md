@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.18.0 - 2026-09-28
+
+Actor and activity logging through core, and a full header trail on every
+billing admin page (PR #44); spec references written in English (PR #45).
+
+### Changed
+
+- **⚠️ Requires `phoenix_kit >= 2.38.0 and < 3.0.0`** (was `~> 2.26`).
+  Activity logging now reads the actor and role through
+  `PhoenixKitWeb.Actor` and writes through `PhoenixKit.Activity.log/3`, both
+  first shipped in core 2.38.0 and called without a feature check, so an
+  older core cannot compile this release. Hosts on core 2.26–2.37 stay on
+  0.17.x.
+- **Admin header trail.** Every billing page now sets core's
+  `page_section`, `page_crumbs` and `page_title`, so the header reads
+  `Admin Panel / Billing / Orders / ORD-…` with links back up instead of
+  `Admin Panel / <title>`. Titles no longer carry a dash-joined trail
+  ("Order %{number}", "Edit Order %{number}"); edit pages are titled "Edit"
+  and the form's own heading names the page. Settings pages sit under
+  "Settings".
+- Gettext: new msgids "New order", "New subscription", "New subscription
+  type", "New billing profile" and "Providers" (translated in `et` and
+  `ru`); four unused msgids dropped.
+- Code comments and test names write the per-domain-currency spec's stage
+  labels in English (`E1`–`E5`, `item N`). No behaviour change.
+
 ## 0.17.0 - 2026-09-21
 
 Guest payers, a durable invoice-event hook for other modules, and EveryPay
