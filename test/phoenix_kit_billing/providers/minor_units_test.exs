@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.Providers.MinorUnitsTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design: the payment providers
+  §7 (E5) of the per-domain-currency design: the payment providers
   hard-coded a ×100 factor converting between a shop-side `Decimal` amount
   and the provider's own minor unit, which is only correct for two-decimal
   currencies (USD/EUR/GBP). A zero-decimal currency (JPY, KRW) sent through

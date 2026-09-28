@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design, closing the gap code review
+  §7 (E5) of the per-domain-currency design, closing the gap code review
   found in the provider-only fix: `WebhookProcessor.calculate_payment_amount/2`
   and `refund_amount/3` used to divide a webhook's reported amount by a
   hard-coded 100. Before the provider side sent the correct amount to
@@ -288,7 +288,7 @@ defmodule PhoenixKitBilling.WebhookProcessorCurrencyTest do
     test "razorpay: a real ₹199.99 INR payment and refund are unchanged end to end" do
       # INR specifically, not just a stand-in 2-decimal currency: Razorpay
       # is INR-primary, and INR is every current real user of this
-      # provider (§7/Э5 review). 19999 paise, exactly as before this fix.
+      # provider (§7/E5 review). 19999 paise, exactly as before this fix.
       user = user_fixture()
       invoice = invoice_fixture(user, "INR", "199.99")
 

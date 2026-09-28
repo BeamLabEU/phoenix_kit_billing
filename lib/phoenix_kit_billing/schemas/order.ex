@@ -117,7 +117,7 @@ defmodule PhoenixKitBilling.Order do
     # `PhoenixKitBilling.Migrations` chain (V3), not a core migration —
     # see that module's moduledoc for why. Nullable, with no backfill of
     # existing rows: nothing downstream requires them populated, and a
-    # pre-V3 or pre-Э1 order simply has them come back nil.
+    # pre-V3 or pre-E1 order simply has them come back nil.
     field(:base_currency, :string)
     field(:exchange_rate, :decimal)
     field(:base_total, :decimal)

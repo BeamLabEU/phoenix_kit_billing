@@ -207,7 +207,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
     metadata = opts[:metadata] || opts["metadata"] || %{}
 
     # Razorpay expects amount in the smallest currency unit (paise for
-    # INR) — via decimal_places, not a hard-coded 100 (§2.6/§7, Э5): a
+    # INR) — via decimal_places, not a hard-coded 100 (§2.6/§7, E5): a
     # zero-decimal currency sent through a fixed 100 is charged ONE
     # HUNDRED TIMES its intended amount.
     with {:ok, amount_paise} <- MinorUnits.to_minor_units(amount, currency) do
@@ -227,7 +227,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
     metadata = Keyword.get(opts, :metadata, %{})
 
     # Same currency-aware conversion as create_order/1 above (§2.6/§7,
-    # Э5): `amount` here is always the public API's Decimal directly
+    # E5): `amount` here is always the public API's Decimal directly
     # (charge_payment_method/3's caller), so the old hard-coded ×100 was
     # live on every recurring charge, not just a dormant fallback branch.
     with {:ok, amount_paise} <- MinorUnits.to_minor_units(amount, currency) do
@@ -286,7 +286,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
   # Stripe/PayPal. It was silently unused here before this fix, because
   # the old `is_integer(amount)` branch never needed it; now it drives
   # the same currency-aware conversion as create_order/1 above (§2.6/§7,
-  # Э5) instead of a hard-coded 100.
+  # E5) instead of a hard-coded 100.
   defp do_create_refund(payment_id, amount, opts) do
     notes = Keyword.get(opts, :notes, %{})
 
@@ -405,7 +405,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
          refund_id: refund["id"],
          charge_id: refund["payment_id"],
          amount_refunded: refund["amount"],
-         # Added alongside amount_refunded (§7/Э5): the payment-side
+         # Added alongside amount_refunded (§7/E5): the payment-side
          # handlers above already carry this from the same Razorpay
          # entity shape; utils/webhook_processor.ex needs it to convert
          # amount_refunded for any currency, not just two-decimal ones.
@@ -515,7 +515,7 @@ defmodule PhoenixKitBilling.Providers.Razorpay do
     # received an already-scaled integer and its own is_integer(amount)
     # branch skipped conversion entirely — for a zero-decimal currency
     # that meant charging 100x with no currency-aware step anywhere in
-    # the chain (§2.6/§7, Э5). Passing the Decimal straight through and
+    # the chain (§2.6/§7, E5). Passing the Decimal straight through and
     # letting create_order/1 do the ONE currency-aware conversion removes
     # that duplicate, silently-wrong scaling step rather than just fixing
     # its factor.

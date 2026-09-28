@@ -344,7 +344,7 @@ defmodule PhoenixKitBilling.Events do
   @doc """
   Subscribes to currency-table changes. Storefront LiveViews use this to
   re-render converted prices the moment a rate, a rounding rule, an
-  `enabled` flag or the base changes (per-domain-currency spec §4.2.1 п.5).
+  `enabled` flag or the base changes (per-domain-currency spec §4.2.1 item 5).
   """
   def subscribe_currencies, do: Manager.subscribe(@currencies_topic)
 

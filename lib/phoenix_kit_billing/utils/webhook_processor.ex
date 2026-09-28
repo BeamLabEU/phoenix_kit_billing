@@ -368,7 +368,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
-  # §7/Э5: the webhook's own reported amount is a provider minor unit,
+  # §7/E5: the webhook's own reported amount is a provider minor unit,
   # never a bare "cents" - dividing by a hard-coded 100 was correct only
   # by coincidence, for exactly the currencies that happen to have two
   # decimal places. `webhook_amount/3` below reads the currency the
@@ -569,7 +569,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
         # An amount with NO currency at all is a normalizer bug, not the
         # ordinary "this event carries no amount under this key" case
         # below - every provider's own normalizer already attaches the
-        # currency it read alongside the amount (§7/Э5), so this should
+        # currency it read alongside the amount (§7/E5), so this should
         # not happen on a real webhook. Worth surfacing; falls back the
         # same way.
         Logger.warning(

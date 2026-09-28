@@ -735,7 +735,7 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   # back as "1000", not "100000"), so no conversion belongs here. The
   # `currency` carried alongside each one is what lets
   # `utils/webhook_processor.ex` convert them back to a shop-side Decimal
-  # correctly for any currency, not just two-decimal ones (§7/Э5).
+  # correctly for any currency, not just two-decimal ones (§7/E5).
   defp normalize_event("checkout.session.completed", object) do
     {:ok,
      %{

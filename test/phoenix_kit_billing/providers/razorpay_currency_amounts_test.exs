@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.Providers.RazorpayCurrencyAmountsTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design: `PhoenixKitBilling.Providers.Razorpay`
+  §7 (E5) of the per-domain-currency design: `PhoenixKitBilling.Providers.Razorpay`
   converted every amount to Razorpay's minor unit ("paise" for INR) with a
   hard-coded ×100 across four call sites (`create_order/1`,
   `create_order_for_recurring/2`, `do_create_refund/3`, `invoice_to_opts/1`),

@@ -955,7 +955,7 @@ defmodule PhoenixKitBilling do
   # a barrier: the cache GenServer handles messages from this process in
   # order, so by the time `stats/1` returns the clear HAS been applied —
   # which is what lets `maybe_broadcast_currencies_changed/1` promise a
-  # subscriber a fresh read (§4.2.1 п.5). Without it the broadcast could
+  # subscriber a fresh read (§4.2.1 item 5). Without it the broadcast could
   # overtake the clear and a subscriber's re-read would hit the stale entry.
   # `stats/1` already guards a missing/unavailable cache process on its own
   # (returns a default map instead of raising), so no extra guard is needed
@@ -976,7 +976,7 @@ defmodule PhoenixKitBilling do
 
   defp maybe_invalidate_currency_cache(result), do: result
 
-  # §4.2.1 п.5: announce AFTER the cache is cleared (the pipe order in the
+  # §4.2.1 item 5: announce AFTER the cache is cleared (the pipe order in the
   # four currency writers is load-bearing), so a subscriber that
   # re-resolves on receipt cannot read the stale entry.
   defp maybe_broadcast_currencies_changed({:ok, %Currency{} = currency} = result) do
@@ -1215,10 +1215,10 @@ defmodule PhoenixKitBilling do
     with :ok <- validate_reprice_requirement(catalog_size, reprice),
          {:ok, new_base} <- fetch_currency_for_base_change(new_base_code),
          {:ok, result} <- do_change_base_currency(new_base, reprice) do
-      # §4.2.1 п.5: the SAME cache-then-broadcast sequence (and the SAME
+      # §4.2.1 item 5: the SAME cache-then-broadcast sequence (and the SAME
       # helpers) every other currency writer uses — this one rewrites
       # EVERY row, the largest change this module can make, so every
-      # open storefront tab (subscribed since Э2 for exactly this: a
+      # open storefront tab (subscribed since E2 for exactly this: a
       # rate edit re-renders live, no reload) needs to hear about it
       # too, not just single-currency writes. The newly promoted base's
       # OWN code is the payload `Events.broadcast_currencies_changed/1`
@@ -1588,7 +1588,7 @@ defmodule PhoenixKitBilling do
   its own afterward, so that stale entry would sit there until an
   unrelated write happened to clear it — not a rollback edge case, the
   NORMAL every-thing-worked path, defeating the exact live re-render
-  this cache/broadcast pair exists to provide (§4.2.1, stage Э2).
+  this cache/broadcast pair exists to provide (§4.2.1, stage E2).
 
   So once `repo().transaction/1` has returned `{:ok, _}` — the write is
   REALLY committed, not merely executed inside a transaction something
