@@ -119,7 +119,7 @@ core-baseline tables (PR #39).
 
 ## 0.14.0 - 2026-09-08
 
-Per-domain currency, stage Э5: exchange-rate provider hook and provider
+Per-domain currency, stage E5: exchange-rate provider hook and provider
 minor units (PR #38, #40).
 
 ### Added
@@ -156,7 +156,7 @@ minor units (PR #38, #40).
 
 ## 0.13.0 - 2026-09-07
 
-Per-domain currency, stages Э2 and Э3 (PR #33, #34).
+Per-domain currency, stages E2 and E3 (PR #33, #34).
 
 ### Added
 
