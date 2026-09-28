@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.Providers.PayPalCurrencyAmountsTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design: `PhoenixKitBilling.Providers.PayPal`
+  §7 (E5) of the per-domain-currency design: `PhoenixKitBilling.Providers.PayPal`
   used to format every amount with a hard-coded two decimal places, which
   is wrong for a zero-decimal currency (JPY — PayPal rejects a decimal
   point on a `NO_DECIMALS` currency) or a three-decimal one (BHD —

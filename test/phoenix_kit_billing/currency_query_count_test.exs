@@ -7,7 +7,7 @@ defmodule PhoenixKitBilling.CurrencyQueryCountTest do
   `resolve_display_currency/1` itself before it compares codes, so the
   uncached cost is 3 queries per call, not 2. 50 calls therefore cost 150
   queries uncached; measured before this cache existed
-  (see Э1-B5's implementation report for the exact reproduction).
+  (see E1-B5's implementation report for the exact reproduction).
 
   Attaches to `[:phoenix_kit_billing, :test, :repo, :query]` — the
   telemetry event `PhoenixKitBilling.Test.Repo` emits per query, confirmed

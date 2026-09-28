@@ -51,12 +51,12 @@ defmodule PhoenixKitBilling.CurrencyRoundingRuleTest do
 
   defp eq(a, b), do: Decimal.equal?(a, Decimal.new(b))
 
-  test "exact is the default and reproduces Э1 numbers" do
+  test "exact is the default and reproduces E1 numbers" do
     assert eq(Currency.present(Decimal.new("138.00"), "EUR"), "125.45")
     assert eq(Currency.present(Decimal.new("19.99"), "EUR"), "18.17")
   end
 
-  test "charm_99 rounds DOWN to X.99 on both the live and the frozen path (§5 п.1, п.2)" do
+  test "charm_99 rounds DOWN to X.99 on both the live and the frozen path (§5 item 1, item 2)" do
     set_rule("EUR", "charm_99")
     assert eq(Currency.present(Decimal.new("19.99"), "EUR"), "17.99")
     assert eq(Currency.present(Decimal.new("138.00"), "EUR"), "124.99")
@@ -94,7 +94,7 @@ defmodule PhoenixKitBilling.CurrencyRoundingRuleTest do
     assert eq(Currency.present(Decimal.new("0"), "EUR"), "0.00")
   end
 
-  test "the base currency is never rounded by a rule (§5 п.3)" do
+  test "the base currency is never rounded by a rule (§5 item 3)" do
     set_rule("USD", "charm_99")
     assert eq(Currency.present(Decimal.new("138.00"), "USD"), "138.00")
     assert eq(Currency.present(Decimal.new("138.00"), nil), "138.00")

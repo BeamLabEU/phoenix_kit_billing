@@ -1,13 +1,13 @@
 defmodule PhoenixKitBilling.Providers.EveryPayCurrencyAmountsTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design: `PhoenixKitBilling.Providers.EveryPay`'s
+  §7 (E5) of the per-domain-currency design: `PhoenixKitBilling.Providers.EveryPay`'s
   `decimal_to_amount/1` rounded every outbound amount to exactly two
   decimal places regardless of currency — padding a zero-decimal currency
   harmlessly, but silently dropping a three-decimal currency's third
   digit. `create_checkout_session/2` is the one call site with the
   invoice's own currency on hand (`charge_payment_method/3` and
   `create_refund/3` have none — EveryPay's account fixes the currency
-  server-side, and inventing one there would be exactly the guess §7/Э5
+  server-side, and inventing one there would be exactly the guess §7/E5
   forbids), so it now validates/rounds against that currency's real
   `decimal_places` via `MinorUnits`, refusing rather than dropping.
 

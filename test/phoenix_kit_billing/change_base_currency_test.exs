@@ -208,8 +208,8 @@ defmodule PhoenixKitBilling.ChangeBaseCurrencyTest do
     end
   end
 
-  describe "broadcasts a currencies_changed event (§4.2.1 п.5)" do
-    # Э2 subscribed every open storefront tab to this event precisely so
+  describe "broadcasts a currencies_changed event (§4.2.1 item 5)" do
+    # E2 subscribed every open storefront tab to this event precisely so
     # a rate edit re-renders live, no reload — a base-currency change
     # rewrites EVERY rate in the table, the largest change this module
     # can make, so it must announce too, exactly like every other

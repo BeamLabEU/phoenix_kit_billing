@@ -1,7 +1,7 @@
 defmodule PhoenixKitBilling.Providers.EveryPayTest do
   # DataCase (not plain ExUnit.Case, was: async: true), because
   # `handle_webhook_event/1` now resolves its currency's `decimal_places`
-  # (§7/Э5) via `PhoenixKitBilling.Providers.MinorUnits`, which reads
+  # (§7/E5) via `PhoenixKitBilling.Providers.MinorUnits`, which reads
   # `phoenix_kit_currencies`.
   use PhoenixKitBilling.DataCase, async: false
 

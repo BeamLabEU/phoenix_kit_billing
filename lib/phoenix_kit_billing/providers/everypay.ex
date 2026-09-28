@@ -415,7 +415,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
 
   # `create_checkout_session/2` has the invoice's own currency on hand, so
   # this rounds/validates against ITS `decimal_places` the way
-  # `MinorUnits` does for every other provider (§2.6/§7, Э5) — a
+  # `MinorUnits` does for every other provider (§2.6/§7, E5) — a
   # hard-coded 2 here silently padded a zero-decimal currency and
   # silently dropped a three-decimal one's third digit. Refuses rather
   # than drops: `to_minor_units_and_places/2` already errors on a
@@ -431,7 +431,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   # check against here: EveryPay's account fixes the currency
   # server-side, and neither a saved payment method nor a bare refund
   # amount carries one at these call sites — inventing one (the shop's
-  # base currency, say) would be exactly the kind of guess §7/Э5 forbids,
+  # base currency, say) would be exactly the kind of guess §7/E5 forbids,
   # since nothing here confirms it matches the account's actual currency.
   # Rounding to a hard-coded 2 before this fix silently dropped a
   # three-decimal currency's third digit; sending the caller's own
@@ -499,7 +499,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
   defp normalize_payment(_state, _payment), do: {:error, :unknown_event}
 
   # The processor expects an integer provider minor unit, converted via
-  # `currency`'s own `decimal_places` (§7/Э5) — a fixed ×100 here would
+  # `currency`'s own `decimal_places` (§7/E5) — a fixed ×100 here would
   # silently mismatch `utils/webhook_processor.ex`'s currency-aware
   # `MinorUnits.from_minor_units/2` on the other end. `nil` on a missing
   # amount, a missing currency, an unrecognized currency code, or more

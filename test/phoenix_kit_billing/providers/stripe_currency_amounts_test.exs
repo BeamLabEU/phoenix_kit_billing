@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.Providers.StripeCurrencyAmountsTest do
   @moduledoc """
-  §7 (Э5) of the per-domain-currency design: `PhoenixKitBilling.Providers.Stripe`
+  §7 (E5) of the per-domain-currency design: `PhoenixKitBilling.Providers.Stripe`
   used to convert every amount to Stripe's minor unit with a hard-coded
   ×100, which is wrong for a zero-decimal currency (JPY: charges 100x) or a
   three-decimal one (BHD: truncates). The actual conversion arithmetic is

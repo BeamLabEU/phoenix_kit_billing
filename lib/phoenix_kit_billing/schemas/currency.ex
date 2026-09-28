@@ -16,7 +16,7 @@ defmodule PhoenixKitBilling.Currency do
   - `sort_order`: Display order in currency lists
   - `rounding_rule`: Display rounding strategy (`"exact"`, `"charm_99"`,
     `"charm_90"`, `"integer"`), applied by `Currency.present/3` (§5);
-    `"exact"` reproduces pre-Э2 behavior
+    `"exact"` reproduces pre-E2 behavior
   - `rate_updated_at`: When `exchange_rate` was last refreshed; no reader
     uses this yet
 
@@ -381,7 +381,7 @@ defmodule PhoenixKitBilling.Currency do
   `decimal_places == 2` for them) and leave figures below 1.00 — and zero —
   at exact rounding: there is no X.99 below one unit, and "free" must stay
   free. Never applied to the base currency: `present/3` returns the base
-  amount before reaching this function (§5 п.3).
+  amount before reaching this function (§5 item 3).
   """
   @spec round_for_display(Decimal.t(), non_neg_integer, String.t() | nil) :: Decimal.t()
   def round_for_display(raw, _places, "integer"), do: Decimal.round(raw, 0)

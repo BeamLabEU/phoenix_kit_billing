@@ -75,10 +75,10 @@ defmodule PhoenixKitBilling.Web.UserOrders do
   # every locale this can render in except English: en-US is the outlier
   # with month-first-and-comma, not the default. Every other supported
   # locale (ru, et, and de/es/fr/it/pl via core) puts the day first with
-  # no comma ("17 Aug 2026" / "17 авг 2026"). `short_month/1` itself reads
-  # its locale from `PhoenixKitWeb.Gettext` (see its source), so the word
-  # order is read from the same place to stay consistent with whatever
-  # actually decided the month's language.
+  # no comma ("17 Aug 2026", same order with a localized month).
+  # `short_month/1` itself reads its locale from `PhoenixKitWeb.Gettext`
+  # (see its source), so the word order is read from the same place to
+  # stay consistent with whatever actually decided the month's language.
   #
   # Public (not exported from docs) rather than `defp`, specifically so
   # `user_orders_test.exs` can unit-test the locale/order logic directly

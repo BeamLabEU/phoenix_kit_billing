@@ -30,7 +30,7 @@ defmodule PhoenixKitBilling.Schemas.TransactionTest do
       # payment_method ("bank") still has a schema default, so even
       # though it's in validate_required it's never blank. currency's own
       # literal default was removed once this validation existed (§7.3,
-      # Э5) — see currency_defaults_test.exs.
+      # E5) — see currency_defaults_test.exs.
       refute Map.has_key?(errors, :payment_method)
     end
 

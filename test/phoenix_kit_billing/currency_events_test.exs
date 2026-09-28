@@ -1,5 +1,5 @@
 defmodule PhoenixKitBilling.CurrencyEventsTest do
-  @moduledoc "Every write that can change what `present/3` returns is announced AFTER the cache is cleared (§4.2.1 п.5)."
+  @moduledoc "Every write that can change what `present/3` returns is announced AFTER the cache is cleared (§4.2.1 item 5)."
   use PhoenixKitBilling.DataCase, async: false
 
   alias PhoenixKitBilling.{Currency, Events}

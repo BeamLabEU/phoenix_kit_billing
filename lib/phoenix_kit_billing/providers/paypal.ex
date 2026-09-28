@@ -564,7 +564,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   # decimal point at all ("1000", not "1000.00"); a three-decimal one
   # (BHD, ...) needs all three digits. The old code always formatted to
   # exactly 2 decimals, which is wrong in both directions — spec §2.6/§7
-  # (Э5). Routed through `MinorUnits.to_minor_units_and_places/2` for the
+  # (E5). Routed through `MinorUnits.to_minor_units_and_places/2` for the
   # same refuse-rather-than-guess unknown-currency and no-silent-rounding
   # behavior Stripe gets (one currency lookup, not two), then rendered
   # back to a string at the exact digit count it reports — never via a
@@ -595,7 +595,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   # amount can travel through `WebhookEventData.data[:amount]` /
   # `[:amount_refunded]` the same shape Stripe's raw minor units already
   # do, for `utils/webhook_processor.ex` to convert back with
-  # `MinorUnits.from_minor_units/2` (§7/Э5). It USED to be a fixed ×100
+  # `MinorUnits.from_minor_units/2` (§7/E5). It USED to be a fixed ×100
   # regardless of currency, which only round-tripped correctly because
   # the processor divided by the same fixed 100 on the other end; now
   # that the processor is currency-aware, this must be too, or the pair
@@ -653,7 +653,7 @@ defmodule PhoenixKitBilling.Providers.PayPal do
   # Fetches/validates :currency (fetch! only when a partial amount is
   # given — a full refund needs none, same rule as `do_create_refund/4`
   # documents) and pre-formats the decimal string BEFORE the token
-  # exchange, mirroring `charge_payment_method/3` (§7.1 + Э5: a locally
+  # exchange, mirroring `charge_payment_method/3` (§7.1 + E5: a locally
   # knowable failure must not cost a network round trip first).
   defp maybe_format_refund_amount(nil, _opts), do: {:ok, nil}
 

@@ -17,7 +17,7 @@ defmodule PhoenixKitBilling.Providers.MinorUnits do
   This module replaces the literal `100` with `10^decimal_places`, read
   per-code from `phoenix_kit_currencies` (the same table and the same
   cached lookup `PhoenixKitBilling.Currency.present/3` already trusts for
-  display conversion) — spec §2.6/§7 (Э5) of the per-domain-currency
+  display conversion) — spec §2.6/§7 (E5) of the per-domain-currency
   design.
 
   `Integer.pow/2` computes the factor — plain integer arithmetic, never a

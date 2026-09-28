@@ -3,7 +3,7 @@ defmodule PhoenixKitBilling.Schemas.CurrencyDefaultsTest do
   Pins §7.3 of the currency design spec: a schema-level `default: "EUR"` is
   a silent answer to a question the caller must be forced to ask.
   `Order`/`Invoice` lost the literal once their changesets validated
-  `:currency` (`nil` fails loudly). `Transaction` kept it until Э5 added
+  `:currency` (`nil` fails loudly). `Transaction` kept it until E5 added
   `validate_required(:currency)` + `validate_length(:currency, is: 3)` —
   removing the literal first would have traded a silent "EUR" for an
   equally silent `nil`, which is worse, not better. All three now fail
@@ -28,7 +28,7 @@ defmodule PhoenixKitBilling.Schemas.CurrencyDefaultsTest do
     assert {"can't be blank", _} = cs.errors[:currency]
   end
 
-  test "Transaction without currency is a loud changeset error, not a silent EUR (§7.3, Э5)" do
+  test "Transaction without currency is a loud changeset error, not a silent EUR (§7.3, E5)" do
     cs =
       Transaction.changeset(%Transaction{}, %{
         transaction_number: "TXN-1",
