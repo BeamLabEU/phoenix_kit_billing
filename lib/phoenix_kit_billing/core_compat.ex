@@ -53,6 +53,9 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Utils.Date, :utc_now, 0},
     {PhoenixKit.Utils.Date, :short_month, 1},
     {PhoenixKit.Utils.UUID, :valid?, 1},
+    # The customer's language for the four financial emails — the send's
+    # recipient is a bare address, which carries no preference.
+    {PhoenixKit.Utils.RecipientLocale, :preferred, 1},
     {PhoenixKit.Utils.CountryData, :countries_for_select, 0},
     {PhoenixKit.Utils.CountryData, :eu_member?, 1},
     {PhoenixKit.Utils.CountryData, :get_country_name, 1},

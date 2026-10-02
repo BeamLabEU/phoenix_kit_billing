@@ -111,12 +111,15 @@ defmodule PhoenixKitBilling.MixProject do
       # transitively via ex_aws/stripity_stripe - so scoping it to the environments
       # that actually resolve it costs consumers nothing.
       {:hackney, "~> 4.0", override: true, only: [:dev, :test]},
-      # 2.38.0 is the floor now: the actor and the activity log come from
-      # `PhoenixKitWeb.Actor` and `PhoenixKit.Activity.log/3`, first shipped
-      # there and no longer feature-detected, so a lower core fails to compile.
+      # 2.44.0 is the floor now: the email defaults are a `markdown` part
+      # wrapped in the `billing` layout group, and the four emails register
+      # with core's preview through `email_templates/0` — all first shipped in
+      # 2.44.0. A lower core does not know the `markdown` part, so a billing
+      # email's HTML would be its plain text escaped into paragraphs.
+      # (2.38.0 brought the actor and the activity log, still required.)
       # Patch-precise floor in the compound form, so the ceiling stays open
       # through every later 2.x minor (see test/core_pin_conformance_test.exs).
-      pk_dep(:phoenix_kit, ">= 2.38.0 and < 3.0.0"),
+      pk_dep(:phoenix_kit, ">= 2.44.0 and < 3.0.0"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just

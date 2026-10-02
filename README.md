@@ -213,6 +213,46 @@ draft → sent → paid
             void
 ```
 
+### Emails
+
+Billing sends four emails to the customer: `billing_invoice`, `billing_receipt`,
+`billing_credit_note` and `billing_payment_confirmation`. They go out through
+`phoenix_kit_emails` (`required_modules/0`), in the customer's preferred language
+when their account has one, and appear in core's email preview
+(`/admin/settings/email-sending/preview`) with sample data.
+
+Each email's built-in copy (`PhoenixKitBilling.EmailDefaults`) has three parts:
+
+| Part | Builds | Line items as |
+|------|--------|---------------|
+| `subject` | the subject | — |
+| `markdown` | the HTML version, inside core's layout | `{{{line_items_table_html}}}` — a ready-made table |
+| `text` | the plain-text version | `{{line_items_text}}` — one line per item |
+
+The link to the document online (`{{invoice_url}}`, `{{receipt_url}}`,
+`{{credit_note_url}}`, `{{payment_url}}`) is a button. The company's details close
+the body; a blank one (an empty VAT number, say) is left out, and so is the
+invoice's bank transfer section when there is no IBAN.
+
+**Overriding.** Put files under `priv/phoenix_kit_templates/<email name>/` in the
+host app, as for any email (`subject.txt`, `markdown.md`, `html.html`, `text.txt`,
+each optionally per locale: `markdown.et.md`). A part you don't override keeps
+billing's default. To keep the line-items table in the HTML version, override
+`markdown.md` or `html.html` and place `{{{line_items_table_html}}}` in it — three
+braces, because the value is HTML; the table is escaped and styled inline by
+billing. A host that overrides only `text.txt` changes the plain-text version, and,
+on a core that builds the HTML from a host's text, the HTML version too — then
+without the table. `{{{line_items_html}}}` is the older form: bare `<tr>` rows for a
+template that wraps them in its own `<table>`.
+
+**Layout group.** Billing emails are sent with `layout: "billing"`, so a host can
+give them their own chrome — company details in the footer, say — with
+`_layout-billing`, `_header-billing` or `_footer-billing`, each falling back to the
+shared `_layout`, `_header` or `_footer`.
+
+An active database template from `phoenix_kit_emails` under the same name still
+wins over all of the above.
+
 ### Permissions
 
 The module declares permissions via `permission_metadata/0`:

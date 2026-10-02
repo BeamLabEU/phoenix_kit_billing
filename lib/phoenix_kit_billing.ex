@@ -50,6 +50,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKit.Utils.Number
+  alias PhoenixKit.Utils.RecipientLocale
   alias PhoenixKit.Utils.UUID, as: UUIDUtils
   alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Currency
@@ -197,6 +198,11 @@ defmodule PhoenixKitBilling do
   # templates and purges every class they use out of the host's build.
   @impl PhoenixKit.Module
   def css_sources, do: [:phoenix_kit_billing]
+
+  # The four financial emails, with sample variables, for core's email
+  # preview (`/admin/settings/email-sending/preview`).
+  @impl PhoenixKit.Module
+  def email_templates, do: EmailDefaults.catalog_entries()
 
   @impl PhoenixKit.Module
   def permission_metadata do
@@ -2913,8 +2919,10 @@ defmodule PhoenixKitBilling do
           "billing_invoice",
           email,
           variables,
-          user_uuid: user && user.uuid,
-          metadata: %{invoice_uuid: invoice.uuid, invoice_number: invoice.invoice_number}
+          email_send_opts("billing_invoice", variables, user, %{
+            invoice_uuid: invoice.uuid,
+            invoice_number: invoice.invoice_number
+          })
         )
     end
   end
@@ -3018,12 +3026,11 @@ defmodule PhoenixKitBilling do
           "billing_receipt",
           email,
           variables,
-          user_uuid: user && user.uuid,
-          metadata: %{
+          email_send_opts("billing_receipt", variables, user, %{
             invoice_uuid: invoice.uuid,
             receipt_number: invoice.receipt_number,
             invoice_number: invoice.invoice_number
-          }
+          })
         )
     end
   end
@@ -3135,18 +3142,18 @@ defmodule PhoenixKitBilling do
           "billing_credit_note",
           email,
           variables,
-          user_uuid: user && user.uuid,
-          metadata: %{
+          email_send_opts("billing_credit_note", variables, user, %{
             invoice_uuid: invoice.uuid,
             transaction_uuid: transaction.uuid,
             invoice_number: invoice.invoice_number,
             transaction_number: transaction.transaction_number
-          }
+          })
         )
     end
   end
 
-  defp build_credit_note_email_variables(invoice, transaction, user, opts) do
+  @doc false
+  def build_credit_note_email_variables(invoice, transaction, user, opts) do
     credit_note_url = Keyword.get(opts, :credit_note_url, "")
     billing_details = invoice.billing_details || %{}
     prefix = Settings.get_setting("billing_credit_note_prefix", "CN")
@@ -3275,18 +3282,18 @@ defmodule PhoenixKitBilling do
           "billing_payment_confirmation",
           email,
           variables,
-          user_uuid: user && user.uuid,
-          metadata: %{
+          email_send_opts("billing_payment_confirmation", variables, user, %{
             invoice_uuid: invoice.uuid,
             transaction_uuid: transaction.uuid,
             invoice_number: invoice.invoice_number,
             transaction_number: transaction.transaction_number
-          }
+          })
         )
     end
   end
 
-  defp build_payment_confirmation_email_variables(invoice, transaction, user, opts) do
+  @doc false
+  def build_payment_confirmation_email_variables(invoice, transaction, user, opts) do
     payment_url = Keyword.get(opts, :payment_url, "")
     billing_details = invoice.billing_details || %{}
     prefix = Settings.get_setting("billing_payment_confirmation_prefix", "PMT")
@@ -3314,8 +3321,35 @@ defmodule PhoenixKitBilling do
       "currency" => invoice.currency,
       "company_name" => company.name,
       "company_address" => company.address,
+      "company_vat" => company.vat,
       "payment_url" => payment_url
     }
+  end
+
+  @doc false
+  # The options of one financial email's send, in one place so a test can see
+  # exactly what reaches `PhoenixKit.Mailer.send_from_template/4`:
+  #
+  #   * `:defaults` — this package's own copy (`EmailDefaults`), so the four
+  #     emails keep sending once the `phoenix_kit_email_templates` table is
+  #     retired. The button to the document online is left out when the send
+  #     has no link for it. The database row still wins over it, so nothing
+  #     changes for an install that has one.
+  #   * `:layout` — core's layout in the `billing` group, so a host can give
+  #     billing emails their own `_layout-billing`, `_header-billing` or
+  #     `_footer-billing`.
+  #   * `:locale` — the customer's own preference. The recipient handed to the
+  #     mailer is a bare address, which carries none, so without this every
+  #     billing email went out in the site's default language.
+  @spec email_send_opts(String.t(), map(), map() | nil, map()) :: keyword()
+  def email_send_opts(template, variables, user, metadata) do
+    [
+      user_uuid: user && user.uuid,
+      locale: RecipientLocale.preferred(user),
+      metadata: metadata,
+      defaults: EmailDefaults.defaults_for(template, variables),
+      layout: EmailDefaults.layout_group()
+    ]
   end
 
   # Sends email via PhoenixKit.Modules.Emails.Templates if available, carrying
@@ -3379,15 +3413,8 @@ defmodule PhoenixKitBilling do
   defp send_email_if_available(template, email, variables, opts) do
     if Code.ensure_loaded?(PhoenixKit.Modules.Emails.Templates) and
          function_exported?(PhoenixKit.Modules.Emails.Templates, :send_email, 4) do
-      # `:defaults` carries this package's own copy of the content, so these
-      # four emails keep sending once the `phoenix_kit_email_templates` table
-      # is retired — until now they were seeded rows in a table owned by
-      # another package, which is also why that package hardcoded billing's
-      # copy. `put_new`, because a caller passing its own defaults wins; the
-      # database row still wins over both, so nothing changes for an install
-      # that has one. Cores older than 2.17 ignore the option entirely.
-      opts = Keyword.put_new(opts, :defaults, EmailDefaults.defaults_for(template))
-
+      # `opts` come from `email_send_opts/4`: this package's own defaults,
+      # the `billing` layout group and the customer's locale.
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
       apply(PhoenixKit.Modules.Emails.Templates, :send_email, [template, email, variables, opts])
     else
@@ -3424,7 +3451,8 @@ defmodule PhoenixKitBilling do
     :ok
   end
 
-  defp build_receipt_email_variables(invoice, user, opts) do
+  @doc false
+  def build_receipt_email_variables(invoice, user, opts) do
     receipt_url = Keyword.get(opts, :receipt_url, "")
     billing_details = invoice.billing_details || %{}
     company = get_company_details()
@@ -3440,8 +3468,10 @@ defmodule PhoenixKitBilling do
       "total" => format_decimal(invoice.total),
       "paid_amount" => format_decimal(invoice.paid_amount),
       "currency" => invoice.currency,
-      "line_items_html" => format_line_items_html(invoice.line_items),
-      "line_items_text" => format_line_items_text(invoice.line_items),
+      "line_items_html" => EmailDefaults.line_items_html(invoice.line_items),
+      "line_items_table_html" =>
+        EmailDefaults.line_items_table_html(invoice.line_items, invoice.currency),
+      "line_items_text" => EmailDefaults.line_items_text(invoice.line_items),
       "company_name" => company.name,
       "company_address" => company.address,
       "company_vat" => company.vat,
@@ -3458,7 +3488,10 @@ defmodule PhoenixKitBilling do
     end)
   end
 
-  defp build_invoice_email_variables(invoice, user, opts) do
+  @doc false
+  # Public for the email tests only: what each placeholder of the defaults is
+  # filled with.
+  def build_invoice_email_variables(invoice, user, opts) do
     invoice_url = Keyword.get(opts, :invoice_url, "")
     invoice_bank = invoice.bank_details || %{}
     billing_details = invoice.billing_details || %{}
@@ -3475,8 +3508,10 @@ defmodule PhoenixKitBilling do
       "tax_amount" => format_decimal(invoice.tax_amount),
       "total" => format_decimal(invoice.total),
       "currency" => invoice.currency,
-      "line_items_html" => format_line_items_html(invoice.line_items),
-      "line_items_text" => format_line_items_text(invoice.line_items),
+      "line_items_html" => EmailDefaults.line_items_html(invoice.line_items),
+      "line_items_table_html" =>
+        EmailDefaults.line_items_table_html(invoice.line_items, invoice.currency),
+      "line_items_text" => EmailDefaults.line_items_text(invoice.line_items),
       "company_name" => company.name,
       "company_address" => company.address,
       "company_vat" => company.vat,
@@ -3508,37 +3543,6 @@ defmodule PhoenixKitBilling do
   defp extract_user_name(billing, nil), do: Invoice.payer_email(billing)
 
   defp extract_user_name(_billing, user), do: user.email
-
-  defp format_line_items_html(nil), do: ""
-
-  defp format_line_items_html(items) do
-    Enum.map_join(items, "\n", fn item ->
-      desc =
-        if item["description"],
-          do: "<div class=\"item-desc\">#{item["description"]}</div>",
-          else: ""
-
-      """
-      <tr>
-        <td>
-          <div class="item-name">#{item["name"]}</div>
-          #{desc}
-        </td>
-        <td class="text-right">#{item["quantity"]}</td>
-        <td class="text-right">#{item["unit_price"]}</td>
-        <td class="text-right">#{item["total"]}</td>
-      </tr>
-      """
-    end)
-  end
-
-  defp format_line_items_text(nil), do: ""
-
-  defp format_line_items_text(items) do
-    Enum.map_join(items, "\n", fn item ->
-      "#{item["name"]} x #{item["quantity"]} @ #{item["unit_price"]} = #{item["total"]}"
-    end)
-  end
 
   # Who an invoice's mail goes to: the user's address, or — for a guest
   # payer (billing V5) — the email on the invoice's billing details.
