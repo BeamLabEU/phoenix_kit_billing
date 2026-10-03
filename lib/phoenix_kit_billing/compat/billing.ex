@@ -30,6 +30,7 @@ defmodule PhoenixKit.Modules.Billing do
   # anywhere. (`module_stats/0`, resolved the same way, is under "Utilities".)
   defdelegate css_sources(), to: PhoenixKitBilling
   defdelegate notification_types(), to: PhoenixKitBilling
+  defdelegate email_templates(), to: PhoenixKitBilling
 
   # Tax
   defdelegate tax_enabled?(), to: PhoenixKitBilling

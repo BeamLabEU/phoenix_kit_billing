@@ -34,7 +34,7 @@ defmodule PhoenixKitBilling.CompatDelegateTest do
   @registered_module_surface ~w(
     enabled? version required_modules module_key module_name route_module
     permission_metadata admin_tabs settings_tabs user_dashboard_tabs
-    get_config css_sources notification_types module_stats
+    get_config css_sources notification_types email_templates module_stats
   )a
 
   # Functions injected by `use`/macros on the compat module itself

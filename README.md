@@ -213,6 +213,60 @@ draft → sent → paid
             void
 ```
 
+### Emails
+
+Billing sends four emails to the customer: `billing_invoice`, `billing_receipt`,
+`billing_credit_note` and `billing_payment_confirmation`. They go out through
+`phoenix_kit_emails` (`required_modules/0`) and appear in core's email preview
+(`/admin/settings/email-sending/preview`) with sample data.
+
+**Language.** A send passes the customer's preferred locale when their account has
+one (a guest payer gets the site's language). Billing's own copy follows it on a
+core whose `RecipientLocale.in_locale/2` also sets the locale for a module's
+Gettext backend (BeamLabEU/phoenix_kit#892). On an older core billing's copy is
+translated into the sending process's locale instead — the admin's language for a
+send from the admin, whatever the global locale is for a background job — while
+host override files are still picked by the recipient's locale.
+
+Each email's built-in copy (`PhoenixKitBilling.EmailDefaults`) has three parts:
+
+| Part | Builds | Line items as |
+|------|--------|---------------|
+| `subject` | the subject | — |
+| `markdown` | the HTML version, inside core's layout | `{{{line_items_table_html}}}` — a ready-made table |
+| `text` | the plain-text version | `{{line_items_text}}` — one line per item |
+
+The link to the document online (`{{invoice_url}}`, `{{receipt_url}}`,
+`{{credit_note_url}}`, `{{payment_url}}`) is a button. The company's details close
+the body; a blank one (an empty VAT number, say) is left out, and so is the
+invoice's bank transfer section when there is no IBAN.
+
+**Overriding.** Put files under `priv/phoenix_kit_templates/<email name>/` in the
+host app, as for any email (`subject.txt`, `markdown.md`, `html.html`, `text.txt`,
+each optionally per locale: `markdown.et.md`). A part you don't override keeps
+billing's default. To keep the line-items table in the HTML version, place
+`{{{line_items_table_html}}}` — three braces, because the value is HTML; billing
+escapes and styles the table inline — in one of:
+
+- a host `html.html`. Billing's `text` default still builds the plain-text version.
+- a host `markdown.md` **and** a host `text.txt` that lists the items with
+  `{{line_items_text}}`. A host's `markdown.md` also builds the plain-text version
+  when there is no host `text.txt` — it outranks billing's `text` default — and would
+  put the table's HTML into it.
+
+A host that overrides only `text.txt` changes the plain-text version, and,
+on a core that builds the HTML from a host's text, the HTML version too — then
+without the table. `{{{line_items_html}}}` is the older form: bare `<tr>` rows for a
+template that wraps them in its own `<table>`.
+
+**Layout group.** Billing emails are sent with `layout: "billing"`, so a host can
+give them their own chrome — company details in the footer, say — with
+`_layout-billing`, `_header-billing` or `_footer-billing`, each falling back to the
+shared `_layout`, `_header` or `_footer`.
+
+An active database template from `phoenix_kit_emails` under the same name still
+wins over all of the above.
+
 ### Permissions
 
 The module declares permissions via `permission_metadata/0`:
