@@ -235,6 +235,16 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
       end
     end
 
+    test "leaves the line-items table out when there are no items" do
+      for name <- ["billing_invoice", "billing_receipt"] do
+        variables = Map.put(full(name), "line_items_table_html", "")
+        markdown = EmailDefaults.defaults_for(name, variables).().markdown
+
+        refute markdown =~ "line_items_table_html"
+        assert markdown =~ "{{subtotal}}"
+      end
+    end
+
     test "leaves the invoice's bank transfer section out when there is no IBAN" do
       variables = Map.put(full("billing_invoice"), "bank_iban", " ")
       markdown = EmailDefaults.defaults_for("billing_invoice", variables).().markdown
@@ -338,8 +348,9 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
 
       assert html =~ ~r/\A<tr>/
       refute html =~ "<table"
-      assert html =~ ~s(<div class="item-name">&lt;script&gt;)
-      assert html =~ ~s(<div class="item-desc">&lt;img)
+      # Styled inline as well, for an exported template without a stylesheet.
+      assert html =~ ~s(<div class="item-name" style="font-weight:bold;">&lt;script&gt;)
+      assert html =~ ~s(<div class="item-desc" style="color:#71717a;font-size:13px;">&lt;img)
       refute html =~ "<script"
       refute html =~ "<img"
       assert html =~ ~s(<td class="text-right" style="text-align:right;">30.00</td>)

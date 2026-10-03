@@ -27,8 +27,12 @@ defmodule PhoenixKitBilling.EmailDefaults do
   A host that overrides only `text.txt` changes the plain-text version; from
   the core release that ranks a host's text above a module's Markdown in the
   HTML body, the HTML version is then built from that text too, without the
-  line-items table. To keep the table, override `markdown.md` (or `html.html`)
-  and place `{{{line_items_table_html}}}` in it.
+  line-items table. To keep the table, place `{{{line_items_table_html}}}` in
+  a host `html.html` — billing's `text` default still builds the plain-text
+  version — or in a host `markdown.md` **together with** a host `text.txt`
+  using `{{line_items_text}}`: a host's Markdown outranks billing's `text`
+  default for the plain-text version too, and would carry the table's HTML
+  into it.
 
   ## Line items
 
@@ -63,6 +67,9 @@ defmodule PhoenixKitBilling.EmailDefaults do
   }
 
   @font "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+
+  # Secondary text in a line item: the description, quantity × unit price.
+  @muted "color:#71717a;font-size:13px;"
 
   @cell_style "padding:10px 0;border-bottom:1px solid #e4e4e7;vertical-align:top;" <>
                 "font-family:#{@font};font-size:14px;line-height:1.4;color:#18181b;"
@@ -156,11 +163,11 @@ defmodule PhoenixKitBilling.EmailDefaults do
     description =
       case cell(field(item, "description")) do
         "" -> ""
-        text -> ~s(<div style="color:#71717a;font-size:13px;">#{text}</div>)
+        text -> ~s(<div style="#{@muted}">#{text}</div>)
       end
 
     quantity =
-      ~s(<div style="color:#71717a;font-size:13px;">) <>
+      ~s(<div style="#{@muted}">) <>
         cell(field(item, "quantity")) <>
         " × " <> amount(field(item, "unit_price"), currency) <> "</div>"
 
@@ -188,13 +195,13 @@ defmodule PhoenixKitBilling.EmailDefaults do
       desc =
         case cell(field(item, "description")) do
           "" -> ""
-          text -> "<div class=\"item-desc\">#{text}</div>"
+          text -> ~s(<div class="item-desc" style="#{@muted}">#{text}</div>)
         end
 
       """
       <tr>
         <td>
-          <div class="item-name">#{cell(field(item, "name"))}</div>
+          <div class="item-name" style="font-weight:bold;">#{cell(field(item, "name"))}</div>
           #{desc}
         </td>
         <td class="text-right" style="text-align:right;">#{cell(field(item, "quantity"))}</td>
@@ -421,7 +428,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
       Here is your invoice from {{company_name}}. Please pay it by {{due_date}}.
       """),
-      "{{{line_items_table_html}}}",
+      has?(present, "line_items_table_html") && "{{{line_items_table_html}}}",
       gettext("""
       - Subtotal: {{subtotal}} {{currency}}
       - Tax: {{tax_amount}} {{currency}}
@@ -455,7 +462,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
       Thank you for your payment. We received {{paid_amount}} {{currency}} for invoice {{invoice_number}} on {{payment_date}}.
       """),
-      "{{{line_items_table_html}}}",
+      has?(present, "line_items_table_html") && "{{{line_items_table_html}}}",
       gettext("""
       - Subtotal: {{subtotal}} {{currency}}
       - Tax: {{tax_amount}} {{currency}}

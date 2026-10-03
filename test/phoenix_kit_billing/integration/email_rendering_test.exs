@@ -112,6 +112,21 @@ defmodule PhoenixKitBilling.Integration.EmailRenderingTest do
       assert content.html =~ "&lt;script&gt;"
     end
 
+    test "an invoice without items has no table and no empty paragraph", %{paths: paths} do
+      user = user_fixture()
+      invoice = invoice_fixture(user, [])
+      variables = Billing.build_invoice_email_variables(invoice, user, [])
+
+      html = render("billing_invoice", variables, user, paths).html
+
+      refute html =~ ~r/<p[^>]*>\s*<\/p>/
+
+      refute html =~
+               ~s(<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse)
+
+      assert html =~ "Subtotal"
+    end
+
     test "every placeholder is filled by what billing supplies", %{paths: paths} do
       user = user_fixture()
       invoice = invoice_fixture(user, @hostile_items)
