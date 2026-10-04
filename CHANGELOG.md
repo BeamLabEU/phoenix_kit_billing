@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.19.0 - 2026-10-04
+
+Billing emails rebuilt on core's Markdown email parts, with a line-items table,
+the `billing` layout group and the customer's own language (PR #46).
+
+### Changed
+
+- **⚠️ Requires `phoenix_kit >= 2.44.0 and < 3.0.0`** (was `>= 2.38.0`).
+  The email defaults are a `markdown` part sent in the `billing` layout group,
+  and the emails register with core's preview through `email_templates/0` — all
+  first shipped in core 2.44.0. Hosts on core 2.38–2.43 stay on 0.18.x.
+- **The four financial emails** (invoice, receipt, credit note, payment
+  confirmation) are now a `subject`, a `markdown` body and a separate `text`
+  body. The HTML version has a button to the document, the line items as a
+  styled table, and the company's details as a closing block. The button, the
+  invoice's bank-transfer section and each blank company line are left out when
+  the send has no value for them. A database template still wins over all of
+  it, so an install that customized one keeps its copy.
+- **Line items are HTML-escaped.** `line_items_html` (the bare `<tr>` rows for
+  database templates) used to interpolate item names and descriptions raw.
+- The emails are sent in the customer's own `preferred_locale` rather than the
+  site's default language (billing's own copy follows it on core 2.48.0 and up).
+
+### Added
+
+- `PhoenixKitBilling.email_send_opts/4` — everything a financial email's send
+  passes: the defaults, `layout: "billing"` and the customer's `locale:`.
+- `PhoenixKitBilling.email_templates/0` (and the compat delegate): the four
+  emails, with sample values, in core's email preview at
+  `/admin/settings/email-sending/preview`.
+- `EmailDefaults.line_items_table_html/2` and the `{{{line_items_table_html}}}`
+  variable, plus `company_vat` on the payment-confirmation email.
+- A host can restyle billing emails with `_layout-billing`, `_header-billing`
+  and `_footer-billing` files.
+
 ## 0.18.0 - 2026-09-28
 
 Actor and activity logging through core, and a full header trail on every
