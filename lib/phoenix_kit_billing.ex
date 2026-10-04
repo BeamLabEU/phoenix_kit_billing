@@ -3166,7 +3166,7 @@ defmodule PhoenixKitBilling do
       "user_name" => extract_user_name(billing_details, user),
       "credit_note_number" => credit_note_number,
       "invoice_number" => invoice.invoice_number,
-      "refund_date" => format_date(transaction.inserted_at),
+      "refund_date" => format_date(transaction.inserted_at, user),
       "refund_amount" => format_decimal(Decimal.abs(transaction.amount)),
       "refund_reason" => transaction.description || "Refund issued",
       "transaction_number" => transaction.transaction_number,
@@ -3310,7 +3310,7 @@ defmodule PhoenixKitBilling do
       "user_name" => extract_user_name(billing_details, user),
       "confirmation_number" => confirmation_number,
       "invoice_number" => invoice.invoice_number,
-      "payment_date" => format_date(transaction.inserted_at),
+      "payment_date" => format_date(transaction.inserted_at, user),
       "payment_amount" => format_decimal(transaction.amount),
       "payment_method" => String.capitalize(transaction.payment_method || "bank"),
       "transaction_number" => transaction.transaction_number,
@@ -3343,11 +3343,20 @@ defmodule PhoenixKitBilling do
   #     billing email went out in the site's default language.
   @spec email_send_opts(String.t(), map(), map() | nil, map()) :: keyword()
   def email_send_opts(template, variables, user, metadata) do
+    locale = RecipientLocale.for_rendering(user)
+    base_locale = locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
+    defaults = EmailDefaults.defaults_for(template, variables)
+
+    localized_defaults =
+      if defaults do
+        fn -> Gettext.with_locale(PhoenixKitBilling.Gettext, base_locale, defaults) end
+      end
+
     [
       user_uuid: user && user.uuid,
-      locale: RecipientLocale.preferred(user),
+      locale: locale,
       metadata: metadata,
-      defaults: EmailDefaults.defaults_for(template, variables),
+      defaults: localized_defaults,
       layout: EmailDefaults.layout_group()
     ]
   end
@@ -3462,7 +3471,7 @@ defmodule PhoenixKitBilling do
       "user_name" => extract_user_name(billing_details, user),
       "receipt_number" => invoice.receipt_number,
       "invoice_number" => invoice.invoice_number,
-      "payment_date" => format_date(invoice.paid_at),
+      "payment_date" => format_date(invoice.paid_at, user),
       "subtotal" => format_decimal(invoice.subtotal),
       "tax_amount" => format_decimal(invoice.tax_amount),
       "total" => format_decimal(invoice.total),
@@ -3502,8 +3511,8 @@ defmodule PhoenixKitBilling do
       "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
       "user_name" => extract_user_name(billing_details, user),
       "invoice_number" => invoice.invoice_number,
-      "invoice_date" => format_date(invoice.inserted_at),
-      "due_date" => format_date(invoice.due_date),
+      "invoice_date" => format_date(invoice.inserted_at, user),
+      "due_date" => format_date(invoice.due_date, user),
       "subtotal" => format_decimal(invoice.subtotal),
       "tax_amount" => format_decimal(invoice.tax_amount),
       "total" => format_decimal(invoice.total),
@@ -3549,10 +3558,11 @@ defmodule PhoenixKitBilling do
   defp invoice_recipient(%Invoice{user: %{email: email}}) when is_binary(email), do: email
   defp invoice_recipient(%Invoice{billing_details: details}), do: Invoice.payer_email(details)
 
-  defp format_date(nil), do: "-"
-  defp format_date(%Date{} = date), do: Calendar.strftime(date, "%B %d, %Y")
-  defp format_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%B %d, %Y")
-  defp format_date(%DateTime{} = dt), do: Calendar.strftime(dt, "%B %d, %Y")
+  defp format_date(date, user) do
+    RecipientLocale.in_locale(RecipientLocale.for_rendering(user), fn ->
+      EmailDefaults.format_date(date)
+    end)
+  end
 
   defp format_decimal(nil), do: "0.00"
   defp format_decimal(%Decimal{} = d), do: Decimal.to_string(d, :normal)

@@ -184,26 +184,6 @@ i18n_exclude =
     [:requires_phoenix_kit_i18n_api]
   end
 
-# Billing's emails reach the customer in their language only on a core whose
-# `RecipientLocale.in_locale/2` also installs the locale for a module's own
-# Gettext backend (BeamLabEU/phoenix_kit, recipient locale for module texts).
-# On an older core billing's copy follows the caller's locale instead, so the
-# tests asserting the recipient's language are excluded; they run once the
-# dep resolves to a core that does it. Probed by behaviour, not by version.
-recipient_locale_exclude =
-  if PhoenixKit.Utils.RecipientLocale.in_locale("et", fn ->
-       Gettext.get_locale(PhoenixKitBilling.Gettext)
-     end) == "et" do
-    []
-  else
-    Logger.info(
-      "[test_helper] RecipientLocale.in_locale/2 leaves module Gettext backends alone — " <>
-        "tests tagged :requires_recipient_module_locale excluded."
-    )
-
-    [:requires_recipient_module_locale]
-  end
-
 integration_exclude = if repo_available, do: [], else: [:integration]
 
-ExUnit.start(exclude: i18n_exclude ++ recipient_locale_exclude ++ integration_exclude)
+ExUnit.start(exclude: i18n_exclude ++ integration_exclude)

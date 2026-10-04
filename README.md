@@ -220,13 +220,12 @@ Billing sends four emails to the customer: `billing_invoice`, `billing_receipt`,
 `phoenix_kit_emails` (`required_modules/0`) and appear in core's email preview
 (`/admin/settings/email-sending/preview`) with sample data.
 
-**Language.** A send passes the customer's preferred locale when their account has
-one (a guest payer gets the site's language). Billing's own copy follows it on a
-core whose `RecipientLocale.in_locale/2` also sets the locale for a module's
-Gettext backend (BeamLabEU/phoenix_kit#892). On an older core billing's copy is
-translated into the sending process's locale instead — the admin's language for a
-send from the admin, whatever the global locale is for a background job — while
-host override files are still picked by the recipient's locale.
+**Language.** A send uses the customer's preferred locale, or the site's content
+language for a guest payer or an account without a preference. Billing explicitly
+installs that language for its own copy, including when the sender has set a
+Gettext backend locale. Dates use core's translated month names and locale-aware
+ordering, in both sends and previews. This works from the supported core floor
+of 2.44.0.
 
 Each email's built-in copy (`PhoenixKitBilling.EmailDefaults`) has three parts:
 
@@ -239,7 +238,9 @@ Each email's built-in copy (`PhoenixKitBilling.EmailDefaults`) has three parts:
 The link to the document online (`{{invoice_url}}`, `{{receipt_url}}`,
 `{{credit_note_url}}`, `{{payment_url}}`) is a button. The company's details close
 the body; a blank one (an empty VAT number, say) is left out, and so is the
-invoice's bank transfer section when there is no IBAN.
+invoice's bank transfer section when there is no IBAN. Both HTML and plain text
+omit missing document links, empty bank names and SWIFT codes, and absent company
+details. An invoice without a due date omits its payment deadline.
 
 **Overriding.** Put files under `priv/phoenix_kit_templates/<email name>/` in the
 host app, as for any email (`subject.txt`, `markdown.md`, `html.html`, `text.txt`,

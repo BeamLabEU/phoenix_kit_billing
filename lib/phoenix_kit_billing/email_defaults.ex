@@ -44,8 +44,9 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
   ## Why these are functions, not a map
 
-  `send_from_template/4` evaluates a zero-arity `:defaults` *inside the
-  recipient's locale*. A map would have been evaluated in whatever locale the
+  Billing's send options wrap the zero-arity `:defaults` in the recipient's
+  locale for this module's backend, and core's preview installs its chosen
+  locale too. A map would have been evaluated in whatever locale the
   caller happened to be in — which, on a background job sending an invoice, is
   nobody's.
   """
@@ -95,7 +96,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   def defaults_for(_name), do: nil
 
   @doc """
-  `defaults_for/1` for one send. The Markdown leaves out what `variables` have
+  `defaults_for/1` for one send. Both bodies leave out what `variables` have
   nothing for, rather than show an empty label: the button when there is no
   link to the document online, the invoice's bank transfer section when there
   is no IBAN, and each line of the company's details that is blank.
@@ -126,7 +127,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
           text: String.t()
         }
   def for_template(name, present \\ :all) when name in @templates do
-    %{subject: subject(name), markdown: markdown(name, present), text: text(name)}
+    %{subject: subject(name), markdown: markdown(name, present), text: text(name, present)}
   end
 
   defp has?(:all, _variable), do: true
@@ -260,6 +261,20 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
   ## The preview
 
+  @doc false
+  @spec format_date(Date.t() | DateTime.t() | NaiveDateTime.t() | nil) :: String.t()
+  def format_date(nil), do: ""
+
+  def format_date(%{day: day, month: month, year: year}) do
+    day = day |> to_string() |> String.pad_leading(2, "0")
+    month = PhoenixKit.Utils.Date.short_month(month)
+
+    case Gettext.get_locale(PhoenixKitWeb.Gettext) do
+      "en" -> "#{month} #{day}, #{year}"
+      _ -> "#{day} #{month} #{year}"
+    end
+  end
+
   @doc """
   The four emails as `PhoenixKit.Email.Catalog` entries, for core's email
   preview — returned by `PhoenixKitBilling.email_templates/0`.
@@ -303,7 +318,13 @@ defmodule PhoenixKitBilling.EmailDefaults do
       name: name,
       label: label,
       description: description,
-      defaults: defaults_for(name),
+      defaults: fn ->
+        Gettext.with_locale(
+          PhoenixKitBilling.Gettext,
+          Gettext.get_locale(PhoenixKitWeb.Gettext),
+          defaults_for(name)
+        )
+      end,
       variables: fn -> sample_variables(name) end,
       layout: @layout_group
     }
@@ -343,8 +364,8 @@ defmodule PhoenixKitBilling.EmailDefaults do
   def sample_variables("billing_invoice") do
     Map.merge(@sample_company, %{
       "invoice_number" => "INV-2026-0042",
-      "invoice_date" => "October 02, 2026",
-      "due_date" => "October 16, 2026",
+      "invoice_date" => format_date(~D[2026-10-02]),
+      "due_date" => format_date(~D[2026-10-16]),
       "subtotal" => "270.00",
       "tax_amount" => "59.40",
       "total" => "329.40",
@@ -363,7 +384,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
     Map.merge(@sample_company, %{
       "receipt_number" => "RCP-2026-0042",
       "invoice_number" => "INV-2026-0042",
-      "payment_date" => "October 05, 2026",
+      "payment_date" => format_date(~D[2026-10-05]),
       "subtotal" => "270.00",
       "tax_amount" => "59.40",
       "total" => "329.40",
@@ -379,7 +400,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
     Map.merge(@sample_company, %{
       "credit_note_number" => "CN-2026-0007",
       "invoice_number" => "INV-2026-0042",
-      "refund_date" => "October 09, 2026",
+      "refund_date" => format_date(~D[2026-10-09]),
       "refund_amount" => "30.00",
       "refund_reason" => "Domain renewal cancelled",
       "transaction_number" => "TXN-2026-0107",
@@ -391,7 +412,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
     Map.merge(@sample_company, %{
       "confirmation_number" => "PMT-2026-0106",
       "invoice_number" => "INV-2026-0042",
-      "payment_date" => "October 05, 2026",
+      "payment_date" => format_date(~D[2026-10-05]),
       "payment_amount" => "200.00",
       "payment_method" => "Bank",
       "transaction_number" => "TXN-2026-0106",
@@ -426,8 +447,9 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
       Hello {{user_name}},
 
-      Here is your invoice from {{company_name}}. Please pay it by {{due_date}}.
+      Here is your invoice from {{company_name}}.
       """),
+      has?(present, "due_date") && gettext("Please pay it by {{due_date}}."),
       has?(present, "line_items_table_html") && "{{{line_items_table_html}}}",
       gettext("""
       - Subtotal: {{subtotal}} {{currency}}
@@ -435,15 +457,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
       - **Total due: {{total}} {{currency}}**
       """),
       button("billing_invoice", present, gettext("[View invoice]({{invoice_url}})")),
-      has?(present, "bank_iban") &&
-        gettext("""
-        ### Bank transfer
-
-        - Bank: {{bank_name}}
-        - IBAN: {{bank_iban}}
-        - SWIFT/BIC: {{bank_swift}}
-        - Reference: {{invoice_number}}
-        """),
+      bank_transfer(present, :markdown),
       gettext("""
       Invoice date: {{invoice_date}}. {{payment_terms}}
 
@@ -533,216 +547,270 @@ defmodule PhoenixKitBilling.EmailDefaults do
   # host's layout carries, an invoice states who issued it. Lines are joined
   # with a trailing `\`, a Markdown line break; a blank one is left out.
   defp company_footer(present) do
-    lines =
-      [
-        has?(present, "company_name") && "{{company_name}}",
-        has?(present, "company_address") && "{{company_address}}",
-        has?(present, "company_vat") && gettext("VAT: {{company_vat}}")
-      ]
-      |> Enum.filter(&is_binary/1)
+    case company_lines(present, "\\\n") do
+      "" -> nil
+      lines -> "---\n\n" <> lines
+    end
+  end
 
-    if lines != [], do: "---\n\n" <> Enum.join(lines, "\\\n")
+  defp company_lines(present, separator) do
+    [
+      has?(present, "company_name") && "{{company_name}}",
+      has?(present, "company_address") && "{{company_address}}",
+      has?(present, "company_vat") && gettext("VAT: {{company_vat}}")
+    ]
+    |> Enum.filter(&is_binary/1)
+    |> Enum.join(separator)
+  end
+
+  defp bank_transfer(present, format) do
+    if has?(present, "bank_iban") do
+      heading =
+        case format do
+          :markdown -> gettext("### Bank transfer")
+          :text -> gettext("BANK TRANSFER DETAILS")
+        end
+
+      lines =
+        [
+          has?(present, "bank_name") && gettext("Bank: {{bank_name}}"),
+          gettext("IBAN: {{bank_iban}}"),
+          has?(present, "bank_swift") && gettext("SWIFT/BIC: {{bank_swift}}"),
+          gettext("Reference: {{invoice_number}}")
+        ]
+        |> Enum.filter(&is_binary/1)
+
+      case format do
+        :markdown -> heading <> "\n\n" <> Enum.map_join(lines, "\n", &("- " <> &1))
+        :text -> heading <> "\n" <> Enum.join(lines, "\n")
+      end
+    end
   end
 
   defp join(parts) do
     parts
-    |> Enum.filter(&is_binary/1)
+    |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
     |> Enum.map_join("\n\n", &String.trim/1)
   end
 
   ## Text bodies
 
-  defp text("billing_invoice") do
-    gettext("""
-    =============================================
-    INVOICE {{invoice_number}}
-    =============================================
-
-    Bill To: {{user_name}}
-    Email: {{user_email}}
-
-    Invoice Date: {{invoice_date}}
-    Due Date: {{due_date}}
-    Currency: {{currency}}
-
-    ---------------------------------------------
-    LINE ITEMS
-    ---------------------------------------------
-    {{line_items_text}}
-
-    ---------------------------------------------
-    SUMMARY
-    ---------------------------------------------
-    Subtotal:    {{subtotal}} {{currency}}
-    Tax:         {{tax_amount}} {{currency}}
-    ---------------------------------------------
-    TOTAL:       {{total}} {{currency}}
-    ---------------------------------------------
-
-    PAYMENT DUE: {{due_date}}
-    {{payment_terms}}
-
-    ---------------------------------------------
-    BANK TRANSFER DETAILS
-    ---------------------------------------------
-    Bank:        {{bank_name}}
-    IBAN:        {{bank_iban}}
-    SWIFT/BIC:   {{bank_swift}}
-    Reference:   {{invoice_number}}
-
-    ---------------------------------------------
-    View invoice online: {{invoice_url}}
-
-    =============================================
-    {{company_name}}
-    {{company_address}}
-    VAT: {{company_vat}}
-    =============================================
-
-    If you have any questions about this invoice, please contact us.
-    """)
+  defp text("billing_invoice", present) do
+    join([
+      gettext("""
+      =============================================
+      INVOICE {{invoice_number}}
+      =============================================
+      """),
+      gettext("""
+      Bill To: {{user_name}}
+      Email: {{user_email}}
+      """),
+      join_lines([
+        gettext("Invoice Date: {{invoice_date}}"),
+        has?(present, "due_date") && gettext("Due Date: {{due_date}}"),
+        gettext("Currency: {{currency}}")
+      ]),
+      has?(present, "line_items_text") &&
+        gettext("""
+        ---------------------------------------------
+        LINE ITEMS
+        ---------------------------------------------
+        {{line_items_text}}
+        """),
+      gettext("""
+      ---------------------------------------------
+      SUMMARY
+      ---------------------------------------------
+      Subtotal:    {{subtotal}} {{currency}}
+      Tax:         {{tax_amount}} {{currency}}
+      ---------------------------------------------
+      TOTAL:       {{total}} {{currency}}
+      ---------------------------------------------
+      """),
+      join_lines([
+        has?(present, "due_date") && gettext("PAYMENT DUE: {{due_date}}"),
+        has?(present, "payment_terms") && "{{payment_terms}}"
+      ]),
+      bank_transfer(present, :text),
+      has?(present, "invoice_url") &&
+        gettext("""
+        ---------------------------------------------
+        View invoice online: {{invoice_url}}
+        """),
+      text_company_footer(present),
+      gettext("If you have any questions about this invoice, please contact us.")
+    ])
   end
 
-  defp text("billing_receipt") do
-    gettext("""
-    =============================================
-    RECEIPT {{receipt_number}}
-    =============================================
-    STATUS: PAID
-
-    Thank you for your payment!
-    Your payment has been successfully processed.
-
-    ---------------------------------------------
-    RECEIVED FROM
-    ---------------------------------------------
-    Name: {{user_name}}
-    Email: {{user_email}}
-
-    Payment Date: {{payment_date}}
-    Invoice: {{invoice_number}}
-    Currency: {{currency}}
-
-    ---------------------------------------------
-    LINE ITEMS
-    ---------------------------------------------
-    {{line_items_text}}
-
-    ---------------------------------------------
-    SUMMARY
-    ---------------------------------------------
-    Subtotal:    {{subtotal}} {{currency}}
-    Tax:         {{tax_amount}} {{currency}}
-    ---------------------------------------------
-    TOTAL PAID:  {{paid_amount}} {{currency}}
-    ---------------------------------------------
-
-    PAYMENT CONFIRMED: {{payment_date}}
-
-    ---------------------------------------------
-    View receipt online: {{receipt_url}}
-
-    =============================================
-    {{company_name}}
-    {{company_address}}
-    VAT: {{company_vat}}
-    =============================================
-
-    Thank you for your business.
-    If you have any questions, please contact us.
-    """)
+  defp text("billing_receipt", present) do
+    join([
+      gettext("""
+      =============================================
+      RECEIPT {{receipt_number}}
+      =============================================
+      STATUS: PAID
+      """),
+      gettext("""
+      Thank you for your payment!
+      Your payment has been successfully processed.
+      """),
+      gettext("""
+      ---------------------------------------------
+      RECEIVED FROM
+      ---------------------------------------------
+      Name: {{user_name}}
+      Email: {{user_email}}
+      """),
+      gettext("""
+      Payment Date: {{payment_date}}
+      Invoice: {{invoice_number}}
+      Currency: {{currency}}
+      """),
+      has?(present, "line_items_text") &&
+        gettext("""
+        ---------------------------------------------
+        LINE ITEMS
+        ---------------------------------------------
+        {{line_items_text}}
+        """),
+      gettext("""
+      ---------------------------------------------
+      SUMMARY
+      ---------------------------------------------
+      Subtotal:    {{subtotal}} {{currency}}
+      Tax:         {{tax_amount}} {{currency}}
+      ---------------------------------------------
+      TOTAL PAID:  {{paid_amount}} {{currency}}
+      ---------------------------------------------
+      """),
+      gettext("PAYMENT CONFIRMED: {{payment_date}}"),
+      has?(present, "receipt_url") &&
+        gettext("""
+        ---------------------------------------------
+        View receipt online: {{receipt_url}}
+        """),
+      text_company_footer(present),
+      gettext("""
+      Thank you for your business.
+      If you have any questions, please contact us.
+      """)
+    ])
   end
 
-  defp text("billing_credit_note") do
-    gettext("""
-    =============================================
-    CREDIT NOTE {{credit_note_number}}
-    =============================================
-    STATUS: REFUND ISSUED
-
-    A refund has been processed for your account.
-
-    REFUND AMOUNT: {{refund_amount}} {{currency}}
-
-    ---------------------------------------------
-    ISSUED BY (PAYER)
-    ---------------------------------------------
-    {{company_name}}
-    {{company_address}}
-    VAT: {{company_vat}}
-
-    ---------------------------------------------
-    ISSUED TO (PAYEE)
-    ---------------------------------------------
-    Name: {{user_name}}
-    Email: {{user_email}}
-
-    ---------------------------------------------
-    REFUND DETAILS
-    ---------------------------------------------
-    Credit Note #:     {{credit_note_number}}
-    Refund Date:       {{refund_date}}
-    Refund Amount:     {{refund_amount}} {{currency}}
-    Original Invoice:  {{invoice_number}}
-    Transaction #:     {{transaction_number}}
-
-    ---------------------------------------------
-    REASON FOR REFUND
-    ---------------------------------------------
-    {{refund_reason}}
-
-    ---------------------------------------------
-    View credit note online: {{credit_note_url}}
-
-    The refund will be processed to your original payment method.
-    Please allow 5-10 business days for the refund to appear in your account.
-
-    =============================================
-    {{company_name}}
-    {{company_address}}
-    VAT: {{company_vat}}
-    =============================================
-
-    If you have any questions about this refund, please contact us.
-    """)
+  defp text("billing_credit_note", present) do
+    join([
+      gettext("""
+      =============================================
+      CREDIT NOTE {{credit_note_number}}
+      =============================================
+      STATUS: REFUND ISSUED
+      """),
+      gettext("A refund has been processed for your account."),
+      gettext("REFUND AMOUNT: {{refund_amount}} {{currency}}"),
+      text_company_issuer(present),
+      gettext("""
+      ---------------------------------------------
+      ISSUED TO (PAYEE)
+      ---------------------------------------------
+      Name: {{user_name}}
+      Email: {{user_email}}
+      """),
+      gettext("""
+      ---------------------------------------------
+      REFUND DETAILS
+      ---------------------------------------------
+      Credit Note #:     {{credit_note_number}}
+      Refund Date:       {{refund_date}}
+      Refund Amount:     {{refund_amount}} {{currency}}
+      Original Invoice:  {{invoice_number}}
+      Transaction #:     {{transaction_number}}
+      """),
+      gettext("""
+      ---------------------------------------------
+      REASON FOR REFUND
+      ---------------------------------------------
+      {{refund_reason}}
+      """),
+      has?(present, "credit_note_url") &&
+        gettext("""
+        ---------------------------------------------
+        View credit note online: {{credit_note_url}}
+        """),
+      gettext("""
+      The refund will be processed to your original payment method.
+      Please allow 5-10 business days for the refund to appear in your account.
+      """),
+      text_company_footer(present),
+      gettext("If you have any questions about this refund, please contact us.")
+    ])
   end
 
-  defp text("billing_payment_confirmation") do
-    gettext("""
-    =============================================
-    PAYMENT CONFIRMATION {{confirmation_number}}
-    =============================================
-    STATUS: PAYMENT RECEIVED
-
-    Thank you for your payment.
-
-    PAYMENT AMOUNT: {{payment_amount}} {{currency}}
-
-    ---------------------------------------------
-    PAYMENT DETAILS
-    ---------------------------------------------
-    Confirmation #:    {{confirmation_number}}
-    Invoice #:         {{invoice_number}}
-    Payment Date:      {{payment_date}}
-    Payment Method:    {{payment_method}}
-    Transaction #:     {{transaction_number}}
-
-    ---------------------------------------------
-    BALANCE SUMMARY
-    ---------------------------------------------
-    Invoice Total:     {{invoice_total}} {{currency}}
-    Total Paid:        {{total_paid}} {{currency}}
-    Remaining:         {{remaining_balance}} {{currency}}
-
-    ---------------------------------------------
-    View payment confirmation online: {{payment_url}}
-
-    =============================================
-    {{company_name}}
-    {{company_address}}
-    =============================================
-
-    Thank you for your business. If you have any questions, please contact us.
-    """)
+  defp text("billing_payment_confirmation", present) do
+    join([
+      gettext("""
+      =============================================
+      PAYMENT CONFIRMATION {{confirmation_number}}
+      =============================================
+      STATUS: PAYMENT RECEIVED
+      """),
+      gettext("Thank you for your payment."),
+      gettext("PAYMENT AMOUNT: {{payment_amount}} {{currency}}"),
+      gettext("""
+      ---------------------------------------------
+      PAYMENT DETAILS
+      ---------------------------------------------
+      Confirmation #:    {{confirmation_number}}
+      Invoice #:         {{invoice_number}}
+      Payment Date:      {{payment_date}}
+      Payment Method:    {{payment_method}}
+      Transaction #:     {{transaction_number}}
+      """),
+      gettext("""
+      ---------------------------------------------
+      BALANCE SUMMARY
+      ---------------------------------------------
+      Invoice Total:     {{invoice_total}} {{currency}}
+      Total Paid:        {{total_paid}} {{currency}}
+      Remaining:         {{remaining_balance}} {{currency}}
+      """),
+      has?(present, "payment_url") &&
+        gettext("""
+        ---------------------------------------------
+        View payment confirmation online: {{payment_url}}
+        """),
+      text_company_footer(present),
+      gettext("Thank you for your business. If you have any questions, please contact us.")
+    ])
   end
+
+  defp text_company_footer(present) do
+    case company_lines(present, "\n") do
+      "" ->
+        nil
+
+      lines ->
+        "=============================================\n" <>
+          lines <> "\n============================================="
+    end
+  end
+
+  defp text_company_issuer(present) do
+    case company_lines(present, "\n") do
+      "" ->
+        nil
+
+      lines ->
+        join([
+          gettext("""
+          ---------------------------------------------
+          ISSUED BY (PAYER)
+          ---------------------------------------------
+          """),
+          lines
+        ])
+    end
+  end
+
+  defp join_lines(parts), do: parts |> Enum.filter(&is_binary/1) |> Enum.join("\n")
 end

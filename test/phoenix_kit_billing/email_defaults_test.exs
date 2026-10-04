@@ -30,7 +30,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
          invoice_number refund_amount refund_date refund_reason transaction_number user_email
          user_name),
     "billing_payment_confirmation" =>
-      ~w(company_address company_name confirmation_number currency invoice_number invoice_total
+      ~w(company_address company_name company_vat confirmation_number currency invoice_number invoice_total
          payment_amount payment_date payment_method payment_url remaining_balance total_paid
          transaction_number)
   }
@@ -231,7 +231,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
         assert String.replace(expected.markdown, ~r/\n\n\[[^\]]+\]\(\{\{#{variable}\}\}\)/, "") ==
                  content.markdown
 
-        assert content.text == expected.text
+        refute content.text =~ "{{#{variable}}}"
       end
     end
 
@@ -253,14 +253,17 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
       refute markdown =~ "{{bank_name}}"
       refute markdown =~ "Bank transfer"
       assert markdown =~ "{{payment_terms}}"
-      # The text version keeps its own layout.
-      assert EmailDefaults.defaults_for("billing_invoice", variables).().text =~ "{{bank_iban}}"
+      text = EmailDefaults.defaults_for("billing_invoice", variables).().text
+      refute text =~ "{{bank_iban}}"
+      refute text =~ "{{bank_name}}"
+      refute text =~ "BANK TRANSFER DETAILS"
     end
 
     test "leaves each blank line of the company's details out, and the rule with all three" do
       for name <- EmailDefaults.template_names() do
         no_vat = EmailDefaults.defaults_for(name, Map.put(full(name), "company_vat", "")).()
         refute no_vat.markdown =~ "{{company_vat}}"
+        refute no_vat.text =~ "{{company_vat}}"
         assert no_vat.markdown =~ ~r/---\n\n\{\{company_name\}\}\\\n\{\{company_address\}\}\z/
 
         none =
@@ -272,6 +275,44 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
         refute markdown =~ "{{company_vat}}"
         refute markdown =~ "---"
         refute markdown =~ ~r/\{\{company_name\}\}\z/
+      end
+    end
+
+    test "an IBAN does not require a bank name or SWIFT code in either body" do
+      variables =
+        Map.merge(full("billing_invoice"), %{"bank_name" => " ", "bank_swift" => nil})
+
+      for locale <- ["en", "et", "ru"] do
+        content =
+          Gettext.with_locale(PhoenixKitBilling.Gettext, locale, fn ->
+            EmailDefaults.defaults_for("billing_invoice", variables).()
+          end)
+
+        for part <- [:markdown, :text] do
+          assert content[part] =~ "{{bank_iban}}"
+          assert content[part] =~ "{{invoice_number}}"
+          refute content[part] =~ "{{bank_name}}"
+          refute content[part] =~ "{{bank_swift}}"
+        end
+      end
+    end
+
+    test "missing optional values are omitted in every translation" do
+      for locale <- ["en", "et", "ru"], name <- EmailDefaults.template_names() do
+        variables =
+          full(name)
+          |> Map.drop(["company_vat", "bank_iban", "bank_name", "bank_swift", "due_date"])
+          |> Map.put(Map.fetch!(@link_variables, name), "  ")
+
+        content =
+          Gettext.with_locale(PhoenixKitBilling.Gettext, locale, fn ->
+            EmailDefaults.defaults_for(name, variables).()
+          end)
+
+        for part <- [:markdown, :text],
+            variable <- ~w(company_vat bank_iban bank_name bank_swift due_date) do
+          refute content[part] =~ "{{#{variable}}}", "#{locale} #{name} #{part} kept #{variable}"
+        end
       end
     end
   end
@@ -422,6 +463,26 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
   end
 
   describe "PhoenixKitBilling.email_send_opts/4" do
+    test "defaults use the recipient's language even with an explicit sender backend locale" do
+      for locale <- ["et", "ru-RU", "ET_ee"] do
+        user = %{uuid: "u-1", custom_fields: %{"preferred_locale" => locale}}
+        variables = EmailDefaults.sample_variables("billing_invoice")
+
+        Gettext.with_locale(PhoenixKitBilling.Gettext, "en", fn ->
+          opts = PhoenixKitBilling.email_send_opts("billing_invoice", variables, user, %{})
+          base = locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
+
+          expected =
+            Gettext.with_locale(PhoenixKitBilling.Gettext, base, fn ->
+              EmailDefaults.defaults_for("billing_invoice").()
+            end)
+
+          assert opts[:defaults].() == expected
+          assert Gettext.get_locale(PhoenixKitBilling.Gettext) == "en"
+        end)
+      end
+    end
+
     test "carries the defaults, the billing layout group and the customer's locale" do
       user = %{uuid: "u-1", custom_fields: %{"preferred_locale" => "et"}}
       variables = EmailDefaults.sample_variables("billing_invoice")
@@ -432,12 +493,17 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
       assert opts[:layout] == "billing"
       assert opts[:user_uuid] == "u-1"
       assert opts[:metadata] == %{a: 1}
-      assert opts[:defaults].() == EmailDefaults.defaults_for("billing_invoice").()
+
+      expected =
+        Gettext.with_locale(PhoenixKitBilling.Gettext, "et", fn ->
+          EmailDefaults.defaults_for("billing_invoice").()
+        end)
+
+      assert opts[:defaults].() == expected
     end
 
-    test "a guest payer or a user without a preference sends no locale" do
-      # `nil` lets core fall back to the site's language.
-      assert PhoenixKitBilling.email_send_opts("billing_receipt", %{}, nil, %{})[:locale] == nil
+    test "a guest payer or a user without a preference uses the site's language" do
+      assert PhoenixKitBilling.email_send_opts("billing_receipt", %{}, nil, %{})[:locale] == "en"
 
       assert PhoenixKitBilling.email_send_opts(
                "billing_receipt",
@@ -446,7 +512,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
                %{}
              )[
                :locale
-             ] == nil
+             ] == "en"
     end
 
     test "the defaults drop the button when the send has no link" do

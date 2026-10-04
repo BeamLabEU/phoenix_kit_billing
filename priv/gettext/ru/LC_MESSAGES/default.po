@@ -3432,22 +3432,6 @@ msgstr "Кредит-нота {{credit_note_number}} - возврат оформ
 msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
 msgstr "Платёж получен - {{confirmation_number}} - {{company_name}}"
 
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nINVOICE {{invoice_number}}\n=============================================\n\nBill To: {{user_name}}\nEmail: {{user_email}}\n\nInvoice Date: {{invoice_date}}\nDue Date: {{due_date}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL:       {{total}} {{currency}}\n---------------------------------------------\n\nPAYMENT DUE: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nBANK TRANSFER DETAILS\n---------------------------------------------\nBank:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nReference:   {{invoice_number}}\n\n---------------------------------------------\nView invoice online: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this invoice, please contact us.\n"
-msgstr "=============================================\nСЧЁТ {{invoice_number}}\n=============================================\n\nПлательщик: {{user_name}}\nЭл. почта: {{user_email}}\n\nДата счёта: {{invoice_date}}\nСрок оплаты: {{due_date}}\nВалюта: {{currency}}\n\n---------------------------------------------\nПОЗИЦИИ\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nИТОГИ\n---------------------------------------------\nПодытог:     {{subtotal}} {{currency}}\nНалог:       {{tax_amount}} {{currency}}\n---------------------------------------------\nИТОГО:       {{total}} {{currency}}\n---------------------------------------------\n\nСРОК ОПЛАТЫ: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nРЕКВИЗИТЫ ДЛЯ ПЕРЕВОДА\n---------------------------------------------\nБанк:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nНазначение:  {{invoice_number}}\n\n---------------------------------------------\nПосмотреть счёт онлайн: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nНДС: {{company_vat}}\n=============================================\n\nЕсли у вас есть вопросы по этому счёту, свяжитесь с нами.\n"
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nRECEIPT {{receipt_number}}\n=============================================\nSTATUS: PAID\n\nThank you for your payment!\nYour payment has been successfully processed.\n\n---------------------------------------------\nRECEIVED FROM\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\nPayment Date: {{payment_date}}\nInvoice: {{invoice_number}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL PAID:  {{paid_amount}} {{currency}}\n---------------------------------------------\n\nPAYMENT CONFIRMED: {{payment_date}}\n\n---------------------------------------------\nView receipt online: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nThank you for your business.\nIf you have any questions, please contact us.\n"
-msgstr "=============================================\nКВИТАНЦИЯ {{receipt_number}}\n=============================================\nСТАТУС: ОПЛАЧЕНО\n\nБлагодарим за оплату!\nВаш платёж успешно обработан.\n\n---------------------------------------------\nПЛАТЕЛЬЩИК\n---------------------------------------------\nИмя: {{user_name}}\nЭл. почта: {{user_email}}\n\nДата платежа: {{payment_date}}\nСчёт: {{invoice_number}}\nВалюта: {{currency}}\n\n---------------------------------------------\nПОЗИЦИИ\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nИТОГИ\n---------------------------------------------\nПодытог:     {{subtotal}} {{currency}}\nНалог:       {{tax_amount}} {{currency}}\n---------------------------------------------\nОПЛАЧЕНО:    {{paid_amount}} {{currency}}\n---------------------------------------------\n\nПЛАТЁЖ ПОДТВЕРЖДЁН: {{payment_date}}\n\n---------------------------------------------\nПосмотреть квитанцию онлайн: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nНДС: {{company_vat}}\n=============================================\n\nБлагодарим за сотрудничество.\nЕсли у вас есть вопросы, свяжитесь с нами.\n"
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nCREDIT NOTE {{credit_note_number}}\n=============================================\nSTATUS: REFUND ISSUED\n\nA refund has been processed for your account.\n\nREFUND AMOUNT: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nISSUED BY (PAYER)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n\n---------------------------------------------\nISSUED TO (PAYEE)\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\n---------------------------------------------\nREFUND DETAILS\n---------------------------------------------\nCredit Note #:     {{credit_note_number}}\nRefund Date:       {{refund_date}}\nRefund Amount:     {{refund_amount}} {{currency}}\nOriginal Invoice:  {{invoice_number}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nREASON FOR REFUND\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nView credit note online: {{credit_note_url}}\n\nThe refund will be processed to your original payment method.\nPlease allow 5-10 business days for the refund to appear in your account.\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this refund, please contact us.\n"
-msgstr "=============================================\nКРЕДИТ-НОТА {{credit_note_number}}\n=============================================\nСТАТУС: ВОЗВРАТ ОФОРМЛЕН\n\nПо вашему счёту оформлен возврат средств.\n\nСУММА ВОЗВРАТА: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nОТПРАВИТЕЛЬ (ПЛАТЕЛЬЩИК)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nНДС: {{company_vat}}\n\n---------------------------------------------\nПОЛУЧАТЕЛЬ\n---------------------------------------------\nИмя: {{user_name}}\nЭл. почта: {{user_email}}\n\n---------------------------------------------\nДЕТАЛИ ВОЗВРАТА\n---------------------------------------------\nКредит-нота №:     {{credit_note_number}}\nДата возврата:     {{refund_date}}\nСумма возврата:    {{refund_amount}} {{currency}}\nИсходный счёт:     {{invoice_number}}\nТранзакция №:      {{transaction_number}}\n\n---------------------------------------------\nПРИЧИНА ВОЗВРАТА\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nПосмотреть кредит-ноту онлайн: {{credit_note_url}}\n\nВозврат будет произведён на исходный способ оплаты.\nЗачисление обычно занимает 5-10 рабочих дней.\n\n=============================================\n{{company_name}}\n{{company_address}}\nНДС: {{company_vat}}\n=============================================\n\nЕсли у вас есть вопросы по возврату, свяжитесь с нами.\n"
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nPAYMENT CONFIRMATION {{confirmation_number}}\n=============================================\nSTATUS: PAYMENT RECEIVED\n\nThank you for your payment.\n\nPAYMENT AMOUNT: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nPAYMENT DETAILS\n---------------------------------------------\nConfirmation #:    {{confirmation_number}}\nInvoice #:         {{invoice_number}}\nPayment Date:      {{payment_date}}\nPayment Method:    {{payment_method}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nBALANCE SUMMARY\n---------------------------------------------\nInvoice Total:     {{invoice_total}} {{currency}}\nTotal Paid:        {{total_paid}} {{currency}}\nRemaining:         {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nView payment confirmation online: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nThank you for your business. If you have any questions, please contact us.\n"
-msgstr "=============================================\nПОДТВЕРЖДЕНИЕ ПЛАТЕЖА {{confirmation_number}}\n=============================================\nСТАТУС: ПЛАТЁЖ ПОЛУЧЕН\n\nБлагодарим за оплату.\n\nСУММА ПЛАТЕЖА: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nДЕТАЛИ ПЛАТЕЖА\n---------------------------------------------\nПодтверждение №:   {{confirmation_number}}\nСчёт №:            {{invoice_number}}\nДата платежа:      {{payment_date}}\nСпособ оплаты:     {{payment_method}}\nТранзакция №:      {{transaction_number}}\n\n---------------------------------------------\nСОСТОЯНИЕ БАЛАНСА\n---------------------------------------------\nСумма счёта:       {{invoice_total}} {{currency}}\nОплачено всего:    {{total_paid}} {{currency}}\nОстаток:           {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nПосмотреть подтверждение онлайн: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nБлагодарим за сотрудничество. Если у вас есть вопросы, свяжитесь с нами.\n"
-
 #: lib/phoenix_kit_billing/web/currencies.html.heex:404
 #, elixir-autogen, elixir-format
 msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
@@ -3561,21 +3545,6 @@ msgstr ""
 "- Транзакция: {{transaction_number}}\n"
 "- Причина: {{refund_reason}}\n"
 
-#: lib/phoenix_kit_billing/email_defaults.ex:417
-#, elixir-autogen, elixir-format
-msgid ""
-"## Invoice {{invoice_number}}\n"
-"\n"
-"Hello {{user_name}},\n"
-"\n"
-"Here is your invoice from {{company_name}}. Please pay it by {{due_date}}.\n"
-msgstr ""
-"## Счёт {{invoice_number}}\n"
-"\n"
-"Здравствуйте, {{user_name}}!\n"
-"\n"
-"Направляем вам счёт от {{company_name}}. Пожалуйста, оплатите его до {{due_date}}.\n"
-
 #: lib/phoenix_kit_billing/email_defaults.ex:497
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3627,23 +3596,6 @@ msgstr ""
 "Здравствуйте, {{user_name}}!\n"
 "\n"
 "Спасибо за оплату. {{payment_date}} мы получили {{paid_amount}} {{currency}} по счёту {{invoice_number}}.\n"
-
-#: lib/phoenix_kit_billing/email_defaults.ex:432
-#, elixir-autogen, elixir-format
-msgid ""
-"### Bank transfer\n"
-"\n"
-"- Bank: {{bank_name}}\n"
-"- IBAN: {{bank_iban}}\n"
-"- SWIFT/BIC: {{bank_swift}}\n"
-"- Reference: {{invoice_number}}\n"
-msgstr ""
-"### Банковский перевод\n"
-"\n"
-"- Банк: {{bank_name}}\n"
-"- IBAN: {{bank_iban}}\n"
-"- SWIFT/BIC: {{bank_swift}}\n"
-"- Назначение платежа: {{invoice_number}}\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:425
 #, elixir-autogen, elixir-format
@@ -3754,3 +3706,367 @@ msgstr "[Открыть подтверждение оплаты]({{payment_url}}
 #, elixir-autogen, elixir-format
 msgid "[View receipt]({{receipt_url}})"
 msgstr "[Открыть квитанцию]({{receipt_url}})"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"## Invoice {{invoice_number}}\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"Here is your invoice from {{company_name}}.\n"
+msgstr ""
+"## Счёт {{invoice_number}}\n"
+"\n"
+"Здравствуйте, {{user_name}}!\n"
+"\n"
+"Направляем вам счёт от {{company_name}}.\n"
+
+#, elixir-autogen, elixir-format
+msgid "### Bank transfer"
+msgstr "### Банковский перевод"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"BALANCE SUMMARY\n"
+"---------------------------------------------\n"
+"Invoice Total:     {{invoice_total}} {{currency}}\n"
+"Total Paid:        {{total_paid}} {{currency}}\n"
+"Remaining:         {{remaining_balance}} {{currency}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"СОСТОЯНИЕ БАЛАНСА\n"
+"---------------------------------------------\n"
+"Сумма счёта:       {{invoice_total}} {{currency}}\n"
+"Оплачено всего:    {{total_paid}} {{currency}}\n"
+"Остаток:           {{remaining_balance}} {{currency}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"ISSUED BY (PAYER)\n"
+"---------------------------------------------\n"
+msgstr ""
+"---------------------------------------------\n"
+"ОТПРАВИТЕЛЬ (ПЛАТЕЛЬЩИК)\n"
+"---------------------------------------------\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"ISSUED TO (PAYEE)\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ПОЛУЧАТЕЛЬ\n"
+"---------------------------------------------\n"
+"Имя: {{user_name}}\n"
+"Эл. почта: {{user_email}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"LINE ITEMS\n"
+"---------------------------------------------\n"
+"{{line_items_text}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ПОЗИЦИИ\n"
+"---------------------------------------------\n"
+"{{line_items_text}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"PAYMENT DETAILS\n"
+"---------------------------------------------\n"
+"Confirmation #:    {{confirmation_number}}\n"
+"Invoice #:         {{invoice_number}}\n"
+"Payment Date:      {{payment_date}}\n"
+"Payment Method:    {{payment_method}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ДЕТАЛИ ПЛАТЕЖА\n"
+"---------------------------------------------\n"
+"Подтверждение №:   {{confirmation_number}}\n"
+"Счёт №:            {{invoice_number}}\n"
+"Дата платежа:      {{payment_date}}\n"
+"Способ оплаты:     {{payment_method}}\n"
+"Транзакция №:      {{transaction_number}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"REASON FOR REFUND\n"
+"---------------------------------------------\n"
+"{{refund_reason}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ПРИЧИНА ВОЗВРАТА\n"
+"---------------------------------------------\n"
+"{{refund_reason}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"RECEIVED FROM\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ПЛАТЕЛЬЩИК\n"
+"---------------------------------------------\n"
+"Имя: {{user_name}}\n"
+"Эл. почта: {{user_email}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"REFUND DETAILS\n"
+"---------------------------------------------\n"
+"Credit Note #:     {{credit_note_number}}\n"
+"Refund Date:       {{refund_date}}\n"
+"Refund Amount:     {{refund_amount}} {{currency}}\n"
+"Original Invoice:  {{invoice_number}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"ДЕТАЛИ ВОЗВРАТА\n"
+"---------------------------------------------\n"
+"Кредит-нота №:     {{credit_note_number}}\n"
+"Дата возврата:     {{refund_date}}\n"
+"Сумма возврата:    {{refund_amount}} {{currency}}\n"
+"Исходный счёт:     {{invoice_number}}\n"
+"Транзакция №:      {{transaction_number}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL PAID:  {{paid_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr ""
+"---------------------------------------------\n"
+"ИТОГИ\n"
+"---------------------------------------------\n"
+"Подытог:     {{subtotal}} {{currency}}\n"
+"Налог:       {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"ОПЛАЧЕНО:    {{paid_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL:       {{total}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr ""
+"---------------------------------------------\n"
+"ИТОГИ\n"
+"---------------------------------------------\n"
+"Подытог:     {{subtotal}} {{currency}}\n"
+"Налог:       {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"ИТОГО:       {{total}} {{currency}}\n"
+"---------------------------------------------\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View credit note online: {{credit_note_url}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"Посмотреть кредит-ноту онлайн: {{credit_note_url}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View invoice online: {{invoice_url}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"Посмотреть счёт онлайн: {{invoice_url}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View payment confirmation online: {{payment_url}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"Посмотреть подтверждение онлайн: {{payment_url}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View receipt online: {{receipt_url}}\n"
+msgstr ""
+"---------------------------------------------\n"
+"Посмотреть квитанцию онлайн: {{receipt_url}}\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"CREDIT NOTE {{credit_note_number}}\n"
+"=============================================\n"
+"STATUS: REFUND ISSUED\n"
+msgstr ""
+"=============================================\n"
+"КРЕДИТ-НОТА {{credit_note_number}}\n"
+"=============================================\n"
+"СТАТУС: ВОЗВРАТ ОФОРМЛЕН\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"INVOICE {{invoice_number}}\n"
+"=============================================\n"
+msgstr ""
+"=============================================\n"
+"СЧЁТ {{invoice_number}}\n"
+"=============================================\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"PAYMENT CONFIRMATION {{confirmation_number}}\n"
+"=============================================\n"
+"STATUS: PAYMENT RECEIVED\n"
+msgstr ""
+"=============================================\n"
+"ПОДТВЕРЖДЕНИЕ ПЛАТЕЖА {{confirmation_number}}\n"
+"=============================================\n"
+"СТАТУС: ПЛАТЁЖ ПОЛУЧЕН\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"RECEIPT {{receipt_number}}\n"
+"=============================================\n"
+"STATUS: PAID\n"
+msgstr ""
+"=============================================\n"
+"КВИТАНЦИЯ {{receipt_number}}\n"
+"=============================================\n"
+"СТАТУС: ОПЛАЧЕНО\n"
+
+#, elixir-autogen, elixir-format
+msgid "A refund has been processed for your account."
+msgstr "По вашему счёту оформлен возврат средств."
+
+#, elixir-autogen, elixir-format
+msgid "BANK TRANSFER DETAILS"
+msgstr "РЕКВИЗИТЫ ДЛЯ ПЕРЕВОДА"
+
+#, elixir-autogen, elixir-format
+msgid "Bank: {{bank_name}}"
+msgstr "Банк: {{bank_name}}"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Bill To: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+"Плательщик: {{user_name}}\n"
+"Эл. почта: {{user_email}}\n"
+
+#, elixir-autogen, elixir-format
+msgid "Currency: {{currency}}"
+msgstr "Валюта: {{currency}}"
+
+#, elixir-autogen, elixir-format
+msgid "Due Date: {{due_date}}"
+msgstr "Срок оплаты: {{due_date}}"
+
+#, elixir-autogen, elixir-format
+msgid "IBAN: {{bank_iban}}"
+msgstr "IBAN: {{bank_iban}}"
+
+#, elixir-autogen, elixir-format
+msgid "If you have any questions about this invoice, please contact us."
+msgstr "Если у вас есть вопросы по этому счёту, свяжитесь с нами."
+
+#, elixir-autogen, elixir-format
+msgid "If you have any questions about this refund, please contact us."
+msgstr "Если у вас есть вопросы по возврату, свяжитесь с нами."
+
+#, elixir-autogen, elixir-format
+msgid "Invoice Date: {{invoice_date}}"
+msgstr "Дата счёта: {{invoice_date}}"
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT AMOUNT: {{payment_amount}} {{currency}}"
+msgstr "СУММА ПЛАТЕЖА: {{payment_amount}} {{currency}}"
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT CONFIRMED: {{payment_date}}"
+msgstr "ПЛАТЁЖ ПОДТВЕРЖДЁН: {{payment_date}}"
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT DUE: {{due_date}}"
+msgstr "СРОК ОПЛАТЫ: {{due_date}}"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Payment Date: {{payment_date}}\n"
+"Invoice: {{invoice_number}}\n"
+"Currency: {{currency}}\n"
+msgstr ""
+"Дата платежа: {{payment_date}}\n"
+"Счёт: {{invoice_number}}\n"
+"Валюта: {{currency}}\n"
+
+#, elixir-autogen, elixir-format
+msgid "Please pay it by {{due_date}}."
+msgstr "Пожалуйста, оплатите его до {{due_date}}."
+
+#, elixir-autogen, elixir-format
+msgid "REFUND AMOUNT: {{refund_amount}} {{currency}}"
+msgstr "СУММА ВОЗВРАТА: {{refund_amount}} {{currency}}"
+
+#, elixir-autogen, elixir-format
+msgid "Reference: {{invoice_number}}"
+msgstr "Назначение платежа: {{invoice_number}}"
+
+#, elixir-autogen, elixir-format
+msgid "SWIFT/BIC: {{bank_swift}}"
+msgstr "SWIFT/BIC: {{bank_swift}}"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Thank you for your business.\n"
+"If you have any questions, please contact us.\n"
+msgstr ""
+"Благодарим за сотрудничество.\n"
+"Если у вас есть вопросы, свяжитесь с нами.\n"
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Thank you for your payment!\n"
+"Your payment has been successfully processed.\n"
+msgstr ""
+"Благодарим за оплату!\n"
+"Ваш платёж успешно обработан.\n"
+
+#, elixir-autogen, elixir-format
+msgid "Thank you for your payment."
+msgstr "Благодарим за оплату."
+
+#, elixir-autogen, elixir-format
+msgid ""
+"The refund will be processed to your original payment method.\n"
+"Please allow 5-10 business days for the refund to appear in your account.\n"
+msgstr ""
+"Возврат будет произведён на исходный способ оплаты.\n"
+"Зачисление обычно занимает 5-10 рабочих дней.\n"

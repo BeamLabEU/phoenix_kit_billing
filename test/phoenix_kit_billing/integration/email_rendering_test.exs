@@ -232,9 +232,116 @@ defmodule PhoenixKitBilling.Integration.EmailRenderingTest do
   end
 
   describe "the customer's language" do
-    # Needs a core whose `RecipientLocale.in_locale/2` also sets the locale a
-    # module's own Gettext backend reads (excluded by test_helper otherwise).
-    @describetag :requires_recipient_module_locale
+    test "all email dates follow the recipient and restore the sender's locale" do
+      date = ~U[2026-10-16 12:00:00Z]
+
+      for {locale, expected} <- [
+            {"en-GB", "Oct 16, 2026"},
+            {"et", "16 Okt 2026"},
+            {"ru-RU", "16 Окт 2026"}
+          ] do
+        user = user_fixture(%{"preferred_locale" => locale})
+        invoice = invoice_fixture(user, [])
+        invoice = %{invoice | inserted_at: date, due_date: DateTime.to_date(date), paid_at: date}
+
+        transaction = %PhoenixKitBilling.Transaction{
+          transaction_number: "TXN-2026-1",
+          amount: Decimal.new("30.00"),
+          currency: "EUR",
+          inserted_at: DateTime.to_naive(date)
+        }
+
+        Gettext.with_locale(PhoenixKitWeb.Gettext, "ru", fn ->
+          cases = [
+            {Billing.build_invoice_email_variables(invoice, user, []), ~w(invoice_date due_date)},
+            {Billing.build_receipt_email_variables(invoice, user, []), ~w(payment_date)},
+            {Billing.build_credit_note_email_variables(invoice, transaction, user, []),
+             ~w(refund_date)},
+            {Billing.build_payment_confirmation_email_variables(invoice, transaction, user, []),
+             ~w(payment_date)}
+          ]
+
+          for {variables, keys} <- cases, key <- keys do
+            assert variables[key] == expected, "#{locale} #{key}"
+          end
+
+          assert Gettext.get_locale(PhoenixKitWeb.Gettext) == "ru"
+        end)
+      end
+    end
+
+    test "an explicit sender locale does not override the recipient", %{paths: paths} do
+      user = user_fixture(%{"preferred_locale" => "et"})
+      invoice = invoice_fixture(user, [])
+
+      Gettext.with_locale(PhoenixKitBilling.Gettext, "ru", fn ->
+        variables = Billing.build_invoice_email_variables(invoice, user, [])
+        content = render("billing_invoice", variables, user, paths)
+
+        assert String.starts_with?(content.subject, "Arve ")
+        assert content.html =~ "Tasumisele kuulub"
+        assert Gettext.get_locale(PhoenixKitBilling.Gettext) == "ru"
+      end)
+    end
+
+    test "a guest's dates and defaults follow the site's language", %{paths: paths} do
+      {:ok, _} = PhoenixKit.Settings.update_setting("languages_enabled", "true")
+
+      {:ok, _} =
+        PhoenixKit.Settings.update_json_setting(
+          "languages_config",
+          %{
+            "languages" => [
+              %{
+                "code" => "et-EE",
+                "name" => "Estonian",
+                "is_default" => true,
+                "is_enabled" => true
+              }
+            ]
+          }
+        )
+
+      invoice = %PhoenixKitBilling.Invoice{
+        invoice_number: "INV-2026-guest",
+        billing_details: %{"email" => "guest@example.com"},
+        inserted_at: ~U[2026-10-02 00:00:00Z],
+        due_date: ~D[2026-10-16],
+        currency: "EUR"
+      }
+
+      Gettext.with_locale(PhoenixKitWeb.Gettext, "ru", fn ->
+        Gettext.with_locale(PhoenixKitBilling.Gettext, "ru", fn ->
+          variables = Billing.build_invoice_email_variables(invoice, nil, [])
+          opts = Billing.email_send_opts("billing_invoice", variables, nil, %{})
+
+          assert opts[:locale] == "et-EE"
+          assert variables["due_date"] == "16 Okt 2026"
+
+          content =
+            Content.resolve("billing_invoice", "guest@example.com", variables, opts[:defaults],
+              locale: opts[:locale],
+              layout: opts[:layout],
+              paths: paths
+            )
+
+          assert String.starts_with?(content.subject, "Arve ")
+          assert content.text =~ "16 Okt 2026"
+        end)
+      end)
+    end
+
+    test "a missing due date omits the payment deadline in both bodies", %{paths: paths} do
+      user = user_fixture()
+      invoice = %{invoice_fixture(user, []) | due_date: nil}
+      variables = Billing.build_invoice_email_variables(invoice, user, [])
+      content = render("billing_invoice", variables, user, paths)
+
+      refute content.html =~ "Please pay it by"
+      refute content.text =~ "PAYMENT DUE:"
+      refute content.text =~ "Due Date:"
+      refute content.html =~ "by -."
+    end
 
     test "a customer who prefers et or ru gets the invoice in it", %{paths: paths} do
       for {locale, subject, body} <- [
@@ -265,6 +372,16 @@ defmodule PhoenixKitBilling.Integration.EmailRenderingTest do
         refute preview.content.subject ==
                  Substitution.substitute(english.subject, entry.variables.()),
                "#{entry.name} #{locale}: subject still English"
+      end
+    end
+
+    test "preview dates follow the chosen language", %{paths: paths} do
+      entry = Enum.find(Billing.email_templates(), &(&1.name == "billing_invoice"))
+
+      for {locale, date} <- [{"et", "16 Okt 2026"}, {"ru", "16 Окт 2026"}] do
+        {:ok, preview} = Catalog.preview(entry, locale, paths: paths)
+        assert preview.content.html =~ date
+        assert preview.content.text =~ date
       end
     end
   end

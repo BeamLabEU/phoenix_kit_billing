@@ -3418,22 +3418,6 @@ msgstr ""
 msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
 msgstr ""
 
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nINVOICE {{invoice_number}}\n=============================================\n\nBill To: {{user_name}}\nEmail: {{user_email}}\n\nInvoice Date: {{invoice_date}}\nDue Date: {{due_date}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL:       {{total}} {{currency}}\n---------------------------------------------\n\nPAYMENT DUE: {{due_date}}\n{{payment_terms}}\n\n---------------------------------------------\nBANK TRANSFER DETAILS\n---------------------------------------------\nBank:        {{bank_name}}\nIBAN:        {{bank_iban}}\nSWIFT/BIC:   {{bank_swift}}\nReference:   {{invoice_number}}\n\n---------------------------------------------\nView invoice online: {{invoice_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this invoice, please contact us.\n"
-msgstr ""
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nRECEIPT {{receipt_number}}\n=============================================\nSTATUS: PAID\n\nThank you for your payment!\nYour payment has been successfully processed.\n\n---------------------------------------------\nRECEIVED FROM\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\nPayment Date: {{payment_date}}\nInvoice: {{invoice_number}}\nCurrency: {{currency}}\n\n---------------------------------------------\nLINE ITEMS\n---------------------------------------------\n{{line_items_text}}\n\n---------------------------------------------\nSUMMARY\n---------------------------------------------\nSubtotal:    {{subtotal}} {{currency}}\nTax:         {{tax_amount}} {{currency}}\n---------------------------------------------\nTOTAL PAID:  {{paid_amount}} {{currency}}\n---------------------------------------------\n\nPAYMENT CONFIRMED: {{payment_date}}\n\n---------------------------------------------\nView receipt online: {{receipt_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nThank you for your business.\nIf you have any questions, please contact us.\n"
-msgstr ""
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nCREDIT NOTE {{credit_note_number}}\n=============================================\nSTATUS: REFUND ISSUED\n\nA refund has been processed for your account.\n\nREFUND AMOUNT: {{refund_amount}} {{currency}}\n\n---------------------------------------------\nISSUED BY (PAYER)\n---------------------------------------------\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n\n---------------------------------------------\nISSUED TO (PAYEE)\n---------------------------------------------\nName: {{user_name}}\nEmail: {{user_email}}\n\n---------------------------------------------\nREFUND DETAILS\n---------------------------------------------\nCredit Note #:     {{credit_note_number}}\nRefund Date:       {{refund_date}}\nRefund Amount:     {{refund_amount}} {{currency}}\nOriginal Invoice:  {{invoice_number}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nREASON FOR REFUND\n---------------------------------------------\n{{refund_reason}}\n\n---------------------------------------------\nView credit note online: {{credit_note_url}}\n\nThe refund will be processed to your original payment method.\nPlease allow 5-10 business days for the refund to appear in your account.\n\n=============================================\n{{company_name}}\n{{company_address}}\nVAT: {{company_vat}}\n=============================================\n\nIf you have any questions about this refund, please contact us.\n"
-msgstr ""
-
-#: lib/phoenix_kit_billing/email_defaults.ex
-msgid "=============================================\nPAYMENT CONFIRMATION {{confirmation_number}}\n=============================================\nSTATUS: PAYMENT RECEIVED\n\nThank you for your payment.\n\nPAYMENT AMOUNT: {{payment_amount}} {{currency}}\n\n---------------------------------------------\nPAYMENT DETAILS\n---------------------------------------------\nConfirmation #:    {{confirmation_number}}\nInvoice #:         {{invoice_number}}\nPayment Date:      {{payment_date}}\nPayment Method:    {{payment_method}}\nTransaction #:     {{transaction_number}}\n\n---------------------------------------------\nBALANCE SUMMARY\n---------------------------------------------\nInvoice Total:     {{invoice_total}} {{currency}}\nTotal Paid:        {{total_paid}} {{currency}}\nRemaining:         {{remaining_balance}} {{currency}}\n\n---------------------------------------------\nView payment confirmation online: {{payment_url}}\n\n=============================================\n{{company_name}}\n{{company_address}}\n=============================================\n\nThank you for your business. If you have any questions, please contact us.\n"
-msgstr ""
-
 #: lib/phoenix_kit_billing/web/currencies.html.heex:404
 #, elixir-autogen, elixir-format
 msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
@@ -3536,16 +3520,6 @@ msgid ""
 "- Reason: {{refund_reason}}\n"
 msgstr ""
 
-#: lib/phoenix_kit_billing/email_defaults.ex:417
-#, elixir-autogen, elixir-format
-msgid ""
-"## Invoice {{invoice_number}}\n"
-"\n"
-"Hello {{user_name}},\n"
-"\n"
-"Here is your invoice from {{company_name}}. Please pay it by {{due_date}}.\n"
-msgstr ""
-
 #: lib/phoenix_kit_billing/email_defaults.ex:497
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3575,17 +3549,6 @@ msgid ""
 "Hello {{user_name}},\n"
 "\n"
 "Thank you for your payment. We received {{paid_amount}} {{currency}} for invoice {{invoice_number}} on {{payment_date}}.\n"
-msgstr ""
-
-#: lib/phoenix_kit_billing/email_defaults.ex:432
-#, elixir-autogen, elixir-format
-msgid ""
-"### Bank transfer\n"
-"\n"
-"- Bank: {{bank_name}}\n"
-"- IBAN: {{bank_iban}}\n"
-"- SWIFT/BIC: {{bank_swift}}\n"
-"- Reference: {{invoice_number}}\n"
 msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:425
@@ -3684,4 +3647,271 @@ msgstr ""
 #: lib/phoenix_kit_billing/email_defaults.ex:464
 #, elixir-autogen, elixir-format
 msgid "[View receipt]({{receipt_url}})"
+msgstr ""
+
+
+#, elixir-autogen, elixir-format
+msgid ""
+"## Invoice {{invoice_number}}\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"Here is your invoice from {{company_name}}.\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "### Bank transfer"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"BALANCE SUMMARY\n"
+"---------------------------------------------\n"
+"Invoice Total:     {{invoice_total}} {{currency}}\n"
+"Total Paid:        {{total_paid}} {{currency}}\n"
+"Remaining:         {{remaining_balance}} {{currency}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"ISSUED BY (PAYER)\n"
+"---------------------------------------------\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"ISSUED TO (PAYEE)\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"LINE ITEMS\n"
+"---------------------------------------------\n"
+"{{line_items_text}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"PAYMENT DETAILS\n"
+"---------------------------------------------\n"
+"Confirmation #:    {{confirmation_number}}\n"
+"Invoice #:         {{invoice_number}}\n"
+"Payment Date:      {{payment_date}}\n"
+"Payment Method:    {{payment_method}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"REASON FOR REFUND\n"
+"---------------------------------------------\n"
+"{{refund_reason}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"RECEIVED FROM\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"REFUND DETAILS\n"
+"---------------------------------------------\n"
+"Credit Note #:     {{credit_note_number}}\n"
+"Refund Date:       {{refund_date}}\n"
+"Refund Amount:     {{refund_amount}} {{currency}}\n"
+"Original Invoice:  {{invoice_number}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL PAID:  {{paid_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL:       {{total}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View credit note online: {{credit_note_url}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View invoice online: {{invoice_url}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View payment confirmation online: {{payment_url}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"---------------------------------------------\n"
+"View receipt online: {{receipt_url}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"CREDIT NOTE {{credit_note_number}}\n"
+"=============================================\n"
+"STATUS: REFUND ISSUED\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"INVOICE {{invoice_number}}\n"
+"=============================================\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"PAYMENT CONFIRMATION {{confirmation_number}}\n"
+"=============================================\n"
+"STATUS: PAYMENT RECEIVED\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"=============================================\n"
+"RECEIPT {{receipt_number}}\n"
+"=============================================\n"
+"STATUS: PAID\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "A refund has been processed for your account."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "BANK TRANSFER DETAILS"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Bank: {{bank_name}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Bill To: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Currency: {{currency}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Due Date: {{due_date}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "IBAN: {{bank_iban}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "If you have any questions about this invoice, please contact us."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "If you have any questions about this refund, please contact us."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Invoice Date: {{invoice_date}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT AMOUNT: {{payment_amount}} {{currency}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT CONFIRMED: {{payment_date}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "PAYMENT DUE: {{due_date}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Payment Date: {{payment_date}}\n"
+"Invoice: {{invoice_number}}\n"
+"Currency: {{currency}}\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Please pay it by {{due_date}}."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "REFUND AMOUNT: {{refund_amount}} {{currency}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Reference: {{invoice_number}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "SWIFT/BIC: {{bank_swift}}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Thank you for your business.\n"
+"If you have any questions, please contact us.\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"Thank you for your payment!\n"
+"Your payment has been successfully processed.\n"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Thank you for your payment."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid ""
+"The refund will be processed to your original payment method.\n"
+"Please allow 5-10 business days for the refund to appear in your account.\n"
 msgstr ""
