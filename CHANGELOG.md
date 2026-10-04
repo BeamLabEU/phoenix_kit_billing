@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.19.1 - 2026-10-04
+
+Follow-up fixes to the 0.19.0 billing emails (PR #46 review).
+
+### Fixed
+
+- **Billing's email copy could come out in the sender's language.** The
+  defaults relied on core to install the customer's locale for billing's own
+  Gettext backend, which core before 2.48.0 does not do and later cores do not
+  do over a locale already set on that backend. `email_send_opts/4` now
+  resolves the customer's (or the site's) language itself and builds the
+  defaults inside it, restoring the caller's locale afterwards.
+- **Dates in the emails were English in every locale.** Invoice, due, payment
+  and refund dates are now written in the customer's language
+  (`Oct 16, 2026`, `16 Okt 2026`, `16 Окт 2026`).
+- **The plain-text bodies kept empty sections.** Bank-transfer details, VAT
+  lines and links to the document are now left out of the plain text as well as
+  the HTML when the send has no value for them; a bank name or SWIFT code is
+  optional on its own, and the payment confirmation's text footer carries VAT
+  like its HTML footer.
+- A missing due date no longer prints "Please pay it by -."
+
+### Changed
+
+- Gettext: the plain-text email bodies are translated by section (`en`, `et`,
+  `ru` updated).
+
 ## 0.19.0 - 2026-10-04
 
 Billing emails rebuilt on core's Markdown email parts, with a line-items table,
