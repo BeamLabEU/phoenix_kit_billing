@@ -16,7 +16,7 @@ defmodule PhoenixKitBilling.PotDriftTest do
   use ExUnit.Case, async: true
 
   @pot_path "priv/gettext/default.pot"
-  @locales ~w(en ru et)
+  @locales ~w(en ru et uk)
 
   defp tab_labels do
     for fun <- [:admin_tabs, :settings_tabs, :user_dashboard_tabs],

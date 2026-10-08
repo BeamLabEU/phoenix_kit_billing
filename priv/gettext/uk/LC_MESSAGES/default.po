@@ -1,0 +1,3260 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100 != 11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10||n%100>=20) ? 1 : 2);\n"
+
+#: lib/phoenix_kit_billing.ex:205
+#: lib/phoenix_kit_billing/web/settings.ex:32
+#: lib/phoenix_kit_billing/web/trail.ex:33
+#: lib/phoenix_kit_billing/web/trail.ex:42
+#: lib/phoenix_kit_billing/web/trail.ex:79
+msgid "Billing"
+msgstr "Білінг"
+
+#: lib/phoenix_kit_billing.ex
+msgid "Dashboard"
+msgstr "Панель"
+
+#: lib/phoenix_kit_billing.ex:256
+#: lib/phoenix_kit_billing/web/orders.ex:39
+#: lib/phoenix_kit_billing/web/orders.html.heex:4
+#: lib/phoenix_kit_billing/web/trail.ex:72
+msgid "Orders"
+msgstr "Замовлення"
+
+#: lib/phoenix_kit_billing.ex:257
+#: lib/phoenix_kit_billing/web/invoices.ex:38
+#: lib/phoenix_kit_billing/web/invoices.html.heex:4
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:171
+#: lib/phoenix_kit_billing/web/trail.ex:73
+msgid "Invoices"
+msgstr "Рахунки"
+
+#: lib/phoenix_kit_billing/web/transactions.ex:38
+#: lib/phoenix_kit_billing/web/transactions.html.heex:4
+msgid "Transactions"
+msgstr "Транзакції"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:212
+#: lib/phoenix_kit_billing/web/subscriptions.ex:41
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:5
+#: lib/phoenix_kit_billing/web/trail.ex:74
+msgid "Subscriptions"
+msgstr "Підписки"
+
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:67
+#: lib/phoenix_kit_billing/web/index.html.heex:218
+#: lib/phoenix_kit_billing/web/settings.html.heex:269
+#: lib/phoenix_kit_billing/web/subscription_types.ex:32
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:5
+#: lib/phoenix_kit_billing/web/trail.ex:75
+msgid "Subscription Types"
+msgstr "Типи підписок"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.ex:37
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:5
+#: lib/phoenix_kit_billing/web/index.html.heex:224
+#: lib/phoenix_kit_billing/web/trail.ex:76
+msgid "Billing Profiles"
+msgstr "Платіжні профілі"
+
+#: lib/phoenix_kit_billing.ex:258
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:61
+#: lib/phoenix_kit_billing/web/currencies.ex:37
+#: lib/phoenix_kit_billing/web/currencies.html.heex:5
+msgid "Currencies"
+msgstr "Валюти"
+
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:55
+#: lib/phoenix_kit_billing/web/index.html.heex:236
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:5
+#: lib/phoenix_kit_billing/web/settings.html.heex:257
+msgid "Payment Providers"
+msgstr "Платіжні системи"
+
+#: lib/phoenix_kit_billing/web/user_orders.ex:47
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:4
+msgid "My Orders"
+msgstr "Мої замовлення"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:57
+msgid "%{count} paid invoices"
+msgstr "Оплачених рахунків: %{count}"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:70
+msgid "%{count} pending invoices"
+msgstr "Рахунків в очікуванні: %{count}"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:30
+#: lib/phoenix_kit_billing/web/index.html.heex:41
+msgid "%{count} this month"
+msgstr "%{count} цього місяця"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:7
+msgid "%{count} total profiles"
+msgstr "Профілів усього: %{count}"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
+msgid "Activate"
+msgstr "Активувати"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:246
+msgid "Active Currencies"
+msgstr "Активні валюти"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:175
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:283
+msgid "Are you sure you want to cancel this subscription?"
+msgstr "Ви впевнені, що хочете скасувати цю підписку?"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:73
+msgid "Are you sure you want to delete this subscription type?"
+msgstr "Ви впевнені, що хочете видалити цей тип підписки?"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:133
+#: lib/phoenix_kit_billing/web/currencies.html.heex:250
+msgid "Are you sure?"
+msgstr "Ви впевнені?"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:5
+msgid "Billing Dashboard"
+msgstr "Панель білінгу"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:5
+msgid "Billing Settings"
+msgstr "Налаштування білінгу"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:43
+#: lib/phoenix_kit_billing/web/billing_profiles.ex:52
+#: lib/phoenix_kit_billing/web/currencies.ex:54
+#: lib/phoenix_kit_billing/web/index.ex:41
+#: lib/phoenix_kit_billing/web/invoice_detail.ex:48
+#: lib/phoenix_kit_billing/web/invoices.ex:50
+#: lib/phoenix_kit_billing/web/order_detail.ex:40
+#: lib/phoenix_kit_billing/web/order_form.ex:54
+#: lib/phoenix_kit_billing/web/orders.ex:51
+#: lib/phoenix_kit_billing/web/provider_settings.ex:37
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:54
+#: lib/phoenix_kit_billing/web/subscription_form.ex:61
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:75
+#: lib/phoenix_kit_billing/web/subscription_types.ex:40
+#: lib/phoenix_kit_billing/web/subscriptions.ex:50
+#: lib/phoenix_kit_billing/web/transactions.ex:50
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:28
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:26
+#: lib/phoenix_kit_billing/web/user_orders.ex:33
+msgid "Billing module is not enabled"
+msgstr "Модуль «Білінг» не ввімкнено"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:344
+#: lib/phoenix_kit_billing/web/currencies.html.heex:429
+#: lib/phoenix_kit_billing/web/currencies.html.heex:504
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:758
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:827
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:867
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:904
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:941
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:982
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:50
+#: lib/phoenix_kit_billing/web/order_form.html.heex:255
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:48
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:59
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:380
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:213
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:229
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:238
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:337
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:192
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:177
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:286
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:530
+msgid "Cancel"
+msgstr "Скасувати"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:6
+msgid "Configure billing module options"
+msgstr "Налаштування параметрів модуля «Білінг»"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:100
+msgid "Create First Order"
+msgstr "Створити перше замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:6
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:13
+msgid "Create Subscription Type"
+msgstr "Створити тип підписки"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:155
+msgid "Create an order first to generate invoices"
+msgstr "Спочатку створіть замовлення, щоб сформувати рахунки"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:111
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:275
+#: lib/phoenix_kit_billing/web/orders.html.heex:67
+#: lib/phoenix_kit_billing/web/orders.html.heex:135
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:114
+#: lib/phoenix_kit_billing/web/transactions.html.heex:51
+#: lib/phoenix_kit_billing/web/transactions.html.heex:116
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:67
+msgid "Date"
+msgstr "Дата"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
+msgid "Deactivate"
+msgstr "Деактивувати"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:45
+msgid "Default Currency"
+msgstr "Валюта за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:135
+#: lib/phoenix_kit_billing/web/currencies.html.heex:252
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:75
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:219
+msgid "Delete"
+msgstr "Видалити"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:119
+#: lib/phoenix_kit_billing/web/currencies.html.heex:236
+msgid "Disable"
+msgstr "Вимкнути"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:165
+#: lib/phoenix_kit_billing/web/invoices.html.heex:58
+#: lib/phoenix_kit_billing/web/invoices.html.heex:127
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:192
+msgid "Due Date"
+msgstr "Термін оплати"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:48
+msgid "EUR - Euro"
+msgstr "EUR - євро"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:71
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:112
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:182
+#: lib/phoenix_kit_billing/web/currencies.html.heex:113
+#: lib/phoenix_kit_billing/web/currencies.html.heex:230
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:26
+#: lib/phoenix_kit_billing/web/order_form.ex:121
+#: lib/phoenix_kit_billing/web/orders.html.heex:124
+#: lib/phoenix_kit_billing/web/orders.html.heex:187
+#: lib/phoenix_kit_billing/web/subscription_form.ex:80
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:91
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:61
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:275
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:200
+msgid "Edit"
+msgstr "Редагувати"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:119
+#: lib/phoenix_kit_billing/web/currencies.html.heex:236
+msgid "Enable"
+msgstr "Увімкнути"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:51
+msgid "GBP - British Pound"
+msgstr "GBP - британський фунт"
+
+#: lib/phoenix_kit_billing/web/components/settings_tabs.ex:49
+msgid "General"
+msgstr "Загальні"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:15
+msgid "General Settings"
+msgstr "Загальні налаштування"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:162
+#: lib/phoenix_kit_billing/web/invoices.html.heex:122
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:189
+msgid "Invoice #"
+msgstr "Рахунок №"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:58
+msgid "Invoice Due Days"
+msgstr "Термін оплати рахунку (днів)"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:32
+msgid "Invoice Prefix"
+msgstr "Префікс рахунку"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:251
+msgid "Manage"
+msgstr "Керування"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:6
+msgid "Manage pricing and features for subscriptions"
+msgstr "Керування цінами та можливостями підписок"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:16
+#: lib/phoenix_kit_billing/web/index.html.heex:206
+#: lib/phoenix_kit_billing/web/order_form.html.heex:7
+#: lib/phoenix_kit_billing/web/orders.html.heex:11
+msgid "New Order"
+msgstr "Нове замовлення"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:16
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:130
+msgid "New Profile"
+msgstr "Новий профіль"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:52
+#: lib/phoenix_kit_billing/web/index.html.heex:259
+msgid "No currencies configured"
+msgstr "Валюти не налаштовано"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:154
+msgid "No invoices yet"
+msgstr "Рахунків ще немає"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:95
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:12
+msgid "No orders yet"
+msgstr "Замовлень ще немає"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:108
+#: lib/phoenix_kit_billing/web/invoices.html.heex:48
+#: lib/phoenix_kit_billing/web/invoices.html.heex:123
+#: lib/phoenix_kit_billing/web/orders.html.heex:130
+msgid "Order #"
+msgstr "Замовлення №"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:20
+msgid "Order Prefix"
+msgstr "Префікс замовлення"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:6
+msgid "Overview of orders, invoices, and billing activity"
+msgstr "Огляд замовлень, рахунків і платіжної активності"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:49
+msgid "Paid Revenue"
+msgstr "Оплачений дохід"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:65
+#: lib/phoenix_kit_billing/web/order_form.html.heex:213
+#: lib/phoenix_kit_billing/web/orders.html.heex:85
+msgid "Pending"
+msgstr "В очікуванні"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:116
+#: lib/phoenix_kit_billing/web/invoices.html.heex:197
+msgid "Print"
+msgstr "Друк"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:339
+msgid "Print Credit Note"
+msgstr "Надрукувати кредит-ноту"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:359
+msgid "Print Payment Confirmation"
+msgstr "Надрукувати підтвердження оплати"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:200
+msgid "Quick Actions"
+msgstr "Швидкі дії"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:44
+msgid "Receipt Prefix"
+msgstr "Префікс квитанції"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:142
+msgid "Recent Invoices"
+msgstr "Останні рахунки"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:80
+msgid "Recent Orders"
+msgstr "Останні замовлення"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:10
+#: lib/phoenix_kit_billing/web/index.html.heex:10
+#: lib/phoenix_kit_billing/web/invoices.html.heex:94
+#: lib/phoenix_kit_billing/web/orders.html.heex:102
+#: lib/phoenix_kit_billing/web/transactions.html.heex:84
+msgid "Refresh"
+msgstr "Оновити"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:346
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:919
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:944
+msgid "Send Credit Note"
+msgstr "Надіслати кредит-ноту"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:366
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:957
+msgid "Send Payment Confirmation"
+msgstr "Надіслати підтвердження оплати"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:214
+#: lib/phoenix_kit_billing/web/currencies.html.heex:218
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:209
+msgid "Set Default"
+msgstr "Зробити типовою"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:126
+#: lib/phoenix_kit_billing/web/currencies.html.heex:243
+msgid "Set as Default"
+msgstr "Зробити типовою"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:230
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:159
+#: lib/phoenix_kit_billing/web/trail.ex:55
+msgid "Settings"
+msgstr "Налаштування"
+
+#: lib/phoenix_kit_billing/web/order_form.ex:323
+msgid "Something went wrong. Please try again."
+msgstr "Щось пішло не так. Спробуйте ще раз."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:86
+#: lib/phoenix_kit_billing/web/currencies.html.heex:148
+#: lib/phoenix_kit_billing/web/index.html.heex:109
+#: lib/phoenix_kit_billing/web/index.html.heex:163
+#: lib/phoenix_kit_billing/web/invoices.html.heex:125
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:190
+#: lib/phoenix_kit_billing/web/order_form.html.heex:209
+#: lib/phoenix_kit_billing/web/orders.html.heex:132
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:112
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:292
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:430
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:77
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:185
+#: lib/phoenix_kit_billing/web/transactions.html.heex:50
+msgid "Status"
+msgstr "Статус"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:70
+msgid "Tax Settings"
+msgstr "Налаштування податків"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:110
+#: lib/phoenix_kit_billing/web/index.html.heex:164
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:136
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:187
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:214
+#: lib/phoenix_kit_billing/web/invoices.html.heex:126
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:72
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:135
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:191
+#: lib/phoenix_kit_billing/web/orders.html.heex:134
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:113
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:27
+msgid "Total"
+msgstr "Разом"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:38
+msgid "Total Invoices"
+msgstr "Усього рахунків"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:27
+msgid "Total Orders"
+msgstr "Усього замовлень"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:49
+msgid "USD - US Dollar"
+msgstr "USD - долар США"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:111
+#: lib/phoenix_kit_billing/web/invoices.html.heex:192
+#: lib/phoenix_kit_billing/web/orders.html.heex:119
+#: lib/phoenix_kit_billing/web/orders.html.heex:182
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:168
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:266
+msgid "View"
+msgstr "Переглянути"
+
+#: lib/phoenix_kit_billing/web/index.html.heex:85
+#: lib/phoenix_kit_billing/web/index.html.heex:147
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:207
+msgid "View All"
+msgstr "Переглянути всі"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:223
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:227
+#: lib/phoenix_kit_billing/web/transactions.html.heex:105
+#: lib/phoenix_kit_billing/web/transactions.html.heex:190
+msgid "View Invoice"
+msgstr "Відкрити рахунок"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:400
+msgid "%{code} deleted"
+msgstr "%{code} видалено"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:335
+msgid "%{code} set as default currency"
+msgstr "%{code} призначено валютою за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:452
+msgid "%{count} currencies imported"
+msgstr "Імпортовано валют: %{count}"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:235
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:92
+msgid "%{count} day trial"
+msgid_plural "%{count} day trial"
+msgstr[0] "Пробний період: %{count} день"
+msgstr[1] "Пробний період: %{count} дні"
+msgstr[2] "Пробний період: %{count} днів"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:407
+msgid "%{count} days"
+msgstr "%{count} дн."
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:5
+msgid "%{count} total invoices"
+msgstr "Усього рахунків: %{count}"
+
+#: lib/phoenix_kit_billing/web/orders.html.heex:5
+msgid "%{count} total orders"
+msgstr "Усього замовлень: %{count}"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:5
+msgid "%{count} total transactions"
+msgstr "Усього транзакцій: %{count}"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:454
+msgid "%{ok} imported, %{fail} failed"
+msgstr "Імпортовано: %{ok}, не вдалося: %{fail}"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:454
+msgid "%{selected} of %{total} selected"
+msgstr "Вибрано %{selected} з %{total}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:150
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:198
+msgid "(%{count} days remaining)"
+msgstr "(залишилося днів: %{count})"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:68
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:315
+msgid "(Default)"
+msgstr "(За замовчуванням)"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:60
+msgid "A brief description of this plan"
+msgstr "Короткий опис цього тарифу"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:427
+msgid "API Secret"
+msgstr "API-секрет"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:409
+msgid "API Username"
+msgstr "Ім'я користувача API"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:75
+msgid "Access denied"
+msgstr "Доступ заборонено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:445
+msgid "Account Name"
+msgstr "Назва облікового запису"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:399
+msgid "Account:"
+msgstr "Рахунок:"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:150
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:285
+msgid "Actions"
+msgstr "Дії"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:450
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:176
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:31
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:104
+msgid "Active"
+msgstr "Активна"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:15
+msgid "Active Providers:"
+msgstr "Активні платіжні системи:"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:13
+#: lib/phoenix_kit_billing/web/currencies.html.heex:58
+#: lib/phoenix_kit_billing/web/currencies.html.heex:286
+msgid "Add Currency"
+msgstr "Додати валюту"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:108
+msgid "Add Item"
+msgstr "Додати позицію"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:54
+msgid "Add currencies manually or import from the ISO 4217 library"
+msgstr "Додайте валюти вручну або імпортуйте з бібліотеки ISO 4217"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:264
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:424
+msgid "Address Line 1"
+msgstr "Адреса, рядок 1"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:273
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:437
+msgid "Address Line 2"
+msgstr "Адреса, рядок 2"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:242
+msgid "Admin-only notes..."
+msgstr "Нотатки лише для адміністраторів..."
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:97
+msgid "All"
+msgstr "Усі"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:72
+msgid "All Methods"
+msgstr "Усі способи"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:272
+msgid "All Modules"
+msgstr "Усі модулі"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:80
+#: lib/phoenix_kit_billing/web/orders.html.heex:83
+msgid "All Statuses"
+msgstr "Усі статуси"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:82
+#: lib/phoenix_kit_billing/web/transactions.html.heex:67
+msgid "All Types"
+msgstr "Усі типи"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:449
+msgid "All available currencies have already been added"
+msgstr "Усі доступні валюти вже додано"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:279
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:714
+#: lib/phoenix_kit_billing/web/transactions.html.heex:43
+#: lib/phoenix_kit_billing/web/transactions.html.heex:113
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:69
+msgid "Amount"
+msgstr "Сума"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:274
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:444
+msgid "Apartment, suite, etc."
+msgstr "Квартира, офіс тощо."
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:105
+msgid "Apply"
+msgstr "Застосувати"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:48
+msgid "Are you sure you want to cancel this order?"
+msgstr "Ви впевнені, що хочете скасувати це замовлення?"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:216
+msgid "Are you sure you want to delete this billing profile?"
+msgstr "Ви впевнені, що хочете видалити цей платіжний профіль?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:86
+msgid "Are you sure you want to void this invoice?"
+msgstr "Ви впевнені, що хочете анулювати цей рахунок?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:393
+#: lib/phoenix_kit_billing/web/settings.html.heex:201
+msgid "Bank Details"
+msgstr "Банківські реквізити"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:74
+msgid "Bank Transfer"
+msgstr "Банківський переказ"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:239
+msgid "Bank details not configured (optional)"
+msgstr "Банківські реквізити не налаштовано (необов'язково)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:396
+msgid "Bank:"
+msgstr "Банк:"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:81
+#: lib/phoenix_kit_billing/web/currencies.html.heex:178
+msgid "Base"
+msgstr "Базова"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:25
+msgid "Basic Information"
+msgstr "Основні відомості"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:247
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:404
+msgid "Billing Address"
+msgstr "Адреса для рахунку"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:503
+msgid "Billing Details"
+msgstr "Платіжні дані"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:269
+msgid "Billing Information"
+msgstr "Платіжна інформація"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:104
+msgid "Billing Interval"
+msgstr "Періодичність оплати"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:130
+msgid "Billing Period"
+msgstr "Розрахунковий період"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:47
+msgid "Billing Profile"
+msgstr "Платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:149
+msgid "Billing email (can differ from account email)"
+msgstr "Email для рахунків (може відрізнятися від email облікового запису)"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:151
+msgid "Billing profile created successfully"
+msgstr "Платіжний профіль успішно створено"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:64
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:68
+msgid "Billing profile not found"
+msgstr "Платіжний профіль не знайдено"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:181
+msgid "Billing profile saved successfully"
+msgstr "Платіжний профіль успішно збережено"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:150
+msgid "Billing profile updated successfully"
+msgstr "Платіжний профіль успішно оновлено"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:37
+msgid "Billing profiles are created by users"
+msgstr "Платіжні профілі створюють користувачі"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
+msgid "Business billing profile (EU)"
+msgstr "Корпоративний платіжний профіль (ЄС)"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
+msgid "Callback URL"
+msgstr "URL зворотного виклику"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:67
+msgid "Cancel Now"
+msgstr "Скасувати зараз"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:39
+msgid "Cancel at Period End"
+msgstr "Скасувати в кінці періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:37
+msgid "Cancel subscription at period end?"
+msgstr "Скасувати підписку в кінці поточного періоду?"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:46
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:65
+msgid "Cancel subscription immediately?"
+msgstr "Негайно скасувати підписку?"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:57
+msgid "Cancel subscription?"
+msgstr "Скасувати підписку?"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:210
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:226
+msgid "Cancel this subscription? It will end at the current period."
+msgstr "Скасувати цю підписку? Вона завершиться в кінці поточного періоду."
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:235
+msgid "Cancel this subscription? The trial will end immediately."
+msgstr "Скасувати цю підписку? Пробний період завершиться негайно."
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:215
+msgid "Cancellation"
+msgstr "Скасування"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:344
+#: lib/phoenix_kit_billing/web/orders.html.heex:91
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:222
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:43
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:125
+msgid "Cancelled"
+msgstr "Скасовано"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:230
+msgid "Cancels at end"
+msgstr "Скасується наприкінці періоду"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:410
+msgid "Cannot delete currency — it is used by existing orders"
+msgstr "Неможливо видалити валюту — її використовують наявні замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:133
+msgid "Cannot delete subscription type with active subscriptions. Deactivate it instead."
+msgstr "Неможливо видалити тип підписки з активними підписками. Деактивуйте його."
+
+#: lib/phoenix_kit_billing/web/currencies.ex:403
+msgid "Cannot delete the default currency"
+msgstr "Неможливо видалити валюту за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:381
+msgid "Card payments (Baltics)"
+msgstr "Оплата картками (країни Балтії)"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:42
+msgid "Cards, Apple Pay, Google Pay"
+msgstr "Картки, Apple Pay, Google Pay"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:60
+msgid "Change"
+msgstr "Змінити"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:19
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:324
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:388
+msgid "Change Subscription Type"
+msgstr "Змінити тип підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:123
+msgid "Change subscription type"
+msgstr "Змінити тип підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:354
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:134
+msgid "Choose a subscription type..."
+msgstr "Виберіть тип підписки..."
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:283
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:451
+msgid "City"
+msgstr "Місто"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:89
+#: lib/phoenix_kit_billing/web/invoices.html.heex:88
+#: lib/phoenix_kit_billing/web/orders.html.heex:96
+#: lib/phoenix_kit_billing/web/transactions.html.heex:78
+msgid "Clear Filters"
+msgstr "Скинути фільтри"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:181
+msgid "Client ID"
+msgstr "Ідентифікатор клієнта"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:199
+msgid "Client Secret"
+msgstr "Секрет клієнта"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:471
+msgid "Code"
+msgstr "Код"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:93
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:86
+#: lib/phoenix_kit_billing/web/settings.html.heex:137
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:221
+msgid "Company"
+msgstr "Компанія"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:123
+msgid "Company & Bank Information"
+msgstr "Реквізити компанії та банку"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:172
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:305
+msgid "Company Information"
+msgstr "Реквізити компанії"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
+msgid "Company Name *"
+msgstr "Назва компанії *"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:194
+msgid "Company information not configured"
+msgstr "Реквізити компанії не налаштовано"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:6
+msgid "Configure online payment integrations"
+msgstr "Налаштуйте інтеграції онлайн-платежів"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:514
+msgid "Configure webhook with events: CHECKOUT.ORDER.*, PAYMENT.*"
+msgstr "Налаштуйте вебхук із подіями: CHECKOUT.ORDER.*, PAYMENT.*"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:17
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:30
+msgid "Confirm Order"
+msgstr "Підтвердити замовлення"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:328
+#: lib/phoenix_kit_billing/web/order_form.html.heex:214
+#: lib/phoenix_kit_billing/web/orders.html.heex:87
+msgid "Confirmed"
+msgstr "Підтверджено"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:218
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:367
+msgid "Contact"
+msgstr "Контакт"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:225
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:372
+msgid "Contact Email"
+msgstr "Контактний email"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:515
+msgid "Copy Webhook ID"
+msgstr "Скопіювати ID вебхука"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:535
+msgid "Copy the processing account name (e.g. EUR3D1)"
+msgstr "Скопіюйте назву облікового запису обробки (наприклад, EUR3D1)"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:127
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:248
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:357
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:476
+msgid "Copy to clipboard"
+msgstr "Скопіювати в буфер обміну"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:526
+msgid "Copy webhook secret"
+msgstr "Скопіювати секрет вебхука"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:504
+msgid "Copy webhook signing secret"
+msgstr "Скопіювати секрет підпису вебхука"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:254
+msgid "Country"
+msgstr "Країна"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
+msgid "Country *"
+msgstr "Країна *"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:431
+msgid "Create"
+msgstr "Створити"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:34
+msgid "Create First Subscription Type"
+msgstr "Створити перший тип підписки"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:263
+#: lib/phoenix_kit_billing/web/orders.html.heex:42
+msgid "Create Order"
+msgstr "Створити замовлення"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
+msgid "Create Profile"
+msgstr "Створити профіль"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:7
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:355
+msgid "Create Subscription"
+msgstr "Створити підписку"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:144
+msgid "Create Your First Profile"
+msgstr "Створити перший профіль"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:141
+msgid "Create a billing profile to use for your orders"
+msgstr "Створіть платіжний профіль для використання в замовленнях"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:11
+msgid "Create a new billing profile for a user"
+msgstr "Створення нового платіжного профілю для користувача"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:184
+msgid "Create a new billing profile for orders"
+msgstr "Створення нового платіжного профілю для замовлень"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:10
+msgid "Create a new order"
+msgstr "Створення нового замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:11
+msgid "Create a new subscription type"
+msgstr "Створення нового типу підписки"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:523
+msgid "Create account at razorpay.com"
+msgstr "Створіть обліковий запис на razorpay.com"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:501
+msgid "Create account at stripe.com"
+msgstr "Створіть обліковий запис на stripe.com"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:512
+msgid "Create app at developer.paypal.com"
+msgstr "Створіть застосунок на developer.paypal.com"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:90
+msgid "Create one now"
+msgstr "Створити зараз"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:503
+msgid "Create webhook with events: checkout.session.completed, payment_intent.*"
+msgstr "Створіть вебхук із подіями: checkout.session.completed, payment_intent.*"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:525
+msgid "Create webhook with events: payment.*, order.paid"
+msgstr "Створіть вебхук із подіями: payment.*, order.paid"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:27
+msgid "Create your first subscription type to start accepting recurring payments."
+msgstr "Створіть свій перший тип підписки, щоб почати приймати регулярні платежі."
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:123
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:11
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:556
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:11
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:13
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:298
+msgid "Created"
+msgstr "Створено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:654
+msgid "Credit Note Sent"
+msgstr "Кредит-ноту надіслано"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:142
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:323
+#: lib/phoenix_kit_billing/web/order_form.html.heex:201
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:84
+msgid "Currency"
+msgstr "Валюта"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:292
+msgid "Currency Code"
+msgstr "Код валюти"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:271
+msgid "Currency Configuration"
+msgstr "Налаштування валют"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:369
+msgid "Currency created successfully"
+msgstr "Валюту успішно створено"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:312
+msgid "Currency updated"
+msgstr "Валюту оновлено"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:368
+msgid "Currency updated successfully"
+msgstr "Валюту успішно оновлено"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:186
+msgid "Current Period"
+msgstr "Поточний період"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:329
+msgid "Current Subscription Type"
+msgstr "Поточний тип підписки"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:332
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:518
+msgid "Custom name to identify this profile"
+msgstr "Довільна назва для ідентифікації профілю"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:469
+#: lib/phoenix_kit_billing/web/invoices.html.heex:52
+#: lib/phoenix_kit_billing/web/invoices.html.heex:124
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:246
+#: lib/phoenix_kit_billing/web/order_form.html.heex:18
+#: lib/phoenix_kit_billing/web/orders.html.heex:56
+#: lib/phoenix_kit_billing/web/orders.html.heex:131
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:235
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:36
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:370
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:183
+msgid "Customer"
+msgstr "Клієнт"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:153
+#: lib/phoenix_kit_billing/web/order_form.html.heex:231
+msgid "Customer Notes"
+msgstr "Примітки для клієнта"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:106
+msgid "Day"
+msgstr "День"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:75
+#: lib/phoenix_kit_billing/web/currencies.html.heex:144
+#: lib/phoenix_kit_billing/web/currencies.html.heex:356
+msgid "Decimal Places"
+msgstr "Десяткових знаків"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:474
+msgid "Decimals"
+msgstr "Знаків після коми"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:64
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:122
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:171
+#: lib/phoenix_kit_billing/web/currencies.html.heex:90
+#: lib/phoenix_kit_billing/web/currencies.html.heex:149
+#: lib/phoenix_kit_billing/web/currencies.html.heex:208
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:161
+msgid "Default"
+msgstr "За замовчуванням"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:85
+msgid "Default Tax Rate (%)"
+msgstr "Ставка податку за замовчуванням (%)"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:63
+msgid "Default profile updated"
+msgstr "Профіль за замовчуванням оновлено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:282
+#: lib/phoenix_kit_billing/web/order_form.html.heex:117
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:58
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:211
+#: lib/phoenix_kit_billing/web/transactions.html.heex:115
+msgid "Description"
+msgstr "Опис"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:746
+#: lib/phoenix_kit_billing/web/order_form.html.heex:143
+msgid "Description (optional)"
+msgstr "Опис (необов'язково)"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:461
+msgid "Deselect All"
+msgstr "Зняти виділення"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:87
+msgid "Disabled"
+msgstr "Вимкнена"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:119
+msgid "Discount"
+msgstr "Знижка"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:81
+#: lib/phoenix_kit_billing/web/order_form.html.heex:212
+#: lib/phoenix_kit_billing/web/orders.html.heex:84
+msgid "Draft"
+msgstr "Чернетка"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:194
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:337
+msgid "EU VAT format: Country code + number"
+msgstr "Формат ПДВ ЄС: код країни + номер"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:81
+msgid "Edit Billing Profile"
+msgstr "Редагувати платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:286
+msgid "Edit Currency"
+msgstr "Редагувати валюту"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:6
+msgid "Edit Order %{number}"
+msgstr "Редагувати замовлення %{number}"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:6
+msgid "Edit Subscription"
+msgstr "Редагувати підписку"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:7
+msgid "Edit Subscription Type"
+msgstr "Редагувати тип підписки"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:9
+msgid "Edit billing profile details"
+msgstr "Редагування даних платіжного профілю"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:130
+msgid "Edit in Organization"
+msgstr "Редагувати в організації"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:11
+msgid "Edit subscription settings"
+msgstr "Редагування параметрів підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:13
+msgid "Edit subscription type details and pricing"
+msgstr "Редагування типу підписки та тарифікації"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:144
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:272
+msgid "Email"
+msgstr "Email"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:854
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:891
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:927
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:968
+msgid "Email Address"
+msgstr "Адреса електронної пошти"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:77
+msgid "Enable Tax"
+msgstr "Увімкнути податок"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:87
+#: lib/phoenix_kit_billing/web/currencies.html.heex:424
+msgid "Enabled"
+msgstr "Увімкнена"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:309
+msgid "Ended"
+msgstr "Завершена"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:78
+msgid "Enter email address..."
+msgstr "Введіть адресу електронної пошти..."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:794
+msgid "Enter refund amount"
+msgstr "Введіть суму повернення"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:261
+msgid "EveryPay disabled"
+msgstr "EveryPay вимкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:261
+msgid "EveryPay enabled"
+msgstr "EveryPay увімкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:280
+msgid "EveryPay settings saved"
+msgstr "Налаштування EveryPay збережено"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:78
+#: lib/phoenix_kit_billing/web/currencies.html.heex:146
+#: lib/phoenix_kit_billing/web/currencies.html.heex:369
+msgid "Exchange Rate"
+msgstr "Курс обміну"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:281
+msgid "Extend 30 days"
+msgstr "Продовжити на 30 днів"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:176
+msgid "Failed to cancel order: %{reason}"
+msgstr "Не вдалося скасувати замовлення: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:163
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:185
+#: lib/phoenix_kit_billing/web/subscription_form.ex:351
+#: lib/phoenix_kit_billing/web/subscriptions.ex:202
+msgid "Failed to cancel: %{reason}"
+msgstr "Не вдалося скасувати: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:255
+msgid "Failed to change subscription type: %{reason}"
+msgstr "Не вдалося змінити тип підписки: %{reason}"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:125
+msgid "Failed to confirm order: %{reason}"
+msgstr "Не вдалося підтвердити замовлення: %{reason}"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:215
+msgid "Failed to create invoice: %{errors}"
+msgstr "Не вдалося створити рахунок: %{errors}"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:277
+msgid "Failed to create subscription: %{reason}"
+msgstr "Не вдалося створити підписку: %{reason}"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:414
+msgid "Failed to delete currency"
+msgstr "Не вдалося видалити валюту"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:88
+msgid "Failed to delete profile"
+msgstr "Не вдалося видалити профіль"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:143
+msgid "Failed to delete subscription type: %{reason}"
+msgstr "Не вдалося видалити тип підписки: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:394
+msgid "Failed to extend: %{reason}"
+msgstr "Не вдалося продовжити: %{reason}"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:151
+msgid "Failed to mark as paid: %{reason}"
+msgstr "Не вдалося позначити як оплачене: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:225
+#: lib/phoenix_kit_billing/web/subscription_form.ex:303
+msgid "Failed to pause: %{reason}"
+msgstr "Не вдалося призупинити: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:205
+#: lib/phoenix_kit_billing/web/subscription_form.ex:326
+msgid "Failed to resume: %{reason}"
+msgstr "Не вдалося відновити: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:227
+msgid "Failed to save subscription type: %{reason}"
+msgstr "Не вдалося зберегти тип підписки: %{reason}"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:338
+msgid "Failed to set default currency"
+msgstr "Не вдалося призначити валюту за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:66
+msgid "Failed to set default profile"
+msgstr "Не вдалося призначити профіль за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:315
+msgid "Failed to update currency"
+msgstr "Не вдалося оновити валюту"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:99
+msgid "Failed to update subscription type: %{reason}"
+msgstr "Не вдалося оновити тип підписки: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:429
+msgid "Failed to update subscription: %{reason}"
+msgstr "Не вдалося оновити підписку: %{reason}"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:108
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:137
+msgid "Features"
+msgstr "Можливості"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
+msgid "First Name *"
+msgstr "Ім'я *"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
+msgid "Fully Paid"
+msgstr "Повністю оплачено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:691
+msgid "Fully Refunded"
+msgstr "Повністю повернено"
+
+#: lib/phoenix_kit_billing/web/settings.ex:201
+msgid "General settings saved"
+msgstr "Загальні налаштування збережено"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:20
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:33
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:40
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:174
+msgid "Generate Invoice"
+msgstr "Сформувати рахунок"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:76
+msgid "Generate Partial Receipt"
+msgstr "Сформувати часткову квитанцію"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:74
+msgid "Generate Receipt"
+msgstr "Сформувати квитанцію"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:430
+msgid "Generated"
+msgstr "Сформовано"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:502
+msgid "Get API keys from Dashboard → Developers"
+msgstr "Отримайте API-ключі в розділі Dashboard → Developers"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:534
+msgid "Get API username and secret from the EveryPay merchant portal"
+msgstr "Отримайте ім'я користувача та секрет API на порталі EveryPay для продавців"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:513
+msgid "Get Client ID and Secret"
+msgstr "Отримайте Client ID і Secret"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:524
+msgid "Get Key ID and Secret from Settings → API Keys"
+msgstr "Отримайте Key ID і Secret у розділі Settings → API Keys"
+
+#: lib/phoenix_kit_billing/web/orders.html.heex:35
+msgid "Get started by creating your first order"
+msgstr "Створіть перше замовлення, щоб почати роботу"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:189
+msgid "Grace Period"
+msgstr "Пільговий період"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:195
+msgid "Grace period ends"
+msgstr "Пільговий період закінчується"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:402
+#: lib/phoenix_kit_billing/web/settings.html.heex:218
+msgid "IBAN:"
+msgstr "IBAN:"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:45
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:56
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:94
+msgid "ID:"
+msgstr "ID:"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:10
+#: lib/phoenix_kit_billing/web/currencies.html.heex:61
+msgid "Import"
+msgstr "Імпорт"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:511
+msgid "Import %{count} Currencies"
+msgstr "Імпортувати валют: %{count}"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:444
+msgid "Import Currencies"
+msgstr "Імпортувати валюти"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:453
+msgid "Import failed for %{count} currencies"
+msgstr "Не вдалося імпортувати валют: %{count}"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:52
+msgid "Inactive"
+msgstr "Неактивна"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:272
+msgid "India payments (UPI, Cards)"
+msgstr "Платежі в Індії (UPI, картки)"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:77
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:84
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:209
+msgid "Individual"
+msgstr "Фізична особа"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:159
+#: lib/phoenix_kit_billing/web/order_form.html.heex:240
+msgid "Internal Notes"
+msgstr "Внутрішні примітки"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:118
+msgid "Interval Count"
+msgstr "Кількість періодів"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:111
+#: lib/phoenix_kit_billing/web/transactions.html.heex:111
+msgid "Invoice"
+msgstr "Рахунок"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:205
+msgid "Invoice %{number} created"
+msgstr "Рахунок %{number} створено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:126
+msgid "Invoice Details"
+msgstr "Деталі рахунку"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:565
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:575
+msgid "Invoice Sent"
+msgstr "Рахунок надіслано"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.ex:59
+msgid "Invoice not found"
+msgstr "Рахунок не знайдено"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:75
+msgid "Invoice number, customer..."
+msgstr "Номер рахунку, клієнт..."
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:27
+msgid "Invoices are generated from orders"
+msgstr "Рахунки формуються на підставі замовлень"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:65
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:773
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:829
+msgid "Issue Refund"
+msgstr "Оформити повернення"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:775
+msgid "Issue refund for invoice %{number}"
+msgstr "Повернення коштів за рахунком %{number}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:133
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:69
+msgid "Item"
+msgstr "Позиція"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:131
+msgid "Item name"
+msgstr "Назва позиції"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:290
+msgid "Key ID"
+msgstr "Ідентифікатор ключа"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:308
+msgid "Key Secret"
+msgstr "Секрет ключа"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
+msgid "Last Name *"
+msgstr "Прізвище *"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
+msgid "Legal Address"
+msgstr "Юридична адреса"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:106
+msgid "Line Items"
+msgstr "Позиції замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:139
+msgid "List the features included in this plan (one per line)"
+msgstr "Перелічіть можливості тарифу (по одній на рядок)"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:175
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:403
+msgid "Live (Production)"
+msgstr "Робочий режим (Production)"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:56
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:121
+msgid "Location"
+msgstr "Місцезнаходження"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:171
+msgid "Lower numbers appear first"
+msgstr "Менші числа відображаються першими"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:263
+msgid "Manage Currencies"
+msgstr "Керування валютами"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:13
+msgid "Manage Subscription Types"
+msgstr "Керування типами підписок"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:6
+msgid "Manage recurring billing subscriptions"
+msgstr "Керування регулярними підписками"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:6
+msgid "Manage supported currencies for billing"
+msgstr "Керування валютами, що підтримуються для розрахунків"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:123
+msgid "Manage your billing information for orders and invoices"
+msgstr "Керуйте платіжними даними для замовлень і рахунків"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:13
+msgid "Manually create a subscription for a customer"
+msgstr "Створіть підписку для клієнта вручну"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:37
+msgid "Mark as Paid"
+msgstr "Позначити як оплачене"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:783
+msgid "Max:"
+msgstr "Макс.:"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:315
+#: lib/phoenix_kit_billing/web/transactions.html.heex:114
+msgid "Method"
+msgstr "Спосіб"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:125
+msgid "Middle Name"
+msgstr "По батькові"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:169
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:399
+msgid "Mode"
+msgstr "Режим"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:10
+msgid "Modify order details"
+msgstr "Редагування даних замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:108
+msgid "Month"
+msgstr "Місяць"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:43
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:121
+msgid "My Billing Profiles"
+msgstr "Мої платіжні профілі"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:316
+#: lib/phoenix_kit_billing/web/currencies.html.heex:472
+#: lib/phoenix_kit_billing/web/order_form.html.heex:116
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:32
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:209
+msgid "Name"
+msgstr "Назва"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:120
+msgid "Name / Company"
+msgstr "Ім'я / Компанія"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:77
+msgid "Name, email, company..."
+msgstr "Ім'я, email, компанія..."
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:59
+msgid "New Billing Profile"
+msgstr "Новий платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:19
+msgid "New Subscription"
+msgstr "Нова підписка"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
+#: lib/phoenix_kit_billing/web/currencies.html.heex:91
+msgid "No"
+msgstr "Ні"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:25
+msgid "No Subscription Types Created"
+msgstr "Типів підписок не створено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:532
+msgid "No billing details"
+msgstr "Платіжні дані відсутні"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:296
+msgid "No billing information"
+msgstr "Платіжна інформація відсутня"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:79
+msgid "No billing profile found"
+msgstr "Платіжний профіль не знайдено"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:32
+msgid "No billing profiles found"
+msgstr "Платіжні профілі не знайдено"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:139
+msgid "No billing profiles yet"
+msgstr "Платіжних профілів ще немає"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:207
+msgid "No changes to save"
+msgstr "Немає змін для збереження"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:494
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:261
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:252
+msgid "No customer linked"
+msgstr "Клієнта не прив'язано"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:22
+msgid "No invoices found"
+msgstr "Рахунки не знайдено"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:182
+msgid "No invoices generated yet"
+msgstr "Рахунки ще не сформовано"
+
+#: lib/phoenix_kit_billing/web/orders.html.heex:30
+msgid "No orders found"
+msgstr "Замовлень не знайдено"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:280
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:307
+msgid "No payment method"
+msgstr "Спосіб оплати не вказано"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:222
+msgid "No subscription type"
+msgstr "Тип підписки не вказано"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:121
+msgid "No subscription type associated"
+msgstr "Тип підписки не прив'язано"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:54
+msgid "No subscriptions found"
+msgstr "Підписок не знайдено"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:22
+msgid "No transactions found"
+msgstr "Транзакцій не знайдено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:269
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:60
+msgid "No transactions recorded yet"
+msgstr "Транзакцій ще не записано"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:207
+msgid "No user"
+msgstr "Користувача не вказано"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:102
+msgid "No users found matching \"%{query}\""
+msgstr "Користувачів за запитом «%{query}» не знайдено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:17
+msgid "None configured"
+msgstr "Не налаштовано"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:374
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:399
+msgid "Not selected"
+msgstr "Не вибрано"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:138
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:154
+msgid "Not set"
+msgstr "Не задано"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:319
+msgid "Not specified"
+msgstr "Не вказано"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:412
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:150
+#: lib/phoenix_kit_billing/web/order_form.html.heex:225
+msgid "Notes"
+msgstr "Примітки"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:233
+msgid "Notes visible to customer..."
+msgstr "Примітки для клієнта..."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:276
+msgid "Number"
+msgstr "Номер"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:178
+msgid "Only active plans are shown to customers"
+msgstr "Клієнтам показуються лише активні тарифи"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:295
+msgid "Optional"
+msgstr "Необов'язково"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:313
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:495
+msgid "Options"
+msgstr "Опції"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:195
+msgid "Order Settings"
+msgstr "Налаштування замовлення"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:62
+msgid "Order Summary"
+msgstr "Підсумок замовлення"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:172
+msgid "Order cancelled"
+msgstr "Замовлення скасовано"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:118
+msgid "Order confirmed successfully"
+msgstr "Замовлення успішно підтверджено"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:147
+msgid "Order marked as paid"
+msgstr "Замовлення позначено як оплачене"
+
+#: lib/phoenix_kit_billing/web/order_detail.ex:51
+#: lib/phoenix_kit_billing/web/order_form.ex:102
+msgid "Order not found"
+msgstr "Замовлення не знайдено"
+
+#: lib/phoenix_kit_billing/web/orders.html.heex:78
+msgid "Order number, customer..."
+msgstr "Номер замовлення, клієнт..."
+
+#: lib/phoenix_kit_billing/web/order_form.ex:313
+msgid "Order saved successfully"
+msgstr "Замовлення успішно збережено"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:85
+msgid "Overdue"
+msgstr "Прострочено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:220
+#: lib/phoenix_kit_billing/web/invoices.html.heex:83
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:336
+#: lib/phoenix_kit_billing/web/orders.html.heex:89
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:51
+msgid "Paid"
+msgstr "Оплачено"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:39
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:118
+msgid "Past Due"
+msgstr "Платіж прострочено"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:32
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:205
+msgid "Pause"
+msgstr "Призупинити"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:202
+msgid "Pause this subscription? The customer will lose access."
+msgstr "Призупинити цю підписку? Клієнт втратить доступ."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:57
+msgid "Pay with %{provider}"
+msgstr "Сплатити через %{provider}"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:198
+msgid "PayPal disabled"
+msgstr "PayPal вимкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:198
+msgid "PayPal enabled"
+msgstr "PayPal увімкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:217
+msgid "PayPal settings saved"
+msgstr "Налаштування PayPal збережено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:151
+msgid "PayPal, Venmo, Cards"
+msgstr "PayPal, Venmo, картки"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:584
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:312
+#: lib/phoenix_kit_billing/web/orders.html.heex:60
+#: lib/phoenix_kit_billing/web/orders.html.heex:133
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:80
+msgid "Payment"
+msgstr "Оплата"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:193
+msgid "Payment Failed - Grace Period Active"
+msgstr "Платіж не пройшов — діє пільговий період"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:384
+msgid "Payment Information"
+msgstr "Платіжна інформація"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:733
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:260
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:294
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:414
+msgid "Payment Method"
+msgstr "Спосіб оплати"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:387
+msgid "Payment Terms"
+msgstr "Умови оплати"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:323
+msgid "Payment method is optional for manually created subscriptions"
+msgstr "Спосіб оплати необов'язковий для підписок, створених вручну"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:243
+msgid "Payment overdue — renewal will be retried automatically"
+msgstr "Оплату прострочено — продовження буде повторено автоматично"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:752
+msgid "Payment reference, notes..."
+msgstr "Призначення платежу, примітки..."
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:68
+msgid "Payments"
+msgstr "Платежі"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:202
+msgid "Payments & Transactions"
+msgstr "Платежі та транзакції"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:79
+msgid "Period"
+msgstr "Період"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:143
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:262
+msgid "Period End"
+msgstr "Кінець періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:133
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:252
+msgid "Period Start"
+msgstr "Початок періоду"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:108
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:232
+msgid "Personal Information"
+msgstr "Особисті дані"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:78
+msgid "Personal billing profile"
+msgstr "Особистий платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:158
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:234
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:285
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:385
+msgid "Phone"
+msgstr "Телефон"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:74
+msgid "Plan"
+msgstr "Тариф"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:374
+msgid "Plan change takes effect immediately. The billing period will be adjusted."
+msgstr "Зміна тарифу набуває чинності негайно. Платіжний період буде скориговано."
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:34
+msgid "Please log in to manage billing profiles"
+msgstr "Увійдіть, щоб керувати платіжними профілями"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:32
+msgid "Please log in to view your billing profiles"
+msgstr "Увійдіть, щоб переглянути свої платіжні профілі"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:235
+msgid "Please select a customer"
+msgstr "Виберіть клієнта"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:262
+msgid "Please select a different subscription type"
+msgstr "Виберіть інший тип підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:238
+msgid "Please select a subscription type"
+msgstr "Виберіть тип підписки"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:185
+msgid "Please select a user"
+msgstr "Виберіть користувача"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:301
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:477
+msgid "Postal Code"
+msgstr "Поштовий індекс"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:206
+msgid "Preview"
+msgstr "Попередній перегляд"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:75
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:187
+msgid "Price"
+msgstr "Ціна"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:69
+msgid "Pricing"
+msgstr "Ціноутворення"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:99
+msgid "Print / PDF"
+msgstr "Друк / PDF"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:33
+msgid "Pro Plan"
+msgstr "Тариф Pro"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:328
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:508
+msgid "Profile Name (Optional)"
+msgstr "Назва профілю (необов'язково)"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:62
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:195
+msgid "Profile Type"
+msgstr "Тип профілю"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:85
+msgid "Profile deleted successfully"
+msgstr "Профіль успішно видалено"
+
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:69
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:91
+msgid "Profile not found"
+msgstr "Профіль не знайдено"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:272
+msgid "Provider:"
+msgstr "Платіжна система:"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:78
+msgid "Publishable Key"
+msgstr "Публічний ключ"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:134
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:70
+#: lib/phoenix_kit_billing/web/order_form.html.heex:118
+msgid "Qty"
+msgstr "К-сть"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:289
+msgid "Quick Info"
+msgstr "Коротка інформація"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:230
+msgid "Razorpay disabled"
+msgstr "Razorpay вимкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:230
+msgid "Razorpay enabled"
+msgstr "Razorpay увімкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:248
+msgid "Razorpay settings saved"
+msgstr "Налаштування Razorpay збережено"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:801
+msgid "Reason"
+msgstr "Причина"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:807
+msgid "Reason for refund (required)"
+msgstr "Причина повернення коштів (обов'язково)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:427
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:613
+msgid "Receipt Generated"
+msgstr "Квитанцію сформовано"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:624
+msgid "Receipt Sent"
+msgstr "Квитанцію надіслано"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:25
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:706
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:760
+msgid "Record Payment"
+msgstr "Записати оплату"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:708
+msgid "Recording payment for invoice %{number}"
+msgstr "Запис оплати за рахунком %{number}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:635
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:78
+msgid "Refund"
+msgstr "Повернення коштів"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:781
+msgid "Refund Amount"
+msgstr "Сума повернення"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:815
+msgid "Refund Method"
+msgstr "Спосіб повернення"
+
+#: lib/phoenix_kit_billing/web/orders.html.heex:93
+msgid "Refunded"
+msgstr "Повернено"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:69
+msgid "Refunds"
+msgstr "Повернення коштів"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:149
+msgid "Reg. No:"
+msgstr "Реєстр. №:"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:39
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:57
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:46
+msgid "Region"
+msgstr "Регіон"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:214
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:363
+msgid "Registered legal address"
+msgstr "Юридична адреса за реєстрацією"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:202
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:343
+msgid "Registration Number"
+msgstr "Реєстраційний номер"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:445
+msgid "Related Order"
+msgstr "Пов'язане замовлення"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:251
+msgid "Related Settings"
+msgstr "Пов'язані налаштування"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:245
+msgid "Remaining"
+msgstr "Залишок"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:716
+msgid "Remaining:"
+msgstr "Залишок:"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:202
+msgid "Renewal attempts:"
+msgstr "Спроби продовження:"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
+msgid "Resend Invoice"
+msgstr "Надіслати рахунок повторно"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:848
+msgid "Resend invoice to customer's email address"
+msgstr "Надіслати рахунок повторно на email клієнта"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:28
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:52
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:221
+msgid "Resume"
+msgstr "Відновити"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:405
+msgid "SWIFT/BIC:"
+msgstr "SWIFT/BIC:"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:230
+msgid "SWIFT:"
+msgstr "SWIFT:"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:173
+msgid "Sandbox (Test)"
+msgstr "Пісочниця (тест)"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:346
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
+msgid "Save Changes"
+msgstr "Зберегти зміни"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:484
+msgid "Save EveryPay"
+msgstr "Зберегти EveryPay"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:112
+msgid "Save General Settings"
+msgstr "Зберегти загальні налаштування"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:256
+msgid "Save PayPal"
+msgstr "Зберегти PayPal"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:365
+msgid "Save Razorpay"
+msgstr "Зберегти Razorpay"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:135
+msgid "Save Stripe"
+msgstr "Зберегти Stripe"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:67
+msgid "Search by email"
+msgstr "Пошук за email"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:141
+msgid "Search by email..."
+msgstr "Пошук за email..."
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:60
+msgid "Secret Key"
+msgstr "Секретний ключ"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:458
+msgid "Select All"
+msgstr "Вибрати все"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:23
+msgid "Select Customer"
+msgstr "Вибрати клієнта"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:347
+msgid "Select New Subscription Type"
+msgstr "Виберіть новий тип підписки"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:26
+msgid "Select User *"
+msgstr "Виберіть користувача *"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:30
+msgid "Select a customer..."
+msgstr "Виберіть клієнта..."
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:300
+msgid "Select a saved payment method"
+msgstr "Виберіть збережений спосіб оплати"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:125
+msgid "Select a subscription type"
+msgstr "Виберіть тип підписки"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:34
+msgid "Select a user..."
+msgstr "Виберіть користувача..."
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:255
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:413
+msgid "Select country..."
+msgstr "Виберіть країну..."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:985
+msgid "Send Confirmation"
+msgstr "Надіслати підтвердження"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
+msgid "Send Invoice"
+msgstr "Надіслати рахунок"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:114
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:883
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:906
+msgid "Send Receipt"
+msgstr "Надіслати квитанцію"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:921
+msgid "Send credit note (refund document) to customer's email address"
+msgstr "Надіслати кредит-ноту (документ про повернення коштів) на email клієнта"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:847
+msgid "Send invoice to customer's email address"
+msgstr "Надіслати рахунок на email клієнта"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:959
+msgid "Send payment confirmation to customer's email address"
+msgstr "Надіслати підтвердження оплати на email клієнта"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:885
+msgid "Send payment receipt to customer's email address"
+msgstr "Надіслати квитанцію про оплату на email клієнта"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:82
+msgid "Sent"
+msgstr "Надіслано"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:63
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:81
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:99
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:184
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:202
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:220
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:293
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:311
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:329
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:412
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:430
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:448
+msgid "Set"
+msgstr "Задано"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:317
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:499
+msgid "Set as default profile"
+msgstr "Зробити профілем за замовчуванням"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:536
+msgid "Set the Callback URL in E-shop settings to the URL above"
+msgstr "Вкажіть Callback URL у налаштуваннях E-shop як наведену вище адресу"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:494
+msgid "Setup Instructions"
+msgstr "Інструкція з налаштування"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:124
+msgid "Shown on invoices and receipts"
+msgstr "Відображається в рахунках і квитанціях"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:42
+msgid "Slug"
+msgstr "Slug"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:112
+msgid "Slug:"
+msgstr "Slug:"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:412
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:166
+msgid "Sort Order"
+msgstr "Порядок сортування"
+
+#: lib/phoenix_kit_billing/web/subscription_types.html.heex:117
+msgid "Sort Order:"
+msgstr "Порядок сортування:"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:155
+msgid "Start with trial period"
+msgstr "Почати з пробного періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:303
+msgid "Started"
+msgstr "Розпочато"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
+msgid "Status & Period"
+msgstr "Статус і період"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:265
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:431
+msgid "Street address"
+msgstr "Адреса"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:167
+msgid "Stripe disabled"
+msgstr "Stripe вимкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:167
+msgid "Stripe enabled"
+msgstr "Stripe увімкнено"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:185
+msgid "Stripe settings saved"
+msgstr "Налаштування Stripe збережено"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:16
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:154
+msgid "Subscription"
+msgstr "Підписка"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:6
+msgid "Subscription #%{uuid}"
+msgstr "Підписка №%{uuid}"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:116
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:382
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:184
+msgid "Subscription Type"
+msgstr "Тип підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:80
+msgid "Subscription Type Details"
+msgstr "Деталі типу підписки"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:156
+msgid "Subscription cancelled immediately"
+msgstr "Підписку скасовано негайно"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:263
+msgid "Subscription created successfully"
+msgstr "Підписку успішно створено"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:317
+msgid "Subscription extended by 30 days"
+msgstr "Підписку продовжено на 30 днів"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:33
+#: lib/phoenix_kit_billing/web/subscription_form.ex:72
+#: lib/phoenix_kit_billing/web/subscriptions.ex:206
+msgid "Subscription not found"
+msgstr "Підписку не знайдено"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:218
+#: lib/phoenix_kit_billing/web/subscription_form.ex:296
+msgid "Subscription paused"
+msgstr "Підписку призупинено"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:198
+#: lib/phoenix_kit_billing/web/subscription_form.ex:319
+msgid "Subscription resumed"
+msgstr "Підписку відновлено"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:90
+msgid "Subscription type activated"
+msgstr "Тип підписки активовано"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:248
+msgid "Subscription type changed successfully"
+msgstr "Тип підписки успішно змінено"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:150
+msgid "Subscription type created successfully"
+msgstr "Тип підписки успішно створено"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:89
+msgid "Subscription type deactivated"
+msgstr "Тип підписки деактивовано"
+
+#: lib/phoenix_kit_billing/web/subscription_types.ex:126
+msgid "Subscription type deleted"
+msgstr "Тип підписки видалено"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:69
+#: lib/phoenix_kit_billing/web/subscription_types.ex:105
+#: lib/phoenix_kit_billing/web/subscription_types.ex:149
+msgid "Subscription type not found"
+msgstr "Тип підписки не знайдено"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:151
+msgid "Subscription type updated successfully"
+msgstr "Тип підписки успішно оновлено"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:421
+msgid "Subscription updated successfully"
+msgstr "Підписку успішно оновлено"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:344
+#: lib/phoenix_kit_billing/web/subscriptions.ex:195
+msgid "Subscription will be cancelled at period end"
+msgstr "Підписку буде скасовано наприкінці періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.ex:178
+msgid "Subscription will cancel at period end"
+msgstr "Підписку буде скасовано наприкінці періоду"
+
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:56
+msgid "Subscriptions will appear here when customers subscribe to plans"
+msgstr "Підписки з'являться тут, коли клієнти оформлять підписку на тарифи"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:163
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:96
+msgid "Subtotal"
+msgstr "Проміжна сума"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:98
+msgid "Suggested rate for selected country:"
+msgstr "Рекомендована ставка для вибраної країни:"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:365
+msgid "Summary"
+msgstr "Підсумок"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:143
+#: lib/phoenix_kit_billing/web/currencies.html.heex:335
+#: lib/phoenix_kit_billing/web/currencies.html.heex:473
+msgid "Symbol"
+msgstr "Символ"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:171
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:104
+msgid "Tax"
+msgstr "Податок"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:402
+msgid "Test (Demo)"
+msgstr "Тест (демо)"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:273
+msgid "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
+msgstr "Валюта за замовчуванням використовується для всіх нових замовлень. Курси показують, скільки одиниць валюти можна купити за одну одиницю валюти за замовчуванням; якщо зробити валюту типовою, усі курси перераховуються так, що її власний курс дорівнює 1.0. Вмикайте лише ті валюти, які плануєте приймати для оплати."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:181
+msgid "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize."
+msgstr "Курс базової валюти має дорівнювати 1.0 — поточне значення %{rate}. Натисніть для неї «Зробити типовою», щоб перерахувати курси."
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:81
+msgid "This customer has no billing profile. A billing profile is required to create an order."
+msgstr "У цього клієнта немає платіжного профілю. Для створення замовлення потрібен платіжний профіль."
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:319
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:501
+msgid "This profile will be used by default for new orders"
+msgstr "Цей профіль використовуватиметься за замовчуванням для нових замовлень"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:218
+msgid "This subscription will cancel at the end of the current billing period."
+msgstr "Цю підписку буде скасовано наприкінці поточного платіжного періоду."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:540
+msgid "Timeline"
+msgstr "Хронологія"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:110
+msgid "Transaction #"
+msgstr "№ транзакції"
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:62
+msgid "Transaction #, Invoice #..."
+msgstr "№ транзакції, № рахунку..."
+
+#: lib/phoenix_kit_billing/web/transactions.html.heex:27
+msgid "Transactions will appear here when payments or refunds are recorded"
+msgstr "Транзакції з'являться тут, коли буде записано оплати або повернення коштів"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:93
+msgid "Trial Days"
+msgstr "Днів пробного періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:175
+msgid "Trial End"
+msgstr "Кінець пробного періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:162
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:406
+msgid "Trial Period"
+msgstr "Пробний період"
+
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:165
+msgid "Trial Start"
+msgstr "Початок пробного періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:164
+msgid "Trial days"
+msgstr "Днів пробного періоду"
+
+#: lib/phoenix_kit_billing/web/subscription_form.html.heex:448
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:35
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:111
+msgid "Trialing"
+msgstr "Пробний період"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:35
+#: lib/phoenix_kit_billing/web/invoices.html.heex:25
+#: lib/phoenix_kit_billing/web/orders.html.heex:33
+#: lib/phoenix_kit_billing/web/transactions.html.heex:25
+msgid "Try adjusting your filters or search terms"
+msgstr "Спробуйте змінити фільтри або пошуковий запит"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:119
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:277
+#: lib/phoenix_kit_billing/web/transactions.html.heex:41
+#: lib/phoenix_kit_billing/web/transactions.html.heex:112
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:68
+msgid "Type"
+msgstr "Тип"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:49
+msgid "URL-friendly unique identifier"
+msgstr "Унікальний ідентифікатор для URL"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:321
+msgid "US Dollar"
+msgstr "Долар США"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:135
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:71
+#: lib/phoenix_kit_billing/web/order_form.html.heex:119
+msgid "Unit Price"
+msgstr "Ціна за одиницю"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:675
+msgid "Unknown Event"
+msgstr "Невідома подія"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:150
+msgid "Unlimited users\nPriority support\nAdvanced analytics\nCustom integrations"
+msgstr "Необмежена кількість користувачів\nПріоритетна підтримка\nРозширена аналітика\nІндивідуальні інтеграції"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:431
+msgid "Update"
+msgstr "Оновити"
+
+#: lib/phoenix_kit_billing/web/order_form.html.heex:263
+msgid "Update Order"
+msgstr "Оновити замовлення"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
+msgid "Update Profile"
+msgstr "Оновити профіль"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
+msgid "Update Subscription Type"
+msgstr "Оновити тип підписки"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:182
+msgid "Update your billing information"
+msgstr "Оновіть свою платіжну інформацію"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:537
+msgid "Use Test mode against the demo gateway first"
+msgstr "Спершу використайте тестовий режим на демо-шлюзі"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:21
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:52
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:118
+#: lib/phoenix_kit_billing/web/subscriptions.html.heex:70
+msgid "User"
+msgstr "Користувач"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:50
+msgid "User cannot be changed after creation"
+msgstr "Користувача не можна змінити після створення"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:122
+msgid "User not found"
+msgstr "Користувача не знайдено"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:189
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:327
+msgid "VAT Number"
+msgstr "Номер ПДВ"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:150
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:510
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:276
+#: lib/phoenix_kit_billing/web/settings.html.heex:184
+#: lib/phoenix_kit_billing/web/user_billing_profiles.ex:169
+msgid "VAT:"
+msgstr "ПДВ:"
+
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:302
+msgid "View Billing Profile"
+msgstr "Переглянути платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:34
+msgid "View Orders"
+msgstr "Переглянути замовлення"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:481
+#: lib/phoenix_kit_billing/web/order_detail.html.heex:256
+#: lib/phoenix_kit_billing/web/subscription_detail.html.heex:247
+msgid "View Profile"
+msgstr "Переглянути профіль"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:111
+msgid "View Receipt"
+msgstr "Переглянути квитанцію"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:88
+#: lib/phoenix_kit_billing/web/invoices.html.heex:84
+msgid "Void"
+msgstr "Анулювати"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:667
+msgid "Voided"
+msgstr "Анульовано"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:217
+msgid "Webhook ID"
+msgstr "Webhook ID"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:96
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:326
+msgid "Webhook Secret"
+msgstr "Webhook Secret"
+
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:114
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:235
+#: lib/phoenix_kit_billing/web/provider_settings.html.heex:344
+msgid "Webhook URL"
+msgstr "Webhook URL"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:107
+msgid "Week"
+msgstr "Тиждень"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:109
+msgid "Year"
+msgstr "Рік"
+
+#: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
+#: lib/phoenix_kit_billing/web/currencies.html.heex:91
+msgid "Yes"
+msgstr "Так"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:126
+msgid "e.g. 3 months = interval \"month\", count 3"
+msgstr "напр., 3 місяці = інтервал «month», кількість 3"
+
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
+msgid "e.g., Home Address, Work"
+msgstr "напр., Домашня адреса, Робота"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
+msgid "e.g., Home Address, Work, Company HQ"
+msgstr "напр., Домашня адреса, Робота, Головний офіс компанії"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
+msgid "per %{count} days"
+msgid_plural "per %{count} days"
+msgstr[0] "за %{count} день"
+msgstr[1] "за %{count} дні"
+msgstr[2] "за %{count} днів"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:167
+msgid "per %{count} months"
+msgid_plural "per %{count} months"
+msgstr[0] "за %{count} місяць"
+msgstr[1] "за %{count} місяці"
+msgstr[2] "за %{count} місяців"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:162
+msgid "per %{count} weeks"
+msgid_plural "per %{count} weeks"
+msgstr[0] "за %{count} тиждень"
+msgstr[1] "за %{count} тижні"
+msgstr[2] "за %{count} тижнів"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:172
+msgid "per %{count} years"
+msgid_plural "per %{count} years"
+msgstr[0] "за %{count} рік"
+msgstr[1] "за %{count} роки"
+msgstr[2] "за %{count} років"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:154
+msgid "per day"
+msgid_plural "per day"
+msgstr[0] "за день"
+msgstr[1] "за день"
+msgstr[2] "за день"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:164
+msgid "per month"
+msgid_plural "per month"
+msgstr[0] "за місяць"
+msgstr[1] "за місяць"
+msgstr[2] "за місяць"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:159
+msgid "per week"
+msgid_plural "per week"
+msgstr[0] "за тиждень"
+msgstr[1] "за тиждень"
+msgstr[2] "за тиждень"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:169
+msgid "per year"
+msgid_plural "per year"
+msgstr[0] "за рік"
+msgstr[1] "за рік"
+msgstr[2] "за рік"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:46
+msgid "Daily"
+msgstr "Щодня"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:47
+msgid "Every %{count} days"
+msgid_plural "Every %{count} days"
+msgstr[0] "Кожен %{count} день"
+msgstr[1] "Кожні %{count} дні"
+msgstr[2] "Кожні %{count} днів"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:41
+msgid "Every %{count} months"
+msgid_plural "Every %{count} months"
+msgstr[0] "Кожен %{count} місяць"
+msgstr[1] "Кожні %{count} місяці"
+msgstr[2] "Кожні %{count} місяців"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:45
+msgid "Every %{count} weeks"
+msgid_plural "Every %{count} weeks"
+msgstr[0] "Кожен %{count} тиждень"
+msgstr[1] "Кожні %{count} тижні"
+msgstr[2] "Кожні %{count} тижнів"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:43
+msgid "Every %{count} years"
+msgid_plural "Every %{count} years"
+msgstr[0] "Кожен %{count} рік"
+msgstr[1] "Кожні %{count} роки"
+msgstr[2] "Кожні %{count} років"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:40
+msgid "Monthly"
+msgstr "Щомісяця"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:44
+msgid "Weekly"
+msgstr "Щотижня"
+
+#: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:42
+msgid "Yearly"
+msgstr "Щороку"
+
+#: lib/phoenix_kit_billing.ex:207
+msgid "Orders, invoices, billing profiles and multi-currency support"
+msgstr "Замовлення, рахунки, платіжні профілі та підтримка кількох валют"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:92
+msgid "Customer billing — everything on this customer's profile, not a per-project total."
+msgstr "Платежі клієнта — усе, що є в профілі цього клієнта, а не підсумок по проєкту."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:96
+msgid "Open in Billing"
+msgstr "Відкрити в «Білінгу»"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:103
+msgid "No invoices for this customer yet."
+msgstr "Рахунків для цього клієнта ще немає."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:146
+msgid "Showing the %{count} most recent invoices."
+msgstr "Показано %{count} останніх рахунків."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:153
+msgid "No customer linked to this project yet."
+msgstr "До цього проєкту ще не прив'язано жодного клієнта."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:156
+msgid "Paste a billing profile UUID into this tab's settings in the project's Modules & features panel."
+msgstr "Вставте UUID платіжного профілю в налаштування цієї вкладки на панелі «Модулі та функції» проєкту."
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:159
+msgid "Find it on the profile page in"
+msgstr "Знайдіть його на сторінці профілю в розділі"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:180
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:317
+msgid "Acme Corp OÜ"
+msgstr "Acme Corp OÜ"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:161
+msgid "Billing › Profiles"
+msgstr "Білінг › Профілі"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:134
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:261
+msgid "Doe"
+msgstr "Doe"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:293
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:471
+msgid "Harju"
+msgstr "Harju"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:117
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:245
+msgid "John"
+msgstr "John"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:284
+#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
+msgid "Tallinn"
+msgstr "Tallinn"
+
+#: lib/phoenix_kit_billing/web/project_billing_live.ex:173
+msgid "Unnamed profile"
+msgstr "Профіль без назви"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:54
+msgid "Invoice {{invoice_number}} - {{company_name}}"
+msgstr "Рахунок {{invoice_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:109
+msgid "Receipt {{receipt_number}} - {{company_name}}"
+msgstr "Квитанція {{receipt_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:163
+msgid "Credit Note {{credit_note_number}} - Refund Issued - {{company_name}}"
+msgstr "Кредит-нота {{credit_note_number}} - Повернення коштів - {{company_name}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:221
+msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
+msgstr "Оплату отримано - {{confirmation_number}} - {{company_name}}"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:404
+msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
+msgstr "Застосовується до цін, конвертованих у цю валюту, і до знімків кошика — але не до базової валюти."
+
+#: lib/phoenix_kit_billing/web/currencies.ex:224
+msgid "Charm .90 — nearest X.90"
+msgstr "Charm .90 — найближче X.90"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:223
+msgid "Charm .99 — round down to X.99"
+msgstr "Charm .99 — округлення вниз до X.99"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:222
+msgid "Exact — no psychological rounding"
+msgstr "Точно — без психологічного округлення"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:76
+#: lib/phoenix_kit_billing/web/currencies.html.heex:145
+msgid "Rounding"
+msgstr "Округлення"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:384
+msgid "Rounding rule"
+msgstr "Правило округлення"
+
+#: lib/phoenix_kit_billing/web/currencies.ex:225
+msgid "Whole units — no minor units"
+msgstr "Цілі одиниці — без копійок"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:26
+msgid "Some exchange rates are out of date"
+msgstr "Деякі курси валют застаріли"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:28
+msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
+msgstr "Не оновлювалися понад %{days} дн.: %{codes}. Ціни все ще конвертуються за цими курсами."
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:189
+msgid "out of date"
+msgstr "застарілий"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:490
+msgid "Guest payer — no account"
+msgstr "Гість-платник — без облікового запису"
+
+#: lib/phoenix_kit_billing/web/invoices.html.heex:158
+msgid "guest"
+msgstr "гість"
+
+#: lib/phoenix_kit_billing/web/billing_profile_form.ex:53
+msgid "New billing profile"
+msgstr "Новий платіжний профіль"
+
+#: lib/phoenix_kit_billing/web/order_form.ex:87
+msgid "New order"
+msgstr "Нове замовлення"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:43
+msgid "New subscription"
+msgstr "Нова підписка"
+
+#: lib/phoenix_kit_billing/web/subscription_type_form.ex:87
+msgid "New subscription type"
+msgstr "Новий тип підписки"
+
+#: lib/phoenix_kit_billing/web/provider_settings.ex:29
+msgid "Providers"
+msgstr "Платіжні системи"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:472
+msgid ""
+"## Credit note {{credit_note_number}}\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"We have issued a refund of **{{refund_amount}} {{currency}}** for invoice {{invoice_number}}.\n"
+"\n"
+"- Credit note: {{credit_note_number}}\n"
+"- Refund date: {{refund_date}}\n"
+"- Original invoice: {{invoice_number}}\n"
+"- Transaction: {{transaction_number}}\n"
+"- Reason: {{refund_reason}}\n"
+msgstr "## Кредит-нота {{credit_note_number}}\n\nВітаємо, {{user_name}}!\n\nМи здійснили повернення коштів у розмірі **{{refund_amount}} {{currency}}** за рахунком {{invoice_number}}.\n\n- Кредит-нота: {{credit_note_number}}\n- Дата повернення: {{refund_date}}\n- Початковий рахунок: {{invoice_number}}\n- Транзакція: {{transaction_number}}\n- Причина: {{refund_reason}}\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:497
+msgid ""
+"## Payment received\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"Thank you for your payment of **{{payment_amount}} {{currency}}** for invoice {{invoice_number}}.\n"
+"\n"
+"- Confirmation: {{confirmation_number}}\n"
+"- Payment date: {{payment_date}}\n"
+"- Payment method: {{payment_method}}\n"
+"- Transaction: {{transaction_number}}\n"
+"\n"
+"**Balance**\n"
+"\n"
+"- Invoice total: {{invoice_total}} {{currency}}\n"
+"- Total paid: {{total_paid}} {{currency}}\n"
+"- **Remaining balance: {{remaining_balance}} {{currency}}**\n"
+msgstr "## Оплату отримано\n\nВітаємо, {{user_name}}!\n\nДякуємо за оплату **{{payment_amount}} {{currency}}** за рахунком {{invoice_number}}.\n\n- Підтвердження: {{confirmation_number}}\n- Дата оплати: {{payment_date}}\n- Спосіб оплати: {{payment_method}}\n- Транзакція: {{transaction_number}}\n\n**Баланс**\n\n- Сума рахунку: {{invoice_total}} {{currency}}\n- Всього сплачено: {{total_paid}} {{currency}}\n- **Залишок до сплати: {{remaining_balance}} {{currency}}**\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:451
+msgid ""
+"## Receipt {{receipt_number}}\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"Thank you for your payment. We received {{paid_amount}} {{currency}} for invoice {{invoice_number}} on {{payment_date}}.\n"
+msgstr "## Квитанція {{receipt_number}}\n\nВітаємо, {{user_name}}!\n\nДякуємо за оплату. Ми отримали {{paid_amount}} {{currency}} за рахунком {{invoice_number}} від {{payment_date}}.\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:425
+msgid ""
+"- Subtotal: {{subtotal}} {{currency}}\n"
+"- Tax: {{tax_amount}} {{currency}}\n"
+"- **Total due: {{total}} {{currency}}**\n"
+msgstr "- Проміжна сума: {{subtotal}} {{currency}}\n- Податок: {{tax_amount}} {{currency}}\n- **Разом до сплати: {{total}} {{currency}}**\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:459
+msgid ""
+"- Subtotal: {{subtotal}} {{currency}}\n"
+"- Tax: {{tax_amount}} {{currency}}\n"
+"- **Total paid: {{paid_amount}} {{currency}}**\n"
+msgstr "- Проміжна сума: {{subtotal}} {{currency}}\n- Податок: {{tax_amount}} {{currency}}\n- **Разом сплачено: {{paid_amount}} {{currency}}**\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:281
+msgid "Credit note"
+msgstr "Кредит-нота"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:440
+msgid ""
+"Invoice date: {{invoice_date}}. {{payment_terms}}\n"
+"\n"
+"If you have any questions about this invoice, please contact us.\n"
+msgstr "Дата рахунку: {{invoice_date}}. {{payment_terms}}\n\nЯкщо у вас є запитання щодо цього рахунку, зв'яжіться з нами.\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:286
+msgid "Payment confirmation"
+msgstr "Підтвердження оплати"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:276
+msgid "Receipt"
+msgstr "Квитанція"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:287
+msgid "Sent to the customer for a payment against an invoice, with the remaining balance."
+msgstr "Надсилається клієнту після оплати за рахунком, із зазначенням залишку."
+
+#: lib/phoenix_kit_billing/email_defaults.ex:282
+msgid "Sent to the customer when a refund is issued: the amount and the reason."
+msgstr "Надсилається клієнту в разі повернення коштів: сума та причина."
+
+#: lib/phoenix_kit_billing/email_defaults.ex:270
+msgid "Sent to the customer when an invoice is sent: line items, totals, bank transfer details and a link to the invoice."
+msgstr "Надсилається клієнту разом із рахунком: позиції, підсумки, реквізити банківського переказу та посилання на рахунок."
+
+#: lib/phoenix_kit_billing/email_defaults.ex:277
+msgid "Sent to the customer with the receipt for a paid invoice."
+msgstr "Надсилається клієнту разом із квитанцією за оплачений рахунок."
+
+#: lib/phoenix_kit_billing/email_defaults.ex:465
+#: lib/phoenix_kit_billing/email_defaults.ex:520
+msgid "Thank you for your business. If you have any questions, please contact us."
+msgstr "Дякуємо, що обрали нас. Якщо у вас є запитання, зв'яжіться з нами."
+
+#: lib/phoenix_kit_billing/email_defaults.ex:486
+msgid ""
+"The refund goes back to your original payment method. Please allow 5–10 business days for it to appear in your account.\n"
+"\n"
+"If you have any questions about this refund, please contact us.\n"
+msgstr "Кошти буде повернено на початковий спосіб оплати. Повернення з'явиться на вашому рахунку протягом 5–10 робочих днів.\n\nЯкщо у вас є запитання щодо цього повернення коштів, зв'яжіться з нами.\n"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:533
+msgid "VAT: {{company_vat}}"
+msgstr "ПДВ: {{company_vat}}"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:485
+msgid "[View credit note]({{credit_note_url}})"
+msgstr "[Переглянути кредит-ноту]({{credit_note_url}})"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:430
+msgid "[View invoice]({{invoice_url}})"
+msgstr "[Переглянути рахунок]({{invoice_url}})"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:518
+msgid "[View payment confirmation]({{payment_url}})"
+msgstr "[Переглянути підтвердження оплати]({{payment_url}})"
+
+#: lib/phoenix_kit_billing/email_defaults.ex:464
+msgid "[View receipt]({{receipt_url}})"
+msgstr "[Переглянути квитанцію]({{receipt_url}})"
+
+msgid ""
+"## Invoice {{invoice_number}}\n"
+"\n"
+"Hello {{user_name}},\n"
+"\n"
+"Here is your invoice from {{company_name}}.\n"
+msgstr "## Рахунок {{invoice_number}}\n\nВітаємо, {{user_name}}!\n\nВаш рахунок від {{company_name}}.\n"
+
+msgid "### Bank transfer"
+msgstr "### Банківський переказ"
+
+msgid ""
+"---------------------------------------------\n"
+"BALANCE SUMMARY\n"
+"---------------------------------------------\n"
+"Invoice Total:     {{invoice_total}} {{currency}}\n"
+"Total Paid:        {{total_paid}} {{currency}}\n"
+"Remaining:         {{remaining_balance}} {{currency}}\n"
+msgstr "---------------------------------------------\nПІДСУМОК БАЛАНСУ\n---------------------------------------------\nСума рахунку:      {{invoice_total}} {{currency}}\nВсього сплачено:   {{total_paid}} {{currency}}\nЗалишок:           {{remaining_balance}} {{currency}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"ISSUED BY (PAYER)\n"
+"---------------------------------------------\n"
+msgstr "---------------------------------------------\nВИСТАВЛЕНО (ПЛАТНИК)\n---------------------------------------------\n"
+
+msgid ""
+"---------------------------------------------\n"
+"ISSUED TO (PAYEE)\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr "---------------------------------------------\nВИСТАВЛЕНО ДЛЯ (ОТРИМУВАЧ)\n---------------------------------------------\nІм'я: {{user_name}}\nEmail: {{user_email}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"LINE ITEMS\n"
+"---------------------------------------------\n"
+"{{line_items_text}}\n"
+msgstr "---------------------------------------------\nПОЗИЦІЇ\n---------------------------------------------\n{{line_items_text}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"PAYMENT DETAILS\n"
+"---------------------------------------------\n"
+"Confirmation #:    {{confirmation_number}}\n"
+"Invoice #:         {{invoice_number}}\n"
+"Payment Date:      {{payment_date}}\n"
+"Payment Method:    {{payment_method}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr "---------------------------------------------\nДЕТАЛІ ОПЛАТИ\n---------------------------------------------\nПідтвердження №:   {{confirmation_number}}\nРахунок №:         {{invoice_number}}\nДата оплати:       {{payment_date}}\nСпосіб оплати:     {{payment_method}}\nТранзакція №:      {{transaction_number}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"REASON FOR REFUND\n"
+"---------------------------------------------\n"
+"{{refund_reason}}\n"
+msgstr "---------------------------------------------\nПРИЧИНА ПОВЕРНЕННЯ КОШТІВ\n---------------------------------------------\n{{refund_reason}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"RECEIVED FROM\n"
+"---------------------------------------------\n"
+"Name: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr "---------------------------------------------\nОТРИМАНО ВІД\n---------------------------------------------\nІм'я: {{user_name}}\nEmail: {{user_email}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"REFUND DETAILS\n"
+"---------------------------------------------\n"
+"Credit Note #:     {{credit_note_number}}\n"
+"Refund Date:       {{refund_date}}\n"
+"Refund Amount:     {{refund_amount}} {{currency}}\n"
+"Original Invoice:  {{invoice_number}}\n"
+"Transaction #:     {{transaction_number}}\n"
+msgstr "---------------------------------------------\nДЕТАЛІ ПОВЕРНЕННЯ КОШТІВ\n---------------------------------------------\nКредит-нота №:     {{credit_note_number}}\nДата повернення:   {{refund_date}}\nСума повернення:   {{refund_amount}} {{currency}}\nПочатковий рахунок: {{invoice_number}}\nТранзакція №:      {{transaction_number}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL PAID:  {{paid_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr "---------------------------------------------\nПІДСУМОК\n---------------------------------------------\nПроміжна сума: {{subtotal}} {{currency}}\nПодаток:       {{tax_amount}} {{currency}}\n---------------------------------------------\nРАЗОМ СПЛАЧЕНО: {{paid_amount}} {{currency}}\n---------------------------------------------\n"
+
+msgid ""
+"---------------------------------------------\n"
+"SUMMARY\n"
+"---------------------------------------------\n"
+"Subtotal:    {{subtotal}} {{currency}}\n"
+"Tax:         {{tax_amount}} {{currency}}\n"
+"---------------------------------------------\n"
+"TOTAL:       {{total}} {{currency}}\n"
+"---------------------------------------------\n"
+msgstr "---------------------------------------------\nПІДСУМОК\n---------------------------------------------\nПроміжна сума: {{subtotal}} {{currency}}\nПодаток:       {{tax_amount}} {{currency}}\n---------------------------------------------\nРАЗОМ:         {{total}} {{currency}}\n---------------------------------------------\n"
+
+msgid ""
+"---------------------------------------------\n"
+"View credit note online: {{credit_note_url}}\n"
+msgstr "---------------------------------------------\nПереглянути кредит-ноту онлайн: {{credit_note_url}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"View invoice online: {{invoice_url}}\n"
+msgstr "---------------------------------------------\nПереглянути рахунок онлайн: {{invoice_url}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"View payment confirmation online: {{payment_url}}\n"
+msgstr "---------------------------------------------\nПереглянути підтвердження оплати онлайн: {{payment_url}}\n"
+
+msgid ""
+"---------------------------------------------\n"
+"View receipt online: {{receipt_url}}\n"
+msgstr "---------------------------------------------\nПереглянути квитанцію онлайн: {{receipt_url}}\n"
+
+msgid ""
+"=============================================\n"
+"CREDIT NOTE {{credit_note_number}}\n"
+"=============================================\n"
+"STATUS: REFUND ISSUED\n"
+msgstr "=============================================\nКРЕДИТ-НОТА {{credit_note_number}}\n=============================================\nСТАТУС: КОШТИ ПОВЕРНЕНО\n"
+
+msgid ""
+"=============================================\n"
+"INVOICE {{invoice_number}}\n"
+"=============================================\n"
+msgstr "=============================================\nРАХУНОК {{invoice_number}}\n=============================================\n"
+
+msgid ""
+"=============================================\n"
+"PAYMENT CONFIRMATION {{confirmation_number}}\n"
+"=============================================\n"
+"STATUS: PAYMENT RECEIVED\n"
+msgstr "=============================================\nПІДТВЕРДЖЕННЯ ОПЛАТИ {{confirmation_number}}\n=============================================\nСТАТУС: ОПЛАТУ ОТРИМАНО\n"
+
+msgid ""
+"=============================================\n"
+"RECEIPT {{receipt_number}}\n"
+"=============================================\n"
+"STATUS: PAID\n"
+msgstr "=============================================\nКВИТАНЦІЯ {{receipt_number}}\n=============================================\nСТАТУС: ОПЛАЧЕНО\n"
+
+msgid "A refund has been processed for your account."
+msgstr "Повернення коштів за вашим обліковим записом оброблено."
+
+msgid "BANK TRANSFER DETAILS"
+msgstr "РЕКВІЗИТИ БАНКІВСЬКОГО ПЕРЕКАЗУ"
+
+msgid "Bank: {{bank_name}}"
+msgstr "Банк: {{bank_name}}"
+
+msgid ""
+"Bill To: {{user_name}}\n"
+"Email: {{user_email}}\n"
+msgstr "Платник: {{user_name}}\nEmail: {{user_email}}\n"
+
+msgid "Currency: {{currency}}"
+msgstr "Валюта: {{currency}}"
+
+msgid "Due Date: {{due_date}}"
+msgstr "Термін оплати: {{due_date}}"
+
+msgid "IBAN: {{bank_iban}}"
+msgstr "IBAN: {{bank_iban}}"
+
+msgid "If you have any questions about this invoice, please contact us."
+msgstr "Якщо у вас є запитання щодо цього рахунку, зв'яжіться з нами."
+
+msgid "If you have any questions about this refund, please contact us."
+msgstr "Якщо у вас є запитання щодо цього повернення коштів, зв'яжіться з нами."
+
+msgid "Invoice Date: {{invoice_date}}"
+msgstr "Дата рахунку: {{invoice_date}}"
+
+msgid "PAYMENT AMOUNT: {{payment_amount}} {{currency}}"
+msgstr "СУМА ОПЛАТИ: {{payment_amount}} {{currency}}"
+
+msgid "PAYMENT CONFIRMED: {{payment_date}}"
+msgstr "ОПЛАТУ ПІДТВЕРДЖЕНО: {{payment_date}}"
+
+msgid "PAYMENT DUE: {{due_date}}"
+msgstr "ТЕРМІН ОПЛАТИ: {{due_date}}"
+
+msgid ""
+"Payment Date: {{payment_date}}\n"
+"Invoice: {{invoice_number}}\n"
+"Currency: {{currency}}\n"
+msgstr "Дата оплати: {{payment_date}}\nРахунок: {{invoice_number}}\nВалюта: {{currency}}\n"
+
+msgid "Please pay it by {{due_date}}."
+msgstr "Сплатіть його до {{due_date}}."
+
+msgid "REFUND AMOUNT: {{refund_amount}} {{currency}}"
+msgstr "СУМА ПОВЕРНЕННЯ: {{refund_amount}} {{currency}}"
+
+msgid "Reference: {{invoice_number}}"
+msgstr "Призначення: {{invoice_number}}"
+
+msgid "SWIFT/BIC: {{bank_swift}}"
+msgstr "SWIFT/BIC: {{bank_swift}}"
+
+msgid ""
+"Thank you for your business.\n"
+"If you have any questions, please contact us.\n"
+msgstr "Дякуємо, що обрали нас.\nЯкщо у вас є запитання, зв'яжіться з нами.\n"
+
+msgid ""
+"Thank you for your payment!\n"
+"Your payment has been successfully processed.\n"
+msgstr "Дякуємо за оплату!\nВашу оплату успішно оброблено.\n"
+
+msgid "Thank you for your payment."
+msgstr "Дякуємо за оплату."
+
+msgid ""
+"The refund will be processed to your original payment method.\n"
+"Please allow 5-10 business days for the refund to appear in your account.\n"
+msgstr "Повернення коштів буде здійснено на початковий спосіб оплати.\nПовернення з'явиться на вашому рахунку протягом 5-10 робочих днів.\n"
