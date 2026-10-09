@@ -874,8 +874,8 @@ msgstr "Платёжные профили создаются пользоват�
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
 #, elixir-autogen, elixir-format
-msgid "Business billing profile (EU)"
-msgstr "Корпоративный платёжный профиль (ЕС)"
+msgid "Business billing profile"
+msgstr "Корпоративный платёжный профиль"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format

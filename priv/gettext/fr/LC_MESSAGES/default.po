@@ -872,8 +872,8 @@ msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
 #, elixir-autogen, elixir-format
-msgid "Business billing profile (EU)"
-msgstr "Profil de facturation professionnel (UE)"
+msgid "Business billing profile"
+msgstr "Profil de facturation professionnel"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format

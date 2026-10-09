@@ -184,7 +184,7 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
             <span class="fieldset-legend">
               <span class="font-medium">{gettext("Company")}</span>
               <span class="text-base-content/60 block text-sm">
-                {gettext("Business billing profile (EU)")}
+                {gettext("Business billing profile")}
               </span>
             </span>
           </label>

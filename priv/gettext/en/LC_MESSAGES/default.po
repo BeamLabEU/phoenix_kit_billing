@@ -871,8 +871,8 @@ msgstr "Billing profiles are created by users"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
 #, elixir-autogen, elixir-format
-msgid "Business billing profile (EU)"
-msgstr "Business billing profile (EU)"
+msgid "Business billing profile"
+msgstr "Business billing profile"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format
