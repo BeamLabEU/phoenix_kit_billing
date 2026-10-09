@@ -339,3 +339,228 @@ Before merge:
 
 The CoreCompat entry for `MediaSelectorModal` and the email-sized logo are
 cheap and worth taking in the same round. The nitpicks are optional.
+
+---
+
+# Round 2
+
+**Reviewed:** 2026-10-09
+**Head SHA:** 06f5a5d ("Address the review of the printed-document branding",
+on top of 0940d67, which commits round 1 under
+`dev_docs/pull_requests/2026/48-translate-and-brand-printed-documents/`)
+**Status:** Draft — APPROVE
+
+## Verification
+
+- **Suite:** `MIX_ENV=test PGDATABASE=pkbill_test_domovych_uk PGPOOL=10 mix test`
+  in the worktree gives 715 tests, 0 failures, 4 skipped.
+- **Gate:** `compile --warnings-as-errors`, `format --check-formatted`,
+  `credo --strict` and `dialyzer` are clean. I ran them in a scratch copy;
+  dialyzer still shows only the 2 known warnings, both skipped by the ignore
+  file.
+- **Gettext:**
+  - `mix gettext.extract` (scratch copy) against the committed `.pot`: every
+    round-2 msgid is present.
+  - The only gap is the same ~80 untouched-file msgids that were already on
+    upstream; the count is unchanged.
+  - en/et/ru have no empty or fuzzy entries and no `%{…}` mismatches.
+- **CHANGELOG and @version:** `CHANGELOG.md` and `mix.exs` are still not in
+  the diff. The new commit is authored by the owner, with no tool trailers.
+- **Core API at the floor.** Every new core call exists in core **v2.44.0**:
+  - `Settings.update_settings_batch/1,2`, which runs as one `Ecto.Multi`
+    through `Queries.transaction/1`, with the same body as 2.52.1;
+  - `Storage.list_file_instances/1`;
+  - `URLSigner.signed_url/3` with `version:`;
+  - `UploadsParentFolder.resolve/3`;
+  - `PhoenixKitWeb.Actor.uuid/1`;
+  - `MediaSelectorModal.update/2` and its `scope_folder_id` attr;
+  - `FileInstance.processing_status`, `variant_name`, `mime_type` and
+    `checksum`;
+  - `File.trashed_at`, `system_managed` and `library_uuid`.
+
+  So `update_settings_batch` needs no CoreCompat guard. It is declared in
+  `runtime_calls/0`, as are the other new calls.
+
+## Round 1 findings
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | BUG - MEDIUM: footer >1000 characters lost, with a success flash | **Fixed** |
+| 2 | IMPROVEMENT - MEDIUM: unsaved card state wiped | **Fixed** |
+| 3 | IMPROVEMENT - MEDIUM: `MediaSelectorModal` missing from CoreCompat | **Fixed** |
+| 4 | IMPROVEMENT - MEDIUM: email logo full-size and unversioned | **Fixed** |
+| — | All nitpicks | **Fixed** |
+| — | Pre-existing observations | Unchanged, by design |
+
+**1. Footer longer than 1000 characters: fixed.**
+- `gated_event("save_documents", …)` refuses a footer longer than
+  `DocumentBranding.footer_max_length/0` (1000) before anything is written.
+  The text stays in the form and an error is flashed.
+- The textarea carries `maxlength`, and the help text states the limit.
+- Logo and footer go through one `update_settings_batch/1`: both are written
+  or neither is. Any `{:error, …}` gives "Document settings could not be
+  saved" with the text kept.
+- Empty values: `document_changes/1` leaves out a `""` for a key that is
+  already unset, because core refuses to *create* a setting with an empty
+  value (`validate_value_exclusivity/1`). A `""` for a key that is set is
+  written, and stored as `NULL`.
+- I checked this in a scratch LiveView test:
+  - a 1000-grapheme footer whose lines end in `\r\n` (as a browser submits
+    them) saves, and stores 1000 characters;
+  - 1001 characters is refused with the "too long" flash;
+  - clearing a set logo and a set footer together saves both as empty.
+- `String.length/1` and Ecto's `validate_length/3` both count graphemes, and
+  `\r\n` is one grapheme, so the server check matches core's exactly. The
+  browser's `maxlength` counts UTF-16 units, so it is only ever stricter.
+
+**2. Unsaved card state: fixed.**
+- The form has `phx-change="change_documents"`, which assigns the typed text
+  and writes nothing. The server-rendered textarea therefore always equals
+  what was typed, and a re-render no longer morphs it back.
+- `load_document_settings/1` is split out of `load_settings/1`, so "Save
+  General Settings" no longer reloads the card: a picked logo and typed text
+  both survive.
+- Covered by two new tests: text typed, then picker, pick, remove and general
+  save; and pick, then general save.
+
+**3. CoreCompat: fixed.** `runtime_calls/0` gains:
+- `MediaSelectorModal.update/2`, with its attrs and message contract written
+  in the comment;
+- `Storage.list_file_instances/1`;
+- `URLSigner.signed_url/3`;
+- `Settings.update_settings_batch/1`;
+- `UploadsParentFolder.resolve/3`;
+- `Libraries.private_file?/1`, moved from `optional_calls/0` and called
+  directly.
+
+**4. Email logo size: fixed.** The email logo is now the smallest *completed*
+PNG/JPEG/GIF instance, in core's order (small, medium, large, original), with
+`version: instance`. This is the same rule as `PhoenixKit.Email.Branding`.
+- Tests cover: a WebP `small` skipped in favour of `medium`, with
+  `?v=<checksum16>`; nothing finished yet, so no `logo_url`; and a
+  private-library logo, also no `logo_url`.
+- A new end-to-end render through `Content.resolve/5` asserts the escaped
+  footer, the logo `<img>` with its versioned URL, and the verbatim text body.
+
+**Nitpicks: all fixed.**
+- **Picker gating:** `open_document_logo_selector` is gated on
+  `manage_settings` and passes
+  `scope_folder_id: UploadsParentFolder.resolve(:branding, Actor.uuid(socket), nil)`,
+  like core's own picker. Tests cover both the denied and the allowed
+  operator.
+- **"From" / "Bill To":** both now use `pgettext("document party", …)`, with
+  the context carried in the `.pot` and in en/et/ru.
+  - No translation was lost. Neither msgid existed upstream, and the invoice
+    template is their only use; `grep` finds no other `"From"` or `"Bill To"`
+    in `lib/`.
+  - The email's `Bill To: {{user_name}}` is a different msgid and is
+    untouched.
+- **Preview footer:** the preview builds its footer through the now-public
+  `DocumentBranding.footer_html/1`.
+- **Non-string footer param:** no longer crashes the page. It falls back to
+  the card's assign; tested with a forged `render_hook/3`.
+- **Empty band:** the logo band is left out when there is neither a logo nor
+  a company name; tested.
+- **Unservable logo files:** `logo_file/1` now skips system-managed and
+  private-library files for both the documents and the email. A private
+  project logo therefore prints the company name instead of a broken image;
+  tested.
+- **Base-locale split:** now lives in one `PhoenixKitBilling.base_locale/1`
+  (public, `@doc false`).
+- **Docs:** README's Settings table lists both keys, and AGENTS.md records the
+  1000-character limit and the single transaction.
+
+## New in round 2
+
+### NITPICK — The "too long" test's flash assertion cannot fail
+
+`settings_documents_test.exs` ("is refused with an error…") checks the error
+with `assert html =~ "1000"`. Since this round, the card's own help text
+("up to 1000 characters") and `maxlength="1000"` put "1000" on every render.
+The other assertions in that test still prove nothing was saved and the text
+was kept, but none proves the error flash rather than the success one.
+
+**Fix:** assert on the flash text ("too long") or
+`refute html =~ "Document settings saved"`.
+
+### NITPICK — `EmailDefaults` now depends on `DocumentBranding` at compile time
+
+`@sample_company` (`email_defaults.ex`) calls `DocumentBranding.footer_html/1`
+inside a module attribute, which runs at compile time.
+`mix xref graph --source lib/phoenix_kit_billing/email_defaults.ex --label compile`
+shows `document_branding.ex (compile)`. The only cost is that every edit to
+`DocumentBranding` recompiles `EmailDefaults`, since `DocumentBranding` has no
+compile-time edges of its own. Moving the sample into a function, as
+`for_template/2` already is, removes the edge.
+
+## Verdict (round 2)
+
+**APPROVE.** Every round-1 finding is closed and verified in code, in the
+suite and in scratch tests, and no regression turned up:
+- `update_settings_batch` is at the 2.44.0 floor and is atomic;
+- empty values behave correctly;
+- the msgctxt move lost no translation;
+- the picker is gated on `manage_settings`.
+
+The two new nitpicks are optional.
+
+The `dev_docs/…/CLAUDE_REVIEW.md` committed in 0940d67 holds round 1 only.
+If the repo copy should match this file, append round 2 there too.
+
+---
+
+# Round 3
+
+**Reviewed:** 2026-10-09
+**Head SHA:** 248c3ec ("Address the round-2 nitpicks on the document branding review")
+**Status:** Draft — APPROVE
+
+A targeted check of the two round-2 nitpicks, the only files this commit
+touches (`email_defaults.ex`, `settings_documents_test.exs`).
+
+## Verification
+
+- **Suite:** `MIX_ENV=test PGDATABASE=pkbill_test_domovych_uk PGPOOL=10 mix test`
+  in the worktree gives 715 tests, 0 failures, 4 skipped.
+- **Gate:**
+  - In a scratch copy: `compile --warnings-as-errors`, `format --check-formatted`
+    and `dialyzer` are clean, with the 2 known warnings skipped by the ignore
+    file.
+  - In the worktree: `credo --strict` finds no issues.
+- **CHANGELOG and @version:** `CHANGELOG.md` and `mix.exs` are still not in
+  the diff. The commit is authored by the owner, with no tool trailers.
+
+## Round 2 nitpicks
+
+### The "too long" test now proves the error flash — fixed
+
+The test now asserts the exact flash text ("The footer text is too long: at
+most 1000 characters.") and refutes "Document settings saved". The help text
+no longer satisfies it: "up to 1000 characters" differs from the flash.
+
+I made three mutations of `gated_event("save_documents", …)` in a scratch copy
+and ran `settings_documents_test.exs` against each. The worktree was not
+touched.
+
+| Mutation | Result |
+|---|---|
+| None (baseline) | 11 tests, 0 failures |
+| M1: error flash removed (text kept, nothing saved) | 1 failure, on the error-text assertion |
+| M2: success flash in place of the error | 1 failure |
+| M3: length check disabled, so round 1's path returns, now a generic "could not be saved" from the failed batch | 1 failure |
+
+### `EmailDefaults` no longer depends on `DocumentBranding` at compile time — fixed
+
+`document_footer_html` now comes from `defp sample_company/0` at run time.
+All four `sample_variables/1` clauses use it, and no remaining reference to
+`@sample_company` lacks the key.
+`mix xref graph --source lib/phoenix_kit_billing/email_defaults.ex` with
+`--label compile` and with `--label compile-connected` both list no
+dependencies. Preview output is unchanged; the email-defaults and
+email-rendering tests pass.
+
+## Verdict (round 3)
+
+**APPROVE.** Both round-2 nitpicks are closed and verified, with no
+regressions and no open findings. The round-1 pre-existing observations
+remain follow-up material outside this PR.
