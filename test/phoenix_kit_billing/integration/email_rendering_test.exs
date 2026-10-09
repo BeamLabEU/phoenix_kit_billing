@@ -218,6 +218,58 @@ defmodule PhoenixKitBilling.Integration.EmailRenderingTest do
     end
   end
 
+  describe "the document branding" do
+    test "the invoice email carries the footer text and the billing logo", %{paths: paths} do
+      file =
+        struct(PhoenixKit.Modules.Storage.File, %{
+          original_file_name: "logo.png",
+          file_name: "logo.png",
+          mime_type: "image/png",
+          file_type: "image",
+          ext: "png",
+          file_checksum: "logo-checksum",
+          user_file_checksum: "logo-user-checksum",
+          size: 1024,
+          status: "active"
+        })
+        |> Repo.insert!()
+
+      struct(PhoenixKit.Modules.Storage.FileInstance, %{
+        variant_name: "small",
+        file_name: "small.png",
+        mime_type: "image/png",
+        ext: "png",
+        checksum: "fedcba9876543210small",
+        size: 256,
+        processing_status: "completed",
+        file_uuid: file.uuid
+      })
+      |> Repo.insert!()
+
+      PhoenixKit.Settings.update_setting("billing_document_logo_file_uuid", file.uuid)
+
+      PhoenixKit.Settings.update_setting(
+        "billing_document_footer",
+        "«Acme» <b>tools</b>\nPrices are final."
+      )
+
+      user = user_fixture()
+      invoice = invoice_fixture(user, @hostile_items)
+
+      variables =
+        Billing.build_invoice_email_variables(invoice, user, invoice_url: "https://example.com/i")
+
+      content = render("billing_invoice", variables, user, paths)
+
+      assert content.html =~ "«Acme» &lt;b&gt;tools&lt;/b&gt;<br>Prices are final.</p>"
+
+      assert content.html =~
+               ~r{<img src="https?://[^"]+/file/#{file.uuid}/small/[^"]+\?v=fedcba9876543210"}
+
+      assert content.text =~ "«Acme» <b>tools</b>\nPrices are final."
+    end
+  end
+
   describe "the billing layout group" do
     test "a host's _footer-billing wraps billing emails", %{paths: [root] = paths} do
       File.mkdir_p!(Path.join(root, "_footer-billing"))

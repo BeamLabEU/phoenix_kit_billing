@@ -430,10 +430,10 @@
       <div class="invoice-body">
         <div class="invoice-meta">
           <%!-- Our company details (who issues the invoice and receives payment) --%>
-          <.seller company={@company} title={gettext("From")} />
+          <.seller company={@company} title={pgettext("document party", "From")} />
 
           <%!-- Customer/Client billing details (who pays) --%>
-          <.customer invoice={@invoice} title={gettext("Bill To")} />
+          <.customer invoice={@invoice} title={pgettext("document party", "Bill To")} />
 
           <div id="document-details" class="meta-section" style="text-align: right;">
             <h3>{gettext("Invoice Details")}</h3>

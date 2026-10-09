@@ -21,12 +21,7 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
 
   @doc "The page's `lang`: the base language code of the current locale."
   @spec html_lang() :: String.t()
-  def html_lang do
-    PhoenixKitBilling.Gettext
-    |> Gettext.get_locale()
-    |> String.split(["-", "_"])
-    |> hd()
-  end
+  def html_lang, do: Billing.base_locale(Gettext.get_locale(PhoenixKitBilling.Gettext))
 
   @doc "The rules the shared parts need, for the document's `<head>`."
   def styles(assigns) do
@@ -95,7 +90,7 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
 
   def brand(assigns) do
     ~H"""
-    <div id="document-brand" class="document-brand">
+    <div :if={@logo_url || @company.name != ""} id="document-brand" class="document-brand">
       <%= if @logo_url do %>
         <img src={@logo_url} alt={@company.name} />
       <% else %>

@@ -22,6 +22,7 @@ defmodule PhoenixKitBilling.DocumentBranding do
   require Logger
 
   alias PhoenixKit.Modules.Storage
+  alias PhoenixKit.Modules.Storage.Libraries
   alias PhoenixKit.Modules.Storage.URLSigner
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
@@ -31,9 +32,16 @@ defmodule PhoenixKitBilling.DocumentBranding do
   @footer_key "billing_document_footer"
   @project_logo_key "auth_logo_file_uuid"
 
-  # The file served for the logo. Every finished upload has it, whatever its
-  # type — an SVG has no resized sizes at all.
+  # The file the printed documents show. Every finished upload has it,
+  # whatever its type — an SVG has no resized sizes at all.
   @logo_variant "original"
+
+  # Sizes tried for the email logo, smallest first — the same order as core's
+  # own email logo (`PhoenixKit.Email.Branding`).
+  @email_logo_variants ~w(small medium large original)
+
+  # Core stores a setting's value in at most this many characters.
+  @footer_max_length 1000
 
   # The footer text in an email; an email has no stylesheet.
   @footer_style "margin:0 0 16px;color:#52525b;font-size:13px;line-height:1.5;"
@@ -49,6 +57,10 @@ defmodule PhoenixKitBilling.DocumentBranding do
   @spec footer_key() :: String.t()
   def footer_key, do: @footer_key
 
+  @doc "The longest footer text a setting can hold, in characters."
+  @spec footer_max_length() :: pos_integer()
+  def footer_max_length, do: @footer_max_length
+
   @doc """
   The footer text as set, trimmed; `""` when unset.
   """
@@ -62,8 +74,9 @@ defmodule PhoenixKitBilling.DocumentBranding do
 
   @doc """
   A URL of the document logo for the printable documents — the billing logo,
-  else the project logo — or `nil` when neither is set, or the file is in the
-  trash or no longer exists.
+  else the project logo — or `nil` when neither is set, or the file is one the
+  file route will not serve: in the trash, gone, system-managed, or in a
+  private library. The documents then print the company name instead.
   """
   @spec logo_url() :: String.t() | nil
   def logo_url do
@@ -86,11 +99,11 @@ defmodule PhoenixKitBilling.DocumentBranding do
       for the plain-text body.
     * `"document_footer_html"` — the same text as one escaped, inline-styled
       paragraph with its line breaks kept, for the HTML body (`""` when unset).
-    * `"logo_url"` — an absolute URL of the **billing** logo, only when one
-      is set and it is an image every mail client shows (PNG, JPEG or GIF)
-      outside a private library. Left out otherwise, so core's layout keeps
-      the site's own logo (`PhoenixKit.Email.Branding`) — a blank value
-      would hide it.
+    * `"logo_url"` — an absolute, versioned URL of the **billing** logo's
+      smallest finished size every mail client shows (PNG, JPEG or GIF;
+      small, then medium, large, original), only when one is set. Left out
+      otherwise, so core's layout keeps the site's own logo
+      (`PhoenixKit.Email.Branding`) — a blank value would hide it.
   """
   @spec email_variables() :: %{String.t() => String.t()}
   def email_variables do
@@ -103,9 +116,14 @@ defmodule PhoenixKitBilling.DocumentBranding do
     end
   end
 
-  defp footer_html(""), do: ""
+  @doc """
+  `text` as one escaped, inline-styled paragraph with its line breaks kept —
+  the footer text in an HTML email. `""` for no text.
+  """
+  @spec footer_html(String.t()) :: String.t()
+  def footer_html(""), do: ""
 
-  defp footer_html(text) do
+  def footer_html(text) when is_binary(text) do
     lines =
       text
       |> String.split(~r/\R/u)
@@ -119,19 +137,31 @@ defmodule PhoenixKitBilling.DocumentBranding do
 
   defp email_logo_url do
     with {:ok, file} <- logo_file(@logo_key),
-         true <- file.mime_type in @email_image_types,
-         false <- private_file?(file) do
-      Routes.base_url() <> file_url(file.uuid)
+         %{variant_name: variant} = instance <- email_instance(file.uuid) do
+      Routes.base_url() <> URLSigner.signed_url(file.uuid, variant, version: instance)
     else
       _ -> nil
     end
   end
 
+  defp email_instance(uuid) do
+    instances =
+      uuid
+      |> Storage.list_file_instances()
+      |> Enum.filter(
+        &(&1.processing_status == "completed" and &1.mime_type in @email_image_types)
+      )
+      |> Map.new(&{&1.variant_name, &1})
+
+    Enum.find_value(@email_logo_variants, &Map.get(instances, &1))
+  end
+
   defp logo_file(key) do
     with uuid when is_binary(uuid) and uuid != "" <- Settings.get_setting(key, ""),
          true <- UUIDUtils.valid?(uuid),
-         %{} = file <- Storage.get_file(uuid),
-         nil <- Map.get(file, :trashed_at) do
+         %{trashed_at: nil} = file <- Storage.get_file(uuid),
+         false <- Map.get(file, :system_managed, false),
+         false <- Libraries.private_file?(file) do
       {:ok, file}
     else
       _ -> :error
@@ -140,14 +170,5 @@ defmodule PhoenixKitBilling.DocumentBranding do
     error ->
       Logger.warning("Billing document logo lookup failed: #{inspect(error)}")
       :error
-  end
-
-  # Libraries arrived in a later core than this module's floor; before them
-  # no file is private.
-  defp private_file?(file) do
-    libraries = PhoenixKit.Modules.Storage.Libraries
-
-    Code.ensure_loaded?(libraries) and function_exported?(libraries, :private_file?, 1) and
-      libraries.private_file?(file)
   end
 end

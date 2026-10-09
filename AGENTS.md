@@ -308,7 +308,8 @@ All stored through `PhoenixKit.Settings` under module `"billing"`, prefix
 - Printed documents (`DocumentBranding`): `billing_document_logo_file_uuid` (a
   media-library file; unset falls back to core's `auth_logo_file_uuid`, then the
   company name) and `billing_document_footer` (free text closing every printable
-  document and every financial email).
+  document and every financial email; at most 1000 characters, core's limit for
+  a setting value). The settings page saves both in one transaction.
 - Subscriptions: `billing_subscription_grace_days`, `billing_dunning_max_attempts`.
 - Per provider: `billing_<provider>_enabled`, `_mode`, plus that provider's
   credential keys (`billing_stripe_secret_key`, `billing_paypal_client_id`,

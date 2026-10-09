@@ -21,6 +21,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitBilling.Web.Trail
+  alias PhoenixKitWeb.Actor
   alias PhoenixKitWeb.Live.Settings.Organization
 
   @impl true
@@ -34,7 +35,9 @@ defmodule PhoenixKitBilling.Web.Settings do
       |> assign(:project_title, project_title)
       |> assign(:billing_enabled, billing_enabled)
       |> assign(:show_media_selector, false)
+      |> assign(:branding_scope_folder, nil)
       |> load_settings()
+      |> load_document_settings()
 
     {:ok, socket}
   end
@@ -75,7 +78,13 @@ defmodule PhoenixKitBilling.Web.Settings do
     |> assign_suggested_tax_rate()
     # Bank details (from consolidated source)
     |> assign(:bank_details, bank_details)
-    # Printed documents
+  end
+
+  # The printed-documents card keeps its own state: a logo picked or text
+  # typed there stays until that card is saved, whatever the general form
+  # does meanwhile.
+  defp load_document_settings(socket) do
+    socket
     |> assign(:document_logo_uuid, Settings.get_setting(DocumentBranding.logo_key(), "") || "")
     |> assign(:document_footer, DocumentBranding.footer_text())
   end
@@ -98,10 +107,23 @@ defmodule PhoenixKitBilling.Web.Settings do
     end)
   end
 
+  # The library can upload files, so it opens only for an operator who may
+  # save what is picked from it.
   @impl true
-  def handle_event("open_document_logo_selector", _params, socket) do
-    {:noreply, assign(socket, :show_media_selector, true)}
+  def handle_event("open_document_logo_selector", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("open_document_logo_selector", params, socket)
+    end)
   end
+
+  # Writes nothing: keeps the typed text, so a re-render does not reset it.
+  @impl true
+  def handle_event("change_documents", %{"document_footer" => text}, socket)
+      when is_binary(text) do
+    {:noreply, assign(socket, :document_footer, text)}
+  end
+
+  def handle_event("change_documents", _params, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("clear_document_logo", _params, socket) do
@@ -241,19 +263,58 @@ defmodule PhoenixKitBilling.Web.Settings do
     end
   end
 
-  # The logo is picked into an assign and kept by this save, with the text.
+  # The logo is picked into an assign and saved here with the text, in one
+  # transaction: both or neither. A text longer than a setting holds is
+  # refused before anything is written, and stays in the form.
   defp gated_event("save_documents", params, socket) do
-    Settings.update_setting(DocumentBranding.logo_key(), socket.assigns.document_logo_uuid)
+    footer =
+      case params["document_footer"] do
+        text when is_binary(text) -> String.trim(text)
+        _ -> socket.assigns.document_footer
+      end
 
-    Settings.update_setting(
-      DocumentBranding.footer_key(),
-      String.trim(params["document_footer"] || "")
-    )
+    max = DocumentBranding.footer_max_length()
 
+    cond do
+      String.length(footer) > max ->
+        {:noreply,
+         socket
+         |> assign(:document_footer, footer)
+         |> put_flash(
+           :error,
+           gettext("The footer text is too long: at most %{max} characters.", max: max)
+         )}
+
+      match?(
+        {:ok, _},
+        Settings.update_settings_batch(
+          document_changes(%{
+            DocumentBranding.logo_key() => socket.assigns.document_logo_uuid,
+            DocumentBranding.footer_key() => footer
+          })
+        )
+      ) ->
+        {:noreply,
+         socket
+         |> load_document_settings()
+         |> put_flash(:info, gettext("Document settings saved"))}
+
+      true ->
+        {:noreply,
+         socket
+         |> assign(:document_footer, footer)
+         |> put_flash(:error, gettext("Document settings could not be saved"))}
+    end
+  end
+
+  defp gated_event("open_document_logo_selector", _params, socket) do
     {:noreply,
      socket
-     |> load_settings()
-     |> put_flash(:info, gettext("Document settings saved"))}
+     |> assign(
+       :branding_scope_folder,
+       PhoenixKit.UploadsParentFolder.resolve(:branding, Actor.uuid(socket), nil)
+     )
+     |> assign(:show_media_selector, true)}
   end
 
   defp gated_event("apply_suggested_tax", _params, socket) do
@@ -267,6 +328,14 @@ defmodule PhoenixKitBilling.Web.Settings do
          |> assign(:tax_rate, to_string(rate))
          |> assign(:suggested_tax_rate, nil)}
     end
+  end
+
+  # Core refuses to create a setting with an empty value; a value that is
+  # empty and already unset needs no write.
+  defp document_changes(values) do
+    Map.reject(values, fn {key, value} ->
+      value == "" and (Settings.get_setting(key, "") || "") == ""
+    end)
   end
 
   # The media library's picker reports to this LiveView.

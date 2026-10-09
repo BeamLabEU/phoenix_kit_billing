@@ -3366,7 +3366,11 @@ defmodule PhoenixKitBilling do
 
   defp recipient_base_locale(user), do: user |> RecipientLocale.for_rendering() |> base_locale()
 
-  defp base_locale(locale), do: locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
+  @doc false
+  # A locale's base language code: "uk" for "uk-UA", "en" for "en_GB". The
+  # catalogues and country names are keyed by it.
+  @spec base_locale(String.t()) :: String.t()
+  def base_locale(locale), do: locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
 
   # Sends email via PhoenixKit.Modules.Emails.Templates if available, carrying
   # this package's own default content so the send survives that package's
@@ -5207,13 +5211,7 @@ defmodule PhoenixKitBilling do
     translations = BeamLabCountries.Translations
 
     if Code.ensure_loaded?(translations) and function_exported?(translations, :get_name, 2) do
-      locale =
-        PhoenixKitBilling.Gettext
-        |> Gettext.get_locale()
-        |> String.split(["-", "_"])
-        |> hd()
-
-      translations.get_name(code, locale)
+      translations.get_name(code, base_locale(Gettext.get_locale(PhoenixKitBilling.Gettext)))
     end
   end
 

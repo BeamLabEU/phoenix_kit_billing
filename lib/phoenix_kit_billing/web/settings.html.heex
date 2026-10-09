@@ -254,7 +254,12 @@
             "On invoices, receipts, credit notes and payment confirmations, and in billing emails"
           )}
         </p>
-        <form id="billing-documents-form" phx-submit="save_documents" class="space-y-4 mt-4">
+        <form
+          id="billing-documents-form"
+          phx-change="change_documents"
+          phx-submit="save_documents"
+          class="space-y-4 mt-4"
+        >
           <div class="fieldset">
             <span class="fieldset-legend">{gettext("Logo")}</span>
             <%= if @document_logo_uuid != "" do %>
@@ -298,11 +303,13 @@
               id="billing-document-footer"
               name="document_footer"
               rows="4"
+              maxlength={DocumentBranding.footer_max_length()}
               class="textarea w-full"
             >{@document_footer}</textarea>
             <p class="fieldset-label">
               {gettext(
-                "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written."
+                "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters.",
+                max: DocumentBranding.footer_max_length()
               )}
             </p>
           </div>
@@ -327,6 +334,7 @@
       title={gettext("Select Logo")}
       selected_uuids={[]}
       phoenix_kit_current_user={assigns[:phoenix_kit_current_user]}
+      scope_folder_id={@branding_scope_folder}
     />
 
     <%!-- Quick Links --%>

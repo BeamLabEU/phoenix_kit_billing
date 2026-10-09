@@ -217,5 +217,11 @@ defmodule PhoenixKitBilling.Web.PrintDocumentsTest do
     refute html =~ "brand-name"
   end
 
+  test "the header has no empty band without a logo or a company name" do
+    html = render_component(&PrintDocument.brand/1, logo_url: nil, company: %{name: ""})
+
+    refute html =~ "document-brand"
+  end
+
   defp print_path(invoice), do: "/en/admin/billing/invoices/#{invoice.uuid}/print"
 end

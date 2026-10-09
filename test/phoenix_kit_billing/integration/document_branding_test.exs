@@ -27,6 +27,34 @@ defmodule PhoenixKitBilling.Integration.DocumentBrandingTest do
     |> Repo.insert!()
   end
 
+  defp insert_instance!(file, variant, attrs \\ %{}) do
+    defaults = %{
+      variant_name: variant,
+      file_name: "#{variant}.png",
+      mime_type: "image/png",
+      ext: "png",
+      checksum: "0123456789abcdef#{variant}",
+      size: 512,
+      processing_status: "completed",
+      file_uuid: file.uuid
+    }
+
+    struct(PhoenixKit.Modules.Storage.FileInstance, Map.merge(defaults, attrs))
+    |> Repo.insert!()
+  end
+
+  defp private_library! do
+    user = fixture_user()
+
+    struct(PhoenixKit.Modules.Storage.Library, %{
+      name: "Private",
+      kind: "user",
+      visibility: "private",
+      owner_uuid: user.uuid
+    })
+    |> Repo.insert!()
+  end
+
   describe "footer_text/0" do
     test "is the setting, trimmed" do
       Settings.update_setting(DocumentBranding.footer_key(), "  «Acme» — tools for home.\n")
@@ -68,6 +96,17 @@ defmodule PhoenixKitBilling.Integration.DocumentBrandingTest do
       assert DocumentBranding.logo_url() == nil
     end
 
+    test "is nil for a file the file route will not serve" do
+      system = insert_file!(%{system_managed: true})
+      Settings.update_setting(DocumentBranding.logo_key(), system.uuid)
+      assert DocumentBranding.logo_url() == nil
+
+      private = insert_file!(%{library_uuid: private_library!().uuid})
+      Settings.update_setting(DocumentBranding.logo_key(), "")
+      Settings.update_setting("auth_logo_file_uuid", private.uuid)
+      assert DocumentBranding.logo_url() == nil
+    end
+
     test "is nil for a setting that is not a uuid" do
       Settings.update_setting(DocumentBranding.logo_key(), "not-a-uuid")
 
@@ -76,15 +115,36 @@ defmodule PhoenixKitBilling.Integration.DocumentBrandingTest do
   end
 
   describe "email_variables/0" do
-    test "carries the footer text and an absolute URL of a PNG billing logo" do
+    test "carries the footer text and an absolute, versioned URL of the smallest mail-safe size" do
       file = insert_file!()
+      insert_instance!(file, "original")
+      insert_instance!(file, "medium")
+      insert_instance!(file, "small", %{mime_type: "image/webp", ext: "webp"})
       Settings.update_setting(DocumentBranding.logo_key(), file.uuid)
       Settings.update_setting(DocumentBranding.footer_key(), "About us")
 
       variables = DocumentBranding.email_variables()
 
       assert variables["document_footer"] == "About us"
-      assert variables["logo_url"] =~ ~r{\Ahttps?://[^/]+/.*file/#{file.uuid}/original/}
+
+      assert variables["logo_url"] =~
+               ~r{\Ahttps?://[^/]+/.*file/#{file.uuid}/medium/[^?]+\?v=0123456789abcdef\z}
+    end
+
+    test "leaves logo_url out while no mail-safe size is finished" do
+      file = insert_file!()
+      insert_instance!(file, "original", %{processing_status: "processing"})
+      Settings.update_setting(DocumentBranding.logo_key(), file.uuid)
+
+      refute Map.has_key?(DocumentBranding.email_variables(), "logo_url")
+    end
+
+    test "leaves logo_url out for a logo in a private library" do
+      file = insert_file!(%{library_uuid: private_library!().uuid})
+      insert_instance!(file, "small")
+      Settings.update_setting(DocumentBranding.logo_key(), file.uuid)
+
+      refute Map.has_key?(DocumentBranding.email_variables(), "logo_url")
     end
 
     test "carries the footer text as escaped HTML with its line breaks, for the HTML body" do

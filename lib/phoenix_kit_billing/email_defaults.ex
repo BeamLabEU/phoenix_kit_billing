@@ -347,14 +347,14 @@ defmodule PhoenixKitBilling.EmailDefaults do
     }
   ]
 
+  @sample_footer "Acme — tools for every home. Prices include VAT."
+
   @sample_company %{
     "company_name" => "Acme Ltd",
     "company_address" => "1 Example Street, 10001 Example City",
     "company_vat" => "XX123456789",
-    "document_footer" => "Acme — tools for every home. Prices include VAT.",
-    "document_footer_html" =>
-      ~s(<p style="margin:0 0 16px;color:#52525b;font-size:13px;line-height:1.5;">) <>
-        "Acme — tools for every home. Prices include VAT.</p>",
+    "document_footer" => @sample_footer,
+    "document_footer_html" => PhoenixKitBilling.DocumentBranding.footer_html(@sample_footer),
     "user_name" => "Jane Doe",
     "user_email" => "jane.doe@example.com",
     "currency" => "EUR"

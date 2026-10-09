@@ -42,6 +42,18 @@ defmodule PhoenixKitBilling.CompanyAddressFormatTest do
     end
   end
 
+  test "a Russian address reads postal code first too" do
+    address = %{
+      "address_line1" => "ул. Тверская, 1",
+      "city" => "г. Москва",
+      "postal_code" => "125009",
+      "country" => "RU"
+    }
+
+    assert in_locale("ru", fn -> Billing.format_company_address(address) end) ==
+             "125009, г. Москва, ул. Тверская, 1\nРоссийская Федерация"
+  end
+
   describe "any other country" do
     test "keeps the street-first block" do
       address = %{

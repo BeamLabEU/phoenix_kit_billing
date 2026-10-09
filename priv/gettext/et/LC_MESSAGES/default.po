@@ -4067,11 +4067,6 @@ msgstr "%{date} kell %{time}"
 msgid "%{month} %{day}, %{year}"
 msgstr "%{day}. %{month} %{year}"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:304
-#, elixir-autogen, elixir-format
-msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written."
-msgstr "Paar rida ettevõttest: millega tegeleb, kuidas ühendust võtta, mida hinnad sisaldavad. Trükitakse nii, nagu kirjutatud."
-
 #: lib/phoenix_kit_billing/web/invoice_print.ex:107
 #, elixir-autogen, elixir-format
 msgid "Account holder:"
@@ -4100,6 +4095,7 @@ msgstr "Pangaülekande andmed"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:433
 #, elixir-autogen, elixir-format
+msgctxt "document party"
 msgid "Bill To"
 msgstr "Maksja"
 
@@ -4160,6 +4156,7 @@ msgstr "Jaluse tekst"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:430
 #, elixir-autogen, elixir-format
+msgctxt "document party"
 msgid "From"
 msgstr "Müüja"
 
@@ -4686,3 +4683,18 @@ msgstr "Osaliselt makstud"
 msgctxt "receipt status"
 msgid "Refunded"
 msgstr "Tagastatud"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:310
+#, elixir-autogen, elixir-format
+msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters."
+msgstr "Paar rida ettevõttest: millega tegeleb, kuidas ühendust võtta, mida hinnad sisaldavad. Trükitakse nii, nagu kirjutatud, kõigis keeltes ühtemoodi, kuni %{max} märki."
+
+#: lib/phoenix_kit_billing/web/settings.ex:306
+#, elixir-autogen, elixir-format
+msgid "Document settings could not be saved"
+msgstr "Dokumentide seadeid ei õnnestunud salvestada"
+
+#: lib/phoenix_kit_billing/web/settings.ex:285
+#, elixir-autogen, elixir-format
+msgid "The footer text is too long: at most %{max} characters."
+msgstr "Jaluse tekst on liiga pikk: kuni %{max} märki."

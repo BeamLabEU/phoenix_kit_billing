@@ -4066,11 +4066,6 @@ msgstr "%{date} at %{time}"
 msgid "%{month} %{day}, %{year}"
 msgstr "%{month} %{day}, %{year}"
 
-#: lib/phoenix_kit_billing/web/settings.html.heex:304
-#, elixir-autogen, elixir-format
-msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written."
-msgstr "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written."
-
 #: lib/phoenix_kit_billing/web/invoice_print.ex:107
 #, elixir-autogen, elixir-format
 msgid "Account holder:"
@@ -4099,6 +4094,7 @@ msgstr "Bank Transfer Details"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:433
 #, elixir-autogen, elixir-format
+msgctxt "document party"
 msgid "Bill To"
 msgstr "Bill To"
 
@@ -4159,6 +4155,7 @@ msgstr "Footer Text"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:430
 #, elixir-autogen, elixir-format
+msgctxt "document party"
 msgid "From"
 msgstr "From"
 
@@ -4685,3 +4682,18 @@ msgstr "Partially paid"
 msgctxt "receipt status"
 msgid "Refunded"
 msgstr "Refunded"
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:310
+#, elixir-autogen, elixir-format
+msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters."
+msgstr "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters."
+
+#: lib/phoenix_kit_billing/web/settings.ex:306
+#, elixir-autogen, elixir-format
+msgid "Document settings could not be saved"
+msgstr "Document settings could not be saved"
+
+#: lib/phoenix_kit_billing/web/settings.ex:285
+#, elixir-autogen, elixir-format
+msgid "The footer text is too long: at most %{max} characters."
+msgstr "The footer text is too long: at most %{max} characters."
