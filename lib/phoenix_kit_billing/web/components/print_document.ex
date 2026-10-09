@@ -55,6 +55,27 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
         white-space: pre-line;
       }
 
+      #document-seller,
+      #document-customer {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-right: 24px;
+      }
+
+      #document-details {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .totals-table {
+        width: auto;
+        min-width: 300px;
+      }
+
+      .totals-table td {
+        white-space: nowrap;
+      }
+
       .footer-text {
         white-space: pre-line;
         font-size: 13px;
