@@ -210,3 +210,34 @@ and `et` («Tühista arve») both translate the action.
 
 `web/index.html.heex:64` shows `gettext("Pending")` over the pending revenue figure. «Очікує» reads
 acceptably there, and the msgid is shared with the order status, where «Очікує» is right. Leave it.
+
+---
+
+## Round 3 (2026-10-09): head `e223398`
+
+**Verdict: APPROVE.** The round-2 "Void" regression is fixed the way round 2 proposed, including the
+optional code line, and the status filter now renders correctly in every locale.
+
+- **`cde932b`.** `web/invoices.html.heex:84` uses `gettext("Voided")`; `uk` "Void" → «Анулювати» again
+  (`default.po:3164`). The `#:` reference for `invoices.html.heex:84` moved from "Void" to "Voided" in
+  `default.pot` and in `en`/`et`/`ru`/`uk` (two lines each, nothing else).
+- **The hand edit matches what extraction produces.** `mix gettext.extract` was run on scratch copies of
+  both the PR tree and `main` (`a350afb`), with a separate build path. The two diffs against the committed
+  `.pot` are identical, so the PR adds no drift and the moved reference is exactly what extraction writes.
+  (Extraction against `main` itself shows 756 lines of older drift: stale line numbers and hand-kept
+  entries. That predates this PR and is out of scope.) `mix gettext.merge` on a copy reports 675 unchanged
+  for all four locales, each byte-identical.
+- **Rendered.** The `PhoenixKitBilling.Web.Invoices` template was rendered with a seeded invoice, from a
+  temporary test file outside the repo (the test router mirrors only `/en`, so the locale was set in
+  process). The status `<select>` reads:
+  - uk: «Усі статуси / Чернетка / Надіслано / Оплачено / Анульовано / Прострочено»
+  - ru: «… / Аннулирован / …»
+  - et: «… / Tühistatud / …»
+  - en: «… / Voided / …»
+
+  The invoice-page action stays «Анулювати» / «Аннулировать» / «Tühista arve» / «Void».
+- **Tests:** `MIX_ENV=test PGDATABASE=pkbill_test_domovych_uk PGPOOL=10 mix test
+  test/phoenix_kit_billing/pot_drift_test.exs test/phoenix_kit_billing/email_defaults_test.exs` → 41
+  tests, 0 failures. Checker: 675/675, 0 errors.
+- **Diff against `main`:** the declared files, this one-line template change, and the review file
+  (byte-identical to rounds 1–2). GitHub reports `MERGEABLE`.
