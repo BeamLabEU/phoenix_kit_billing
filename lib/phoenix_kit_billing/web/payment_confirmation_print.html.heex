@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang={html_lang()}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Payment Confirmation {@confirmation_number} - {@project_title}</title>
+    <title>{@page_title} - {@project_title}</title>
     <style>
       * {
         margin: 0;
@@ -346,128 +346,45 @@
         }
       }
     </style>
+    <.styles />
   </head>
   <body>
-    <div class="print-controls">
-      <.link
-        navigate={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
-        class="btn-back"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-        Back
-      </.link>
-      <button onclick="window.print()" class="btn-print">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect
-            x="6"
-            y="14"
-            width="12"
-            height="8"
-            rx="1"
-          />
-        </svg>
-        Print
-      </button>
-    </div>
+    <.print_controls
+      back_path={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
+      print_label={gettext("Print")}
+    />
 
     <div class="confirmation-container">
+      <.brand logo_url={@logo_url} company={@company} />
+
       <div class="confirmation-header">
         <div class="confirmation-title">
-          <h1>PAYMENT CONFIRMATION</h1>
+          <h1 id="document-title">{gettext("Payment confirmation")}</h1>
           <div class="confirmation-number">{@confirmation_number}</div>
         </div>
         <%= if @payment_context.is_final_payment do %>
-          <div class="confirmation-status">PAID IN FULL</div>
+          <div class="confirmation-status">{gettext("Paid in full")}</div>
         <% else %>
-          <div class="confirmation-status partial">PARTIAL PAYMENT</div>
+          <div class="confirmation-status partial">{gettext("Partial payment")}</div>
         <% end %>
       </div>
 
       <div class="confirmation-body">
         <div class="confirmation-meta">
-          <div class="meta-section">
-            <h3>Received From</h3>
-            <p>
-              <%= if @invoice.billing_details && map_size(@invoice.billing_details) > 0 do %>
-                <%= if @invoice.billing_details["type"] == "company" do %>
-                  <span class="company-name">{@invoice.billing_details["company_name"]}</span>
-                  <br />
-                  <%= if @invoice.billing_details["company_vat_number"] do %>
-                    VAT: {@invoice.billing_details["company_vat_number"]}<br />
-                  <% end %>
-                <% else %>
-                  <span class="company-name">
-                    {PhoenixKitBilling.Invoice.payer_name(@invoice.billing_details)}
-                  </span>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["address_line1"] do %>
-                  {@invoice.billing_details["address_line1"]}<br />
-                <% end %>
-                <%= if @invoice.billing_details["city"] do %>
-                  {@invoice.billing_details["city"]}
-                  <%= if @invoice.billing_details["postal_code"] do %>
-                    , {@invoice.billing_details["postal_code"]}
-                  <% end %>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["country"] do %>
-                  {@invoice.billing_details["country"]}
-                <% end %>
-              <% else %>
-                <%= if @invoice.user do %>
-                  <span class="company-name">{@invoice.user.email}</span>
-                <% else %>
-                  <em>No billing information</em>
-                <% end %>
-              <% end %>
-            </p>
-          </div>
+          <.seller company={@company} title={gettext("Received By")} />
 
-          <div class="meta-section">
-            <h3>Received By</h3>
-            <p>
-              <strong>{@company.name}</strong>
-              <br />
-              <%= for line <- String.split(@company.address || "", "\n") do %>
-                {line}<br />
-              <% end %>
-              <%= if @company.vat != "" do %>
-                VAT: {@company.vat}
-              <% end %>
-            </p>
-          </div>
+          <.customer invoice={@invoice} title={gettext("Received From")} />
 
-          <div class="meta-section" style="text-align: right;">
-            <h3>Payment Details</h3>
+          <div id="document-details" class="meta-section" style="text-align: right;">
+            <h3>{gettext("Payment Details")}</h3>
             <p>
-              <strong>Confirmation #:</strong> {@confirmation_number}<br />
-              <strong>Payment Date:</strong>
-              {Calendar.strftime(@transaction.inserted_at, "%B %d, %Y")}<br />
-              <strong>Payment Method:</strong> {String.capitalize(@transaction.payment_method)}<br />
-              <strong>Currency:</strong> {@invoice.currency}
+              <strong>{gettext("Confirmation #:")}</strong> {@confirmation_number}<br />
+              <strong>{gettext("Payment Date:")}</strong>
+              {format_date(@transaction.inserted_at)}<br />
+              <strong>{gettext("Payment Method:")}</strong> {payment_method_label(
+                @transaction.payment_method
+              )}<br />
+              <strong>{gettext("Currency:")}</strong> {@invoice.currency}
             </p>
           </div>
         </div>
@@ -489,33 +406,36 @@
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
             <%= if @payment_context.is_final_payment do %>
-              Payment Received - Invoice Paid in Full
+              {gettext("Payment Received - Invoice Paid in Full")}
             <% else %>
-              Partial Payment Received
+              {gettext("Partial Payment Received")}
             <% end %>
           </h4>
           <div class="payment-details-grid">
             <div class="payment-detail">
-              <span class="label">Amount Received</span>
+              <span class="label">{gettext("Amount Received")}</span>
               <span class="value" style="font-size: 24px;">
                 {Decimal.to_string(@transaction.amount, :normal)} {@invoice.currency}
               </span>
             </div>
             <div class="payment-detail">
-              <span class="label">Payment Date & Time</span>
+              <span class="label">{gettext("Payment Date & Time")}</span>
               <span class="value">
-                {Calendar.strftime(@transaction.inserted_at, "%B %d, %Y at %H:%M")}
+                {format_datetime(@transaction.inserted_at)}
               </span>
             </div>
             <div class="payment-detail">
-              <span class="label">Transaction Number</span>
+              <span class="label">{gettext("Transaction Number")}</span>
               <span class="value">{@transaction.transaction_number}</span>
             </div>
             <div class="payment-detail">
               <span class="label">
-                Payment #{@payment_context.payment_number} of {@payment_context.total_payments}
+                {gettext("Payment %{number} of %{count}",
+                  number: @payment_context.payment_number,
+                  count: @payment_context.total_payments
+                )}
               </span>
-              <span class="value">{String.capitalize(@transaction.payment_method)}</span>
+              <span class="value">{payment_method_label(@transaction.payment_method)}</span>
             </div>
           </div>
         </div>
@@ -523,13 +443,13 @@
         <%!-- Balance Summary --%>
         <div class="balance-section">
           <div class="balance-box invoice-total">
-            <div class="label">Invoice Total</div>
+            <div class="label">{gettext("Invoice Total")}</div>
             <div class="value">
               {Decimal.to_string(@invoice.total, :normal)} {@invoice.currency}
             </div>
           </div>
           <div class="balance-box paid-total">
-            <div class="label">Total Paid</div>
+            <div class="label">{gettext("Total Paid")}</div>
             <div class="value">
               {Decimal.to_string(@payment_context.total_paid_so_far, :normal)} {@invoice.currency}
             </div>
@@ -538,7 +458,7 @@
             "balance-box remaining",
             if(Decimal.eq?(@payment_context.remaining_balance, Decimal.new(0)), do: "zero")
           ]}>
-            <div class="label">Remaining Balance</div>
+            <div class="label">{gettext("Remaining Balance")}</div>
             <div class="value">
               {Decimal.to_string(@payment_context.remaining_balance, :normal)} {@invoice.currency}
             </div>
@@ -547,19 +467,19 @@
 
         <%!-- Invoice Reference --%>
         <div class="invoice-reference">
-          <h4>Invoice Reference</h4>
+          <h4>{gettext("Invoice Reference")}</h4>
           <div class="invoice-reference-grid">
             <div class="invoice-ref-item">
-              <div class="label">Invoice Number</div>
+              <div class="label">{gettext("Invoice Number")}</div>
               <div class="value">{@invoice.invoice_number}</div>
             </div>
             <div class="invoice-ref-item">
-              <div class="label">Invoice Date</div>
-              <div class="value">{Calendar.strftime(@invoice.inserted_at, "%B %d, %Y")}</div>
+              <div class="label">{gettext("Invoice Date")}</div>
+              <div class="value">{format_date(@invoice.inserted_at)}</div>
             </div>
             <%= if @invoice.order do %>
               <div class="invoice-ref-item">
-                <div class="label">Order Number</div>
+                <div class="label">{gettext("Order Number")}</div>
                 <div class="value">{@invoice.order.order_number}</div>
               </div>
             <% end %>
@@ -569,27 +489,23 @@
         <%= if @transaction.description do %>
           <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
             <h4 style="font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">
-              Payment Notes
+              {gettext("Payment Notes")}
             </h4>
             <p style="white-space: pre-wrap;">{@transaction.description}</p>
           </div>
         <% end %>
       </div>
 
-      <div class="confirmation-footer">
-        <div class="footer-company">
-          <div class="name">{@company.name}</div>
-          <div class="details">
-            {@company.address}
-            <%= if @company.vat != "" do %>
-              &bull; VAT: {@company.vat}
-            <% end %>
-          </div>
-        </div>
-        <div class="footer-note">
-          This document confirms receipt of the payment indicated above. Thank you for your business.
-        </div>
-      </div>
+      <.footer
+        class="confirmation-footer"
+        company={@company}
+        footer_text={@footer_text}
+        note={
+          gettext(
+            "This document confirms receipt of the payment indicated above. Thank you for your business."
+          )
+        }
+      />
     </div>
   </body>
 </html>

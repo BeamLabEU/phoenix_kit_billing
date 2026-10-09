@@ -128,4 +128,13 @@ defmodule PhoenixKitBilling.LiveCase do
   def put_test_scope(conn, scope) do
     Plug.Test.init_test_session(conn, %{"phoenix_kit_test_scope" => scope})
   end
+
+  @doc """
+  Renders the LiveView in `locale`, the way core's admin `on_mount` does for
+  a localized URL: the `:assign_scope` hook puts it as the process Gettext
+  locale.
+  """
+  def put_test_locale(conn, locale) do
+    Plug.Test.init_test_session(conn, %{"phoenix_kit_test_locale" => locale})
+  end
 end

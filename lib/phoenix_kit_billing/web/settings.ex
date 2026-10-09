@@ -18,6 +18,7 @@ defmodule PhoenixKitBilling.Web.Settings do
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKit.Utils.Number
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitBilling.Web.Trail
   alias PhoenixKitWeb.Live.Settings.Organization
@@ -32,6 +33,7 @@ defmodule PhoenixKitBilling.Web.Settings do
       |> Trail.settings(gettext("Billing"))
       |> assign(:project_title, project_title)
       |> assign(:billing_enabled, billing_enabled)
+      |> assign(:show_media_selector, false)
       |> load_settings()
 
     {:ok, socket}
@@ -73,6 +75,9 @@ defmodule PhoenixKitBilling.Web.Settings do
     |> assign_suggested_tax_rate()
     # Bank details (from consolidated source)
     |> assign(:bank_details, bank_details)
+    # Printed documents
+    |> assign(:document_logo_uuid, Settings.get_setting(DocumentBranding.logo_key(), "") || "")
+    |> assign(:document_footer, DocumentBranding.footer_text())
   end
 
   # Helper to get country name from code
@@ -84,6 +89,23 @@ defmodule PhoenixKitBilling.Web.Settings do
       nil -> country_code
       country -> country.name
     end
+  end
+
+  @impl true
+  def handle_event("save_documents", params, socket) do
+    Authz.authorize(socket, :manage_settings, fn ->
+      gated_event("save_documents", params, socket)
+    end)
+  end
+
+  @impl true
+  def handle_event("open_document_logo_selector", _params, socket) do
+    {:noreply, assign(socket, :show_media_selector, true)}
+  end
+
+  @impl true
+  def handle_event("clear_document_logo", _params, socket) do
+    {:noreply, assign(socket, :document_logo_uuid, "")}
   end
 
   @impl true
@@ -219,6 +241,21 @@ defmodule PhoenixKitBilling.Web.Settings do
     end
   end
 
+  # The logo is picked into an assign and kept by this save, with the text.
+  defp gated_event("save_documents", params, socket) do
+    Settings.update_setting(DocumentBranding.logo_key(), socket.assigns.document_logo_uuid)
+
+    Settings.update_setting(
+      DocumentBranding.footer_key(),
+      String.trim(params["document_footer"] || "")
+    )
+
+    {:noreply,
+     socket
+     |> load_settings()
+     |> put_flash(:info, gettext("Document settings saved"))}
+  end
+
   defp gated_event("apply_suggested_tax", _params, socket) do
     case socket.assigns.suggested_tax_rate do
       nil ->
@@ -230,5 +267,18 @@ defmodule PhoenixKitBilling.Web.Settings do
          |> assign(:tax_rate, to_string(rate))
          |> assign(:suggested_tax_rate, nil)}
     end
+  end
+
+  # The media library's picker reports to this LiveView.
+  @impl true
+  def handle_info({:media_selected, file_uuids}, socket) do
+    {:noreply,
+     socket
+     |> assign(:document_logo_uuid, List.first(file_uuids) || "")
+     |> assign(:show_media_selector, false)}
+  end
+
+  def handle_info({:media_selector_closed}, socket) do
+    {:noreply, assign(socket, :show_media_selector, false)}
   end
 end

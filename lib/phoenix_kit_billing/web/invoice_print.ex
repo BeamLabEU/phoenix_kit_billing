@@ -6,10 +6,12 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
   """
 
   use Phoenix.LiveView
-  use Gettext, backend: PhoenixKitWeb.Gettext
+  use Gettext, backend: PhoenixKitBilling.Gettext
+  import PhoenixKitBilling.Web.Components.PrintDocument
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.Transaction
   alias PhoenixKitBilling.Web.Authz
 
@@ -30,7 +32,7 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
         nil ->
           {:ok,
            socket
-           |> put_flash(:error, "Invoice not found")
+           |> put_flash(:error, gettext("Invoice not found"))
            |> push_navigate(to: Routes.path("/admin/billing/invoices"))}
 
         invoice ->
@@ -42,10 +44,15 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
 
           socket =
             socket
-            |> assign(:page_title, "Invoice #{invoice.invoice_number}")
+            |> assign(
+              :page_title,
+              gettext("Invoice %{number}", number: invoice.invoice_number)
+            )
             |> assign(:project_title, project_title)
             |> assign(:invoice, invoice)
             |> assign(:company, company_info)
+            |> assign(:logo_url, DocumentBranding.logo_url())
+            |> assign(:footer_text, DocumentBranding.footer_text())
             |> assign(:refund_info, refund_info)
 
           {:ok, socket, layout: false}
@@ -53,7 +60,7 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
     else
       {:ok,
        socket
-       |> put_flash(:error, "Billing module is not enabled")
+       |> put_flash(:error, gettext("Billing module is not enabled"))
        |> push_navigate(to: Routes.path("/admin"))}
     end
   end
@@ -90,4 +97,20 @@ defmodule PhoenixKitBilling.Web.InvoicePrint do
   end
 
   defp calculate_refund_info(_), do: nil
+
+  # The bank transfer rows the invoice has values for: its own snapshot of
+  # the bank details, else the company's current ones.
+  defp bank_rows(invoice, company) do
+    bank = invoice.bank_details || %{}
+
+    [
+      {gettext("Account holder:"),
+       bank["account_holder"] || Settings.get_setting("billing_bank_account_holder", "")},
+      {gettext("Bank:"), bank["bank_name"] || company.bank_name},
+      {gettext("IBAN:"), bank["iban"] || company.bank_iban},
+      {gettext("SWIFT:"), bank["swift"] || company.bank_swift},
+      {gettext("Reference:"), invoice.invoice_number}
+    ]
+    |> Enum.filter(fn {_label, value} -> is_binary(value) and String.trim(value) != "" end)
+  end
 end

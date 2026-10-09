@@ -3915,3 +3915,633 @@ msgid ""
 "The refund will be processed to your original payment method.\n"
 "Please allow 5-10 business days for the refund to appear in your account.\n"
 msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:239
+#, elixir-autogen, elixir-format
+msgid "%{date} at %{time}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:231
+#, elixir-autogen, elixir-format
+msgid "%{month} %{day}, %{year}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:304
+#, elixir-autogen, elixir-format
+msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.ex:107
+#, elixir-autogen, elixir-format
+msgid "Account holder:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:576
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:628
+#, elixir-autogen, elixir-format
+msgid "Amount Paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:416
+#, elixir-autogen, elixir-format
+msgid "Amount Received"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:108
+#, elixir-autogen, elixir-format
+msgid "Back"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:521
+#, elixir-autogen, elixir-format
+msgid "Bank Transfer Details"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:433
+#, elixir-autogen, elixir-format
+msgid "Bill To"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:381
+#, elixir-autogen, elixir-format
+msgid "Confirmation #:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:416
+#, elixir-autogen, elixir-format
+msgid "Credit Note #:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.ex:82
+#, elixir-autogen, elixir-format
+msgid "Credit Note %{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:414
+#, elixir-autogen, elixir-format
+msgid "Credit Note Details"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:419
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:440
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:387
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:501
+#, elixir-autogen, elixir-format
+msgid "Currency:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:546
+#, elixir-autogen, elixir-format
+msgid "Customer IBAN:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:417
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:438
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:499
+#, elixir-autogen, elixir-format
+msgid "Date:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.ex:256
+#, elixir-autogen, elixir-format
+msgid "Document settings saved"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:439
+#, elixir-autogen, elixir-format
+msgid "Due Date:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:295
+#, elixir-autogen, elixir-format
+msgid "Footer Text"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:430
+#, elixir-autogen, elixir-format
+msgid "From"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:471
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:498
+#, elixir-autogen, elixir-format
+msgid "Invoice #:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.ex:49
+#, elixir-autogen, elixir-format
+msgid "Invoice %{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:477
+#, elixir-autogen, elixir-format
+msgid "Invoice Date"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:475
+#, elixir-autogen, elixir-format
+msgid "Invoice Date:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:473
+#, elixir-autogen, elixir-format
+msgid "Invoice Number"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:470
+#, elixir-autogen, elixir-format
+msgid "Invoice Reference"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:446
+#, elixir-autogen, elixir-format
+msgid "Invoice Total"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:408
+#, elixir-autogen, elixir-format
+msgid "Issued By (Payer)"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:411
+#, elixir-autogen, elixir-format
+msgid "Issued To (Payee)"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:582
+#, elixir-autogen, elixir-format
+msgid "Last Payment Date"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:259
+#: lib/phoenix_kit_billing/web/settings.html.heex:264
+#, elixir-autogen, elixir-format
+msgid "Logo"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:253
+#, elixir-autogen, elixir-format
+msgid "On invoices, receipts, credit notes and payment confirmations, and in billing emails"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:513
+#, elixir-autogen, elixir-format
+msgid "On receipt"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:482
+#, elixir-autogen, elixir-format
+msgid "Order Number"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:442
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:503
+#, elixir-autogen, elixir-format
+msgid "Order:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:532
+#, elixir-autogen, elixir-format
+msgid "Original Amount Paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:468
+#, elixir-autogen, elixir-format
+msgid "Original Invoice Reference"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:481
+#, elixir-autogen, elixir-format
+msgid "Original Total:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:549
+#, elixir-autogen, elixir-format
+msgid "PAID - Receipt #%{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:366
+#, elixir-autogen, elixir-format
+msgid "Paid in full"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:411
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:572
+#, elixir-autogen, elixir-format
+msgid "Partial Payment Received"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:368
+#, elixir-autogen, elixir-format
+msgid "Partial payment"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:433
+#, elixir-autogen, elixir-format
+msgid "Payment %{number} of %{count}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:82
+#, elixir-autogen, elixir-format
+msgid "Payment Confirmation %{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:624
+#, elixir-autogen, elixir-format
+msgid "Payment Confirmed"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:634
+#, elixir-autogen, elixir-format
+msgid "Payment Date"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:422
+#, elixir-autogen, elixir-format
+msgid "Payment Date & Time"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:382
+#, elixir-autogen, elixir-format
+msgid "Payment Date:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:379
+#, elixir-autogen, elixir-format
+msgid "Payment Details"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:509
+#, elixir-autogen, elixir-format
+msgid "Payment Due"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:585
+#, elixir-autogen, elixir-format
+msgid "Payment History"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:384
+#, elixir-autogen, elixir-format
+msgid "Payment Method:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:492
+#, elixir-autogen, elixir-format
+msgid "Payment Notes"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:409
+#, elixir-autogen, elixir-format
+msgid "Payment Received - Invoice Paid in Full"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:528
+#, elixir-autogen, elixir-format
+msgid "Payment Refunded"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:713
+#, elixir-autogen, elixir-format
+msgid "Payment Transactions"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:550
+#, elixir-autogen, elixir-format
+msgid "Please allow 5-10 business days for the refund to appear in your account."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:411
+#, elixir-autogen, elixir-format
+msgid "Print Invoice"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:465
+#, elixir-autogen, elixir-format
+msgid "Print Receipt"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:251
+#, elixir-autogen, elixir-format
+msgid "Printed Documents"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:575
+#, elixir-autogen, elixir-format
+msgid "REFUNDED - %{amount}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:493
+#, elixir-autogen, elixir-format
+msgid "Reason for Refund"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:497
+#, elixir-autogen, elixir-format
+msgid "Receipt #:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.ex:59
+#, elixir-autogen, elixir-format
+msgid "Receipt %{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:495
+#, elixir-autogen, elixir-format
+msgid "Receipt Details"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.ex:42
+#, elixir-autogen, elixir-format
+msgid "Receipt not yet generated for this invoice"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:374
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:490
+#, elixir-autogen, elixir-format
+msgid "Received By"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:376
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:492
+#, elixir-autogen, elixir-format
+msgid "Received From"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:550
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:592
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:644
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.ex:112
+#, elixir-autogen, elixir-format
+msgid "Reference:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:450
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:544
+#, elixir-autogen, elixir-format
+msgid "Refund Date"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:440
+#, elixir-autogen, elixir-format
+msgid "Refund Details"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:538
+#, elixir-autogen, elixir-format
+msgid "Refund Payment Information"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:511
+#, elixir-autogen, elixir-format
+msgid "Refund for Invoice %{number}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:400
+#, elixir-autogen, elixir-format
+msgid "Refund issued"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:461
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:599
+#, elixir-autogen, elixir-format
+msgid "Remaining Balance"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:273
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:312
+#, elixir-autogen, elixir-format
+msgid "Save Document Settings"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:283
+#, elixir-autogen, elixir-format
+msgid "Select Image"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:327
+#, elixir-autogen, elixir-format
+msgid "Select Logo"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:477
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:681
+#, elixir-autogen, elixir-format
+msgid "Subtotal:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:485
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:689
+#, elixir-autogen, elixir-format
+msgid "Tax (%{rate}%):"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:638
+#, elixir-autogen, elixir-format
+msgid "Thank you for your business. If you have any questions about this invoice, please contact us."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:540
+#, elixir-autogen, elixir-format
+msgid "The refund will be processed to your original payment method or bank account."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:561
+#, elixir-autogen, elixir-format
+msgid "This credit note confirms that a refund has been issued. If you have any questions, please contact us."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:504
+#, elixir-autogen, elixir-format
+msgid "This document confirms receipt of the payment indicated above. Thank you for your business."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:764
+#, elixir-autogen, elixir-format
+msgid "This receipt confirms payment has been received. Thank you for your business."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:452
+#, elixir-autogen, elixir-format
+msgid "Total Paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:702
+#, elixir-autogen, elixir-format
+msgid "Total Paid:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.html.heex:527
+#, elixir-autogen, elixir-format
+msgid "Total Refund:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:538
+#, elixir-autogen, elixir-format
+msgid "Total Refunded"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:498
+#, elixir-autogen, elixir-format
+msgid "Total:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:428
+#, elixir-autogen, elixir-format
+msgid "Transaction Number"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:66
+#, elixir-autogen, elixir-format
+msgid "Transaction is not a payment"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.ex:70
+#, elixir-autogen, elixir-format
+msgid "Transaction is not a refund"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/credit_note_print.ex:55
+#: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:51
+#, elixir-autogen, elixir-format
+msgid "Transaction not found"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/settings.html.heex:287
+#, elixir-autogen, elixir-format
+msgid "Use a version that reads on white. Without one, the project logo is used, then the company name."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:552
+#: lib/phoenix_kit_billing/web/invoice_print.html.heex:579
+#, elixir-autogen, elixir-format
+msgid "on %{date}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:270
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "April"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:274
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "August"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:278
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "December"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:268
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "February"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:267
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "January"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:273
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "July"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:272
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "June"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:269
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "March"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:271
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "May"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:277
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "November"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:276
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "October"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:275
+#, elixir-autogen, elixir-format
+msgctxt "date"
+msgid "September"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:247
+#, elixir-autogen, elixir-format
+msgctxt "invoice status"
+msgid "Draft"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:250
+#, elixir-autogen, elixir-format
+msgctxt "invoice status"
+msgid "Overdue"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:249
+#, elixir-autogen, elixir-format
+msgctxt "invoice status"
+msgid "Paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:248
+#, elixir-autogen, elixir-format
+msgctxt "invoice status"
+msgid "Sent"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/components/print_document.ex:251
+#, elixir-autogen, elixir-format
+msgctxt "invoice status"
+msgid "Void"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:484
+#, elixir-autogen, elixir-format
+msgctxt "receipt status"
+msgid "Paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:481
+#, elixir-autogen, elixir-format
+msgctxt "receipt status"
+msgid "Partially paid"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/receipt_print.html.heex:478
+#, elixir-autogen, elixir-format
+msgctxt "receipt status"
+msgid "Refunded"
+msgstr ""

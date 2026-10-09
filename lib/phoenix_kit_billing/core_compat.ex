@@ -90,14 +90,20 @@ defmodule PhoenixKitBilling.CoreCompat do
     # this list: core owes it no API stability, and a 2.0 that reorganises
     # PhoenixKitWeb would take invoice headers with it.
     {PhoenixKitWeb.Live.Settings.Organization, :get_company_info, 0},
-    {PhoenixKitWeb.Live.Settings.Organization, :get_bank_details, 0}
+    {PhoenixKitWeb.Live.Settings.Organization, :get_bank_details, 0},
+    # The logo on printed documents and in billing emails (DocumentBranding).
+    {PhoenixKit.Modules.Storage, :get_file, 1},
+    {PhoenixKit.Modules.Storage.URLSigner, :signed_url, 2},
+    {PhoenixKit.Utils.Routes, :base_url, 0}
   ]
 
   # Guarded at the call site — listed so an upgrade shows what quietly stopped
   # working, which is otherwise invisible precisely because it fails open.
   @optional_calls [
     {PhoenixKit.Dashboard.Registry, :initialized?, 0},
-    {PhoenixKit.Dashboard.Registry, :load_defaults, 0}
+    {PhoenixKit.Dashboard.Registry, :load_defaults, 0},
+    # Private media libraries; before them no file is private.
+    {PhoenixKit.Modules.Storage.Libraries, :private_file?, 1}
   ]
 
   # Sits under a `PhoenixKit.*` namespace but is owned by a *sibling package*,

@@ -24,6 +24,13 @@ defmodule PhoenixKitBilling.Test.Hooks do
   with the same nil-scope state production sees for logged-out users).
   """
   def on_mount(:assign_scope, _params, session, socket) do
+    # Core's admin `on_mount` sets the process Gettext locale from the URL;
+    # `LiveCase.put_test_locale/2` stands in for it here.
+    case Map.get(session, "phoenix_kit_test_locale") do
+      nil -> :ok
+      locale -> Gettext.put_locale(locale)
+    end
+
     case Map.get(session, "phoenix_kit_test_scope") do
       nil ->
         {:cont, socket}

@@ -7,10 +7,12 @@ defmodule PhoenixKitBilling.Web.ReceiptPrint do
   """
 
   use Phoenix.LiveView
-  use Gettext, backend: PhoenixKitWeb.Gettext
+  use Gettext, backend: PhoenixKitBilling.Gettext
+  import PhoenixKitBilling.Web.Components.PrintDocument
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.Web.Authz
 
@@ -31,13 +33,13 @@ defmodule PhoenixKitBilling.Web.ReceiptPrint do
         nil ->
           {:ok,
            socket
-           |> put_flash(:error, "Invoice not found")
+           |> put_flash(:error, gettext("Invoice not found"))
            |> push_navigate(to: Routes.path("/admin/billing/invoices"))}
 
         %Invoice{receipt_number: nil} = _invoice ->
           {:ok,
            socket
-           |> put_flash(:error, "Receipt not yet generated for this invoice")
+           |> put_flash(:error, gettext("Receipt not yet generated for this invoice"))
            |> push_navigate(to: Routes.path("/admin/billing/invoices/#{id}"))}
 
         invoice ->
@@ -52,11 +54,16 @@ defmodule PhoenixKitBilling.Web.ReceiptPrint do
 
           socket =
             socket
-            |> assign(:page_title, "Receipt #{invoice.receipt_number}")
+            |> assign(
+              :page_title,
+              gettext("Receipt %{number}", number: invoice.receipt_number)
+            )
             |> assign(:project_title, project_title)
             |> assign(:invoice, invoice)
             |> assign(:transactions, transactions)
             |> assign(:company, company_info)
+            |> assign(:logo_url, DocumentBranding.logo_url())
+            |> assign(:footer_text, DocumentBranding.footer_text())
             |> assign(:receipt_status, receipt_status)
             |> assign(:total_refunded, total_refunded)
             |> assign(:last_refund_date, last_refund_date)
@@ -67,7 +74,7 @@ defmodule PhoenixKitBilling.Web.ReceiptPrint do
     else
       {:ok,
        socket
-       |> put_flash(:error, "Billing module is not enabled")
+       |> put_flash(:error, gettext("Billing module is not enabled"))
        |> push_navigate(to: Routes.path("/admin"))}
     end
   end

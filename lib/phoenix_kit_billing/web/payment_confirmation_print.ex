@@ -7,10 +7,12 @@ defmodule PhoenixKitBilling.Web.PaymentConfirmationPrint do
   """
 
   use Phoenix.LiveView
-  use Gettext, backend: PhoenixKitWeb.Gettext
+  use Gettext, backend: PhoenixKitBilling.Gettext
+  import PhoenixKitBilling.Web.Components.PrintDocument
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.Transaction
   alias PhoenixKitBilling.Web.Authz
 
@@ -39,14 +41,14 @@ defmodule PhoenixKitBilling.Web.PaymentConfirmationPrint do
       false ->
         {:ok,
          socket
-         |> put_flash(:error, "Billing module is not enabled")
+         |> put_flash(:error, gettext("Billing module is not enabled"))
          |> push_navigate(to: Routes.path("/admin"))}
 
       nil ->
         error_msg =
           if Billing.get_invoice(invoice_uuid) == nil,
-            do: "Invoice not found",
-            else: "Transaction not found"
+            do: gettext("Invoice not found"),
+            else: gettext("Transaction not found")
 
         redirect_path =
           if Billing.get_invoice(invoice_uuid) == nil,
@@ -61,7 +63,7 @@ defmodule PhoenixKitBilling.Web.PaymentConfirmationPrint do
       %Transaction{} ->
         {:ok,
          socket
-         |> put_flash(:error, "Transaction is not a payment")
+         |> put_flash(:error, gettext("Transaction is not a payment"))
          |> push_navigate(to: Routes.path("/admin/billing/invoices/#{invoice_uuid}"))}
     end
   end
@@ -75,12 +77,17 @@ defmodule PhoenixKitBilling.Web.PaymentConfirmationPrint do
 
     socket =
       socket
-      |> assign(:page_title, "Payment Confirmation #{confirmation_number}")
+      |> assign(
+        :page_title,
+        gettext("Payment Confirmation %{number}", number: confirmation_number)
+      )
       |> assign(:project_title, project_title)
       |> assign(:invoice, invoice)
       |> assign(:transaction, transaction)
       |> assign(:confirmation_number, confirmation_number)
       |> assign(:company, company_info)
+      |> assign(:logo_url, DocumentBranding.logo_url())
+      |> assign(:footer_text, DocumentBranding.footer_text())
       |> assign(:payment_context, payment_context)
 
     {:ok, socket, layout: false}
