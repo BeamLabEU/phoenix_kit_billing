@@ -3160,7 +3160,7 @@ defmodule PhoenixKitBilling do
     prefix = Settings.get_setting("billing_credit_note_prefix", "CN")
     suffix = transaction.transaction_number |> String.replace(~r/^TXN-/, "")
     credit_note_number = "#{prefix}-#{suffix}"
-    company = get_company_details()
+    company = get_company_details(user)
 
     %{
       "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
@@ -3301,7 +3301,7 @@ defmodule PhoenixKitBilling do
     prefix = Settings.get_setting("billing_payment_confirmation_prefix", "PMT")
     suffix = transaction.transaction_number |> String.replace(~r/^TXN-/, "")
     confirmation_number = "#{prefix}-#{suffix}"
-    company = get_company_details()
+    company = get_company_details(user)
 
     # Calculate remaining balance
     remaining_balance = Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
@@ -3347,7 +3347,7 @@ defmodule PhoenixKitBilling do
   @spec email_send_opts(String.t(), map(), map() | nil, map()) :: keyword()
   def email_send_opts(template, variables, user, metadata) do
     locale = RecipientLocale.for_rendering(user)
-    base_locale = locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
+    base_locale = base_locale(locale)
     defaults = EmailDefaults.defaults_for(template, variables)
 
     localized_defaults =
@@ -3363,6 +3363,10 @@ defmodule PhoenixKitBilling do
       layout: EmailDefaults.layout_group()
     ]
   end
+
+  defp recipient_base_locale(user), do: user |> RecipientLocale.for_rendering() |> base_locale()
+
+  defp base_locale(locale), do: locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
 
   # Sends email via PhoenixKit.Modules.Emails.Templates if available, carrying
   # this package's own default content so the send survives that package's
@@ -3467,7 +3471,7 @@ defmodule PhoenixKitBilling do
   def build_receipt_email_variables(invoice, user, opts) do
     receipt_url = Keyword.get(opts, :receipt_url, "")
     billing_details = invoice.billing_details || %{}
-    company = get_company_details()
+    company = get_company_details(user)
 
     %{
       "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
@@ -3508,7 +3512,7 @@ defmodule PhoenixKitBilling do
     invoice_url = Keyword.get(opts, :invoice_url, "")
     invoice_bank = invoice.bank_details || %{}
     billing_details = invoice.billing_details || %{}
-    company = get_company_details()
+    company = get_company_details(user)
     bank = Organization.get_bank_details()
 
     %{
@@ -5111,13 +5115,20 @@ defmodule PhoenixKitBilling do
     Settings.get_setting("billing_payment_terms", "Payment due within 14 days of invoice date.")
   end
 
-  # Returns company details for email templates using consolidated Settings
-  defp get_company_details do
+  # Returns company details for email templates using consolidated Settings.
+  # The address names its country, so it is formatted in the language the
+  # email goes out in, not the sender's.
+  defp get_company_details(user) do
     company = Organization.get_company_info()
+
+    address =
+      Gettext.with_locale(PhoenixKitBilling.Gettext, recipient_base_locale(user), fn ->
+        format_company_address(company)
+      end)
 
     %{
       name: company["name"] || "",
-      address: format_company_address(company),
+      address: address,
       vat: company["vat_number"] || ""
     }
   end

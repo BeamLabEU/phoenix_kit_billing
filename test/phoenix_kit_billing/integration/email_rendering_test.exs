@@ -364,6 +364,25 @@ defmodule PhoenixKitBilling.Integration.EmailRenderingTest do
       end
     end
 
+    test "the company's address names its country in the customer's language" do
+      PhoenixKit.Settings.update_json_setting("company_info", %{
+        "name" => "Acme",
+        "city" => "Tallinn",
+        "postal_code" => "10117",
+        "country" => "EE"
+      })
+
+      user = user_fixture(%{"preferred_locale" => "ru"})
+      invoice = invoice_fixture(user, @hostile_items)
+
+      variables =
+        Gettext.with_locale(PhoenixKitBilling.Gettext, "en", fn ->
+          Billing.build_invoice_email_variables(invoice, user, invoice_url: "")
+        end)
+
+      assert variables["company_address"] == "Tallinn 10117\nЭстония"
+    end
+
     test "the preview renders each email in the chosen language", %{paths: paths} do
       for entry <- Billing.email_templates(), locale <- ["et", "ru"] do
         {:ok, preview} = Catalog.preview(entry, locale, paths: paths)
