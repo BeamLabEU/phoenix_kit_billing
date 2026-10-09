@@ -162,19 +162,22 @@ defmodule PhoenixKitBilling.BillingProfile do
   `:is_default`, so a form that has no persisted owner yet (a checkout) can
   validate with it.
 
-  The profile argument comes first; to pass `opts` the profile must be passed
-  too, as in `fields_changeset(%BillingProfile{}, attrs, require_email: true)`.
+  For a new profile pass `%BillingProfile{}` as the first argument.
 
   ## Options
 
     * `:require_email` - also require `:email` (default `false`)
     * `:require_address` - also require `:address_line1`, `:city`,
-      `:postal_code` and `:country` (default `false`)
+      `:postal_code` and `:country` (default `false`). A blank `country` param
+      counts as missing here, although Ecto would otherwise replace it with the
+      schema default `"EE"`; without this option a blank country keeps the
+      default, as `changeset/2` does.
   """
   @spec fields_changeset(%__MODULE__{}, map(), keyword()) :: Ecto.Changeset.t()
-  def fields_changeset(profile \\ %__MODULE__{}, attrs, opts \\ []) do
+  def fields_changeset(%__MODULE__{} = profile, attrs, opts \\ []) do
     profile
     |> cast(attrs, @form_fields)
+    |> blank_country_to_nil(Keyword.get(opts, :require_address, false), attrs)
     |> validate_required(required_by_opts(opts))
     |> validate_inclusion(:type, @valid_types)
     |> validate_length(:country, is: 2)
@@ -183,6 +186,20 @@ defmodule PhoenixKitBilling.BillingProfile do
     |> validate_vat_number()
     |> maybe_set_display_name()
   end
+
+  # Ecto casts a blank param to the struct default, which would let a blank
+  # country select slip through `require_address` as "EE".
+  defp blank_country_to_nil(changeset, true, attrs) do
+    case Enum.find_value(["country", :country], &Map.get(attrs, &1)) do
+      country when is_binary(country) ->
+        if String.trim(country) == "", do: force_change(changeset, :country, nil), else: changeset
+
+      _ ->
+        changeset
+    end
+  end
+
+  defp blank_country_to_nil(changeset, false, _attrs), do: changeset
 
   defp required_by_opts(opts) do
     email = if Keyword.get(opts, :require_email, false), do: [:email], else: []

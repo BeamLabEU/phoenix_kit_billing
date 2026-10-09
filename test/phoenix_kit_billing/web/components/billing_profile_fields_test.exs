@@ -95,6 +95,13 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFieldsTest do
   end
 
   describe "type radios" do
+    test "are grouped and labelled" do
+      doc = render_fields(id_prefix: "pf")
+
+      assert attribute_of(doc, "[role=radiogroup]", "aria-labelledby") == "pf-type-label"
+      assert present?(doc, "#pf-type-label")
+    end
+
     test "emit the default event with the type as phx-value-type" do
       doc = render_fields()
 
@@ -197,10 +204,10 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFieldsTest do
   end
 
   describe "required markers" do
-    test "name and country fields are always required, per type" do
+    test "the name fields of the shown type are always required" do
       individual = render_fields(type: "individual")
 
-      for field <- ~w(first_name last_name country) do
+      for field <- ~w(first_name last_name) do
         assert required?(individual, "billing-profile-#{field}")
       end
 
@@ -224,16 +231,16 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFieldsTest do
       end
     end
 
-    test "street, city and postal code are required only with require_address" do
+    test "street, city, postal code and country are required only with require_address" do
       optional = render_fields()
 
-      for field <- ~w(address_line1 city postal_code) do
+      for field <- ~w(address_line1 city postal_code country) do
         refute required?(optional, "billing-profile-#{field}")
       end
 
       marked = render_fields(require_address: true)
 
-      for field <- ~w(address_line1 city postal_code) do
+      for field <- ~w(address_line1 city postal_code country) do
         assert required?(marked, "billing-profile-#{field}")
         assert star?(marked, "billing-profile-#{field}")
       end

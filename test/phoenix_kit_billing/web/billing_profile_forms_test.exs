@@ -131,6 +131,97 @@ defmodule PhoenixKitBilling.Web.BillingProfileFormsTest do
       assert has_element?(view, "#billing-profile-company_name[value='Acme OÜ']")
       assert has_element?(view, "#billing-profile-type-company[checked]")
     end
+
+    test "returns to return_to after saving", %{conn: conn} do
+      {:ok, view, _html} = live(conn, @user_new <> "?return_to=/en/dashboard/billing-orders")
+
+      view
+      |> form("#user-billing-profile-form", %{
+        "billing_profile" => %{
+          "first_name" => "Ada",
+          "last_name" => "Lovelace",
+          "country" => "EE"
+        }
+      })
+      |> render_submit()
+
+      assert_redirect(view, "/en/dashboard/billing-orders")
+    end
+
+    test "saves the default flag", %{conn: conn, user: user} do
+      {:ok, _first} =
+        Billing.create_billing_profile(user.uuid, %{
+          "first_name" => "First",
+          "last_name" => "One",
+          "country" => "EE"
+        })
+
+      {:ok, view, _html} = live(conn, @user_new)
+
+      view
+      |> form("#user-billing-profile-form", %{
+        "billing_profile" => %{
+          "first_name" => "Second",
+          "last_name" => "Two",
+          "country" => "EE",
+          "is_default" => "true"
+        }
+      })
+      |> render_submit()
+
+      assert_redirect(view)
+
+      second =
+        Enum.find(Billing.list_user_billing_profiles(user.uuid), &(&1.first_name == "Second"))
+
+      assert second.is_default
+    end
+
+    test "a failed save stays on the form with the errors and creates nothing", %{
+      conn: conn,
+      user: user
+    } do
+      {:ok, view, _html} = live(conn, @user_new)
+
+      html =
+        view
+        |> form("#user-billing-profile-form", %{
+          "billing_profile" => %{"first_name" => "", "last_name" => "", "country" => "EE"}
+        })
+        |> render_submit()
+
+      assert html =~ "is required for individuals"
+      assert has_element?(view, "#user-billing-profile-form")
+      assert Billing.list_user_billing_profiles(user.uuid) == []
+    end
+
+    test "renders the VAT and country errors", %{conn: conn} do
+      {:ok, view, _html} = live(conn, @user_new)
+      view |> element("#billing-profile-type-company") |> render_click()
+
+      html =
+        render_change(view, "validate", %{
+          "billing_profile" => %{
+            "type" => "company",
+            "company_name" => "Acme OÜ",
+            "company_vat_number" => "!!",
+            "country" => "EE"
+          }
+        })
+
+      assert html =~ "must be a valid EU VAT number"
+
+      html =
+        render_change(view, "validate", %{
+          "billing_profile" => %{
+            "type" => "company",
+            "company_name" => "Acme OÜ",
+            "country" => "EST"
+          }
+        })
+
+      assert html =~ "should be 2 character(s)"
+    end
   end
 
   describe "admin form" do
@@ -152,7 +243,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileFormsTest do
 
       html =
         view
-        |> form("form[phx-submit=save]", %{
+        |> form("#admin-billing-profile-form", %{
           "billing_profile" => %{"first_name" => "", "email" => "not-an-email"}
         })
         |> render_change()
@@ -167,7 +258,7 @@ defmodule PhoenixKitBilling.Web.BillingProfileFormsTest do
       render_change(view, "select_user", %{"user_uuid" => user.uuid})
 
       view
-      |> form("form[phx-submit=save]", %{
+      |> form("#admin-billing-profile-form", %{
         "billing_profile" => %{
           "first_name" => "Grace",
           "last_name" => "Hopper",
@@ -181,6 +272,78 @@ defmodule PhoenixKitBilling.Web.BillingProfileFormsTest do
       assert [profile] = Billing.list_user_billing_profiles(user.uuid)
       assert profile.first_name == "Grace"
       assert profile.name == "Grace Hopper"
+    end
+
+    test "editing updates the profile", %{conn: conn, user: user} do
+      {:ok, profile} =
+        Billing.create_billing_profile(user.uuid, %{
+          "first_name" => "Grace",
+          "last_name" => "Hopper",
+          "country" => "EE"
+        })
+
+      {:ok, view, _html} = live(conn, "/en/admin/billing/profiles/#{profile.uuid}/edit")
+
+      assert has_element?(view, "#billing-profile-first_name[value=Grace]")
+
+      view
+      |> form("#admin-billing-profile-form", %{
+        "billing_profile" => %{"first_name" => "Amazing", "middle_name" => "Brewster"}
+      })
+      |> render_submit()
+
+      assert_redirect(view)
+
+      updated = Billing.get_billing_profile(profile.uuid)
+      assert updated.first_name == "Amazing"
+      assert updated.middle_name == "Brewster"
+    end
+
+    test "a failed save stays on the form with the errors and creates nothing", %{
+      conn: conn,
+      user: user
+    } do
+      {:ok, view, _html} = live(conn, @admin_new)
+      render_change(view, "select_user", %{"user_uuid" => user.uuid})
+
+      html =
+        view
+        |> form("#admin-billing-profile-form", %{
+          "billing_profile" => %{"first_name" => "", "email" => "nope", "country" => "EE"}
+        })
+        |> render_submit()
+
+      assert html =~ "is required for individuals"
+      assert html =~ "must be a valid email address"
+      assert Billing.list_user_billing_profiles(user.uuid) == []
+    end
+
+    test "renders the VAT and country errors", %{conn: conn} do
+      {:ok, view, _html} = live(conn, @admin_new)
+      view |> element("#billing-profile-type-company") |> render_click()
+
+      html =
+        render_change(view, "validate", %{
+          "billing_profile" => %{
+            "type" => "company",
+            "company_name" => "Acme OÜ",
+            "company_vat_number" => "!!",
+            "country" => "EE"
+          }
+        })
+
+      assert html =~ "must be a valid EU VAT number"
+
+      html =
+        render_change(view, "validate", %{
+          "billing_profile" => %{
+            "type" => "company",
+            "company_name" => "Acme OÜ",
+            "country" => "EST"
+          }
+        })
+
+      assert html =~ "should be 2 character(s)"
     end
   end
 end

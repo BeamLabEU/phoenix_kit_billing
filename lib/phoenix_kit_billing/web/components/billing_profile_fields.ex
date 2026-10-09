@@ -30,7 +30,9 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
 
   The type radios emit `phx-click={@type_event}` with `phx-value-type`
   (`"individual"` or `"company"`); the caller handles it and passes the new
-  value back as `type`.
+  value back as `type`. The radios are also form inputs named after the form's
+  `type` field, so picking one fires the form's `phx-change` too and `type`
+  arrives in the caller's validate params.
   """
 
   use Phoenix.Component
@@ -76,7 +78,7 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
 
   attr(:require_address, :boolean,
     default: false,
-    doc: "mark the street, city and postal code fields as required"
+    doc: "mark the street, city, postal code and country fields as required"
   )
 
   slot(:inner_block, doc: "rendered after the fields, e.g. extra checkboxes")
@@ -125,11 +127,15 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
     ~H"""
     <div class="card bg-base-100 shadow-lg">
       <div class="card-body">
-        <h2 class="card-title text-lg">
+        <h2 id={"#{@id_prefix}-type-label"} class="card-title text-lg">
           <.icon name="hero-user-circle" class="w-5 h-5" /> {gettext("Profile Type")}
         </h2>
 
-        <div class="flex flex-wrap gap-4 mt-2">
+        <div
+          role="radiogroup"
+          aria-labelledby={"#{@id_prefix}-type-label"}
+          class="flex flex-wrap gap-4 mt-2"
+        >
           <label class="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
@@ -341,7 +347,7 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
           label={gettext("Country")}
           prompt={gettext("Select country...")}
           options={@countries}
-          required
+          required={@require_address}
         />
 
         <div class="mt-4">

@@ -214,7 +214,7 @@ lib/phoenix_kit_billing/
     ├── *_print.ex                       # Invoice, receipt, credit note, payment confirmation
     │                                    #   (shared parts: components/print_document.ex)
     ├── project_billing_live.ex          # "Customer billing" project-extension tab
-    └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers
+    └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers, BillingProfileFields (shared billing profile form fields)
 ```
 
 ### Schemas and tables

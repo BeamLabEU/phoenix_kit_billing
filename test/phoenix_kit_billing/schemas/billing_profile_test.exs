@@ -108,10 +108,6 @@ defmodule PhoenixKitBilling.Schemas.BillingProfileTest do
       assert get_change(cs, :name) == "John Doe"
     end
 
-    test "the profile defaults to a blank one" do
-      assert BillingProfile.fields_changeset(@individual_fields).valid?
-    end
-
     test "company is valid without a user and takes its name from company_name" do
       cs = BillingProfile.fields_changeset(%BillingProfile{}, @company_fields)
       assert cs.valid?
@@ -207,9 +203,6 @@ defmodule PhoenixKitBilling.Schemas.BillingProfileTest do
     end
 
     test "require_address: true requires street, city, postal code and country" do
-      # The schema defaults the country to "EE" and Ecto falls back to the
-      # default for a blank param, so a blank country only shows up on a
-      # profile that has none.
       profile = %BillingProfile{country: nil}
 
       errors =
@@ -226,6 +219,41 @@ defmodule PhoenixKitBilling.Schemas.BillingProfileTest do
 
       refute Map.has_key?(errors, :address_line2)
       refute Map.has_key?(errors, :state)
+    end
+
+    test "require_address: true treats a blank country param as missing" do
+      string_keys =
+        @individual_fields |> Map.merge(@address) |> Map.put("country", "")
+
+      atom_keys = Map.new(string_keys, fn {k, v} -> {String.to_atom(k), v} end)
+
+      for attrs <- [string_keys, atom_keys] do
+        cs = BillingProfile.fields_changeset(%BillingProfile{}, attrs, require_address: true)
+        assert %{country: ["can't be blank"]} = errors_on(cs)
+      end
+    end
+
+    test "require_address: true keeps a country that is absent from the params" do
+      attrs = Map.merge(@individual_fields, Map.delete(@address, "country"))
+      cs = BillingProfile.fields_changeset(%BillingProfile{}, attrs, require_address: true)
+
+      assert cs.valid?
+      assert get_field(cs, :country) == "EE"
+    end
+
+    test "without require_address a blank country keeps the default, as changeset/2 does" do
+      attrs = Map.put(@individual_fields, "country", "")
+
+      assert get_field(BillingProfile.fields_changeset(%BillingProfile{}, attrs), :country) ==
+               "EE"
+
+      full =
+        BillingProfile.changeset(
+          %BillingProfile{},
+          Map.put(attrs, "user_uuid", Ecto.UUID.generate())
+        )
+
+      assert get_field(full, :country) == "EE"
     end
 
     test "require_address: true passes with a full address" do
