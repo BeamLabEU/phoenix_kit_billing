@@ -81,7 +81,7 @@
                     <option value="draft" selected={@status_filter == "draft"}>{gettext("Draft")}</option>
                     <option value="sent" selected={@status_filter == "sent"}>{gettext("Sent")}</option>
                     <option value="paid" selected={@status_filter == "paid"}>{gettext("Paid")}</option>
-                    <option value="void" selected={@status_filter == "void"}>{gettext("Void")}</option>
+                    <option value="void" selected={@status_filter == "void"}>{gettext("Voided")}</option>
                     <option value="overdue" selected={@status_filter == "overdue"}>{gettext("Overdue")}</option>
                   </select>
                   <button type="button" phx-click="clear_filters" class="btn btn-ghost btn-sm">

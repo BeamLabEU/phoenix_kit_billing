@@ -3160,12 +3160,12 @@ msgid "View Receipt"
 msgstr "Переглянути квитанцію"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:88
-#: lib/phoenix_kit_billing/web/invoices.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Void"
-msgstr "Анульовано"
+msgstr "Анулювати"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:667
+#: lib/phoenix_kit_billing/web/invoices.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Voided"
 msgstr "Анульовано"
