@@ -224,9 +224,11 @@ defmodule PhoenixKitBilling.BillingProfile do
 
   defp blank_country_to_nil(changeset, false, _attrs), do: changeset
 
+  # Postgres varchar(n) counts code points, Ecto counts graphemes by default:
+  # "e" + a combining accent is one grapheme but two code points.
   defp validate_max_lengths(changeset) do
     Enum.reduce(@max_lengths, changeset, fn {field, max}, acc ->
-      validate_length(acc, field, max: max)
+      validate_length(acc, field, max: max, count: :codepoints)
     end)
   end
 
@@ -306,7 +308,12 @@ defmodule PhoenixKitBilling.BillingProfile do
         end
 
       # first + last name can exceed the column on their own.
-      name = String.slice(name, 0, Keyword.fetch!(@max_lengths, :name))
+      name =
+        name
+        |> String.codepoints()
+        |> Enum.take(Keyword.fetch!(@max_lengths, :name))
+        |> Enum.join()
+        |> String.trim_trailing()
 
       if name != "" do
         put_change(changeset, :name, name)

@@ -407,6 +407,43 @@ defmodule PhoenixKitBilling.Schemas.BillingProfileTest do
       assert %{postal_code: [_]} = errors_on(BillingProfile.changeset(%BillingProfile{}, attrs))
     end
 
+    test "limits count code points like the varchar columns, not graphemes" do
+      # 20 graphemes, 40 code points: Postgres would reject it for varchar(20).
+      combining = String.duplicate("e\u0301", 20)
+
+      cs =
+        BillingProfile.fields_changeset(
+          %BillingProfile{},
+          Map.put(@base, "postal_code", combining)
+        )
+
+      assert %{postal_code: [_]} = errors_on(cs)
+    end
+
+    test "a combining-accent name is truncated to the column's code points" do
+      user = fixture_user()
+      first = String.duplicate("e\u0301", 200)
+      attrs = Map.merge(@base, %{"first_name" => String.duplicate("a", 100), "last_name" => "b"})
+
+      cs =
+        BillingProfile.fields_changeset(
+          %BillingProfile{},
+          Map.put(attrs, "first_name", first <> "x")
+        )
+
+      name = get_change(cs, :name)
+      assert length(String.codepoints(name)) <= 255
+
+      assert {:ok, _} =
+               PhoenixKitBilling.create_billing_profile(
+                 user.uuid,
+                 Map.merge(@base, %{
+                   "first_name" => String.duplicate("e\u0301", 120),
+                   "last_name" => "b"
+                 })
+               )
+    end
+
     test "an over-long value is an error from the context, not a database exception" do
       user = fixture_user()
       attrs = Map.put(@base, "postal_code", String.duplicate("1", 21))
