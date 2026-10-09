@@ -1033,11 +1033,10 @@ msgstr "Реквізити компанії та банку"
 msgid "Company Information"
 msgstr "Реквізити компанії"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:261
 #, elixir-autogen, elixir-format
-msgid "Company Name *"
-msgstr "Назва компанії *"
+msgid "Company Name"
+msgstr "Назва компанії"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:194
 #, elixir-autogen, elixir-format
@@ -1111,11 +1110,6 @@ msgstr "Скопіювати секрет підпису вебхука"
 #, elixir-autogen, elixir-format
 msgid "Country"
 msgstr "Країна"
-
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
-#, elixir-autogen, elixir-format
-msgid "Country *"
-msgstr "Країна *"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
@@ -1595,11 +1589,10 @@ msgstr "Не вдалося оновити підписку: %{reason}"
 msgid "Features"
 msgstr "Можливості"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:195
 #, elixir-autogen, elixir-format
-msgid "First Name *"
-msgstr "Ім'я *"
+msgid "First Name"
+msgstr "Ім'я"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
 #, elixir-autogen, elixir-format
@@ -1806,11 +1799,10 @@ msgstr "Key ID"
 msgid "Key Secret"
 msgstr "Key Secret"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:211
 #, elixir-autogen, elixir-format
-msgid "Last Name *"
-msgstr "Прізвище *"
+msgid "Last Name"
+msgstr "Прізвище"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
@@ -2776,6 +2768,11 @@ msgstr "Почати з пробного періоду"
 msgid "Started"
 msgstr "Розпочато"
 
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:380
+#, elixir-autogen, elixir-format
+msgid "State / Region"
+msgstr "Область / регіон"
+
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
@@ -3209,15 +3206,30 @@ msgstr "Так"
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr "напр., 3 місяці = інтервал «month», кількість 3"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:425
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr "напр., Домашня адреса, Робота"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
 #, elixir-autogen, elixir-format
-msgid "e.g., Home Address, Work, Company HQ"
-msgstr "напр., Домашня адреса, Робота, Головний офіс компанії"
+msgid "is required for companies"
+msgstr "обов'язково для компаній"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
+#, elixir-autogen, elixir-format
+msgid "is required for individuals"
+msgstr "обов'язково для фізичних осіб"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
+#, elixir-autogen, elixir-format
+msgid "must be a valid EU VAT number (e.g., %{example})"
+msgstr "має бути дійсним номером ПДВ ЄС (напр., %{example})"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
+msgstr "має бути дійсною адресою email"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format
