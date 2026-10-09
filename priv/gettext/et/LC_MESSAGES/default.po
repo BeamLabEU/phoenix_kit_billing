@@ -1032,11 +1032,10 @@ msgstr "Ettevõtte ja panga andmed"
 msgid "Company Information"
 msgstr "Ettevõtte andmed"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:261
 #, elixir-autogen, elixir-format
-msgid "Company Name *"
-msgstr "Ettevõtte nimi *"
+msgid "Company Name"
+msgstr "Ettevõtte nimi"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:194
 #, elixir-autogen, elixir-format
@@ -1110,11 +1109,6 @@ msgstr "Kopeeri veebikonksu allkirjastamise saladus"
 #, elixir-autogen, elixir-format
 msgid "Country"
 msgstr "Riik"
-
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
-#, elixir-autogen, elixir-format
-msgid "Country *"
-msgstr "Riik *"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
@@ -1594,11 +1588,10 @@ msgstr "Püsitellimuse uuendamine ebaõnnestus: %{reason}"
 msgid "Features"
 msgstr "Funktsioonid"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:195
 #, elixir-autogen, elixir-format
-msgid "First Name *"
-msgstr "Eesnimi *"
+msgid "First Name"
+msgstr "Eesnimi"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
 #, elixir-autogen, elixir-format
@@ -1805,11 +1798,10 @@ msgstr "Võtme ID"
 msgid "Key Secret"
 msgstr "Võtme saladus"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:211
 #, elixir-autogen, elixir-format
-msgid "Last Name *"
-msgstr "Perekonnanimi *"
+msgid "Last Name"
+msgstr "Perekonnanimi"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
@@ -2775,6 +2767,11 @@ msgstr "Alusta prooviperioodiga"
 msgid "Started"
 msgstr "Alustatud"
 
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:380
+#, elixir-autogen, elixir-format
+msgid "State / Region"
+msgstr "Osariik / piirkond"
+
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
@@ -3208,15 +3205,10 @@ msgstr "Jah"
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr "nt 3 kuud = intervall \"kuu\", kogus 3"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:425
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr "nt Koduaadress, Töökoht"
-
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
-#, elixir-autogen, elixir-format
-msgid "e.g., Home Address, Work, Company HQ"
-msgstr "nt Koduaadress, Töökoht, Ettevõtte peakontor"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format

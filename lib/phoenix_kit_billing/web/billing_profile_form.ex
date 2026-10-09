@@ -8,11 +8,8 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.Web.Authz
-  import PhoenixKitWeb.Components.Core.Checkbox
   import PhoenixKitWeb.Components.Core.Icon
-  import PhoenixKitWeb.Components.Core.Input
-  import PhoenixKitWeb.Components.Core.Select
-  import PhoenixKitWeb.Components.Core.Textarea
+  import PhoenixKitBilling.Web.Components.BillingProfileFields, only: [billing_profile_fields: 1]
 
   alias PhoenixKit.Settings
   alias PhoenixKit.Users.Auth

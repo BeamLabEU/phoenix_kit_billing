@@ -106,42 +106,91 @@ defmodule PhoenixKitBilling.BillingProfile do
     timestamps(type: :utc_datetime)
   end
 
+  @form_fields [
+    :type,
+    :name,
+    :first_name,
+    :last_name,
+    :middle_name,
+    :phone,
+    :email,
+    :company_name,
+    :company_vat_number,
+    :company_registration_number,
+    :company_legal_address,
+    :address_line1,
+    :address_line2,
+    :city,
+    :state,
+    :postal_code,
+    :country
+  ]
+
+  @address_required_fields [:address_line1, :city, :postal_code, :country]
+
+  @doc """
+  Field names a billing profile form submits — everything `fields_changeset/3`
+  casts. Use it to whitelist params in a caller that builds the form itself.
+
+  Excludes `:user_uuid`, `:is_default` and `:metadata`, which a caller sets
+  from its own context rather than from user input.
+  """
+  @spec form_fields() :: [atom()]
+  def form_fields, do: @form_fields
+
   @doc """
   Creates a changeset for billing profile creation and updates.
+
+  Applies the `fields_changeset/3` rules, then adds the owner (`:user_uuid`,
+  required), `:is_default` and `:metadata`.
   """
   def changeset(profile, attrs) do
     profile
-    |> cast(attrs, [
-      :user_uuid,
-      :type,
-      :is_default,
-      :name,
-      :first_name,
-      :last_name,
-      :middle_name,
-      :phone,
-      :email,
-      :company_name,
-      :company_vat_number,
-      :company_registration_number,
-      :company_legal_address,
-      :address_line1,
-      :address_line2,
-      :city,
-      :state,
-      :postal_code,
-      :country,
-      :metadata
-    ])
+    |> fields_changeset(attrs)
+    |> cast(attrs, [:user_uuid, :is_default, :metadata])
     |> validate_required([:user_uuid, :type])
+    # Named explicitly — see the note in `Invoice.changeset/2`.
+    |> foreign_key_constraint(:user_uuid, name: :fk_billing_profiles_user_uuid)
+  end
+
+  @doc """
+  Changeset over the user-facing form fields only (see `form_fields/0`).
+
+  Carries the same field rules as `changeset/2` — type, the fields each type
+  needs, country length, email format, EU VAT number, auto-generated display
+  name — but does not require or cast `:user_uuid` and does not cast
+  `:is_default`, so a form that has no persisted owner yet (a checkout) can
+  validate with it.
+
+  The profile argument comes first; to pass `opts` the profile must be passed
+  too, as in `fields_changeset(%BillingProfile{}, attrs, require_email: true)`.
+
+  ## Options
+
+    * `:require_email` - also require `:email` (default `false`)
+    * `:require_address` - also require `:address_line1`, `:city`,
+      `:postal_code` and `:country` (default `false`)
+  """
+  @spec fields_changeset(%__MODULE__{}, map(), keyword()) :: Ecto.Changeset.t()
+  def fields_changeset(profile \\ %__MODULE__{}, attrs, opts \\ []) do
+    profile
+    |> cast(attrs, @form_fields)
+    |> validate_required(required_by_opts(opts))
     |> validate_inclusion(:type, @valid_types)
     |> validate_length(:country, is: 2)
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email address")
     |> validate_type_specific_fields()
     |> validate_vat_number()
     |> maybe_set_display_name()
-    # Named explicitly — see the note in `Invoice.changeset/2`.
-    |> foreign_key_constraint(:user_uuid, name: :fk_billing_profiles_user_uuid)
+  end
+
+  defp required_by_opts(opts) do
+    email = if Keyword.get(opts, :require_email, false), do: [:email], else: []
+
+    address =
+      if Keyword.get(opts, :require_address, false), do: @address_required_fields, else: []
+
+    email ++ address
   end
 
   defp validate_type_specific_fields(changeset) do
