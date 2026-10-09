@@ -354,11 +354,19 @@ defmodule PhoenixKitBilling.EmailDefaults do
     "company_address" => "1 Example Street, 10001 Example City",
     "company_vat" => "XX123456789",
     "document_footer" => @sample_footer,
-    "document_footer_html" => PhoenixKitBilling.DocumentBranding.footer_html(@sample_footer),
     "user_name" => "Jane Doe",
     "user_email" => "jane.doe@example.com",
     "currency" => "EUR"
   }
+
+  # Built at run time, so editing DocumentBranding does not recompile this module.
+  defp sample_company do
+    Map.put(
+      @sample_company,
+      "document_footer_html",
+      PhoenixKitBilling.DocumentBranding.footer_html(@sample_footer)
+    )
+  end
 
   @doc """
   Sample variables for `name`: every placeholder its defaults use, with
@@ -366,7 +374,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   """
   @spec sample_variables(String.t()) :: map()
   def sample_variables("billing_invoice") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "invoice_number" => "INV-2026-0042",
       "invoice_date" => format_date(~D[2026-10-02]),
       "due_date" => format_date(~D[2026-10-16]),
@@ -385,7 +393,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_receipt") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "receipt_number" => "RCP-2026-0042",
       "invoice_number" => "INV-2026-0042",
       "payment_date" => format_date(~D[2026-10-05]),
@@ -401,7 +409,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_credit_note") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "credit_note_number" => "CN-2026-0007",
       "invoice_number" => "INV-2026-0042",
       "refund_date" => format_date(~D[2026-10-09]),
@@ -413,7 +421,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_payment_confirmation") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "confirmation_number" => "PMT-2026-0106",
       "invoice_number" => "INV-2026-0042",
       "payment_date" => format_date(~D[2026-10-05]),

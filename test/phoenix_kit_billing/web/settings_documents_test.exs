@@ -81,7 +81,8 @@ defmodule PhoenixKitBilling.Web.SettingsDocumentsTest do
         |> form("#billing-documents-form", %{"document_footer" => long})
         |> render_submit()
 
-      assert html =~ "1000"
+      assert html =~ "The footer text is too long: at most 1000 characters."
+      refute html =~ "Document settings saved"
       assert has_element?(view, "#billing-document-footer", String.trim(long))
       assert has_element?(view, "#billing-document-logo-remove")
       assert Settings.get_setting(DocumentBranding.footer_key()) == "Old footer"
