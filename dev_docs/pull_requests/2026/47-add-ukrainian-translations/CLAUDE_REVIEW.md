@@ -147,3 +147,66 @@ The four email bodies (Markdown and plain text) read like real Ukrainian busines
 що обрали нас», «Призначення: {{invoice_number}}» for the transfer reference, «Платник:» for "Bill To". The
 interval plurals («за %{count} день/дні/днів», «Кожні %{count} тижні») and «Пробний період: %{count} днів»
 are right, and so is the status vocabulary for orders, invoices and subscriptions.
+
+---
+
+## Round 2 (2026-10-09): head `eeb40b8`
+
+**Verdict: REQUEST CHANGES (one line).** Everything from round 1 is closed except "Void". There the round-1
+suggestion, which was mine, led to a regression: the invoice page's destructive *action* button now reads
+like a *status*. The fix is to revert that one `msgstr`; an optional one-line code change below makes the
+status filter right as well.
+
+### Verified
+
+- **Branch.** It is up to date with `main` (`a350afb`). The diff against `main` is the declared files plus
+  `dev_docs/pull_requests/2026/47-add-ukrainian-translations/CLAUDE_REVIEW.md` (the round-1 review).
+- **Literal `mix gettext.merge` output.** Re-running the merge on a copy reports "0 new, 0 removed, 675
+  unchanged" and produces a byte-identical file.
+- **Full checker re-run.** 675/675 entries, 0 errors. The language heuristics show no new hits.
+- **Tests.** `MIX_ENV=test PGDATABASE=pkbill_test_domovych_uk PGPOOL=10 mix test
+  test/phoenix_kit_billing/pot_drift_test.exs test/phoenix_kit_billing/email_defaults_test.exs` → 41 tests,
+  0 failures. `uk` is now included at `:168`, `:194`, `:285` and `:301`.
+- **Emails.** The receipt reads «Дякуємо за оплату. {{payment_date}} ми отримали … за рахунком
+  {{invoice_number}}.» The payment confirmation and the plain-text balance use «Усього сплачено». The
+  REFUND DETAILS block is re-padded to a common 21-column label width.
+
+### Round-1 findings
+
+| finding | status |
+|---|---|
+| IMPROVEMENT: `#,` flags stripped | **closed** |
+| IMPROVEMENT: "Account:" on the invoice bank block | **closed:** «Отримувач:» |
+| IMPROVEMENT: "Set Default" gender on billing profiles | **closed:** «Встановити за замовчуванням» for both msgids, and the two currency help texts quote it |
+| IMPROVEMENT: receipt email date | **closed** |
+| IMPROVEMENT: email tests skip `uk` | **closed** |
+| NITPICK tables | **applied:** «Номер ПДВ:», «Усього», «Неактивний», «розрахунковий період» throughout, «Ціни», «за проєктом», «Імпортувати валюти (%{count})», «Отриманий дохід», «Обмінний курс», «Внести оплату», «спробу продовження», noun-phrase subtitle, localised placeholders (Іван / Петренко / ТОВ «Приклад» / Київ / Київська обл.), console terms consistently in English (Client ID, Key ID, Callback URL, Webhook ID), `AGENTS.md:166` |
+| Consistency with core and ecommerce | **aligned:** "Pending" «Очікує», "Street address" «Вулиця, будинок», "Email Address" «Адреса email» |
+
+**The executor's disagreements, assessed:**
+- **Set Default, neutral:** this is what round 1 proposed. Agreed.
+- **«Реквізити компанії» kept:** justified. The section is the company and bank details printed on invoices,
+  which is exactly «реквізити»; core's general settings page keeps «Інформація про компанію».
+- **"Active" «Активна» untouched:** justified. The msgid is shared, and most uses label subscriptions
+  (feminine). Only the plan-form checkbox would want «Активний», and that needs a `pgettext` split upstream.
+
+### IMPROVEMENT - MEDIUM: "Void" → «Анульовано» now labels the action button too
+
+`default.po:3165`. `gettext("Void")` is both the destructive action button on the invoice page
+(`web/invoice_detail.html.heex:88`, red outline, x-mark icon, confirm «Ви впевнені, що хочете анулювати
+цей рахунок?») and a status filter option (`web/invoices.html.heex:84`). With «Анульовано», an admin
+looking at a live invoice sees a red «Анульовано» next to «Надіслати рахунок» / «Друк», which reads as "this
+invoice is void". On a financial document that is worse than a verb in a filter list. `ru` («Аннулировать»)
+and `et` («Tühista arve») both translate the action.
+
+**Fix:**
+1. Revert: `Void` → «Анулювати».
+2. Optional, one line, recommended: in `web/invoices.html.heex:84` use the existing `gettext("Voided")`
+   (`default.pot:3169`, already translated: ru «Аннулирован», et «Tühistatud», uk «Анульовано»), then
+   re-run `mix gettext.extract --merge`. Every locale gets a correct status filter, with no new msgid to
+   translate.
+
+### NITPICK: the dashboard stat "Pending" now reads «Очікує» above an amount
+
+`web/index.html.heex:64` shows `gettext("Pending")` over the pending revenue figure. «Очікує» reads
+acceptably there, and the msgid is shared with the order status, where «Очікує» is right. Leave it.
