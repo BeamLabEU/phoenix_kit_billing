@@ -38,17 +38,17 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
   # The same for the Markdown body, which builds the HTML version.
   @markdown_placeholders %{
     "billing_invoice" =>
-      ~w(bank_iban bank_name bank_swift company_address company_name company_vat document_footer currency
+      ~w(bank_iban bank_name bank_swift company_address company_name company_vat document_footer_html currency
          due_date invoice_date invoice_number invoice_url line_items_table_html payment_terms
          subtotal tax_amount total user_name),
     "billing_receipt" =>
-      ~w(company_address company_name company_vat document_footer currency invoice_number line_items_table_html
+      ~w(company_address company_name company_vat document_footer_html currency invoice_number line_items_table_html
          paid_amount payment_date receipt_number receipt_url subtotal tax_amount user_name),
     "billing_credit_note" =>
-      ~w(company_address company_name company_vat document_footer credit_note_number credit_note_url currency
+      ~w(company_address company_name company_vat document_footer_html credit_note_number credit_note_url currency
          invoice_number refund_amount refund_date refund_reason transaction_number user_name),
     "billing_payment_confirmation" =>
-      ~w(company_address company_name company_vat document_footer confirmation_number currency invoice_number
+      ~w(company_address company_name company_vat document_footer_html confirmation_number currency invoice_number
          invoice_total payment_amount payment_date payment_method payment_url remaining_balance
          total_paid transaction_number user_name)
   }
@@ -266,18 +266,19 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
         refute no_vat.text =~ "{{company_vat}}"
 
         assert no_vat.markdown =~
-                 ~r/---\n\n\{\{company_name\}\}\\\n\{\{company_address\}\}\n\n\{\{document_footer\}\}\z/
+                 ~r/---\n\n\{\{company_name\}\}\\\n\{\{company_address\}\}\n\n\{\{\{document_footer_html\}\}\}\z/
 
         none =
           Map.merge(full(name), %{
             "company_name" => "",
             "company_address" => nil,
-            "document_footer" => " "
+            "document_footer" => " ",
+            "document_footer_html" => ""
           })
           |> Map.delete("company_vat")
 
         markdown = EmailDefaults.defaults_for(name, none).().markdown
-        refute markdown =~ "{{document_footer}}"
+        refute markdown =~ "document_footer"
         refute EmailDefaults.defaults_for(name, none).().text =~ "{{document_footer}}"
         refute markdown =~ "{{company_address}}"
         refute markdown =~ "{{company_vat}}"

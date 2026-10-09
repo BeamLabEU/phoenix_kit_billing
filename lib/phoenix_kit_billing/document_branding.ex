@@ -35,6 +35,9 @@ defmodule PhoenixKitBilling.DocumentBranding do
   # type — an SVG has no resized sizes at all.
   @logo_variant "original"
 
+  # The footer text in an email; an email has no stylesheet.
+  @footer_style "margin:0 0 16px;color:#52525b;font-size:13px;line-height:1.5;"
+
   # Types every mail client shows. Not SVG, not WebP (Outlook for Windows).
   @email_image_types ~w(image/png image/jpeg image/gif)
 
@@ -79,7 +82,10 @@ defmodule PhoenixKitBilling.DocumentBranding do
   @doc """
   The branding variables for a financial email:
 
-    * `"document_footer"` — `footer_text/0`, always present (`""` when unset).
+    * `"document_footer"` — `footer_text/0`, always present (`""` when unset),
+      for the plain-text body.
+    * `"document_footer_html"` — the same text as one escaped, inline-styled
+      paragraph with its line breaks kept, for the HTML body (`""` when unset).
     * `"logo_url"` — an absolute URL of the **billing** logo, only when one
       is set and it is an image every mail client shows (PNG, JPEG or GIF)
       outside a private library. Left out otherwise, so core's layout keeps
@@ -88,12 +94,27 @@ defmodule PhoenixKitBilling.DocumentBranding do
   """
   @spec email_variables() :: %{String.t() => String.t()}
   def email_variables do
-    variables = %{"document_footer" => footer_text()}
+    footer = footer_text()
+    variables = %{"document_footer" => footer, "document_footer_html" => footer_html(footer)}
 
     case email_logo_url() do
       nil -> variables
       url -> Map.put(variables, "logo_url", url)
     end
+  end
+
+  defp footer_html(""), do: ""
+
+  defp footer_html(text) do
+    lines =
+      text
+      |> String.split(~r/\R/u)
+      |> Enum.map_join(
+        "<br>",
+        &(&1 |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string())
+      )
+
+    ~s(<p style="#{@footer_style}">) <> lines <> "</p>"
   end
 
   defp email_logo_url do

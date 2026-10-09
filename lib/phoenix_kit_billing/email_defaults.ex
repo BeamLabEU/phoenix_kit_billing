@@ -352,6 +352,9 @@ defmodule PhoenixKitBilling.EmailDefaults do
     "company_address" => "1 Example Street, 10001 Example City",
     "company_vat" => "XX123456789",
     "document_footer" => "Acme — tools for every home. Prices include VAT.",
+    "document_footer_html" =>
+      ~s(<p style="margin:0 0 16px;color:#52525b;font-size:13px;line-height:1.5;">) <>
+        "Acme — tools for every home. Prices include VAT.</p>",
     "user_name" => "Jane Doe",
     "user_email" => "jane.doe@example.com",
     "currency" => "EUR"
@@ -549,13 +552,19 @@ defmodule PhoenixKitBilling.EmailDefaults do
   # with a trailing `\`, a Markdown line break; a blank one is left out. The
   # text about the company set for billing documents follows as a paragraph.
   defp company_footer(present) do
-    case join([company_lines(present, "\\\n"), document_footer(present)]) do
+    case join([company_lines(present, "\\\n"), document_footer(present, :markdown)]) do
       "" -> nil
       footer -> "---\n\n" <> footer
     end
   end
 
-  defp document_footer(present) do
+  # The HTML body places the footer text as a ready-made paragraph, so its
+  # line breaks survive; the text body places it as written.
+  defp document_footer(present, :markdown) do
+    if has?(present, "document_footer_html"), do: "{{{document_footer_html}}}"
+  end
+
+  defp document_footer(present, :text) do
     if has?(present, "document_footer"), do: "{{document_footer}}"
   end
 
@@ -791,7 +800,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   defp text_company_footer(present) do
-    case join([company_lines(present, "\n"), document_footer(present)]) do
+    case join([company_lines(present, "\n"), document_footer(present, :text)]) do
       "" ->
         nil
 

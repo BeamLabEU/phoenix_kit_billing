@@ -87,6 +87,18 @@ defmodule PhoenixKitBilling.Integration.DocumentBrandingTest do
       assert variables["logo_url"] =~ ~r{\Ahttps?://[^/]+/.*file/#{file.uuid}/original/}
     end
 
+    test "carries the footer text as escaped HTML with its line breaks, for the HTML body" do
+      Settings.update_setting(
+        DocumentBranding.footer_key(),
+        "«Acme» <tools>\r\nПобутова хімія.\nPrices are final."
+      )
+
+      html = DocumentBranding.email_variables()["document_footer_html"]
+
+      assert html =~ "«Acme» &lt;tools&gt;<br>Побутова хімія.<br>Prices are final.</p>"
+      assert html =~ ~r/\A<p style="[^"]+">/
+    end
+
     test "leaves logo_url out for an image an email client may not show" do
       file = insert_file!(%{mime_type: "image/svg+xml", ext: "svg", file_name: "logo.svg"})
       Settings.update_setting(DocumentBranding.logo_key(), file.uuid)
@@ -102,6 +114,7 @@ defmodule PhoenixKitBilling.Integration.DocumentBrandingTest do
 
       refute Map.has_key?(variables, "logo_url")
       assert variables["document_footer"] == ""
+      assert variables["document_footer_html"] == ""
     end
   end
 end
