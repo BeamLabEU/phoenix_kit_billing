@@ -3210,6 +3210,26 @@ msgstr "nt 3 kuud = intervall \"kuu\", kogus 3"
 msgid "e.g., Home Address, Work"
 msgstr "nt Koduaadress, Töökoht"
 
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
+#, elixir-autogen, elixir-format
+msgid "is required for companies"
+msgstr "on ettevõtetele kohustuslik"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
+#, elixir-autogen, elixir-format
+msgid "is required for individuals"
+msgstr "on eraisikutele kohustuslik"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
+#, elixir-autogen, elixir-format
+msgid "must be a valid EU VAT number (e.g., %{example})"
+msgstr "peab olema kehtiv ELi käibemaksukohustuslase number (nt %{example})"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
+msgstr "peab olema kehtiv e-posti aadress"
+
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format
 msgid "per %{count} days"

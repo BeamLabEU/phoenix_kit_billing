@@ -3210,6 +3210,26 @@ msgstr ""
 msgid "e.g., Home Address, Work"
 msgstr ""
 
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
+#, elixir-autogen, elixir-format
+msgid "is required for companies"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
+#, elixir-autogen, elixir-format
+msgid "is required for individuals"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
+#, elixir-autogen, elixir-format
+msgid "must be a valid EU VAT number (e.g., %{example})"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
+msgstr ""
+
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format
 msgid "per %{count} days"

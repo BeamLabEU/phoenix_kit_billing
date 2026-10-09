@@ -322,6 +322,100 @@ defmodule PhoenixKitBilling.Schemas.BillingProfileTest do
     end
   end
 
+  describe "length limits" do
+    @limits [
+      name: 255,
+      first_name: 255,
+      last_name: 255,
+      middle_name: 255,
+      phone: 255,
+      email: 255,
+      company_name: 255,
+      company_vat_number: 20,
+      company_registration_number: 30,
+      address_line1: 255,
+      address_line2: 255,
+      city: 255,
+      state: 255,
+      postal_code: 20
+    ]
+
+    # Outside the EU, so the VAT field is not format-checked and a 20-char value is valid.
+    @base %{
+      "type" => "individual",
+      "first_name" => "John",
+      "last_name" => "Doe",
+      "country" => "US"
+    }
+
+    defp long(field, size) do
+      case field do
+        :email -> String.duplicate("a", size - 4) <> "@b.c"
+        _ -> String.duplicate("x", size)
+      end
+    end
+
+    for {field, max} <- @limits do
+      test "#{field} accepts #{max} characters and rejects #{max + 1}" do
+        field = unquote(field)
+        max = unquote(max)
+
+        ok =
+          BillingProfile.fields_changeset(
+            %BillingProfile{},
+            Map.put(@base, to_string(field), long(field, max))
+          )
+
+        assert ok.valid?, inspect(errors_on(ok))
+
+        bad =
+          BillingProfile.fields_changeset(
+            %BillingProfile{},
+            Map.put(@base, to_string(field), long(field, max + 1))
+          )
+
+        assert %{^field => [message]} = errors_on(bad)
+        assert message =~ "at most #{max} character"
+      end
+    end
+
+    test "the legal address is unbounded (text column)" do
+      attrs = %{
+        "type" => "company",
+        "company_name" => "Acme",
+        "company_legal_address" => String.duplicate("x", 5000)
+      }
+
+      assert BillingProfile.fields_changeset(%BillingProfile{}, attrs).valid?
+    end
+
+    test "an auto-generated name is cut to the column size" do
+      attrs = Map.merge(@base, %{"first_name" => String.duplicate("a", 255), "last_name" => "b"})
+      cs = BillingProfile.fields_changeset(%BillingProfile{}, attrs)
+
+      assert cs.valid?
+      assert String.length(get_change(cs, :name)) == 255
+    end
+
+    test "changeset/2 shares the limits" do
+      attrs =
+        Map.merge(@base, %{
+          "postal_code" => String.duplicate("1", 21),
+          "user_uuid" => Ecto.UUID.generate()
+        })
+
+      assert %{postal_code: [_]} = errors_on(BillingProfile.changeset(%BillingProfile{}, attrs))
+    end
+
+    test "an over-long value is an error from the context, not a database exception" do
+      user = fixture_user()
+      attrs = Map.put(@base, "postal_code", String.duplicate("1", 21))
+
+      assert {:error, %Ecto.Changeset{}} =
+               PhoenixKitBilling.create_billing_profile(user.uuid, attrs)
+    end
+  end
+
   describe "form_fields/0" do
     test "lists the fields fields_changeset/3 casts" do
       fields = BillingProfile.form_fields()

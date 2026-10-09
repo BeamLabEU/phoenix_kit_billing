@@ -56,6 +56,7 @@ defmodule PhoenixKitBilling.BillingProfile do
 
   use Ecto.Schema
   use PhoenixKit.SchemaPrefix
+  use Gettext, backend: PhoenixKitBilling.Gettext
   import Ecto.Changeset
   import Ecto.Query, warn: false
 
@@ -126,6 +127,25 @@ defmodule PhoenixKitBilling.BillingProfile do
     :country
   ]
 
+  # Mirrors the varchar sizes of `phoenix_kit_billing_profiles`, so over-long
+  # input is a changeset error rather than a Postgrex exception.
+  @max_lengths [
+    name: 255,
+    first_name: 255,
+    last_name: 255,
+    middle_name: 255,
+    phone: 255,
+    email: 255,
+    company_name: 255,
+    company_vat_number: 20,
+    company_registration_number: 30,
+    address_line1: 255,
+    address_line2: 255,
+    city: 255,
+    state: 255,
+    postal_code: 20
+  ]
+
   @address_required_fields [:address_line1, :city, :postal_code, :country]
 
   @doc """
@@ -181,7 +201,10 @@ defmodule PhoenixKitBilling.BillingProfile do
     |> validate_required(required_by_opts(opts))
     |> validate_inclusion(:type, @valid_types)
     |> validate_length(:country, is: 2)
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email address")
+    |> validate_max_lengths()
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/,
+      message: gettext("must be a valid email address")
+    )
     |> validate_type_specific_fields()
     |> validate_vat_number()
     |> maybe_set_display_name()
@@ -201,6 +224,12 @@ defmodule PhoenixKitBilling.BillingProfile do
 
   defp blank_country_to_nil(changeset, false, _attrs), do: changeset
 
+  defp validate_max_lengths(changeset) do
+    Enum.reduce(@max_lengths, changeset, fn {field, max}, acc ->
+      validate_length(acc, field, max: max)
+    end)
+  end
+
   defp required_by_opts(opts) do
     email = if Keyword.get(opts, :require_email, false), do: [:email], else: []
 
@@ -216,11 +245,13 @@ defmodule PhoenixKitBilling.BillingProfile do
     case type do
       "individual" ->
         changeset
-        |> validate_required([:first_name, :last_name], message: "is required for individuals")
+        |> validate_required([:first_name, :last_name],
+          message: gettext("is required for individuals")
+        )
 
       "company" ->
         changeset
-        |> validate_required([:company_name], message: "is required for companies")
+        |> validate_required([:company_name], message: gettext("is required for companies"))
 
       _ ->
         changeset
@@ -243,7 +274,9 @@ defmodule PhoenixKitBilling.BillingProfile do
           add_error(
             changeset,
             :company_vat_number,
-            "must be a valid EU VAT number (e.g., #{country}123456789)"
+            gettext("must be a valid EU VAT number (e.g., %{example})",
+              example: "#{country}123456789"
+            )
           )
         end
 
@@ -271,6 +304,9 @@ defmodule PhoenixKitBilling.BillingProfile do
           _ ->
             ""
         end
+
+      # first + last name can exceed the column on their own.
+      name = String.slice(name, 0, Keyword.fetch!(@max_lengths, :name))
 
       if name != "" do
         put_change(changeset, :name, name)

@@ -267,6 +267,77 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFieldsTest do
     end
   end
 
+  describe "locale" do
+    setup do
+      original = Gettext.get_locale(PhoenixKitBilling.Gettext)
+      on_exit(fn -> Gettext.put_locale(PhoenixKitBilling.Gettext, original) end)
+    end
+
+    defp label_text(doc, field),
+      do: doc |> LazyHTML.query("label[for='billing-profile-#{field}']") |> LazyHTML.text()
+
+    test "labels follow the locale set on PhoenixKitBilling.Gettext" do
+      for {locale, first, address} <- [
+            {"de", "Vorname", "Adresszeile 1"},
+            {"fr", "Prénom", "Adresse, ligne 1"},
+            {"et", "Eesnimi", "Aadressirida 1"},
+            {"en", "First Name", "Address Line 1"}
+          ] do
+        Gettext.put_locale(PhoenixKitBilling.Gettext, locale)
+        doc = render_fields()
+
+        assert label_text(doc, "first_name") =~ first, locale
+        assert label_text(doc, "address_line1") =~ address, locale
+      end
+    end
+
+    test "validation messages follow the locale" do
+      Gettext.put_locale(PhoenixKitBilling.Gettext, "de")
+
+      assert %{first_name: ["ist für Privatpersonen erforderlich"]} =
+               %BillingProfile{}
+               |> BillingProfile.fields_changeset(%{})
+               |> Ecto.Changeset.traverse_errors(fn {msg, _} -> msg end)
+
+      Gettext.put_locale(PhoenixKitBilling.Gettext, "fr")
+
+      assert %{email: ["doit être une adresse e-mail valide"]} =
+               %BillingProfile{}
+               |> BillingProfile.fields_changeset(%{"type" => "company", "email" => "x y"})
+               |> Ecto.Changeset.traverse_errors(fn {msg, _} -> msg end)
+    end
+  end
+
+  describe "catalogues" do
+    @sources [
+      "lib/phoenix_kit_billing/web/components/billing_profile_fields.ex",
+      "lib/phoenix_kit_billing/schemas/billing_profile.ex"
+    ]
+
+    defp source_msgids do
+      for path <- @sources,
+          [_, id] <- Regex.scan(~r/gettext\(\s*"((?:[^"\\]|\\.)*)"/, File.read!(path)),
+          uniq: true,
+          do: id
+    end
+
+    for locale <- ~w(de fr et ru) do
+      test "#{locale} translates every string the shared form uses" do
+        path = "priv/gettext/#{unquote(locale)}/LC_MESSAGES/default.po"
+        %Expo.Messages{messages: messages} = Expo.PO.parse_file!(path)
+
+        translated =
+          for %Expo.Message.Singular{msgid: id, msgstr: str} <- messages,
+              IO.iodata_to_binary(str) != "",
+              into: MapSet.new(),
+              do: IO.iodata_to_binary(id)
+
+        missing = Enum.reject(source_msgids(), &MapSet.member?(translated, &1))
+        assert missing == [], "#{unquote(locale)} lacks: #{inspect(missing)}"
+      end
+    end
+  end
+
   describe "inner_block" do
     test "renders after the fields" do
       assigns = %{form: profile_form(), countries: @countries}

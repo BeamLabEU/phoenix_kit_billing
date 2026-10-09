@@ -13,6 +13,19 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
   `PhoenixKitBilling.BillingProfile.fields_changeset/3` and
   `PhoenixKitBilling.BillingProfile.form_fields/0` on the server side.
 
+  ## Locale
+
+  Labels, hints and the validation messages of `BillingProfile` are looked up on
+  the module's own backend, `PhoenixKitBilling.Gettext` — not the host's. A
+  caller outside billing's own LiveViews must put the request locale there
+  before it renders or validates, e.g.
+  `Gettext.put_locale(PhoenixKitBilling.Gettext, locale)` in `mount/3`
+  (the locale is per process; `Gettext.with_locale/3` scopes it to a function).
+  Catalogues ship for `en`, `et`, `ru`, `de` and `fr`; the `de` and `fr`
+  catalogues translate the fields shown here, other strings fall back to English.
+  Core's own error messages ("can't be blank", length limits) follow the locale
+  of core's backend.
+
   ## Example
 
       <.form for={@form} phx-change="validate" phx-submit="save">
