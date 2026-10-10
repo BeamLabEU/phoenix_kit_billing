@@ -165,7 +165,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
     # The catalogues once carried them without it, so the text version of
     # every billing email reached et and ru readers in English. Every part
     # of every email must come back translated.
-    for locale <- ~w(et ru) do
+    for locale <- ~w(et ru uk) do
       test "every part of every email is translated into #{locale}" do
         for name <- EmailDefaults.template_names() do
           english = EmailDefaults.for_template(name)
@@ -191,7 +191,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
     test "the preview's labels and descriptions are translated" do
       english = EmailDefaults.catalog_entries()
 
-      for locale <- ~w(et ru) do
+      for locale <- ~w(et ru uk) do
         translated =
           Gettext.with_locale(PhoenixKitBilling.Gettext, locale, &EmailDefaults.catalog_entries/0)
 
@@ -282,7 +282,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
       variables =
         Map.merge(full("billing_invoice"), %{"bank_name" => " ", "bank_swift" => nil})
 
-      for locale <- ["en", "et", "ru"] do
+      for locale <- ["en", "et", "ru", "uk"] do
         content =
           Gettext.with_locale(PhoenixKitBilling.Gettext, locale, fn ->
             EmailDefaults.defaults_for("billing_invoice", variables).()
@@ -298,7 +298,7 @@ defmodule PhoenixKitBilling.EmailDefaultsTest do
     end
 
     test "missing optional values are omitted in every translation" do
-      for locale <- ["en", "et", "ru"], name <- EmailDefaults.template_names() do
+      for locale <- ["en", "et", "ru", "uk"], name <- EmailDefaults.template_names() do
         variables =
           full(name)
           |> Map.drop(["company_vat", "bank_iban", "bank_name", "bank_swift", "due_date"])

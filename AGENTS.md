@@ -94,7 +94,7 @@ alone.
   core's route wiring. Assigns available in admin pages:
   `@phoenix_kit_current_scope`, `@current_locale`, `@url_path`.
 - **Gettext:** own backend `PhoenixKitBilling.Gettext` over `priv/gettext`
-  (`en`, `et`, `ru`). `billing_tab!/1` injects `gettext_backend:` and
+  (`en`, `et`, `ru`, `uk`). `billing_tab!/1` injects `gettext_backend:` and
   `gettext_domain: "default"` into every `Tab.new!/1` call, so tab labels
   localize. `priv/gettext/default.pot` is **maintained by hand** — tab labels are
   plain strings inside `Tab.new!(label: ...)` and `mix gettext.extract` cannot
@@ -163,7 +163,7 @@ alone.
   `test/phoenix_kit_billing/web/listing_lvs_test.exs`). It is a core chain gap, not
   fixable from this repo — do not "fix" it here.
 - **Tab labels never reach the `.pot` automatically.** A new tab renders in raw
-  English under `ru`/`et` unless you add the msgid by hand; `pot_drift_test.exs`
+  English under `ru`/`et`/`uk` unless you add the msgid by hand; `pot_drift_test.exs`
   fails when you forget.
 - **Losing `css_sources/0` or a compat delegate is silent** — both are resolved
   with `function_exported?/3`, so the symptom is Tailwind purging billing classes
