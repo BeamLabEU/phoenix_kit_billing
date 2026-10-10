@@ -1969,12 +1969,17 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Gets the default billing profile for a user.
+
+  Saving keeps one default per user; should older data still hold several,
+  the most recently updated one is returned instead of raising.
   """
   def get_default_billing_profile(user_uuid) do
     user_uuid = extract_user_uuid(user_uuid)
 
     BillingProfile
     |> where([bp], bp.user_uuid == ^user_uuid and bp.is_default == true)
+    |> order_by([bp], desc: bp.updated_at, desc: bp.inserted_at)
+    |> limit(1)
     |> repo().one()
   end
 
@@ -2020,7 +2025,7 @@ defmodule PhoenixKitBilling do
         attrs
         |> Map.put("user_uuid", user_uuid)
       )
-      |> repo().insert()
+      |> save_keeping_one_default(&repo().insert(&1))
 
     # If this is the first profile, make it default
     case result do
@@ -2045,7 +2050,7 @@ defmodule PhoenixKitBilling do
     result =
       profile
       |> BillingProfile.changeset(attrs)
-      |> repo().update()
+      |> save_keeping_one_default(&repo().update(&1))
 
     case result do
       {:ok, updated_profile} ->
@@ -2088,6 +2093,32 @@ defmodule PhoenixKitBilling do
       |> BillingProfile.changeset(%{is_default: true})
       |> repo().update!()
     end)
+  end
+
+  # A user has one default profile: saving a profile that becomes the default
+  # clears the flag on the user's other profiles in the same transaction, as
+  # `set_default_billing_profile/1` does.
+  defp save_keeping_one_default(changeset, save) do
+    if Ecto.Changeset.get_change(changeset, :is_default) == true do
+      repo().transaction(fn ->
+        case save.(changeset) do
+          {:ok, profile} ->
+            clear_other_defaults(profile)
+            profile
+
+          {:error, changeset} ->
+            repo().rollback(changeset)
+        end
+      end)
+    else
+      save.(changeset)
+    end
+  end
+
+  defp clear_other_defaults(%BillingProfile{uuid: uuid, user_uuid: user_uuid}) do
+    BillingProfile
+    |> where([bp], bp.user_uuid == ^user_uuid and bp.is_default == true and bp.uuid != ^uuid)
+    |> repo().update_all(set: [is_default: false])
   end
 
   defp count_user_profiles(user_uuid) do

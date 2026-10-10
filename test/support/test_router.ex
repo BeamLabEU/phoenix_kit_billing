@@ -102,6 +102,11 @@ defmodule PhoenixKitBilling.Test.Router do
       live("/billing-profiles/:uuid/edit", UserBillingProfileForm, :edit,
         as: :billing_user_profile_edit
       )
+
+      # A host routing the page itself with `:id`.
+      live("/legacy-billing-profiles/:id/edit", UserBillingProfileForm, :edit,
+        as: :billing_user_profile_legacy_edit
+      )
     end
   end
 
