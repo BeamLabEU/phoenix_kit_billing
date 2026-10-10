@@ -245,6 +245,98 @@
       </div>
     </div>
 
+    <%!-- Printed documents: logo and footer text --%>
+    <div class="card bg-base-100 shadow-xl mt-6">
+      <div class="card-body">
+        <h2 class="card-title">{gettext("Printed Documents")}</h2>
+        <p class="text-sm text-base-content/60">
+          {gettext(
+            "On invoices, receipts, credit notes and payment confirmations, and in billing emails"
+          )}
+        </p>
+        <form
+          id="billing-documents-form"
+          phx-change="change_documents"
+          phx-submit="save_documents"
+          class="space-y-4 mt-4"
+        >
+          <div class="fieldset">
+            <span class="fieldset-legend">{gettext("Logo")}</span>
+            <%= if @document_logo_uuid != "" do %>
+              <div class="flex items-center gap-3 p-2 bg-base-200 rounded-lg w-fit">
+                <img
+                  src={DocumentBranding.file_url(@document_logo_uuid)}
+                  alt={gettext("Logo")}
+                  class="h-14 max-w-xs object-contain"
+                />
+                <button
+                  id="billing-document-logo-remove"
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  phx-click="clear_document_logo"
+                >
+                  {gettext("Remove")}
+                </button>
+              </div>
+            <% else %>
+              <button
+                id="billing-document-logo-select"
+                type="button"
+                class="btn btn-outline btn-sm w-fit"
+                phx-click="open_document_logo_selector"
+              >
+                {gettext("Select Image")}
+              </button>
+            <% end %>
+            <p class="fieldset-label">
+              {gettext(
+                "Use a version that reads on white. Without one, the project logo is used, then the company name."
+              )}
+            </p>
+          </div>
+
+          <div class="fieldset">
+            <label class="label" for="billing-document-footer">
+              <span class="fieldset-legend">{gettext("Footer Text")}</span>
+            </label>
+            <textarea
+              id="billing-document-footer"
+              name="document_footer"
+              rows="4"
+              maxlength={DocumentBranding.footer_max_length()}
+              class="textarea w-full"
+            >{@document_footer}</textarea>
+            <p class="fieldset-label">
+              {gettext(
+                "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters.",
+                max: DocumentBranding.footer_max_length()
+              )}
+            </p>
+          </div>
+
+          <div class="card-actions justify-end">
+            <button type="submit" class="btn btn-primary btn-sm">
+              {gettext("Save Document Settings")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <.live_component
+      :if={@show_media_selector}
+      module={PhoenixKitWeb.Live.Components.MediaSelectorModal}
+      id="billing-document-logo-selector"
+      show={@show_media_selector}
+      mode={:single}
+      file_type_filter={:image}
+      lock_file_type
+      title={gettext("Select Logo")}
+      selected_uuids={[]}
+      phoenix_kit_current_user={assigns[:phoenix_kit_current_user]}
+      scope_folder_id={@branding_scope_folder}
+    />
+
     <%!-- Quick Links --%>
     <div class="card bg-base-100 shadow-xl mt-6">
       <div class="card-body">

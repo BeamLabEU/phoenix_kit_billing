@@ -54,6 +54,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKit.Utils.UUID, as: UUIDUtils
   alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Currency
+  alias PhoenixKitBilling.DocumentBranding
   alias PhoenixKitBilling.EmailDefaults
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Invoice
@@ -3159,7 +3160,7 @@ defmodule PhoenixKitBilling do
     prefix = Settings.get_setting("billing_credit_note_prefix", "CN")
     suffix = transaction.transaction_number |> String.replace(~r/^TXN-/, "")
     credit_note_number = "#{prefix}-#{suffix}"
-    company = get_company_details()
+    company = get_company_details(user)
 
     %{
       "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
@@ -3176,6 +3177,7 @@ defmodule PhoenixKitBilling do
       "company_vat" => company.vat,
       "credit_note_url" => credit_note_url
     }
+    |> Map.merge(DocumentBranding.email_variables())
   end
 
   @doc """
@@ -3299,7 +3301,7 @@ defmodule PhoenixKitBilling do
     prefix = Settings.get_setting("billing_payment_confirmation_prefix", "PMT")
     suffix = transaction.transaction_number |> String.replace(~r/^TXN-/, "")
     confirmation_number = "#{prefix}-#{suffix}"
-    company = get_company_details()
+    company = get_company_details(user)
 
     # Calculate remaining balance
     remaining_balance = Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
@@ -3324,6 +3326,7 @@ defmodule PhoenixKitBilling do
       "company_vat" => company.vat,
       "payment_url" => payment_url
     }
+    |> Map.merge(DocumentBranding.email_variables())
   end
 
   @doc false
@@ -3344,7 +3347,7 @@ defmodule PhoenixKitBilling do
   @spec email_send_opts(String.t(), map(), map() | nil, map()) :: keyword()
   def email_send_opts(template, variables, user, metadata) do
     locale = RecipientLocale.for_rendering(user)
-    base_locale = locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
+    base_locale = base_locale(locale)
     defaults = EmailDefaults.defaults_for(template, variables)
 
     localized_defaults =
@@ -3360,6 +3363,14 @@ defmodule PhoenixKitBilling do
       layout: EmailDefaults.layout_group()
     ]
   end
+
+  defp recipient_base_locale(user), do: user |> RecipientLocale.for_rendering() |> base_locale()
+
+  @doc false
+  # A locale's base language code: "uk" for "uk-UA", "en" for "en_GB". The
+  # catalogues and country names are keyed by it.
+  @spec base_locale(String.t()) :: String.t()
+  def base_locale(locale), do: locale |> String.split(["-", "_"]) |> hd() |> String.downcase()
 
   # Sends email via PhoenixKit.Modules.Emails.Templates if available, carrying
   # this package's own default content so the send survives that package's
@@ -3464,7 +3475,7 @@ defmodule PhoenixKitBilling do
   def build_receipt_email_variables(invoice, user, opts) do
     receipt_url = Keyword.get(opts, :receipt_url, "")
     billing_details = invoice.billing_details || %{}
-    company = get_company_details()
+    company = get_company_details(user)
 
     %{
       "user_email" => (user && user.email) || Invoice.payer_email(invoice.billing_details),
@@ -3486,6 +3497,7 @@ defmodule PhoenixKitBilling do
       "company_vat" => company.vat,
       "receipt_url" => receipt_url
     }
+    |> Map.merge(DocumentBranding.email_variables())
   end
 
   defp ensure_preloaded(%{__struct__: _} = struct, preloads) do
@@ -3504,7 +3516,7 @@ defmodule PhoenixKitBilling do
     invoice_url = Keyword.get(opts, :invoice_url, "")
     invoice_bank = invoice.bank_details || %{}
     billing_details = invoice.billing_details || %{}
-    company = get_company_details()
+    company = get_company_details(user)
     bank = Organization.get_bank_details()
 
     %{
@@ -3532,6 +3544,7 @@ defmodule PhoenixKitBilling do
           Settings.get_setting("billing_payment_terms", "Payment due within 14 days."),
       "invoice_url" => invoice_url
     }
+    |> Map.merge(DocumentBranding.email_variables())
   end
 
   defp extract_user_name(%{"company_name" => name}, _user) when is_binary(name) and name != "",
@@ -5106,45 +5119,100 @@ defmodule PhoenixKitBilling do
     Settings.get_setting("billing_payment_terms", "Payment due within 14 days of invoice date.")
   end
 
-  # Returns company details for email templates using consolidated Settings
-  defp get_company_details do
+  # Returns company details for email templates using consolidated Settings.
+  # The address names its country, so it is formatted in the language the
+  # email goes out in, not the sender's.
+  defp get_company_details(user) do
     company = Organization.get_company_info()
+
+    address =
+      Gettext.with_locale(PhoenixKitBilling.Gettext, recipient_base_locale(user), fn ->
+        format_company_address(company)
+      end)
 
     %{
       name: company["name"] || "",
-      address: format_company_address(company),
+      address: address,
       vat: company["vat_number"] || ""
     }
   end
 
-  @doc """
-  Formats company address from a `company_info` map for document printing.
+  # Countries whose addresses read postal code first, then the region, the
+  # locality and the street, on one line: "36007, Полтавська обл., м. Полтава,
+  # вул. ...". The country follows on a line of its own.
+  @postal_first_countries ~w(BY KZ RU UA)
 
-  The map is required (callers pass the result of
-  `Organization.get_company_info/0`), keeping this function pure.
+  @doc """
+  Formats an address for a printed document or an email: a `company_info`
+  map (`Organization.get_company_info/0`), or a billing-details snapshot —
+  both carry `address_line1`, `address_line2`, `city`, `state`,
+  `postal_code` and `country` (an ISO code).
+
+  Lines are joined with `"\\n"` and blank parts left out. Most countries read
+  street first:
+
+      Narva mnt 5
+      Tallinn 10117
+      Estonia
+
+  Ukraine, Russia, Belarus and Kazakhstan put the postal code, region,
+  locality and street on one line:
+
+      36007, Полтавська обл., м. Полтава, вул. Петра Юрченка, 19
+      Україна
+
+  The country is named in the current locale of this module's Gettext
+  backend, falling back to its English name, then to the code itself.
   """
   def format_company_address(company_info) when is_map(company_info) do
-    country_name =
-      case CountryData.get_country_name(company_info["country"] || "") do
-        nil -> company_info["country"] || ""
-        name -> name
+    country = company_info["country"] || ""
+
+    lines =
+      if String.upcase(country) in @postal_first_countries do
+        [
+          join_present(
+            [
+              company_info["postal_code"],
+              company_info["state"],
+              company_info["city"],
+              company_info["address_line1"],
+              company_info["address_line2"]
+            ],
+            ", "
+          )
+        ]
+      else
+        [
+          company_info["address_line1"],
+          company_info["address_line2"],
+          join_present([company_info["city"], company_info["postal_code"]], " "),
+          company_info["state"]
+        ]
       end
 
-    city_postal =
-      [company_info["city"], company_info["postal_code"]]
-      |> Enum.filter(&(&1 && &1 != ""))
-      |> Enum.join(" ")
-      |> String.trim()
+    join_present(lines ++ [country_display_name(country)], "\n")
+  end
 
-    [
-      company_info["address_line1"],
-      company_info["address_line2"],
-      city_postal,
-      company_info["state"],
-      country_name
-    ]
-    |> Enum.filter(&(&1 && &1 != ""))
-    |> Enum.join("\n")
+  defp join_present(parts, separator) do
+    parts
+    |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
+    |> Enum.map_join(separator, &String.trim/1)
+  end
+
+  defp country_display_name(""), do: ""
+
+  defp country_display_name(code) do
+    translated_country_name(code) || CountryData.get_country_name(code) || code
+  end
+
+  # `BeamLabCountries` arrives with core; its translations module only in
+  # its later releases, so an older one falls back to the English name.
+  defp translated_country_name(code) do
+    translations = BeamLabCountries.Translations
+
+    if Code.ensure_loaded?(translations) and function_exported?(translations, :get_name, 2) do
+      translations.get_name(code, base_locale(Gettext.get_locale(PhoenixKitBilling.Gettext)))
+    end
   end
 
   @doc """
@@ -5162,6 +5230,7 @@ defmodule PhoenixKitBilling do
       name: company["name"] || "",
       address: format_company_address(company),
       vat: company["vat_number"] || "",
+      registration: company["registration_number"] || "",
       bank_name: bank["bank_name"] || "",
       bank_iban: bank["iban"] || "",
       bank_swift: bank["swift"] || ""

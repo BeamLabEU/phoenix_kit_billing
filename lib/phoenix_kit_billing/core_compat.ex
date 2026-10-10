@@ -90,7 +90,26 @@ defmodule PhoenixKitBilling.CoreCompat do
     # this list: core owes it no API stability, and a 2.0 that reorganises
     # PhoenixKitWeb would take invoice headers with it.
     {PhoenixKitWeb.Live.Settings.Organization, :get_company_info, 0},
-    {PhoenixKitWeb.Live.Settings.Organization, :get_bank_details, 0}
+    {PhoenixKitWeb.Live.Settings.Organization, :get_bank_details, 0},
+    # The logo on printed documents and in billing emails (DocumentBranding).
+    {PhoenixKit.Modules.Storage, :get_file, 1},
+    {PhoenixKit.Modules.Storage, :list_file_instances, 1},
+    {PhoenixKit.Modules.Storage.Libraries, :private_file?, 1},
+    {PhoenixKit.Modules.Storage.URLSigner, :signed_url, 2},
+    {PhoenixKit.Modules.Storage.URLSigner, :signed_url, 3},
+    {PhoenixKit.Utils.Routes, :base_url, 0},
+    # Billing → Settings → Printed Documents: the logo and footer are saved in
+    # one transaction; the logo picker's uploads go to the host's branding
+    # folder.
+    {PhoenixKit.Settings, :update_settings_batch, 1},
+    {PhoenixKit.UploadsParentFolder, :resolve, 3},
+    # The logo picker, a LiveComponent mounted from settings.html.heex — a
+    # module reference no call extractor sees. Its contract: the attrs `mode`,
+    # `file_type_filter`, `lock_file_type`, `title`, `selected_uuids`,
+    # `scope_folder_id`, `phoenix_kit_current_user`, and the messages
+    # `{:media_selected, uuids}` / `{:media_selector_closed}` it sends to the
+    # LiveView that mounts it.
+    {PhoenixKitWeb.Live.Components.MediaSelectorModal, :update, 2}
   ]
 
   # Guarded at the call site — listed so an upgrade shows what quietly stopped

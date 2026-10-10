@@ -192,6 +192,8 @@ end
 | `billing_tax_enabled` | boolean | `false` | Enable tax calculations |
 | `billing_company_name` | string | — | Company name on invoices |
 | `billing_company_address` | string | — | Company address on invoices |
+| `billing_document_logo_file_uuid` | string | — | Media-library file shown at the top of printed documents and in billing emails; unset falls back to the project logo, then the company name |
+| `billing_document_footer` | string | — | Text about the company closing every printed document and billing email (at most 1000 characters) |
 
 Provider-specific settings (API keys, webhook secrets) are configured per-provider in the admin panel at `/admin/settings/billing/providers`.
 

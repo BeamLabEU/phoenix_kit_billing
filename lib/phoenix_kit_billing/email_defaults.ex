@@ -347,14 +347,26 @@ defmodule PhoenixKitBilling.EmailDefaults do
     }
   ]
 
+  @sample_footer "Acme — tools for every home. Prices include VAT."
+
   @sample_company %{
     "company_name" => "Acme Ltd",
     "company_address" => "1 Example Street, 10001 Example City",
     "company_vat" => "XX123456789",
+    "document_footer" => @sample_footer,
     "user_name" => "Jane Doe",
     "user_email" => "jane.doe@example.com",
     "currency" => "EUR"
   }
+
+  # Built at run time, so editing DocumentBranding does not recompile this module.
+  defp sample_company do
+    Map.put(
+      @sample_company,
+      "document_footer_html",
+      PhoenixKitBilling.DocumentBranding.footer_html(@sample_footer)
+    )
+  end
 
   @doc """
   Sample variables for `name`: every placeholder its defaults use, with
@@ -362,7 +374,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   """
   @spec sample_variables(String.t()) :: map()
   def sample_variables("billing_invoice") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "invoice_number" => "INV-2026-0042",
       "invoice_date" => format_date(~D[2026-10-02]),
       "due_date" => format_date(~D[2026-10-16]),
@@ -381,7 +393,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_receipt") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "receipt_number" => "RCP-2026-0042",
       "invoice_number" => "INV-2026-0042",
       "payment_date" => format_date(~D[2026-10-05]),
@@ -397,7 +409,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_credit_note") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "credit_note_number" => "CN-2026-0007",
       "invoice_number" => "INV-2026-0042",
       "refund_date" => format_date(~D[2026-10-09]),
@@ -409,7 +421,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   def sample_variables("billing_payment_confirmation") do
-    Map.merge(@sample_company, %{
+    Map.merge(sample_company(), %{
       "confirmation_number" => "PMT-2026-0106",
       "invoice_number" => "INV-2026-0042",
       "payment_date" => format_date(~D[2026-10-05]),
@@ -545,12 +557,23 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
   # The seller's details, closing every body: whatever header and footer the
   # host's layout carries, an invoice states who issued it. Lines are joined
-  # with a trailing `\`, a Markdown line break; a blank one is left out.
+  # with a trailing `\`, a Markdown line break; a blank one is left out. The
+  # text about the company set for billing documents follows as a paragraph.
   defp company_footer(present) do
-    case company_lines(present, "\\\n") do
+    case join([company_lines(present, "\\\n"), document_footer(present, :markdown)]) do
       "" -> nil
-      lines -> "---\n\n" <> lines
+      footer -> "---\n\n" <> footer
     end
+  end
+
+  # The HTML body places the footer text as a ready-made paragraph, so its
+  # line breaks survive; the text body places it as written.
+  defp document_footer(present, :markdown) do
+    if has?(present, "document_footer_html"), do: "{{{document_footer_html}}}"
+  end
+
+  defp document_footer(present, :text) do
+    if has?(present, "document_footer"), do: "{{document_footer}}"
   end
 
   defp company_lines(present, separator) do
@@ -785,13 +808,13 @@ defmodule PhoenixKitBilling.EmailDefaults do
   end
 
   defp text_company_footer(present) do
-    case company_lines(present, "\n") do
+    case join([company_lines(present, "\n"), document_footer(present, :text)]) do
       "" ->
         nil
 
-      lines ->
+      footer ->
         "=============================================\n" <>
-          lines <> "\n============================================="
+          footer <> "\n============================================="
     end
   end
 

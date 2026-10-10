@@ -189,6 +189,7 @@ lib/phoenix_kit_billing/
 ├── activity.ex                          # Activity-log wrapper (module key + actor role)
 ├── application_integration.ex           # Provider registration at boot
 ├── core_compat.ex                       # Declared core API surface + boot report
+├── document_branding.ex                 # Logo + footer text for printed documents and emails
 ├── email_defaults.ex                    # Default invoice/receipt email copy
 ├── errors.ex                            # Atom errors -> gettext strings
 ├── events.ex                            # PubSub broadcasts
@@ -211,6 +212,7 @@ lib/phoenix_kit_billing/
     ├── authz.ex                         # Sub-permission checks for the bundled LVs
     ├── <entity>.ex / <entity>_form.ex   # Admin LiveViews (list, form, detail)
     ├── *_print.ex                       # Invoice, receipt, credit note, payment confirmation
+    │                                    #   (shared parts: components/print_document.ex)
     ├── project_billing_live.ex          # "Customer billing" project-extension tab
     └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers
 ```
@@ -303,6 +305,11 @@ All stored through `PhoenixKit.Settings` under module `"billing"`, prefix
 - Company and bank: `billing_company_name`, `billing_company_country`,
   `billing_bank_account_holder` (company and bank details for invoice headers also
   come from core's `PhoenixKitWeb.Live.Settings.Organization`).
+- Printed documents (`DocumentBranding`): `billing_document_logo_file_uuid` (a
+  media-library file; unset falls back to core's `auth_logo_file_uuid`, then the
+  company name) and `billing_document_footer` (free text closing every printable
+  document and every financial email; at most 1000 characters, core's limit for
+  a setting value). The settings page saves both in one transaction.
 - Subscriptions: `billing_subscription_grace_days`, `billing_dunning_max_attempts`.
 - Per provider: `billing_<provider>_enabled`, `_mode`, plus that provider's
   credential keys (`billing_stripe_secret_key`, `billing_paypal_client_id`,

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang={html_lang()}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Receipt {@invoice.receipt_number} - {@project_title}</title>
+    <title>{@page_title} - {@project_title}</title>
     <style>
       * {
         margin: 0;
@@ -457,138 +457,50 @@
         }
       }
     </style>
+    <.styles />
   </head>
   <body>
-    <div class="print-controls">
-      <.link
-        navigate={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
-        class="btn-back"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-        Back
-      </.link>
-      <button onclick="window.print()" class="btn-print">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect
-            x="6"
-            y="14"
-            width="12"
-            height="8"
-            rx="1"
-          />
-        </svg>
-        Print Receipt
-      </button>
-    </div>
+    <.print_controls
+      back_path={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
+      print_label={gettext("Print Receipt")}
+    />
 
     <div class="receipt-container">
+      <.brand logo_url={@logo_url} company={@company} />
+
       <div class="receipt-header">
         <div class="receipt-title">
-          <h1>RECEIPT</h1>
+          <h1 id="document-title">{gettext("Receipt")}</h1>
           <div class="receipt-number">{@invoice.receipt_number}</div>
         </div>
         <%= cond do %>
           <% @receipt_status == "refunded" -> %>
-            <div class="receipt-status refunded">REFUNDED</div>
+            <div class="receipt-status refunded">{pgettext("receipt status", "Refunded")}</div>
           <% @receipt_status == "partially_paid" -> %>
-            <div class="receipt-status partially-paid">PARTIALLY PAID</div>
+            <div class="receipt-status partially-paid">
+              {pgettext("receipt status", "Partially paid")}
+            </div>
           <% true -> %>
-            <div class="receipt-status paid">PAID</div>
+            <div class="receipt-status paid">{pgettext("receipt status", "Paid")}</div>
         <% end %>
       </div>
 
       <div class="receipt-body">
         <div class="receipt-meta">
-          <div class="meta-section">
-            <h3>Received From</h3>
-            <p>
-              <%= if @invoice.billing_details && map_size(@invoice.billing_details) > 0 do %>
-                <%= if @invoice.billing_details["type"] == "company" do %>
-                  <span class="company-name">{@invoice.billing_details["company_name"]}</span>
-                  <br />
-                  <%= if @invoice.billing_details["company_vat_number"] do %>
-                    VAT: {@invoice.billing_details["company_vat_number"]}<br />
-                  <% end %>
-                <% else %>
-                  <span class="company-name">
-                    {PhoenixKitBilling.Invoice.payer_name(@invoice.billing_details)}
-                  </span>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["address_line1"] do %>
-                  {@invoice.billing_details["address_line1"]}<br />
-                <% end %>
-                <%= if @invoice.billing_details["address_line2"] do %>
-                  {@invoice.billing_details["address_line2"]}<br />
-                <% end %>
-                <%= if @invoice.billing_details["city"] do %>
-                  {@invoice.billing_details["city"]}
-                  <%= if @invoice.billing_details["postal_code"] do %>
-                    , {@invoice.billing_details["postal_code"]}
-                  <% end %>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["country"] do %>
-                  {@invoice.billing_details["country"]}
-                <% end %>
-              <% else %>
-                <%= if @invoice.user do %>
-                  <span class="company-name">{@invoice.user.email}</span>
-                <% else %>
-                  <em>No billing information</em>
-                <% end %>
-              <% end %>
-            </p>
-          </div>
+          <.seller company={@company} title={gettext("Received By")} />
 
-          <div class="meta-section">
-            <h3>Received By</h3>
-            <p>
-              <strong>{@company.name}</strong>
-              <br />
-              <%= for line <- String.split(@company.address || "", "\n") do %>
-                {line}<br />
-              <% end %>
-              <%= if @company.vat != "" do %>
-                VAT: {@company.vat}
-              <% end %>
-            </p>
-          </div>
+          <.customer invoice={@invoice} title={gettext("Received From")} />
 
-          <div class="meta-section" style="text-align: right;">
-            <h3>Receipt Details</h3>
+          <div id="document-details" class="meta-section" style="text-align: right;">
+            <h3>{gettext("Receipt Details")}</h3>
             <p>
-              <strong>Receipt #:</strong> {@invoice.receipt_number}<br />
-              <strong>Invoice #:</strong> {@invoice.invoice_number}<br />
-              <strong>Date:</strong>
-              {if @invoice.receipt_generated_at,
-                do: Calendar.strftime(@invoice.receipt_generated_at, "%B %d, %Y"),
-                else: Calendar.strftime(@invoice.paid_at || @invoice.updated_at, "%B %d, %Y")}<br />
-              <strong>Currency:</strong> {@invoice.currency}
+              <strong>{gettext("Receipt #:")}</strong> {@invoice.receipt_number}<br />
+              <strong>{gettext("Invoice #:")}</strong> {@invoice.invoice_number}<br />
+              <strong>{gettext("Date:")}</strong>
+              {format_date(@invoice.receipt_generated_at || @invoice.paid_at || @invoice.updated_at)}<br />
+              <strong>{gettext("Currency:")}</strong> {@invoice.currency}
               <%= if @invoice.order do %>
-                <br /><strong>Order:</strong> {@invoice.order.order_number}
+                <br /><strong>{gettext("Order:")}</strong> {@invoice.order.order_number}
               <% end %>
             </p>
           </div>
@@ -613,33 +525,29 @@
                 >
                   <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
                 </svg>
-                Payment Refunded
+                {gettext("Payment Refunded")}
               </h4>
               <div class="payment-details-grid">
                 <div class="payment-detail">
-                  <span class="label">Original Amount Paid</span>
+                  <span class="label">{gettext("Original Amount Paid")}</span>
                   <span class="value">
                     {Decimal.to_string(@invoice.paid_amount || @invoice.total, :normal)} {@invoice.currency}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Total Refunded</span>
+                  <span class="label">{gettext("Total Refunded")}</span>
                   <span class="value">
                     {Decimal.to_string(@total_refunded, :normal)} {@invoice.currency}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Refund Date</span>
+                  <span class="label">{gettext("Refund Date")}</span>
                   <span class="value">
-                    <%= if @last_refund_date do %>
-                      {Calendar.strftime(@last_refund_date, "%B %d, %Y")}
-                    <% else %>
-                      -
-                    <% end %>
+                    {format_date(@last_refund_date)}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Reference</span>
+                  <span class="label">{gettext("Reference")}</span>
                   <span class="value">{@invoice.invoice_number}</span>
                 </div>
               </div>
@@ -661,38 +569,34 @@
                 >
                   <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="M12 6v6l4 2" />
                 </svg>
-                Partial Payment Received
+                {gettext("Partial Payment Received")}
               </h4>
               <div class="payment-details-grid">
                 <div class="payment-detail">
-                  <span class="label">Amount Paid</span>
+                  <span class="label">{gettext("Amount Paid")}</span>
                   <span class="value">
                     {Decimal.to_string(@invoice.paid_amount || Decimal.new(0), :normal)} {@invoice.currency}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Last Payment Date</span>
+                  <span class="label">{gettext("Last Payment Date")}</span>
                   <span class="value">
-                    <%= if @last_payment_date do %>
-                      {Calendar.strftime(@last_payment_date, "%B %d, %Y at %H:%M")}
-                    <% else %>
-                      -
-                    <% end %>
+                    {format_datetime(@last_payment_date)}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Payment Method</span>
-                  <span class="value">Bank Transfer</span>
+                  <span class="label">{gettext("Payment Method")}</span>
+                  <span class="value">{payment_method_label("bank")}</span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Reference</span>
+                  <span class="label">{gettext("Reference")}</span>
                   <span class="value">{@invoice.invoice_number}</span>
                 </div>
               </div>
             </div>
             <%!-- Remaining Balance Box --%>
             <div class="remaining-balance">
-              <span class="label">Remaining Balance</span>
+              <span class="label">{gettext("Remaining Balance")}</span>
               <span class="value">
                 {Decimal.to_string(
                   Decimal.sub(@invoice.total, @invoice.paid_amount || Decimal.new(0)),
@@ -717,29 +621,27 @@
                 >
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Payment Confirmed
+                {gettext("Payment Confirmed")}
               </h4>
               <div class="payment-details-grid">
                 <div class="payment-detail">
-                  <span class="label">Amount Paid</span>
+                  <span class="label">{gettext("Amount Paid")}</span>
                   <span class="value">
                     {Decimal.to_string(@invoice.paid_amount || @invoice.total, :normal)} {@invoice.currency}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Payment Date</span>
+                  <span class="label">{gettext("Payment Date")}</span>
                   <span class="value">
-                    {if @invoice.paid_at,
-                      do: Calendar.strftime(@invoice.paid_at, "%B %d, %Y at %H:%M"),
-                      else: "-"}
+                    {format_datetime(@invoice.paid_at)}
                   </span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Payment Method</span>
-                  <span class="value">Bank Transfer</span>
+                  <span class="label">{gettext("Payment Method")}</span>
+                  <span class="value">{payment_method_label("bank")}</span>
                 </div>
                 <div class="payment-detail">
-                  <span class="label">Reference</span>
+                  <span class="label">{gettext("Reference")}</span>
                   <span class="value">{@invoice.invoice_number}</span>
                 </div>
               </div>
@@ -750,10 +652,10 @@
         <table class="line-items-table">
           <thead>
             <tr>
-              <th>Description</th>
-              <th class="text-right" style="width: 80px;">Qty</th>
-              <th class="text-right" style="width: 120px;">Unit Price</th>
-              <th class="text-right" style="width: 120px;">Amount</th>
+              <th>{gettext("Description")}</th>
+              <th class="text-right" style="width: 80px;">{gettext("Qty")}</th>
+              <th class="text-right" style="width: 120px;">{gettext("Unit Price")}</th>
+              <th class="text-right" style="width: 120px;">{gettext("Amount")}</th>
             </tr>
           </thead>
           <tbody>
@@ -776,7 +678,7 @@
         <div class="totals-section">
           <table class="totals-table">
             <tr>
-              <td class="label">Subtotal:</td>
+              <td class="label">{gettext("Subtotal:")}</td>
               <td class="value">
                 {Decimal.to_string(@invoice.subtotal || Decimal.new(0), :normal)} {@invoice.currency}
               </td>
@@ -784,9 +686,12 @@
             <%= if Decimal.gt?(@invoice.tax_amount || Decimal.new(0), Decimal.new(0)) do %>
               <tr>
                 <td class="label">
-                  Tax ({Decimal.round(Decimal.mult(@invoice.tax_rate || Decimal.new(0), 100), 2)
-                  |> Decimal.normalize()
-                  |> Decimal.to_string()}%):
+                  {gettext("Tax (%{rate}%):",
+                    rate:
+                      Decimal.round(Decimal.mult(@invoice.tax_rate || Decimal.new(0), 100), 2)
+                      |> Decimal.normalize()
+                      |> Decimal.to_string()
+                  )}
                 </td>
                 <td class="value">
                   {Decimal.to_string(@invoice.tax_amount, :normal)} {@invoice.currency}
@@ -794,7 +699,7 @@
               </tr>
             <% end %>
             <tr class="total-row">
-              <td class="label">Total Paid:</td>
+              <td class="label">{gettext("Total Paid:")}</td>
               <td class="value">
                 {Decimal.to_string(@invoice.paid_amount || @invoice.total, :normal)} {@invoice.currency}
               </td>
@@ -805,23 +710,23 @@
         <%!-- Transactions History --%>
         <%= if length(@transactions) > 0 do %>
           <div class="transactions-section">
-            <h4>Payment Transactions</h4>
+            <h4>{gettext("Payment Transactions")}</h4>
             <table class="transactions-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Transaction #</th>
-                  <th>Method</th>
-                  <th>Description</th>
-                  <th style="text-align: right;">Amount</th>
+                  <th>{gettext("Date")}</th>
+                  <th>{gettext("Transaction #")}</th>
+                  <th>{gettext("Method")}</th>
+                  <th>{gettext("Description")}</th>
+                  <th style="text-align: right;">{gettext("Amount")}</th>
                 </tr>
               </thead>
               <tbody>
                 <%= for txn <- @transactions do %>
                   <tr>
-                    <td>{Calendar.strftime(txn.inserted_at, "%b %d, %Y")}</td>
+                    <td>{format_date(txn.inserted_at)}</td>
                     <td>{txn.transaction_number}</td>
-                    <td>{String.capitalize(txn.payment_method)}</td>
+                    <td>{payment_method_label(txn.payment_method)}</td>
                     <td>{txn.description || "-"}</td>
                     <td style="text-align: right;">
                       <span class={
@@ -845,27 +750,19 @@
         <%= if @invoice.notes do %>
           <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
             <h4 style="font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 10px;">
-              Notes
+              {gettext("Notes")}
             </h4>
             <p style="white-space: pre-wrap;">{@invoice.notes}</p>
           </div>
         <% end %>
       </div>
 
-      <div class="receipt-footer">
-        <div class="footer-company">
-          <div class="name">{@company.name}</div>
-          <div class="details">
-            {@company.address}
-            <%= if @company.vat != "" do %>
-              &bull; VAT: {@company.vat}
-            <% end %>
-          </div>
-        </div>
-        <div class="footer-note">
-          This receipt confirms payment has been received. Thank you for your business.
-        </div>
-      </div>
+      <.footer
+        class="receipt-footer"
+        company={@company}
+        footer_text={@footer_text}
+        note={gettext("This receipt confirms payment has been received. Thank you for your business.")}
+      />
     </div>
   </body>
 </html>

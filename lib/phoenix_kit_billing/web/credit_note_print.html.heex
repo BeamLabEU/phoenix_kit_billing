@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang={html_lang()}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Credit Note {@credit_note_number} - {@project_title}</title>
+    <title>{@page_title} - {@project_title}</title>
     <style>
       * {
         margin: 0;
@@ -380,60 +380,24 @@
         }
       }
     </style>
+    <.styles />
   </head>
   <body>
-    <div class="print-controls">
-      <.link
-        navigate={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
-        class="btn-back"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-        Back
-      </.link>
-      <button onclick="window.print()" class="btn-print">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect
-            x="6"
-            y="14"
-            width="12"
-            height="8"
-            rx="1"
-          />
-        </svg>
-        Print Credit Note
-      </button>
-    </div>
+    <.print_controls
+      back_path={PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}")}
+      print_label={gettext("Print Credit Note")}
+    />
 
     <div class="credit-note-container">
+      <.brand logo_url={@logo_url} company={@company} />
+
       <div class="credit-note-header">
         <div class="credit-note-title">
-          <h1>CREDIT NOTE</h1>
+          <h1 id="document-title">{gettext("Credit note")}</h1>
           <div class="credit-note-number">{@credit_note_number}</div>
         </div>
         <div class="credit-note-status">
-          REFUND ISSUED
+          {gettext("Refund issued")}
         </div>
       </div>
 
@@ -441,70 +405,18 @@
         <div class="credit-note-meta">
           <%!-- IMPORTANT: Roles are REVERSED for credit notes --%>
           <%!-- Company is the PAYER (issuing refund) --%>
-          <div class="meta-section">
-            <h3>Issued By (Payer)</h3>
-            <p>
-              <strong>{@company.name}</strong>
-              <br />
-              <%= for line <- String.split(@company.address || "", "\n") do %>
-                {line}<br />
-              <% end %>
-              <%= if @company.vat != "" do %>
-                VAT: {@company.vat}
-              <% end %>
-            </p>
-          </div>
+          <.seller company={@company} title={gettext("Issued By (Payer)")} />
 
           <%!-- Customer is the PAYEE (receiving refund) --%>
-          <div class="meta-section">
-            <h3>Issued To (Payee)</h3>
-            <p>
-              <%= if @invoice.billing_details && map_size(@invoice.billing_details) > 0 do %>
-                <%= if @invoice.billing_details["type"] == "company" do %>
-                  <span class="company-name">{@invoice.billing_details["company_name"]}</span>
-                  <br />
-                  <%= if @invoice.billing_details["company_vat_number"] do %>
-                    VAT: {@invoice.billing_details["company_vat_number"]}<br />
-                  <% end %>
-                <% else %>
-                  <span class="company-name">
-                    {PhoenixKitBilling.Invoice.payer_name(@invoice.billing_details)}
-                  </span>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["address_line1"] do %>
-                  {@invoice.billing_details["address_line1"]}<br />
-                <% end %>
-                <%= if @invoice.billing_details["address_line2"] do %>
-                  {@invoice.billing_details["address_line2"]}<br />
-                <% end %>
-                <%= if @invoice.billing_details["city"] do %>
-                  {@invoice.billing_details["city"]}
-                  <%= if @invoice.billing_details["postal_code"] do %>
-                    , {@invoice.billing_details["postal_code"]}
-                  <% end %>
-                  <br />
-                <% end %>
-                <%= if @invoice.billing_details["country"] do %>
-                  {@invoice.billing_details["country"]}
-                <% end %>
-              <% else %>
-                <%= if @invoice.user do %>
-                  <span class="company-name">{@invoice.user.email}</span>
-                <% else %>
-                  <em>No billing information</em>
-                <% end %>
-              <% end %>
-            </p>
-          </div>
+          <.customer invoice={@invoice} title={gettext("Issued To (Payee)")} />
 
-          <div class="meta-section" style="text-align: right;">
-            <h3>Credit Note Details</h3>
+          <div id="document-details" class="meta-section" style="text-align: right;">
+            <h3>{gettext("Credit Note Details")}</h3>
             <p>
-              <strong>Credit Note #:</strong> {@credit_note_number}<br />
-              <strong>Date:</strong>
-              {Calendar.strftime(@transaction.inserted_at, "%B %d, %Y")}<br />
-              <strong>Currency:</strong> {@transaction.currency}
+              <strong>{gettext("Credit Note #:")}</strong> {@credit_note_number}<br />
+              <strong>{gettext("Date:")}</strong>
+              {format_date(@transaction.inserted_at)}<br />
+              <strong>{gettext("Currency:")}</strong> {@transaction.currency}
             </p>
           </div>
         </div>
@@ -525,27 +437,27 @@
             >
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
             </svg>
-            Refund Details
+            {gettext("Refund Details")}
           </h4>
           <div class="refund-details-grid">
             <div class="refund-detail">
-              <span class="label">Refund Amount</span>
+              <span class="label">{gettext("Refund Amount")}</span>
               <span class="value">
                 {Decimal.to_string(Decimal.abs(@transaction.amount), :normal)} {@transaction.currency}
               </span>
             </div>
             <div class="refund-detail">
-              <span class="label">Refund Date</span>
+              <span class="label">{gettext("Refund Date")}</span>
               <span class="value">
-                {Calendar.strftime(@transaction.inserted_at, "%B %d, %Y at %H:%M")}
+                {format_datetime(@transaction.inserted_at)}
               </span>
             </div>
             <div class="refund-detail">
-              <span class="label">Payment Method</span>
-              <span class="value">{String.capitalize(@transaction.payment_method)}</span>
+              <span class="label">{gettext("Payment Method")}</span>
+              <span class="value">{payment_method_label(@transaction.payment_method)}</span>
             </div>
             <div class="refund-detail">
-              <span class="label">Transaction #</span>
+              <span class="label">{gettext("Transaction #")}</span>
               <span class="value">{@transaction.transaction_number}</span>
             </div>
           </div>
@@ -553,20 +465,20 @@
 
         <%!-- Original Invoice Reference --%>
         <div class="original-invoice-section">
-          <h4>Original Invoice Reference</h4>
+          <h4>{gettext("Original Invoice Reference")}</h4>
           <div class="original-invoice-details">
             <div class="detail">
-              <span class="label">Invoice #:</span>
+              <span class="label">{gettext("Invoice #:")}</span>
               <span class="value">{@invoice.invoice_number}</span>
             </div>
             <div class="detail">
-              <span class="label">Invoice Date:</span>
+              <span class="label">{gettext("Invoice Date:")}</span>
               <span class="value">
-                {Calendar.strftime(@invoice.inserted_at, "%B %d, %Y")}
+                {format_date(@invoice.inserted_at)}
               </span>
             </div>
             <div class="detail">
-              <span class="label">Original Total:</span>
+              <span class="label">{gettext("Original Total:")}</span>
               <span class="value">
                 {Decimal.to_string(@invoice.total, :normal)} {@invoice.currency}
               </span>
@@ -578,7 +490,7 @@
         <%= if @transaction.description && @transaction.description != "" do %>
           <div style="margin-bottom: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
             <h4 style="font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 10px;">
-              Reason for Refund
+              {gettext("Reason for Refund")}
             </h4>
             <p style="white-space: pre-wrap;">{@transaction.description}</p>
           </div>
@@ -588,14 +500,16 @@
         <table class="line-items-table">
           <thead>
             <tr>
-              <th>Description</th>
-              <th class="text-right" style="width: 150px;">Amount</th>
+              <th>{gettext("Description")}</th>
+              <th class="text-right" style="width: 150px;">{gettext("Amount")}</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>
-                <div class="item-name">Refund for Invoice {@invoice.invoice_number}</div>
+                <div class="item-name">
+                  {gettext("Refund for Invoice %{number}", number: @invoice.invoice_number)}
+                </div>
                 <%= if @transaction.description && @transaction.description != "" do %>
                   <div class="item-description">{@transaction.description}</div>
                 <% end %>
@@ -610,7 +524,7 @@
         <div class="totals-section">
           <table class="totals-table">
             <tr class="total-row">
-              <td class="label">Total Refund:</td>
+              <td class="label">{gettext("Total Refund:")}</td>
               <td class="value">
                 {Decimal.to_string(Decimal.abs(@transaction.amount), :normal)} {@transaction.currency}
               </td>
@@ -621,32 +535,34 @@
         <%!-- Bank Details for Refund --%>
         <%= if @company.bank_name != "" || @company.bank_iban != "" do %>
           <div class="bank-details-section">
-            <h4>Refund Payment Information</h4>
-            <p>The refund will be processed to your original payment method or bank account.</p>
+            <h4>{gettext("Refund Payment Information")}</h4>
+            <p>
+              {gettext(
+                "The refund will be processed to your original payment method or bank account."
+              )}
+            </p>
             <%= if @invoice.billing_details && @invoice.billing_details["bank_iban"] do %>
-              <p><strong>Customer IBAN:</strong> {@invoice.billing_details["bank_iban"]}</p>
+              <p>
+                <strong>{gettext("Customer IBAN:")}</strong> {@invoice.billing_details["bank_iban"]}
+              </p>
             <% end %>
             <p class="note">
-              Please allow 5-10 business days for the refund to appear in your account.
+              {gettext("Please allow 5-10 business days for the refund to appear in your account.")}
             </p>
           </div>
         <% end %>
       </div>
 
-      <div class="credit-note-footer">
-        <div class="footer-company">
-          <div class="name">{@company.name}</div>
-          <div class="details">
-            {@company.address}
-            <%= if @company.vat != "" do %>
-              &bull; VAT: {@company.vat}
-            <% end %>
-          </div>
-        </div>
-        <div class="footer-note">
-          This credit note confirms that a refund has been issued. If you have any questions, please contact us.
-        </div>
-      </div>
+      <.footer
+        class="credit-note-footer"
+        company={@company}
+        footer_text={@footer_text}
+        note={
+          gettext(
+            "This credit note confirms that a refund has been issued. If you have any questions, please contact us."
+          )
+        }
+      />
     </div>
   </body>
 </html>
