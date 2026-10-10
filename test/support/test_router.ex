@@ -96,6 +96,17 @@ defmodule PhoenixKitBilling.Test.Router do
       layout: {PhoenixKitBilling.Test.Layouts, :app},
       on_mount: {PhoenixKitBilling.Test.Hooks, :assign_scope} do
       live("/billing-orders", UserOrders, :index, as: :billing_user_orders)
+      # Same paths and params as core's `PhoenixKitWeb.Integration` routes.
+      live("/billing-profiles/new", UserBillingProfileForm, :new, as: :billing_user_profile_new)
+
+      live("/billing-profiles/:uuid/edit", UserBillingProfileForm, :edit,
+        as: :billing_user_profile_edit
+      )
+
+      # A host routing the page itself with `:id`.
+      live("/legacy-billing-profiles/:id/edit", UserBillingProfileForm, :edit,
+        as: :billing_user_profile_legacy_edit
+      )
     end
   end
 

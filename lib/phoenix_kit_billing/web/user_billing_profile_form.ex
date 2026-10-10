@@ -45,11 +45,18 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
           |> assign(:profile_type, "individual")
           |> assign(:subdivision_label, gettext("Region"))
           |> assign(:return_to, return_to)
-          |> load_profile(params["id"])
+          |> load_profile(profile_param(params))
 
         {:ok, socket}
     end
   end
+
+  # Core mounts the edit page as `/dashboard/billing-profiles/:uuid/edit`
+  # (`PhoenixKitWeb.Integration`), so the profile arrives as "uuid". Reading
+  # only "id" left every edit link on the "New Billing Profile" form, and
+  # saving it created a duplicate. "id" stays accepted for hosts that route
+  # the page themselves with `:id`.
+  defp profile_param(params), do: params["uuid"] || params["id"]
 
   defp load_profile(socket, nil) do
     # New profile

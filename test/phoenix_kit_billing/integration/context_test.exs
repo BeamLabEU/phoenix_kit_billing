@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
   use PhoenixKitBilling.DataCase, async: true
 
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Currency
 
   # ── Currencies ───────────────────────────────────────────────────
@@ -261,6 +262,66 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
 
       assert %{company_name: [_ | _]} = errors_on(cs)
     end
+
+    test "creating or updating a profile as default leaves the user one default" do
+      user = fixture_user()
+      {:ok, first} = Billing.create_billing_profile(user, profile_attrs("First"))
+      {:ok, second} = Billing.create_billing_profile(user, profile_attrs("Second"))
+      refute second.is_default
+
+      {:ok, third} =
+        Billing.create_billing_profile(user, Map.put(profile_attrs("Third"), "is_default", true))
+
+      assert default_uuids(user) == [third.uuid]
+
+      {:ok, _} = Billing.update_billing_profile(second, %{"is_default" => true})
+      assert default_uuids(user) == [second.uuid]
+      assert Billing.get_default_billing_profile(user).uuid == second.uuid
+
+      # Another user's default is left alone.
+      other = fixture_user()
+      {:ok, others} = Billing.create_billing_profile(other, profile_attrs("Other"))
+      {:ok, _} = Billing.update_billing_profile(first, %{"is_default" => true})
+      assert default_uuids(other) == [others.uuid]
+    end
+
+    test "a failed save as default keeps the current default" do
+      user = fixture_user()
+      {:ok, first} = Billing.create_billing_profile(user, profile_attrs("First"))
+      {:ok, second} = Billing.create_billing_profile(user, profile_attrs("Second"))
+
+      assert {:error, _} =
+               Billing.update_billing_profile(second, %{"is_default" => true, "type" => "bogus"})
+
+      assert default_uuids(user) == [first.uuid]
+    end
+
+    test "get_default_billing_profile/1 does not raise on duplicate defaults" do
+      user = fixture_user()
+      {:ok, first} = Billing.create_billing_profile(user, profile_attrs("First"))
+      {:ok, second} = Billing.create_billing_profile(user, profile_attrs("Second"))
+
+      # Data saved before defaults were kept unique.
+      Repo.update_all(
+        from(bp in BillingProfile, where: bp.uuid == ^second.uuid),
+        set: [is_default: true, updated_at: DateTime.add(first.updated_at, 60)]
+      )
+
+      assert Billing.get_default_billing_profile(user).uuid == second.uuid
+    end
+  end
+
+  defp profile_attrs(first_name) do
+    %{"type" => "individual", "first_name" => first_name, "last_name" => "Roe", "country" => "EE"}
+  end
+
+  defp default_uuids(user) do
+    Repo.all(
+      from(bp in BillingProfile,
+        where: bp.user_uuid == ^user.uuid and bp.is_default == true,
+        select: bp.uuid
+      )
+    )
   end
 
   # ── Subscription types & subscriptions ──────────────────────────
