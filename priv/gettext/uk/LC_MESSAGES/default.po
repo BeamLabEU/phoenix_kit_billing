@@ -4023,7 +4023,7 @@ msgstr "Термін оплати:"
 #: lib/phoenix_kit_billing/web/settings.html.heex:295
 #, elixir-autogen, elixir-format
 msgid "Footer Text"
-msgstr "Текст у підвалі"
+msgstr "Текст нижнього колонтитула"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:430
 #, elixir-autogen, elixir-format
@@ -4117,7 +4117,7 @@ msgstr "Спочатку сплачено"
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:468
 #, elixir-autogen, elixir-format
 msgid "Original Invoice Reference"
-msgstr "Вихідний рахунок"
+msgstr "Початковий рахунок"
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:481
 #, elixir-autogen, elixir-format
@@ -4183,7 +4183,7 @@ msgstr "Дані платежу"
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:509
 #, elixir-autogen, elixir-format
 msgid "Payment Due"
-msgstr "Сплатити до"
+msgstr "Термін оплати"
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:585
 #, elixir-autogen, elixir-format
@@ -4568,4 +4568,4 @@ msgstr "Не вдалося зберегти налаштування докум
 #: lib/phoenix_kit_billing/web/settings.ex:285
 #, elixir-autogen, elixir-format
 msgid "The footer text is too long: at most %{max} characters."
-msgstr "Текст у підвалі задовгий: не більше %{max} символів."
+msgstr "Текст нижнього колонтитула задовгий: не більше %{max} символів."
