@@ -1,14 +1,14 @@
 ## "msgid"s in this file come from POT (.pot) files.
-##
-## Do not add, change, or remove `msgid`s manually here as
-## they're tied to the ones in the corresponding POT file
-## (with the same domain).
-##
-## Use `mix gettext.extract --merge` or `mix gettext.merge`
-## to merge POT files into PO files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
 msgid ""
 msgstr ""
-"Language: et\n"
+"Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: lib/phoenix_kit_billing.ex:205
@@ -18,11 +18,11 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/trail.ex:79
 #, elixir-autogen
 msgid "Billing"
-msgstr "Arveldus"
+msgstr ""
 
 #: lib/phoenix_kit_billing.ex
 msgid "Dashboard"
-msgstr "Töölaud"
+msgstr ""
 
 #: lib/phoenix_kit_billing.ex:256
 #: lib/phoenix_kit_billing/web/orders.ex:39
@@ -30,7 +30,7 @@ msgstr "Töölaud"
 #: lib/phoenix_kit_billing/web/trail.ex:72
 #, elixir-autogen
 msgid "Orders"
-msgstr "Tellimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing.ex:257
 #: lib/phoenix_kit_billing/web/invoices.ex:38
@@ -39,13 +39,13 @@ msgstr "Tellimused"
 #: lib/phoenix_kit_billing/web/trail.ex:73
 #, elixir-autogen
 msgid "Invoices"
-msgstr "Arved"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.ex:38
 #: lib/phoenix_kit_billing/web/transactions.html.heex:4
 #, elixir-autogen
 msgid "Transactions"
-msgstr "Tehingud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:212
 #: lib/phoenix_kit_billing/web/subscriptions.ex:41
@@ -53,7 +53,7 @@ msgstr "Tehingud"
 #: lib/phoenix_kit_billing/web/trail.ex:74
 #, elixir-autogen
 msgid "Subscriptions"
-msgstr "Püsitellimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:67
 #: lib/phoenix_kit_billing/web/index.html.heex:218
@@ -63,7 +63,7 @@ msgstr "Püsitellimused"
 #: lib/phoenix_kit_billing/web/trail.ex:75
 #, elixir-autogen
 msgid "Subscription Types"
-msgstr "Tellimuste tüübid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.ex:37
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:5
@@ -71,7 +71,7 @@ msgstr "Tellimuste tüübid"
 #: lib/phoenix_kit_billing/web/trail.ex:76
 #, elixir-autogen
 msgid "Billing Profiles"
-msgstr "Arvelduse profiilid"
+msgstr ""
 
 #: lib/phoenix_kit_billing.ex:258
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:61
@@ -79,7 +79,7 @@ msgstr "Arvelduse profiilid"
 #: lib/phoenix_kit_billing/web/currencies.html.heex:5
 #, elixir-autogen
 msgid "Currencies"
-msgstr "Valuutad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:55
 #: lib/phoenix_kit_billing/web/index.html.heex:236
@@ -87,70 +87,70 @@ msgstr "Valuutad"
 #: lib/phoenix_kit_billing/web/settings.html.heex:257
 #, elixir-autogen
 msgid "Payment Providers"
-msgstr "Maksevahendajad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_orders.ex:47
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:4
 msgid "My Orders"
-msgstr "Minu tellimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:57
 #, elixir-autogen, elixir-format
 msgid "%{count} paid invoices"
-msgstr "%{count} tasutud arvet"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:70
 #, elixir-autogen, elixir-format
 msgid "%{count} pending invoices"
-msgstr "%{count} ootel arvet"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:30
 #: lib/phoenix_kit_billing/web/index.html.heex:41
 #, elixir-autogen, elixir-format
 msgid "%{count} this month"
-msgstr "%{count} sel kuul"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:7
 #, elixir-autogen, elixir-format
 msgid "%{count} total profiles"
-msgstr "%{count} profiili kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Activate"
-msgstr "Aktiveeri"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:246
 #, elixir-autogen, elixir-format
 msgid "Active Currencies"
-msgstr "Aktiivsed valuutad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:175
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:283
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to cancel this subscription?"
-msgstr "Kas olete kindel, et soovite selle püsitellimuse tühistada?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:73
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this subscription type?"
-msgstr "Kas olete kindel, et soovite selle tellimuse tüübi kustutada?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:133
 #: lib/phoenix_kit_billing/web/currencies.html.heex:250
 #, elixir-autogen, elixir-format
 msgid "Are you sure?"
-msgstr "Kas olete kindel?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "Billing Dashboard"
-msgstr "Arvelduse töölaud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "Billing Settings"
-msgstr "Arvelduse seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:43
 #: lib/phoenix_kit_billing/web/billing_profiles.ex:52
@@ -173,7 +173,7 @@ msgstr "Arvelduse seaded"
 #: lib/phoenix_kit_billing/web/user_orders.ex:33
 #, elixir-autogen, elixir-format
 msgid "Billing module is not enabled"
-msgstr "Arvelduse moodul ei ole aktiveeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:344
 #: lib/phoenix_kit_billing/web/currencies.html.heex:429
@@ -199,29 +199,29 @@ msgstr "Arvelduse moodul ei ole aktiveeritud"
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:530
 #, elixir-autogen, elixir-format
 msgid "Cancel"
-msgstr "Tühista"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Configure billing module options"
-msgstr "Seadista arvelduse mooduli valikuid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:100
 #, elixir-autogen, elixir-format
 msgid "Create First Order"
-msgstr "Loo esimene tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:6
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Create Subscription Type"
-msgstr "Loo tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:155
 #, elixir-autogen, elixir-format
 msgid "Create an order first to generate invoices"
-msgstr "Arvete loomiseks lisage esmalt tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:111
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:275
@@ -233,17 +233,17 @@ msgstr "Arvete loomiseks lisage esmalt tellimus"
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Date"
-msgstr "Kuupäev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Deactivate"
-msgstr "Deaktiveeri"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:45
 #, elixir-autogen, elixir-format
 msgid "Default Currency"
-msgstr "Vaikimisi valuuta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:135
 #: lib/phoenix_kit_billing/web/currencies.html.heex:252
@@ -251,13 +251,13 @@ msgstr "Vaikimisi valuuta"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:219
 #, elixir-autogen, elixir-format
 msgid "Delete"
-msgstr "Kustuta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:119
 #: lib/phoenix_kit_billing/web/currencies.html.heex:236
 #, elixir-autogen, elixir-format
 msgid "Disable"
-msgstr "Keela"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:165
 #: lib/phoenix_kit_billing/web/invoices.html.heex:58
@@ -265,12 +265,12 @@ msgstr "Keela"
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:192
 #, elixir-autogen, elixir-format
 msgid "Due Date"
-msgstr "Maksetähtaeg"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:48
 #, elixir-autogen, elixir-format
 msgid "EUR - Euro"
-msgstr "EUR - Euro"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:71
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:112
@@ -288,55 +288,55 @@ msgstr "EUR - Euro"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:200
 #, elixir-autogen, elixir-format
 msgid "Edit"
-msgstr "Muuda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:119
 #: lib/phoenix_kit_billing/web/currencies.html.heex:236
 #, elixir-autogen, elixir-format
 msgid "Enable"
-msgstr "Luba"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "GBP - British Pound"
-msgstr "GBP - Briti naelsterling"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:49
 #, elixir-autogen, elixir-format
 msgid "General"
-msgstr "Üldine"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:15
 #, elixir-autogen, elixir-format
 msgid "General Settings"
-msgstr "Üldised seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:162
 #: lib/phoenix_kit_billing/web/invoices.html.heex:122
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:189
 #, elixir-autogen, elixir-format
 msgid "Invoice #"
-msgstr "Arve nr"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:58
 #, elixir-autogen, elixir-format
 msgid "Invoice Due Days"
-msgstr "Arve maksetähtaeg (päevades)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:32
 #, elixir-autogen, elixir-format
 msgid "Invoice Prefix"
-msgstr "Arve eesliide"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:251
 #, elixir-autogen, elixir-format
 msgid "Manage"
-msgstr "Halda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Manage pricing and features for subscriptions"
-msgstr "Halda püsitellimuste hindu ja funktsioone"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:16
 #: lib/phoenix_kit_billing/web/index.html.heex:206
@@ -344,30 +344,30 @@ msgstr "Halda püsitellimuste hindu ja funktsioone"
 #: lib/phoenix_kit_billing/web/orders.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "New Order"
-msgstr "Uus tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:16
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:130
 #, elixir-autogen, elixir-format
 msgid "New Profile"
-msgstr "Uus profiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:52
 #: lib/phoenix_kit_billing/web/index.html.heex:259
 #, elixir-autogen, elixir-format
 msgid "No currencies configured"
-msgstr "Valuutasid pole seadistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:154
 #, elixir-autogen, elixir-format
 msgid "No invoices yet"
-msgstr "Arveid pole veel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:95
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:12
 #, elixir-autogen, elixir-format
 msgid "No orders yet"
-msgstr "Tellimusi pole veel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:108
 #: lib/phoenix_kit_billing/web/invoices.html.heex:48
@@ -375,65 +375,65 @@ msgstr "Tellimusi pole veel"
 #: lib/phoenix_kit_billing/web/orders.html.heex:130
 #, elixir-autogen, elixir-format
 msgid "Order #"
-msgstr "Tellimus nr"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:20
 #, elixir-autogen, elixir-format
 msgid "Order Prefix"
-msgstr "Tellimuse eesliide"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Overview of orders, invoices, and billing activity"
-msgstr "Ülevaade tellimustest, arvetest ja arvelduse aktiivsusest"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:49
 #, elixir-autogen, elixir-format
 msgid "Paid Revenue"
-msgstr "Laekunud tulu"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:65
 #: lib/phoenix_kit_billing/web/order_form.html.heex:213
 #: lib/phoenix_kit_billing/web/orders.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Pending"
-msgstr "Ootel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:116
 #: lib/phoenix_kit_billing/web/invoices.html.heex:197
 #, elixir-autogen, elixir-format
 msgid "Print"
-msgstr "Prindi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:339
 #, elixir-autogen, elixir-format
 msgid "Print Credit Note"
-msgstr "Prindi kreeditarve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:359
 #, elixir-autogen, elixir-format
 msgid "Print Payment Confirmation"
-msgstr "Prindi makse kinnitus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:200
 #, elixir-autogen, elixir-format
 msgid "Quick Actions"
-msgstr "Kiirtoimingud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:44
 #, elixir-autogen, elixir-format
 msgid "Receipt Prefix"
-msgstr "Kviitungi eesliide"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:142
 #, elixir-autogen, elixir-format
 msgid "Recent Invoices"
-msgstr "Viimased arved"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Recent Orders"
-msgstr "Viimased tellimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:10
 #: lib/phoenix_kit_billing/web/index.html.heex:10
@@ -442,45 +442,45 @@ msgstr "Viimased tellimused"
 #: lib/phoenix_kit_billing/web/transactions.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Refresh"
-msgstr "Värskenda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:346
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:919
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:944
 #, elixir-autogen, elixir-format
 msgid "Send Credit Note"
-msgstr "Saada kreeditarve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:366
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:957
 #, elixir-autogen, elixir-format
 msgid "Send Payment Confirmation"
-msgstr "Saada makse kinnitus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:214
 #: lib/phoenix_kit_billing/web/currencies.html.heex:218
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:209
 #, elixir-autogen, elixir-format
 msgid "Set Default"
-msgstr "Määra vaikimisi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:126
 #: lib/phoenix_kit_billing/web/currencies.html.heex:243
 #, elixir-autogen, elixir-format
 msgid "Set as Default"
-msgstr "Määra vaikimisi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:230
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:159
 #: lib/phoenix_kit_billing/web/trail.ex:55
 #, elixir-autogen, elixir-format
 msgid "Settings"
-msgstr "Seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.ex:323
 #, elixir-autogen, elixir-format
 msgid "Something went wrong. Please try again."
-msgstr "Midagi läks valesti. Palun proovige uuesti."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:86
 #: lib/phoenix_kit_billing/web/currencies.html.heex:148
@@ -498,12 +498,12 @@ msgstr "Midagi läks valesti. Palun proovige uuesti."
 #: lib/phoenix_kit_billing/web/transactions.html.heex:50
 #, elixir-autogen, elixir-format
 msgid "Status"
-msgstr "Olek"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:70
 #, elixir-autogen, elixir-format
 msgid "Tax Settings"
-msgstr "Maksu seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:110
 #: lib/phoenix_kit_billing/web/index.html.heex:164
@@ -519,22 +519,22 @@ msgstr "Maksu seaded"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Total"
-msgstr "Kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:38
 #, elixir-autogen, elixir-format
 msgid "Total Invoices"
-msgstr "Arveid kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Total Orders"
-msgstr "Tellimusi kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:49
 #, elixir-autogen, elixir-format
 msgid "USD - US Dollar"
-msgstr "USD - USA dollar"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:111
 #: lib/phoenix_kit_billing/web/invoices.html.heex:192
@@ -544,14 +544,14 @@ msgstr "USD - USA dollar"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:266
 #, elixir-autogen, elixir-format
 msgid "View"
-msgstr "Vaata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/index.html.heex:85
 #: lib/phoenix_kit_billing/web/index.html.heex:147
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:207
 #, elixir-autogen, elixir-format
 msgid "View All"
-msgstr "Vaata kõiki"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:223
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:227
@@ -559,108 +559,108 @@ msgstr "Vaata kõiki"
 #: lib/phoenix_kit_billing/web/transactions.html.heex:190
 #, elixir-autogen, elixir-format
 msgid "View Invoice"
-msgstr "Vaata arvet"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:400
 #, elixir-autogen, elixir-format
 msgid "%{code} deleted"
-msgstr "%{code} kustutatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:335
 #, elixir-autogen, elixir-format
 msgid "%{code} set as default currency"
-msgstr "%{code} määratud vaikimisi valuutaks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:452
 #, elixir-autogen, elixir-format
 msgid "%{count} currencies imported"
-msgstr "%{count} valuutat imporditud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:235
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:92
 #, elixir-autogen, elixir-format
 msgid "%{count} day trial"
 msgid_plural "%{count} day trial"
-msgstr[0] "%{count}-päevane prooviperiood"
-msgstr[1] "%{count}-päevane prooviperiood"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:407
 #, elixir-autogen, elixir-format
 msgid "%{count} days"
-msgstr "%{count} päeva"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "%{count} total invoices"
-msgstr "%{count} arvet kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/orders.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "%{count} total orders"
-msgstr "%{count} tellimust kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:5
 #, elixir-autogen, elixir-format
 msgid "%{count} total transactions"
-msgstr "%{count} tehingut kokku"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:454
 #, elixir-autogen, elixir-format
 msgid "%{ok} imported, %{fail} failed"
-msgstr "%{ok} imporditud, %{fail} ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:454
 #, elixir-autogen, elixir-format
 msgid "%{selected} of %{total} selected"
-msgstr "%{selected} / %{total} valitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:150
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:198
 #, elixir-autogen, elixir-format
 msgid "(%{count} days remaining)"
-msgstr "(%{count} päeva jäänud)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:68
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:315
 #, elixir-autogen, elixir-format
 msgid "(Default)"
-msgstr "(Vaikimisi)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "A brief description of this plan"
-msgstr "Lühike kirjeldus selle paketi kohta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:427
 #, elixir-autogen, elixir-format
 msgid "API Secret"
-msgstr "API saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:409
 #, elixir-autogen, elixir-format
 msgid "API Username"
-msgstr "API kasutajanimi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:75
 #, elixir-autogen, elixir-format
 msgid "Access denied"
-msgstr "Juurdepääs keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:445
 #, elixir-autogen, elixir-format
 msgid "Account Name"
-msgstr "Konto nimi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Account:"
-msgstr "Konto:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:150
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:285
 #, elixir-autogen, elixir-format
 msgid "Actions"
-msgstr "Toimingud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:450
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:176
@@ -668,78 +668,78 @@ msgstr "Toimingud"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:104
 #, elixir-autogen, elixir-format
 msgid "Active"
-msgstr "Aktiivne"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:15
 #, elixir-autogen, elixir-format
 msgid "Active Providers:"
-msgstr "Aktiivsed makseteenused:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:13
 #: lib/phoenix_kit_billing/web/currencies.html.heex:58
 #: lib/phoenix_kit_billing/web/currencies.html.heex:286
 #, elixir-autogen, elixir-format
 msgid "Add Currency"
-msgstr "Lisa valuuta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:108
 #, elixir-autogen, elixir-format
 msgid "Add Item"
-msgstr "Lisa kaup"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:54
 #, elixir-autogen, elixir-format
 msgid "Add currencies manually or import from the ISO 4217 library"
-msgstr "Lisage valuutasid käsitsi või importige ISO 4217 teegist"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:264
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:424
 #, elixir-autogen, elixir-format
 msgid "Address Line 1"
-msgstr "Aadressirida 1"
+msgstr "Adresszeile 1"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:273
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:437
 #, elixir-autogen, elixir-format
 msgid "Address Line 2"
-msgstr "Aadressirida 2"
+msgstr "Adresszeile 2"
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:242
 #, elixir-autogen, elixir-format
 msgid "Admin-only notes..."
-msgstr "Ainult administraatorile nähtavad märkused..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:97
 #, elixir-autogen, elixir-format
 msgid "All"
-msgstr "Kõik"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:72
 #, elixir-autogen, elixir-format
 msgid "All Methods"
-msgstr "Kõik meetodid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:272
 #, elixir-autogen, elixir-format
 msgid "All Modules"
-msgstr "Kõik moodulid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:80
 #: lib/phoenix_kit_billing/web/orders.html.heex:83
 #, elixir-autogen, elixir-format
 msgid "All Statuses"
-msgstr "Kõik olekud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:82
 #: lib/phoenix_kit_billing/web/transactions.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "All Types"
-msgstr "Kõik tüübid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:449
 #, elixir-autogen, elixir-format
 msgid "All available currencies have already been added"
-msgstr "Kõik saadaolevad valuutad on juba lisatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:279
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:714
@@ -748,179 +748,179 @@ msgstr "Kõik saadaolevad valuutad on juba lisatud"
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Amount"
-msgstr "Summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:274
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:444
 #, elixir-autogen, elixir-format
 msgid "Apartment, suite, etc."
-msgstr "Korter, büroo jne"
+msgstr "Wohnung, Etage usw."
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:105
 #, elixir-autogen, elixir-format
 msgid "Apply"
-msgstr "Rakenda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:48
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to cancel this order?"
-msgstr "Kas olete kindel, et soovite selle tellimuse tühistada?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:216
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this billing profile?"
-msgstr "Kas olete kindel, et soovite selle arveldusprofiili kustutada?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:86
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to void this invoice?"
-msgstr "Kas olete kindel, et soovite selle arve tühistada?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:393
 #: lib/phoenix_kit_billing/web/settings.html.heex:201
 #, elixir-autogen, elixir-format
 msgid "Bank Details"
-msgstr "Pangarekvisiidid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:74
 #, elixir-autogen, elixir-format
 msgid "Bank Transfer"
-msgstr "Pangaülekanne"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:239
 #, elixir-autogen, elixir-format
 msgid "Bank details not configured (optional)"
-msgstr "Pangarekvisiidid seadistamata (valikuline)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:396
 #, elixir-autogen, elixir-format
 msgid "Bank:"
-msgstr "Pank:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:81
 #: lib/phoenix_kit_billing/web/currencies.html.heex:178
 #, elixir-autogen, elixir-format
 msgid "Base"
-msgstr "Baas"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "Basic Information"
-msgstr "Põhiteave"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:247
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:404
 #, elixir-autogen, elixir-format
 msgid "Billing Address"
-msgstr "Arveldusaadress"
+msgstr "Rechnungsadresse"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:503
 #, elixir-autogen, elixir-format
 msgid "Billing Details"
-msgstr "Arvelduse andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:269
 #, elixir-autogen, elixir-format
 msgid "Billing Information"
-msgstr "Arvelduse teave"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:104
 #, elixir-autogen, elixir-format
 msgid "Billing Interval"
-msgstr "Arveldusperiood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:130
 #, elixir-autogen, elixir-format
 msgid "Billing Period"
-msgstr "Arveldusperiood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:47
 #, elixir-autogen, elixir-format
 msgid "Billing Profile"
-msgstr "Arveldusprofiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:149
 #, elixir-autogen, elixir-format
 msgid "Billing email (can differ from account email)"
-msgstr "Arvelduse e-post (võib erineda konto e-postist)"
+msgstr "Rechnungs-E-Mail (kann von der Konto-E-Mail abweichen)"
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:151
 #, elixir-autogen, elixir-format
 msgid "Billing profile created successfully"
-msgstr "Arveldusprofiil edukalt loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:64
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:68
 #, elixir-autogen, elixir-format
 msgid "Billing profile not found"
-msgstr "Arveldusprofiili ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:181
 #, elixir-autogen, elixir-format
 msgid "Billing profile saved successfully"
-msgstr "Arveldusprofiil edukalt salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:150
 #, elixir-autogen, elixir-format
 msgid "Billing profile updated successfully"
-msgstr "Arveldusprofiil edukalt uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:37
 #, elixir-autogen, elixir-format
 msgid "Billing profiles are created by users"
-msgstr "Arveldusprofiilid loovad kasutajad ise"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:187
 #, elixir-autogen, elixir-format
 msgid "Business billing profile"
-msgstr "Ettevõtte arveldusprofiil"
+msgstr "Geschäftliches Rechnungsprofil"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format
 msgid "Callback URL"
-msgstr "Tagasihelistamise URL"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Cancel Now"
-msgstr "Tühista kohe"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:39
 #, elixir-autogen, elixir-format
 msgid "Cancel at Period End"
-msgstr "Tühista perioodi lõpus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:37
 #, elixir-autogen, elixir-format
 msgid "Cancel subscription at period end?"
-msgstr "Tühistada püsitellimus perioodi lõpus?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:46
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:65
 #, elixir-autogen, elixir-format
 msgid "Cancel subscription immediately?"
-msgstr "Tühistada püsitellimus kohe?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:57
 #, elixir-autogen, elixir-format
 msgid "Cancel subscription?"
-msgstr "Tühistada püsitellimus?"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:210
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:226
 #, elixir-autogen, elixir-format
 msgid "Cancel this subscription? It will end at the current period."
-msgstr "Tühistada püsitellimus? See lõpeb praeguse perioodi lõpus."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:235
 #, elixir-autogen, elixir-format
 msgid "Cancel this subscription? The trial will end immediately."
-msgstr "Tühistada püsitellimus? Prooviperiood lõpeb kohe."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:215
 #, elixir-autogen, elixir-format
 msgid "Cancellation"
-msgstr "Tühistamine"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:344
 #: lib/phoenix_kit_billing/web/orders.html.heex:91
@@ -929,66 +929,66 @@ msgstr "Tühistamine"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Cancelled"
-msgstr "Tühistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:230
 #, elixir-autogen, elixir-format
 msgid "Cancels at end"
-msgstr "Tühistatakse perioodi lõpus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:410
 #, elixir-autogen, elixir-format
 msgid "Cannot delete currency — it is used by existing orders"
-msgstr "Valuutat ei saa kustutada — seda kasutavad olemasolevad tellimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:133
 #, elixir-autogen, elixir-format
 msgid "Cannot delete subscription type with active subscriptions. Deactivate it instead."
-msgstr "Aktiivsete püsitellimustega tellimuse tüüpi ei saa kustutada. Deaktiveerige see selle asemel."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:403
 #, elixir-autogen, elixir-format
 msgid "Cannot delete the default currency"
-msgstr "Vaikimisi valuutat ei saa kustutada"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:381
 #, elixir-autogen, elixir-format
 msgid "Card payments (Baltics)"
-msgstr "Kaardimaksed (Baltikum)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Cards, Apple Pay, Google Pay"
-msgstr "Kaardid, Apple Pay, Google Pay"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "Change"
-msgstr "Muuda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:19
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:324
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:388
 #, elixir-autogen, elixir-format
 msgid "Change Subscription Type"
-msgstr "Muuda tellimuse tüüpi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:123
 #, elixir-autogen, elixir-format
 msgid "Change subscription type"
-msgstr "Muuda tellimuse tüüpi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:354
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:134
 #, elixir-autogen, elixir-format
 msgid "Choose a subscription type..."
-msgstr "Valige tellimuse tüüp..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:283
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:451
 #, elixir-autogen, elixir-format
 msgid "City"
-msgstr "Linn"
+msgstr "Stadt"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:89
 #: lib/phoenix_kit_billing/web/invoices.html.heex:88
@@ -996,22 +996,22 @@ msgstr "Linn"
 #: lib/phoenix_kit_billing/web/transactions.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Clear Filters"
-msgstr "Puhasta filtrid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:181
 #, elixir-autogen, elixir-format
 msgid "Client ID"
-msgstr "Kliendi ID"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:199
 #, elixir-autogen, elixir-format
 msgid "Client Secret"
-msgstr "Kliendi saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:471
 #, elixir-autogen, elixir-format
 msgid "Code"
-msgstr "Kood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:93
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:86
@@ -1019,51 +1019,51 @@ msgstr "Kood"
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:221
 #, elixir-autogen, elixir-format
 msgid "Company"
-msgstr "Ettevõte"
+msgstr "Unternehmen"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:123
 #, elixir-autogen, elixir-format
 msgid "Company & Bank Information"
-msgstr "Ettevõtte ja panga andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:172
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:305
 #, elixir-autogen, elixir-format
 msgid "Company Information"
-msgstr "Ettevõtte andmed"
+msgstr "Unternehmensangaben"
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:280
 #, elixir-autogen, elixir-format
 msgid "Company Name"
-msgstr "Ettevõtte nimi"
+msgstr "Firmenname"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:194
 #, elixir-autogen, elixir-format
 msgid "Company information not configured"
-msgstr "Ettevõtte andmed seadistamata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Configure online payment integrations"
-msgstr "Seadistage veebimakse integratsioonid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:514
 #, elixir-autogen, elixir-format
 msgid "Configure webhook with events: CHECKOUT.ORDER.*, PAYMENT.*"
-msgstr "Seadistage veebikonks sündmustega: CHECKOUT.ORDER.*, PAYMENT.*"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:17
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Confirm Order"
-msgstr "Kinnita tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:328
 #: lib/phoenix_kit_billing/web/order_form.html.heex:214
 #: lib/phoenix_kit_billing/web/orders.html.heex:87
 #, elixir-autogen, elixir-format
 msgid "Confirmed"
-msgstr "Kinnitatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:218
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:367
@@ -1075,17 +1075,17 @@ msgstr "Kontakt"
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:372
 #, elixir-autogen, elixir-format
 msgid "Contact Email"
-msgstr "Kontakti e-post"
+msgstr "Kontakt-E-Mail"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:515
 #, elixir-autogen, elixir-format
 msgid "Copy Webhook ID"
-msgstr "Kopeeri veebikonksu ID"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:535
 #, elixir-autogen, elixir-format
 msgid "Copy the processing account name (e.g. EUR3D1)"
-msgstr "Kopeerige töötluskonto nimi (nt EUR3D1)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:127
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:248
@@ -1093,115 +1093,115 @@ msgstr "Kopeerige töötluskonto nimi (nt EUR3D1)"
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:476
 #, elixir-autogen, elixir-format
 msgid "Copy to clipboard"
-msgstr "Kopeeri lõikelauale"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:526
 #, elixir-autogen, elixir-format
 msgid "Copy webhook secret"
-msgstr "Kopeeri veebikonksu saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:504
 #, elixir-autogen, elixir-format
 msgid "Copy webhook signing secret"
-msgstr "Kopeeri veebikonksu allkirjastamise saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:254
 #, elixir-autogen, elixir-format
 msgid "Country"
-msgstr "Riik"
+msgstr "Land"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
 msgid "Create"
-msgstr "Loo"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "Create First Subscription Type"
-msgstr "Loo esimene tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:263
 #: lib/phoenix_kit_billing/web/orders.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Create Order"
-msgstr "Loo tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Create Profile"
-msgstr "Loo profiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:7
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:355
 #, elixir-autogen, elixir-format
 msgid "Create Subscription"
-msgstr "Loo püsitellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:144
 #, elixir-autogen, elixir-format
 msgid "Create Your First Profile"
-msgstr "Looge oma esimene profiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:141
 #, elixir-autogen, elixir-format
 msgid "Create a billing profile to use for your orders"
-msgstr "Looge arveldusprofiil oma tellimuste jaoks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Create a new billing profile for a user"
-msgstr "Looge kasutajale uus arveldusprofiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:184
 #, elixir-autogen, elixir-format
 msgid "Create a new billing profile for orders"
-msgstr "Looge tellimuste jaoks uus arveldusprofiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:10
 #, elixir-autogen, elixir-format
 msgid "Create a new order"
-msgstr "Looge uus tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Create a new subscription type"
-msgstr "Looge uus tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:523
 #, elixir-autogen, elixir-format
 msgid "Create account at razorpay.com"
-msgstr "Looge konto aadressil razorpay.com"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:501
 #, elixir-autogen, elixir-format
 msgid "Create account at stripe.com"
-msgstr "Looge konto aadressil stripe.com"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:512
 #, elixir-autogen, elixir-format
 msgid "Create app at developer.paypal.com"
-msgstr "Looge rakendus aadressil developer.paypal.com"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:90
 #, elixir-autogen, elixir-format
 msgid "Create one now"
-msgstr "Looge üks kohe"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:503
 #, elixir-autogen, elixir-format
 msgid "Create webhook with events: checkout.session.completed, payment_intent.*"
-msgstr "Looge veebikonks sündmustega: checkout.session.completed, payment_intent.*"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:525
 #, elixir-autogen, elixir-format
 msgid "Create webhook with events: payment.*, order.paid"
-msgstr "Looge veebikonks sündmustega: payment.*, order.paid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Create your first subscription type to start accepting recurring payments."
-msgstr "Looge oma esimene tellimuse tüüp, et hakata kordusmakseid vastu võtma."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:123
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:11
@@ -1211,12 +1211,12 @@ msgstr "Looge oma esimene tellimuse tüüp, et hakata kordusmakseid vastu võtma
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:298
 #, elixir-autogen, elixir-format
 msgid "Created"
-msgstr "Loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:654
 #, elixir-autogen, elixir-format
 msgid "Credit Note Sent"
-msgstr "Kreeditarve saadetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:142
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:323
@@ -1224,48 +1224,48 @@ msgstr "Kreeditarve saadetud"
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Currency"
-msgstr "Valuuta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:292
 #, elixir-autogen, elixir-format
 msgid "Currency Code"
-msgstr "Valuuta kood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:271
 #, elixir-autogen, elixir-format
 msgid "Currency Configuration"
-msgstr "Valuuta seadistus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:369
 #, elixir-autogen, elixir-format
 msgid "Currency created successfully"
-msgstr "Valuuta edukalt loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:312
 #, elixir-autogen, elixir-format
 msgid "Currency updated"
-msgstr "Valuuta uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:368
 #, elixir-autogen, elixir-format
 msgid "Currency updated successfully"
-msgstr "Valuuta edukalt uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:186
 #, elixir-autogen, elixir-format
 msgid "Current Period"
-msgstr "Praegune periood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:329
 #, elixir-autogen, elixir-format
 msgid "Current Subscription Type"
-msgstr "Praegune tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:332
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:518
 #, elixir-autogen, elixir-format
 msgid "Custom name to identify this profile"
-msgstr "Kohandatud nimi profiili tuvastamiseks"
+msgstr "Eigener Name zur Kennzeichnung dieses Profils"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:469
 #: lib/phoenix_kit_billing/web/invoices.html.heex:52
@@ -1280,30 +1280,30 @@ msgstr "Kohandatud nimi profiili tuvastamiseks"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:183
 #, elixir-autogen, elixir-format
 msgid "Customer"
-msgstr "Klient"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:153
 #: lib/phoenix_kit_billing/web/order_form.html.heex:231
 #, elixir-autogen, elixir-format
 msgid "Customer Notes"
-msgstr "Kliendi märkused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:106
 #, elixir-autogen, elixir-format
 msgid "Day"
-msgstr "Päev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:75
 #: lib/phoenix_kit_billing/web/currencies.html.heex:144
 #: lib/phoenix_kit_billing/web/currencies.html.heex:356
 #, elixir-autogen, elixir-format
 msgid "Decimal Places"
-msgstr "Komakohtade arv"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:474
 #, elixir-autogen, elixir-format
 msgid "Decimals"
-msgstr "Komakohad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:64
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:122
@@ -1314,17 +1314,17 @@ msgstr "Komakohad"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:161
 #, elixir-autogen, elixir-format
 msgid "Default"
-msgstr "Vaikimisi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Default Tax Rate (%)"
-msgstr "Vaikimisi maksumäär (%)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:63
 #, elixir-autogen, elixir-format
 msgid "Default profile updated"
-msgstr "Vaikimisi profiil uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:282
 #: lib/phoenix_kit_billing/web/order_form.html.heex:117
@@ -1333,93 +1333,93 @@ msgstr "Vaikimisi profiil uuendatud"
 #: lib/phoenix_kit_billing/web/transactions.html.heex:115
 #, elixir-autogen, elixir-format
 msgid "Description"
-msgstr "Kirjeldus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:746
 #: lib/phoenix_kit_billing/web/order_form.html.heex:143
 #, elixir-autogen, elixir-format
 msgid "Description (optional)"
-msgstr "Kirjeldus (valikuline)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:461
 #, elixir-autogen, elixir-format
 msgid "Deselect All"
-msgstr "Tühista kõik valikud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:87
 #, elixir-autogen, elixir-format
 msgid "Disabled"
-msgstr "Keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:119
 #, elixir-autogen, elixir-format
 msgid "Discount"
-msgstr "Allahindlus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:81
 #: lib/phoenix_kit_billing/web/order_form.html.heex:212
 #: lib/phoenix_kit_billing/web/orders.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Draft"
-msgstr "Mustand"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:194
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:337
 #, elixir-autogen, elixir-format
 msgid "EU VAT format: Country code + number"
-msgstr "EL käibemaksu formaat: riigikood + number"
+msgstr "EU-USt-Format: Ländercode + Nummer"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:81
 #, elixir-autogen, elixir-format
 msgid "Edit Billing Profile"
-msgstr "Muuda arveldusprofiili"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:286
 #, elixir-autogen, elixir-format
 msgid "Edit Currency"
-msgstr "Muuda valuutat"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Edit Order %{number}"
-msgstr "Muuda tellimust %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Edit Subscription"
-msgstr "Muuda püsitellimust"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:7
 #, elixir-autogen, elixir-format
 msgid "Edit Subscription Type"
-msgstr "Muuda tellimuse tüüpi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:9
 #, elixir-autogen, elixir-format
 msgid "Edit billing profile details"
-msgstr "Muuda arveldusprofiili andmeid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:130
 #, elixir-autogen, elixir-format
 msgid "Edit in Organization"
-msgstr "Muuda organisatsioonis"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:11
 #, elixir-autogen, elixir-format
 msgid "Edit subscription settings"
-msgstr "Muuda püsitellimuse seadeid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Edit subscription type details and pricing"
-msgstr "Muuda tellimuse tüübi andmeid ja hinnastust"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:144
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:272
 #, elixir-autogen, elixir-format
 msgid "Email"
-msgstr "E-post"
+msgstr "E-Mail"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:854
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:891
@@ -1427,65 +1427,65 @@ msgstr "E-post"
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:968
 #, elixir-autogen, elixir-format
 msgid "Email Address"
-msgstr "E-posti aadress"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:77
 #, elixir-autogen, elixir-format
 msgid "Enable Tax"
-msgstr "Luba maks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:87
 #: lib/phoenix_kit_billing/web/currencies.html.heex:424
 #, elixir-autogen, elixir-format
 msgid "Enabled"
-msgstr "Lubatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:309
 #, elixir-autogen, elixir-format
 msgid "Ended"
-msgstr "Lõppenud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Enter email address..."
-msgstr "Sisestage e-posti aadress..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:794
 #, elixir-autogen, elixir-format
 msgid "Enter refund amount"
-msgstr "Sisestage tagasimakstav summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:261
 #, elixir-autogen, elixir-format
 msgid "EveryPay disabled"
-msgstr "EveryPay keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:261
 #, elixir-autogen, elixir-format
 msgid "EveryPay enabled"
-msgstr "EveryPay lubatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:280
 #, elixir-autogen, elixir-format
 msgid "EveryPay settings saved"
-msgstr "EveryPay seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:78
 #: lib/phoenix_kit_billing/web/currencies.html.heex:146
 #: lib/phoenix_kit_billing/web/currencies.html.heex:369
 #, elixir-autogen, elixir-format
 msgid "Exchange Rate"
-msgstr "Vahetuskurss"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:281
 #, elixir-autogen, elixir-format
 msgid "Extend 30 days"
-msgstr "Pikenda 30 päeva võrra"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:176
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel order: %{reason}"
-msgstr "Tellimuse tühistamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:163
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:185
@@ -1493,120 +1493,120 @@ msgstr "Tellimuse tühistamine ebaõnnestus: %{reason}"
 #: lib/phoenix_kit_billing/web/subscriptions.ex:202
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel: %{reason}"
-msgstr "Tühistamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:255
 #, elixir-autogen, elixir-format
 msgid "Failed to change subscription type: %{reason}"
-msgstr "Tellimuse tüübi muutmine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:125
 #, elixir-autogen, elixir-format
 msgid "Failed to confirm order: %{reason}"
-msgstr "Tellimuse kinnitamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:215
 #, elixir-autogen, elixir-format
 msgid "Failed to create invoice: %{errors}"
-msgstr "Arve loomine ebaõnnestus: %{errors}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:277
 #, elixir-autogen, elixir-format
 msgid "Failed to create subscription: %{reason}"
-msgstr "Püsitellimuse loomine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:414
 #, elixir-autogen, elixir-format
 msgid "Failed to delete currency"
-msgstr "Valuuta kustutamine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:88
 #, elixir-autogen, elixir-format
 msgid "Failed to delete profile"
-msgstr "Profiili kustutamine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:143
 #, elixir-autogen, elixir-format
 msgid "Failed to delete subscription type: %{reason}"
-msgstr "Tellimuse tüübi kustutamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:394
 #, elixir-autogen, elixir-format
 msgid "Failed to extend: %{reason}"
-msgstr "Pikendamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:151
 #, elixir-autogen, elixir-format
 msgid "Failed to mark as paid: %{reason}"
-msgstr "Tasutuks märkimine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:225
 #: lib/phoenix_kit_billing/web/subscription_form.ex:303
 #, elixir-autogen, elixir-format
 msgid "Failed to pause: %{reason}"
-msgstr "Peatamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:205
 #: lib/phoenix_kit_billing/web/subscription_form.ex:326
 #, elixir-autogen, elixir-format
 msgid "Failed to resume: %{reason}"
-msgstr "Jätkamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:227
 #, elixir-autogen, elixir-format
 msgid "Failed to save subscription type: %{reason}"
-msgstr "Tellimuse tüübi salvestamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:338
 #, elixir-autogen, elixir-format
 msgid "Failed to set default currency"
-msgstr "Vaikimisi valuuta määramine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:66
 #, elixir-autogen, elixir-format
 msgid "Failed to set default profile"
-msgstr "Vaikimisi profiili määramine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:315
 #, elixir-autogen, elixir-format
 msgid "Failed to update currency"
-msgstr "Valuuta uuendamine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:99
 #, elixir-autogen, elixir-format
 msgid "Failed to update subscription type: %{reason}"
-msgstr "Tellimuse tüübi uuendamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:429
 #, elixir-autogen, elixir-format
 msgid "Failed to update subscription: %{reason}"
-msgstr "Püsitellimuse uuendamine ebaõnnestus: %{reason}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:108
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:137
 #, elixir-autogen, elixir-format
 msgid "Features"
-msgstr "Funktsioonid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:214
 #, elixir-autogen, elixir-format
 msgid "First Name"
-msgstr "Eesnimi"
+msgstr "Vorname"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
 #, elixir-autogen, elixir-format
 msgid "Fully Paid"
-msgstr "Täielikult tasutud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:691
 #, elixir-autogen, elixir-format
 msgid "Fully Refunded"
-msgstr "Täielikult tagastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.ex:201
 #, elixir-autogen, elixir-format
 msgid "General settings saved"
-msgstr "Üldised seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:20
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:33
@@ -1614,300 +1614,300 @@ msgstr "Üldised seaded salvestatud"
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:174
 #, elixir-autogen, elixir-format
 msgid "Generate Invoice"
-msgstr "Genereeri arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:76
 #, elixir-autogen, elixir-format
 msgid "Generate Partial Receipt"
-msgstr "Genereeri osaline kviitung"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:74
 #, elixir-autogen, elixir-format
 msgid "Generate Receipt"
-msgstr "Genereeri kviitung"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:430
 #, elixir-autogen, elixir-format
 msgid "Generated"
-msgstr "Genereeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:502
 #, elixir-autogen, elixir-format
 msgid "Get API keys from Dashboard → Developers"
-msgstr "Hankige API võtmed jaotisest Töölaud → Arendajad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:534
 #, elixir-autogen, elixir-format
 msgid "Get API username and secret from the EveryPay merchant portal"
-msgstr "Hankige API kasutajanimi ja saladus EveryPay kaupmeeste portaalist"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:513
 #, elixir-autogen, elixir-format
 msgid "Get Client ID and Secret"
-msgstr "Hankige kliendi ID ja saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:524
 #, elixir-autogen, elixir-format
 msgid "Get Key ID and Secret from Settings → API Keys"
-msgstr "Hankige võtme ID ja saladus jaotisest Seaded → API võtmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/orders.html.heex:35
 #, elixir-autogen, elixir-format
 msgid "Get started by creating your first order"
-msgstr "Alustage oma esimese tellimuse loomisega"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:189
 #, elixir-autogen, elixir-format
 msgid "Grace Period"
-msgstr "Ajapikendus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:195
 #, elixir-autogen, elixir-format
 msgid "Grace period ends"
-msgstr "Ajapikendus lõpeb"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:402
 #: lib/phoenix_kit_billing/web/settings.html.heex:218
 #, elixir-autogen, elixir-format
 msgid "IBAN:"
-msgstr "IBAN:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:45
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:56
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:94
 #, elixir-autogen, elixir-format
 msgid "ID:"
-msgstr "ID:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:10
 #: lib/phoenix_kit_billing/web/currencies.html.heex:61
 #, elixir-autogen, elixir-format
 msgid "Import"
-msgstr "Impordi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:511
 #, elixir-autogen, elixir-format
 msgid "Import %{count} Currencies"
-msgstr "Impordi %{count} valuutat"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:444
 #, elixir-autogen, elixir-format
 msgid "Import Currencies"
-msgstr "Impordi valuutasid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:453
 #, elixir-autogen, elixir-format
 msgid "Import failed for %{count} currencies"
-msgstr "%{count} valuuta importimine ebaõnnestus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:52
 #, elixir-autogen, elixir-format
 msgid "Inactive"
-msgstr "Mitteaktiivne"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:272
 #, elixir-autogen, elixir-format
 msgid "India payments (UPI, Cards)"
-msgstr "India maksed (UPI, kaardid)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:77
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:84
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:209
 #, elixir-autogen, elixir-format
 msgid "Individual"
-msgstr "Eraisik"
+msgstr "Privatperson"
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:159
 #: lib/phoenix_kit_billing/web/order_form.html.heex:240
 #, elixir-autogen, elixir-format
 msgid "Internal Notes"
-msgstr "Sisemised märkused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:118
 #, elixir-autogen, elixir-format
 msgid "Interval Count"
-msgstr "Intervallikordaja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:111
 #: lib/phoenix_kit_billing/web/transactions.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "Invoice"
-msgstr "Arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:205
 #, elixir-autogen, elixir-format
 msgid "Invoice %{number} created"
-msgstr "Arve %{number} loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "Invoice Details"
-msgstr "Arve andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:565
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:575
 #, elixir-autogen, elixir-format
 msgid "Invoice Sent"
-msgstr "Arve saadetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.ex:59
 #, elixir-autogen, elixir-format
 msgid "Invoice not found"
-msgstr "Arvet ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:75
 #, elixir-autogen, elixir-format
 msgid "Invoice number, customer..."
-msgstr "Arve number, klient..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Invoices are generated from orders"
-msgstr "Arved genereeritakse tellimustest"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:65
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:773
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:829
 #, elixir-autogen, elixir-format
 msgid "Issue Refund"
-msgstr "Tagasta makse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:775
 #, elixir-autogen, elixir-format
 msgid "Issue refund for invoice %{number}"
-msgstr "Tagasta makse arve %{number} eest"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:133
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Item"
-msgstr "Kaup"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:131
 #, elixir-autogen, elixir-format
 msgid "Item name"
-msgstr "Kauba nimetus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:290
 #, elixir-autogen, elixir-format
 msgid "Key ID"
-msgstr "Võtme ID"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:308
 #, elixir-autogen, elixir-format
 msgid "Key Secret"
-msgstr "Võtme saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:230
 #, elixir-autogen, elixir-format
 msgid "Last Name"
-msgstr "Perekonnanimi"
+msgstr "Nachname"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
 #, elixir-autogen, elixir-format
 msgid "Legal Address"
-msgstr "Juriidiline aadress"
+msgstr "Sitzadresse"
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:106
 #, elixir-autogen, elixir-format
 msgid "Line Items"
-msgstr "Arveread"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:139
 #, elixir-autogen, elixir-format
 msgid "List the features included in this plan (one per line)"
-msgstr "Loetlege selles paketis sisalduvad funktsioonid (üks real)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:175
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:403
 #, elixir-autogen, elixir-format
 msgid "Live (Production)"
-msgstr "Reaalrežiim (toodang)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:56
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:121
 #, elixir-autogen, elixir-format
 msgid "Location"
-msgstr "Asukoht"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:171
 #, elixir-autogen, elixir-format
 msgid "Lower numbers appear first"
-msgstr "Väiksemad numbrid kuvatakse esimesena"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:263
 #, elixir-autogen, elixir-format
 msgid "Manage Currencies"
-msgstr "Halda valuutasid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Manage Subscription Types"
-msgstr "Halda tellimuste tüüpe"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Manage recurring billing subscriptions"
-msgstr "Halda korduvarve püsitellimusi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Manage supported currencies for billing"
-msgstr "Halda arvelduses toetatud valuutasid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:123
 #, elixir-autogen, elixir-format
 msgid "Manage your billing information for orders and invoices"
-msgstr "Hallake oma arvelduse andmeid tellimuste ja arvete jaoks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:13
 #, elixir-autogen, elixir-format
 msgid "Manually create a subscription for a customer"
-msgstr "Looge kliendile käsitsi püsitellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:37
 #, elixir-autogen, elixir-format
 msgid "Mark as Paid"
-msgstr "Märgi tasutuks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:783
 #, elixir-autogen, elixir-format
 msgid "Max:"
-msgstr "Maks:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:315
 #: lib/phoenix_kit_billing/web/transactions.html.heex:114
 #, elixir-autogen, elixir-format
 msgid "Method"
-msgstr "Meetod"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Middle Name"
-msgstr "Teine eesnimi"
+msgstr "Zweiter Vorname"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:169
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Mode"
-msgstr "Režiim"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:10
 #, elixir-autogen, elixir-format
 msgid "Modify order details"
-msgstr "Muuda tellimuse andmeid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:108
 #, elixir-autogen, elixir-format
 msgid "Month"
-msgstr "Kuu"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:43
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:121
 #, elixir-autogen, elixir-format
 msgid "My Billing Profiles"
-msgstr "Minu arveldusprofiilid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:316
 #: lib/phoenix_kit_billing/web/currencies.html.heex:472
@@ -1916,234 +1916,234 @@ msgstr "Minu arveldusprofiilid"
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:209
 #, elixir-autogen, elixir-format
 msgid "Name"
-msgstr "Nimi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:120
 #, elixir-autogen, elixir-format
 msgid "Name / Company"
-msgstr "Nimi / Ettevõte"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:77
 #, elixir-autogen, elixir-format
 msgid "Name, email, company..."
-msgstr "Nimi, e-post, ettevõte..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:5
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:59
 #, elixir-autogen, elixir-format
 msgid "New Billing Profile"
-msgstr "Uus arveldusprofiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:19
 #, elixir-autogen, elixir-format
 msgid "New Subscription"
-msgstr "Uus püsitellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
 #: lib/phoenix_kit_billing/web/currencies.html.heex:91
 #, elixir-autogen, elixir-format
 msgid "No"
-msgstr "Ei"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "No Subscription Types Created"
-msgstr "Tellimuste tüüpe pole loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:532
 #, elixir-autogen, elixir-format
 msgid "No billing details"
-msgstr "Arvelduse andmed puuduvad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:296
 #, elixir-autogen, elixir-format
 msgid "No billing information"
-msgstr "Arvelduse teave puudub"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:79
 #, elixir-autogen, elixir-format
 msgid "No billing profile found"
-msgstr "Arveldusprofiili ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:32
 #, elixir-autogen, elixir-format
 msgid "No billing profiles found"
-msgstr "Arveldusprofiile ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:139
 #, elixir-autogen, elixir-format
 msgid "No billing profiles yet"
-msgstr "Arveldusprofiile pole veel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:207
 #, elixir-autogen, elixir-format
 msgid "No changes to save"
-msgstr "Salvestamiseks muutusi pole"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:494
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:261
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:252
 #, elixir-autogen, elixir-format
 msgid "No customer linked"
-msgstr "Klient pole seotud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:22
 #, elixir-autogen, elixir-format
 msgid "No invoices found"
-msgstr "Arveid ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:182
 #, elixir-autogen, elixir-format
 msgid "No invoices generated yet"
-msgstr "Arveid pole veel genereeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/orders.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "No orders found"
-msgstr "Tellimusi ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:280
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:307
 #, elixir-autogen, elixir-format
 msgid "No payment method"
-msgstr "Makseviis puudub"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:222
 #, elixir-autogen, elixir-format
 msgid "No subscription type"
-msgstr "Tellimuse tüüp puudub"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:121
 #, elixir-autogen, elixir-format
 msgid "No subscription type associated"
-msgstr "Tellimuse tüüp pole seotud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:54
 #, elixir-autogen, elixir-format
 msgid "No subscriptions found"
-msgstr "Püsitellimusi ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:22
 #, elixir-autogen, elixir-format
 msgid "No transactions found"
-msgstr "Tehinguid ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:269
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "No transactions recorded yet"
-msgstr "Tehinguid pole veel salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:207
 #, elixir-autogen, elixir-format
 msgid "No user"
-msgstr "Kasutaja puudub"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:102
 #, elixir-autogen, elixir-format
 msgid "No users found matching \"%{query}\""
-msgstr "Otsingule \"%{query}\" vastavaid kasutajaid ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:17
 #, elixir-autogen, elixir-format
 msgid "None configured"
-msgstr "Ühtegi pole seadistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:374
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:399
 #, elixir-autogen, elixir-format
 msgid "Not selected"
-msgstr "Valimata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:138
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:154
 #, elixir-autogen, elixir-format
 msgid "Not set"
-msgstr "Määramata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:319
 #, elixir-autogen, elixir-format
 msgid "Not specified"
-msgstr "Täpsustamata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:412
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:150
 #: lib/phoenix_kit_billing/web/order_form.html.heex:225
 #, elixir-autogen, elixir-format
 msgid "Notes"
-msgstr "Märkused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:233
 #, elixir-autogen, elixir-format
 msgid "Notes visible to customer..."
-msgstr "Kliendile nähtavad märkused..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:276
 #, elixir-autogen, elixir-format
 msgid "Number"
-msgstr "Number"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:178
 #, elixir-autogen, elixir-format
 msgid "Only active plans are shown to customers"
-msgstr "Klientidele kuvatakse ainult aktiivseid pakette"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:295
 #, elixir-autogen, elixir-format
 msgid "Optional"
-msgstr "Valikuline"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:313
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:495
 #, elixir-autogen, elixir-format
 msgid "Options"
-msgstr "Valikud"
+msgstr "Optionen"
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:195
 #, elixir-autogen, elixir-format
 msgid "Order Settings"
-msgstr "Tellimuse seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "Order Summary"
-msgstr "Tellimuse kokkuvõte"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:172
 #, elixir-autogen, elixir-format
 msgid "Order cancelled"
-msgstr "Tellimus tühistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:118
 #, elixir-autogen, elixir-format
 msgid "Order confirmed successfully"
-msgstr "Tellimus edukalt kinnitatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:147
 #, elixir-autogen, elixir-format
 msgid "Order marked as paid"
-msgstr "Tellimus märgitud tasutuks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.ex:51
 #: lib/phoenix_kit_billing/web/order_form.ex:102
 #, elixir-autogen, elixir-format
 msgid "Order not found"
-msgstr "Tellimust ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/orders.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Order number, customer..."
-msgstr "Tellimuse number, klient..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.ex:313
 #, elixir-autogen, elixir-format
 msgid "Order saved successfully"
-msgstr "Tellimus edukalt salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:85
 #, elixir-autogen, elixir-format
 msgid "Overdue"
-msgstr "Tähtaeg ületatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:220
 #: lib/phoenix_kit_billing/web/invoices.html.heex:83
@@ -2152,49 +2152,49 @@ msgstr "Tähtaeg ületatud"
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "Paid"
-msgstr "Tasutud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:39
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:118
 #, elixir-autogen, elixir-format
 msgid "Past Due"
-msgstr "Maksetähtaeg möödunud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:32
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:205
 #, elixir-autogen, elixir-format
 msgid "Pause"
-msgstr "Peata"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:202
 #, elixir-autogen, elixir-format
 msgid "Pause this subscription? The customer will lose access."
-msgstr "Peatada see püsitellimus? Klient kaotab juurdepääsu."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:57
 #, elixir-autogen, elixir-format
 msgid "Pay with %{provider}"
-msgstr "Maksa teenusega %{provider}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:198
 #, elixir-autogen, elixir-format
 msgid "PayPal disabled"
-msgstr "PayPal keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:198
 #, elixir-autogen, elixir-format
 msgid "PayPal enabled"
-msgstr "PayPal lubatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:217
 #, elixir-autogen, elixir-format
 msgid "PayPal settings saved"
-msgstr "PayPal seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:151
 #, elixir-autogen, elixir-format
 msgid "PayPal, Venmo, Cards"
-msgstr "PayPal, Venmo, kaardid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:584
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:312
@@ -2203,17 +2203,17 @@ msgstr "PayPal, Venmo, kaardid"
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Payment"
-msgstr "Makse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:193
 #, elixir-autogen, elixir-format
 msgid "Payment Failed - Grace Period Active"
-msgstr "Makse ebaõnnestus – ajapikendus aktiivne"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:384
 #, elixir-autogen, elixir-format
 msgid "Payment Information"
-msgstr "Makse teave"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:733
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:260
@@ -2221,65 +2221,65 @@ msgstr "Makse teave"
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:414
 #, elixir-autogen, elixir-format
 msgid "Payment Method"
-msgstr "Makseviis"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:387
 #, elixir-autogen, elixir-format
 msgid "Payment Terms"
-msgstr "Maksetingimused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:323
 #, elixir-autogen, elixir-format
 msgid "Payment method is optional for manually created subscriptions"
-msgstr "Käsitsi loodud püsitellimuste puhul on makseviis valikuline"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:243
 #, elixir-autogen, elixir-format
 msgid "Payment overdue — renewal will be retried automatically"
-msgstr "Makse on hilinenud — uuendamist proovitakse automaatselt uuesti"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:752
 #, elixir-autogen, elixir-format
 msgid "Payment reference, notes..."
-msgstr "Makse viide, märkused..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:68
 #, elixir-autogen, elixir-format
 msgid "Payments"
-msgstr "Maksed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:202
 #, elixir-autogen, elixir-format
 msgid "Payments & Transactions"
-msgstr "Maksed ja tehingud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:79
 #, elixir-autogen, elixir-format
 msgid "Period"
-msgstr "Periood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:143
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:262
 #, elixir-autogen, elixir-format
 msgid "Period End"
-msgstr "Perioodi lõpp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:133
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:252
 #, elixir-autogen, elixir-format
 msgid "Period Start"
-msgstr "Perioodi algus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:108
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:232
 #, elixir-autogen, elixir-format
 msgid "Personal Information"
-msgstr "Isikuandmed"
+msgstr "Persönliche Angaben"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Personal billing profile"
-msgstr "Isiklik arveldusprofiil"
+msgstr "Privates Rechnungsprofil"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:158
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:234
@@ -2292,412 +2292,412 @@ msgstr "Telefon"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:74
 #, elixir-autogen, elixir-format
 msgid "Plan"
-msgstr "Pakett"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:374
 #, elixir-autogen, elixir-format
 msgid "Plan change takes effect immediately. The billing period will be adjusted."
-msgstr "Paketi muutus jõustub kohe. Arveldusperiood kohandatakse vastavalt."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:34
 #, elixir-autogen, elixir-format
 msgid "Please log in to manage billing profiles"
-msgstr "Arveldusprofiilide haldamiseks palun logige sisse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:32
 #, elixir-autogen, elixir-format
 msgid "Please log in to view your billing profiles"
-msgstr "Arveldusprofiilide vaatamiseks palun logige sisse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:235
 #, elixir-autogen, elixir-format
 msgid "Please select a customer"
-msgstr "Palun valige klient"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:262
 #, elixir-autogen, elixir-format
 msgid "Please select a different subscription type"
-msgstr "Palun valige erinev tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:238
 #, elixir-autogen, elixir-format
 msgid "Please select a subscription type"
-msgstr "Palun valige tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:185
 #, elixir-autogen, elixir-format
 msgid "Please select a user"
-msgstr "Palun valige kasutaja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:301
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:477
 #, elixir-autogen, elixir-format
 msgid "Postal Code"
-msgstr "Postiindeks"
+msgstr "Postleitzahl"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:206
 #, elixir-autogen, elixir-format
 msgid "Preview"
-msgstr "Eelvaade"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:75
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:187
 #, elixir-autogen, elixir-format
 msgid "Price"
-msgstr "Hind"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Pricing"
-msgstr "Hinnastus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:99
 #, elixir-autogen, elixir-format
 msgid "Print / PDF"
-msgstr "Prindi / PDF"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:33
 #, elixir-autogen, elixir-format
 msgid "Pro Plan"
-msgstr "Pro pakett"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:328
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:508
 #, elixir-autogen, elixir-format
 msgid "Profile Name (Optional)"
-msgstr "Profiili nimi (valikuline)"
+msgstr "Profilname (optional)"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:62
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:195
 #, elixir-autogen, elixir-format
 msgid "Profile Type"
-msgstr "Profiili tüüp"
+msgstr "Profiltyp"
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:85
 #, elixir-autogen, elixir-format
 msgid "Profile deleted successfully"
-msgstr "Profiil edukalt kustutatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:69
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:91
 #, elixir-autogen, elixir-format
 msgid "Profile not found"
-msgstr "Profiili ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:272
 #, elixir-autogen, elixir-format
 msgid "Provider:"
-msgstr "Makseteenuse pakkuja:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Publishable Key"
-msgstr "Avalik võti"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:134
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:70
 #: lib/phoenix_kit_billing/web/order_form.html.heex:118
 #, elixir-autogen, elixir-format
 msgid "Qty"
-msgstr "Kogus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:289
 #, elixir-autogen, elixir-format
 msgid "Quick Info"
-msgstr "Kiirteave"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:230
 #, elixir-autogen, elixir-format
 msgid "Razorpay disabled"
-msgstr "Razorpay keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:230
 #, elixir-autogen, elixir-format
 msgid "Razorpay enabled"
-msgstr "Razorpay lubatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:248
 #, elixir-autogen, elixir-format
 msgid "Razorpay settings saved"
-msgstr "Razorpay seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:801
 #, elixir-autogen, elixir-format
 msgid "Reason"
-msgstr "Põhjus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:807
 #, elixir-autogen, elixir-format
 msgid "Reason for refund (required)"
-msgstr "Tagasimakse põhjus (kohustuslik)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:427
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:613
 #, elixir-autogen, elixir-format
 msgid "Receipt Generated"
-msgstr "Kviitung genereeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:624
 #, elixir-autogen, elixir-format
 msgid "Receipt Sent"
-msgstr "Kviitung saadetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:25
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:706
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:760
 #, elixir-autogen, elixir-format
 msgid "Record Payment"
-msgstr "Salvesta makse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:708
 #, elixir-autogen, elixir-format
 msgid "Recording payment for invoice %{number}"
-msgstr "Makse salvestamine arve %{number} jaoks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:635
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Refund"
-msgstr "Tagastamine"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:781
 #, elixir-autogen, elixir-format
 msgid "Refund Amount"
-msgstr "Tagastatav summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:815
 #, elixir-autogen, elixir-format
 msgid "Refund Method"
-msgstr "Tagasimakse viis"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/orders.html.heex:93
 #, elixir-autogen, elixir-format
 msgid "Refunded"
-msgstr "Tagastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Refunds"
-msgstr "Tagasimaksed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:149
 #, elixir-autogen, elixir-format
 msgid "Reg. No:"
-msgstr "Reg-kood:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:39
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:57
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:46
 #, elixir-autogen, elixir-format
 msgid "Region"
-msgstr "Piirkond"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:214
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:363
 #, elixir-autogen, elixir-format
 msgid "Registered legal address"
-msgstr "Registreeritud juriidiline aadress"
+msgstr "Eingetragene Sitzadresse"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:202
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:343
 #, elixir-autogen, elixir-format
 msgid "Registration Number"
-msgstr "Registreerimisnumber"
+msgstr "Handelsregisternummer"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:445
 #, elixir-autogen, elixir-format
 msgid "Related Order"
-msgstr "Seotud tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:251
 #, elixir-autogen, elixir-format
 msgid "Related Settings"
-msgstr "Seotud seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:245
 #, elixir-autogen, elixir-format
 msgid "Remaining"
-msgstr "Järelejäänud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:716
 #, elixir-autogen, elixir-format
 msgid "Remaining:"
-msgstr "Jäänud:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:202
 #, elixir-autogen, elixir-format
 msgid "Renewal attempts:"
-msgstr "Uuendamiskatsed:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
 #, elixir-autogen, elixir-format
 msgid "Resend Invoice"
-msgstr "Saada arve uuesti"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:848
 #, elixir-autogen, elixir-format
 msgid "Resend invoice to customer's email address"
-msgstr "Saada arve kliendi e-posti aadressile uuesti"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:28
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:52
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:221
 #, elixir-autogen, elixir-format
 msgid "Resume"
-msgstr "Jätka"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:405
 #, elixir-autogen, elixir-format
 msgid "SWIFT/BIC:"
-msgstr "SWIFT/BIC:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:230
 #, elixir-autogen, elixir-format
 msgid "SWIFT:"
-msgstr "SWIFT:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:173
 #, elixir-autogen, elixir-format
 msgid "Sandbox (Test)"
-msgstr "Liivakast (testirežiim)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:346
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Save Changes"
-msgstr "Salvesta muudatused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:484
 #, elixir-autogen, elixir-format
 msgid "Save EveryPay"
-msgstr "Salvesta EveryPay"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:112
 #, elixir-autogen, elixir-format
 msgid "Save General Settings"
-msgstr "Salvesta üldised seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:256
 #, elixir-autogen, elixir-format
 msgid "Save PayPal"
-msgstr "Salvesta PayPal"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:365
 #, elixir-autogen, elixir-format
 msgid "Save Razorpay"
-msgstr "Salvesta Razorpay"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:135
 #, elixir-autogen, elixir-format
 msgid "Save Stripe"
-msgstr "Salvesta Stripe"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Search by email"
-msgstr "Otsi e-posti järgi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:141
 #, elixir-autogen, elixir-format
 msgid "Search by email..."
-msgstr "Otsi e-posti järgi..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "Secret Key"
-msgstr "Salajane võti"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:458
 #, elixir-autogen, elixir-format
 msgid "Select All"
-msgstr "Vali kõik"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:23
 #, elixir-autogen, elixir-format
 msgid "Select Customer"
-msgstr "Vali klient"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:347
 #, elixir-autogen, elixir-format
 msgid "Select New Subscription Type"
-msgstr "Vali uus tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:26
 #, elixir-autogen, elixir-format
 msgid "Select User *"
-msgstr "Vali kasutaja *"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:30
 #, elixir-autogen, elixir-format
 msgid "Select a customer..."
-msgstr "Valige klient..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:300
 #, elixir-autogen, elixir-format
 msgid "Select a saved payment method"
-msgstr "Valige salvestatud makseviis"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Select a subscription type"
-msgstr "Valige tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "Select a user..."
-msgstr "Valige kasutaja..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:255
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:413
 #, elixir-autogen, elixir-format
 msgid "Select country..."
-msgstr "Valige riik..."
+msgstr "Land auswählen ..."
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:985
 #, elixir-autogen, elixir-format
 msgid "Send Confirmation"
-msgstr "Saada kinnitus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:18
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:843
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:870
 #, elixir-autogen, elixir-format
 msgid "Send Invoice"
-msgstr "Saada arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:114
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:883
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:906
 #, elixir-autogen, elixir-format
 msgid "Send Receipt"
-msgstr "Saada kviitung"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:921
 #, elixir-autogen, elixir-format
 msgid "Send credit note (refund document) to customer's email address"
-msgstr "Saada kreeditarve (tagasimakse dokument) kliendi e-posti aadressile"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:847
 #, elixir-autogen, elixir-format
 msgid "Send invoice to customer's email address"
-msgstr "Saada arve kliendi e-posti aadressile"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:959
 #, elixir-autogen, elixir-format
 msgid "Send payment confirmation to customer's email address"
-msgstr "Saada makse kinnitus kliendi e-posti aadressile"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:885
 #, elixir-autogen, elixir-format
 msgid "Send payment receipt to customer's email address"
-msgstr "Saada makse kviitung kliendi e-posti aadressile"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:82
 #, elixir-autogen, elixir-format
 msgid "Sent"
-msgstr "Saadetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:63
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:81
@@ -2713,318 +2713,318 @@ msgstr "Saadetud"
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:448
 #, elixir-autogen, elixir-format
 msgid "Set"
-msgstr "Määra"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:317
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:499
 #, elixir-autogen, elixir-format
 msgid "Set as default profile"
-msgstr "Määra vaikimisi profiiliks"
+msgstr "Als Standardprofil festlegen"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:536
 #, elixir-autogen, elixir-format
 msgid "Set the Callback URL in E-shop settings to the URL above"
-msgstr "Määrake e-poe seadetes tagasihelistamise URL ülaltoodud aadressile"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:494
 #, elixir-autogen, elixir-format
 msgid "Setup Instructions"
-msgstr "Seadistamisjuhised"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:124
 #, elixir-autogen, elixir-format
 msgid "Shown on invoices and receipts"
-msgstr "Kuvatakse arvetel ja kviitungitel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Slug"
-msgstr "Lühiviide"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:112
 #, elixir-autogen, elixir-format
 msgid "Slug:"
-msgstr "Lühiviide:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:412
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:166
 #, elixir-autogen, elixir-format
 msgid "Sort Order"
-msgstr "Sortimisjärjekord"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:117
 #, elixir-autogen, elixir-format
 msgid "Sort Order:"
-msgstr "Sortimisjärjekord:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:155
 #, elixir-autogen, elixir-format
 msgid "Start with trial period"
-msgstr "Alusta prooviperioodiga"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:303
 #, elixir-autogen, elixir-format
 msgid "Started"
-msgstr "Alustatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:399
 #, elixir-autogen, elixir-format
 msgid "State / Region"
-msgstr "Osariik / piirkond"
+msgstr "Bundesland / Region"
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
-msgstr "Olek ja periood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:265
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:431
 #, elixir-autogen, elixir-format
 msgid "Street address"
-msgstr "Tänavaadress"
+msgstr "Straße und Hausnummer"
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:167
 #, elixir-autogen, elixir-format
 msgid "Stripe disabled"
-msgstr "Stripe keelatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:167
 #, elixir-autogen, elixir-format
 msgid "Stripe enabled"
-msgstr "Stripe lubatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:185
 #, elixir-autogen, elixir-format
 msgid "Stripe settings saved"
-msgstr "Stripe seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:16
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:154
 #, elixir-autogen, elixir-format
 msgid "Subscription"
-msgstr "Püsitellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Subscription #%{uuid}"
-msgstr "Püsitellimus #%{uuid}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:116
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:382
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:184
 #, elixir-autogen, elixir-format
 msgid "Subscription Type"
-msgstr "Tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Subscription Type Details"
-msgstr "Tellimuse tüübi andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:156
 #, elixir-autogen, elixir-format
 msgid "Subscription cancelled immediately"
-msgstr "Püsitellimus tühistatud kohe"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:263
 #, elixir-autogen, elixir-format
 msgid "Subscription created successfully"
-msgstr "Püsitellimus edukalt loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:317
 #, elixir-autogen, elixir-format
 msgid "Subscription extended by 30 days"
-msgstr "Püsitellimust pikendatud 30 päeva võrra"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:33
 #: lib/phoenix_kit_billing/web/subscription_form.ex:72
 #: lib/phoenix_kit_billing/web/subscriptions.ex:206
 #, elixir-autogen, elixir-format
 msgid "Subscription not found"
-msgstr "Püsitellimust ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:218
 #: lib/phoenix_kit_billing/web/subscription_form.ex:296
 #, elixir-autogen, elixir-format
 msgid "Subscription paused"
-msgstr "Püsitellimus peatatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:198
 #: lib/phoenix_kit_billing/web/subscription_form.ex:319
 #, elixir-autogen, elixir-format
 msgid "Subscription resumed"
-msgstr "Püsitellimus jätkatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:90
 #, elixir-autogen, elixir-format
 msgid "Subscription type activated"
-msgstr "Tellimuse tüüp aktiveeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:248
 #, elixir-autogen, elixir-format
 msgid "Subscription type changed successfully"
-msgstr "Tellimuse tüüp edukalt muudetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:150
 #, elixir-autogen, elixir-format
 msgid "Subscription type created successfully"
-msgstr "Tellimuse tüüp edukalt loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:89
 #, elixir-autogen, elixir-format
 msgid "Subscription type deactivated"
-msgstr "Tellimuse tüüp deaktiveeritud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:126
 #, elixir-autogen, elixir-format
 msgid "Subscription type deleted"
-msgstr "Tellimuse tüüp kustutatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:69
 #: lib/phoenix_kit_billing/web/subscription_types.ex:105
 #: lib/phoenix_kit_billing/web/subscription_types.ex:149
 #, elixir-autogen, elixir-format
 msgid "Subscription type not found"
-msgstr "Tellimuse tüüpi ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:151
 #, elixir-autogen, elixir-format
 msgid "Subscription type updated successfully"
-msgstr "Tellimuse tüüp edukalt uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:421
 #, elixir-autogen, elixir-format
 msgid "Subscription updated successfully"
-msgstr "Püsitellimus edukalt uuendatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:344
 #: lib/phoenix_kit_billing/web/subscriptions.ex:195
 #, elixir-autogen, elixir-format
 msgid "Subscription will be cancelled at period end"
-msgstr "Püsitellimus tühistatakse perioodi lõpus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.ex:178
 #, elixir-autogen, elixir-format
 msgid "Subscription will cancel at period end"
-msgstr "Püsitellimus tühistatakse perioodi lõpus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:56
 #, elixir-autogen, elixir-format
 msgid "Subscriptions will appear here when customers subscribe to plans"
-msgstr "Püsitellimused ilmuvad siia, kui kliendid pakettidele tellivad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:163
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:96
 #, elixir-autogen, elixir-format
 msgid "Subtotal"
-msgstr "Vahesumma"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:98
 #, elixir-autogen, elixir-format
 msgid "Suggested rate for selected country:"
-msgstr "Soovituslik määr valitud riigi jaoks:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:365
 #, elixir-autogen, elixir-format
 msgid "Summary"
-msgstr "Kokkuvõte"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:143
 #: lib/phoenix_kit_billing/web/currencies.html.heex:335
 #: lib/phoenix_kit_billing/web/currencies.html.heex:473
 #, elixir-autogen, elixir-format
 msgid "Symbol"
-msgstr "Sümbol"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:171
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:104
 #, elixir-autogen, elixir-format
 msgid "Tax"
-msgstr "Maks"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:402
 #, elixir-autogen, elixir-format
 msgid "Test (Demo)"
-msgstr "Testirežiim (demo)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:273
 #, elixir-autogen, elixir-format
 msgid "The default currency is used for all new orders. Exchange rates are how many units of a currency one unit of the default currency buys; setting a currency as default renormalizes all rates so its own reads 1.0. Enable only the currencies you plan to accept for billing."
-msgstr "Vaikimisi valuutat kasutatakse kõigi uute tellimuste jaoks. Vahetuskurss näitab, mitu ühikut valuutat ostab üks ühik vaikimisi valuutat; kui valuuta määratakse vaikimisi valuutaks, arvutatakse kõik kursid ümber nii, et selle enda kurss on 1,0. Lubage ainult need valuutad, mida kavatsete arvelduses kasutada."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:181
 #, elixir-autogen, elixir-format
 msgid "The base currency's rate must be 1.0 — current value %{rate}. Use “Set as default” on it to renormalize."
-msgstr "Baasvaluuta kurss peab olema 1,0 — praegu %{rate}. Kursside ümberarvutamiseks vajutage sellel „Määra vaikimisi“."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:81
 #, elixir-autogen, elixir-format
 msgid "This customer has no billing profile. A billing profile is required to create an order."
-msgstr "Sellel kliendil pole arveldusprofiili. Tellimuse loomiseks on arveldusprofiil vajalik."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:319
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:501
 #, elixir-autogen, elixir-format
 msgid "This profile will be used by default for new orders"
-msgstr "Seda profiili kasutatakse vaikimisi uute tellimuste jaoks"
+msgstr "Dieses Profil wird standardmäßig für neue Bestellungen verwendet"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:218
 #, elixir-autogen, elixir-format
 msgid "This subscription will cancel at the end of the current billing period."
-msgstr "See püsitellimus tühistatakse praeguse arveldusperioodi lõpus."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:540
 #, elixir-autogen, elixir-format
 msgid "Timeline"
-msgstr "Ajajoon"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:110
 #, elixir-autogen, elixir-format
 msgid "Transaction #"
-msgstr "Tehing #"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "Transaction #, Invoice #..."
-msgstr "Tehing nr, arve nr..."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/transactions.html.heex:27
 #, elixir-autogen, elixir-format
 msgid "Transactions will appear here when payments or refunds are recorded"
-msgstr "Tehingud ilmuvad siia, kui makseid või tagasimakseid salvestatakse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:93
 #, elixir-autogen, elixir-format
 msgid "Trial Days"
-msgstr "Prooviperioodi päevad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:175
 #, elixir-autogen, elixir-format
 msgid "Trial End"
-msgstr "Prooviperioodi lõpp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:162
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:406
 #, elixir-autogen, elixir-format
 msgid "Trial Period"
-msgstr "Prooviperiood"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:165
 #, elixir-autogen, elixir-format
 msgid "Trial Start"
-msgstr "Prooviperioodi algus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:164
 #, elixir-autogen, elixir-format
 msgid "Trial days"
-msgstr "Prooviperioodi päevad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:448
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:35
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "Trialing"
-msgstr "Prooviperioodil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:35
 #: lib/phoenix_kit_billing/web/invoices.html.heex:25
@@ -3032,7 +3032,7 @@ msgstr "Prooviperioodil"
 #: lib/phoenix_kit_billing/web/transactions.html.heex:25
 #, elixir-autogen, elixir-format
 msgid "Try adjusting your filters or search terms"
-msgstr "Proovige filtreid või otsingutermineid kohandada"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:119
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:277
@@ -3041,64 +3041,64 @@ msgstr "Proovige filtreid või otsingutermineid kohandada"
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:68
 #, elixir-autogen, elixir-format
 msgid "Type"
-msgstr "Tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:49
 #, elixir-autogen, elixir-format
 msgid "URL-friendly unique identifier"
-msgstr "URL-sõbralik unikaalne identifikaator"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:321
 #, elixir-autogen, elixir-format
 msgid "US Dollar"
-msgstr "USA dollar"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:135
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:71
 #: lib/phoenix_kit_billing/web/order_form.html.heex:119
 #, elixir-autogen, elixir-format
 msgid "Unit Price"
-msgstr "Ühiku hind"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:675
 #, elixir-autogen, elixir-format
 msgid "Unknown Event"
-msgstr "Tundmatu sündmus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:150
 #, elixir-autogen, elixir-format
 msgid "Unlimited users\nPriority support\nAdvanced analytics\nCustom integrations"
-msgstr "Piiramatu arv kasutajaid\nEelisabi\nTäiustatud analüütika\nKohandatud integratsioonid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
 msgid "Update"
-msgstr "Uuenda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:263
 #, elixir-autogen, elixir-format
 msgid "Update Order"
-msgstr "Uuenda tellimust"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:348
 #, elixir-autogen, elixir-format
 msgid "Update Profile"
-msgstr "Uuenda profiili"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:196
 #, elixir-autogen, elixir-format
 msgid "Update Subscription Type"
-msgstr "Uuenda tellimuse tüüpi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:182
 #, elixir-autogen, elixir-format
 msgid "Update your billing information"
-msgstr "Uuendage oma arvelduse andmeid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:537
 #, elixir-autogen, elixir-format
 msgid "Use Test mode against the demo gateway first"
-msgstr "Kasutage esmalt testirežiimi demo-lüüsi vastu"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:21
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:52
@@ -3106,23 +3106,23 @@ msgstr "Kasutage esmalt testirežiimi demo-lüüsi vastu"
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:70
 #, elixir-autogen, elixir-format
 msgid "User"
-msgstr "Kasutaja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:50
 #, elixir-autogen, elixir-format
 msgid "User cannot be changed after creation"
-msgstr "Kasutajat ei saa pärast loomist muuta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:122
 #, elixir-autogen, elixir-format
 msgid "User not found"
-msgstr "Kasutajat ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:189
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:327
 #, elixir-autogen, elixir-format
 msgid "VAT Number"
-msgstr "KM-number"
+msgstr "USt-IdNr."
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:150
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:510
@@ -3131,390 +3131,390 @@ msgstr "KM-number"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:169
 #, elixir-autogen, elixir-format
 msgid "VAT:"
-msgstr "Käibemaks:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:302
 #, elixir-autogen, elixir-format
 msgid "View Billing Profile"
-msgstr "Vaata arveldusprofiili"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:34
 #, elixir-autogen, elixir-format
 msgid "View Orders"
-msgstr "Vaata tellimusi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:481
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:256
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:247
 #, elixir-autogen, elixir-format
 msgid "View Profile"
-msgstr "Vaata profiili"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "View Receipt"
-msgstr "Vaata kviitungit"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:88
 #, elixir-autogen, elixir-format
 msgid "Void"
-msgstr "Tühista arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:667
 #: lib/phoenix_kit_billing/web/invoices.html.heex:84
 #, elixir-autogen, elixir-format
 msgid "Voided"
-msgstr "Tühistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:217
 #, elixir-autogen, elixir-format
 msgid "Webhook ID"
-msgstr "Veebikonksu ID"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:96
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:326
 #, elixir-autogen, elixir-format
 msgid "Webhook Secret"
-msgstr "Veebikonksu saladus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:114
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:235
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:344
 #, elixir-autogen, elixir-format
 msgid "Webhook URL"
-msgstr "Veebikonksu URL"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:107
 #, elixir-autogen, elixir-format
 msgid "Week"
-msgstr "Nädal"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:109
 #, elixir-autogen, elixir-format
 msgid "Year"
-msgstr "Aasta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:65
 #: lib/phoenix_kit_billing/web/currencies.html.heex:91
 #, elixir-autogen, elixir-format
 msgid "Yes"
-msgstr "Jah"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "e.g. 3 months = interval \"month\", count 3"
-msgstr "nt 3 kuud = intervall \"kuu\", kogus 3"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:444
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
-msgstr "nt Koduaadress, Töökoht"
+msgstr "z. B. Privatadresse, Arbeit"
 
 #: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
 #, elixir-autogen, elixir-format
 msgid "is required for companies"
-msgstr "on ettevõtetele kohustuslik"
+msgstr "ist für Unternehmen erforderlich"
 
 #: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
 #, elixir-autogen, elixir-format
 msgid "is required for individuals"
-msgstr "on eraisikutele kohustuslik"
+msgstr "ist für Privatpersonen erforderlich"
 
 #: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
 #, elixir-autogen, elixir-format
 msgid "must be a valid EU VAT number (e.g., %{example})"
-msgstr "peab olema kehtiv ELi käibemaksukohustuslase number (nt %{example})"
+msgstr "muss eine gültige EU-USt-IdNr. sein (z. B. %{example})"
 
 #: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
 #, elixir-autogen, elixir-format
 msgid "must be a valid email address"
-msgstr "peab olema kehtiv e-posti aadress"
+msgstr "muss eine gültige E-Mail-Adresse sein"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format
 msgid "per %{count} days"
 msgid_plural "per %{count} days"
-msgstr[0] "iga %{count} päev"
-msgstr[1] "iga %{count} päeva"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:167
 #, elixir-autogen, elixir-format
 msgid "per %{count} months"
 msgid_plural "per %{count} months"
-msgstr[0] "iga %{count} kuu"
-msgstr[1] "iga %{count} kuu"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:162
 #, elixir-autogen, elixir-format
 msgid "per %{count} weeks"
 msgid_plural "per %{count} weeks"
-msgstr[0] "iga %{count} nädal"
-msgstr[1] "iga %{count} nädala"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:172
 #, elixir-autogen, elixir-format
 msgid "per %{count} years"
 msgid_plural "per %{count} years"
-msgstr[0] "iga %{count} aasta"
-msgstr[1] "iga %{count} aasta"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:154
 #, elixir-autogen, elixir-format
 msgid "per day"
 msgid_plural "per day"
-msgstr[0] "iga päev"
-msgstr[1] "iga päev"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:164
 #, elixir-autogen, elixir-format
 msgid "per month"
 msgid_plural "per month"
-msgstr[0] "iga kuu"
-msgstr[1] "iga kuu"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:159
 #, elixir-autogen, elixir-format
 msgid "per week"
 msgid_plural "per week"
-msgstr[0] "iga nädal"
-msgstr[1] "iga nädal"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:169
 #, elixir-autogen, elixir-format
 msgid "per year"
 msgid_plural "per year"
-msgstr[0] "iga aasta"
-msgstr[1] "iga aasta"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:46
 #, elixir-autogen, elixir-format
 msgid "Daily"
-msgstr "Igapäevane"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:47
 #, elixir-autogen, elixir-format
 msgid "Every %{count} days"
 msgid_plural "Every %{count} days"
-msgstr[0] "Iga %{count} päeva tagant"
-msgstr[1] "Iga %{count} päeva tagant"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:41
 #, elixir-autogen, elixir-format
 msgid "Every %{count} months"
 msgid_plural "Every %{count} months"
-msgstr[0] "Iga %{count} kuu tagant"
-msgstr[1] "Iga %{count} kuu tagant"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:45
 #, elixir-autogen, elixir-format
 msgid "Every %{count} weeks"
 msgid_plural "Every %{count} weeks"
-msgstr[0] "Iga %{count} nädala tagant"
-msgstr[1] "Iga %{count} nädala tagant"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:43
 #, elixir-autogen, elixir-format
 msgid "Every %{count} years"
 msgid_plural "Every %{count} years"
-msgstr[0] "Iga %{count} aasta tagant"
-msgstr[1] "Iga %{count} aasta tagant"
+msgstr[0] ""
+msgstr[1] ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:40
 #, elixir-autogen, elixir-format
 msgid "Monthly"
-msgstr "Igakuine"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:44
 #, elixir-autogen, elixir-format
 msgid "Weekly"
-msgstr "Iganädalane"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/subscription_helpers.ex:42
 #, elixir-autogen, elixir-format
 msgid "Yearly"
-msgstr "Iga-aastane"
+msgstr ""
 
 #: lib/phoenix_kit_billing.ex:207
 #, elixir-autogen, elixir-format
 msgid "Orders, invoices, billing profiles and multi-currency support"
-msgstr "Tellimused, arved, arvelduse profiilid ja mitme valuuta tugi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Customer billing — everything on this customer's profile, not a per-project total."
-msgstr "Kliendi arveldus — kõik selle kliendi profiililt, mitte projektipõhine kogusumma."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "Open in Billing"
-msgstr "Ava arvelduses"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "No invoices for this customer yet."
-msgstr "Sellel kliendil pole veel arveid."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:146
 #, elixir-autogen, elixir-format
 msgid "Showing the %{count} most recent invoices."
-msgstr "Kuvatakse %{count} viimast arvet."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:153
 #, elixir-autogen, elixir-format
 msgid "No customer linked to this project yet."
-msgstr "Selle projektiga pole veel klienti seotud."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Paste a billing profile UUID into this tab's settings in the project's Modules & features panel."
-msgstr "Sisesta arveldusprofiili UUID selle vahekaardi seadetesse projekti paneelil „Moodulid ja funktsioonid“."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:159
 #, elixir-autogen, elixir-format
 msgid "Find it on the profile page in"
-msgstr "Leiad selle profiililehelt siin:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:180
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:317
 #, elixir-autogen, elixir-format
 msgid "Acme Corp OÜ"
-msgstr "Acme Corp OÜ"
+msgstr "Muster GmbH"
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:161
 #, elixir-autogen, elixir-format
 msgid "Billing › Profiles"
-msgstr "Arveldus › Arvelduse profiilid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:134
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:261
 #, elixir-autogen, elixir-format
 msgid "Doe"
-msgstr "Tamm"
+msgstr "Mustermann"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:293
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:471
 #, elixir-autogen, elixir-format
 msgid "Harju"
-msgstr "Harju"
+msgstr "Bayern"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:117
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:245
 #, elixir-autogen, elixir-format
 msgid "John"
-msgstr "Jaan"
+msgstr "Max"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:284
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:458
 #, elixir-autogen, elixir-format
 msgid "Tallinn"
-msgstr "Tallinn"
+msgstr "Berlin"
 
 #: lib/phoenix_kit_billing/web/project_billing_live.ex:173
 #, elixir-autogen, elixir-format
 msgid "Unnamed profile"
-msgstr "Nimeta profiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:54
 msgid "Invoice {{invoice_number}} - {{company_name}}"
-msgstr "Arve {{invoice_number}} - {{company_name}}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:109
 msgid "Receipt {{receipt_number}} - {{company_name}}"
-msgstr "Kviitung {{receipt_number}} - {{company_name}}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:163
 msgid "Credit Note {{credit_note_number}} - Refund Issued - {{company_name}}"
-msgstr "Kreeditarve {{credit_note_number}} - tagasimakse tehtud - {{company_name}}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:221
 msgid "Payment Received - {{confirmation_number}} - {{company_name}}"
-msgstr "Makse laekunud - {{confirmation_number}} - {{company_name}}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:404
 #, elixir-autogen, elixir-format
 msgid "Applies to prices converted into this currency and to cart snapshots — never to the base currency."
-msgstr "Rakendub sellesse valuutasse konverteeritud hindadele ja ostukorvi hetktõmmistele — mitte kunagi baasvaluutale."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:224
 #, elixir-autogen, elixir-format
 msgid "Charm .90 — nearest X.90"
-msgstr "Charm .90 — lähima X.90-ni"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:223
 #, elixir-autogen, elixir-format
 msgid "Charm .99 — round down to X.99"
-msgstr "Charm .99 — allapoole lähima X.99-ni"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:222
 #, elixir-autogen, elixir-format
 msgid "Exact — no psychological rounding"
-msgstr "Täpne — ilma psühholoogilise ümardamiseta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:76
 #: lib/phoenix_kit_billing/web/currencies.html.heex:145
 #, elixir-autogen, elixir-format
 msgid "Rounding"
-msgstr "Ümardamine"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:384
 #, elixir-autogen, elixir-format
 msgid "Rounding rule"
-msgstr "Ümardamisreegel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.ex:225
 #, elixir-autogen, elixir-format
 msgid "Whole units — no minor units"
-msgstr "Täisühikud — ilma sentideta"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:26
 #, elixir-autogen, elixir-format
 msgid "Some exchange rates are out of date"
-msgstr "Mõned vahetuskursid on aegunud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:28
 #, elixir-autogen, elixir-format
 msgid "Not updated for more than %{days} days: %{codes}. Prices are still converted at these rates."
-msgstr "Pole uuendatud üle %{days} päeva: %{codes}. Hindu konverteeritakse endiselt nende kursside järgi."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:189
 #, elixir-autogen, elixir-format
 msgid "out of date"
-msgstr "aegunud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:490
 #, elixir-autogen, elixir-format
 msgid "Guest payer — no account"
-msgstr "Külaline maksja — kontota"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoices.html.heex:158
 #, elixir-autogen, elixir-format
 msgid "guest"
-msgstr "külaline"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:53
 #, elixir-autogen, elixir-format
 msgid "New billing profile"
-msgstr "Uus arveldusprofiil"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/order_form.ex:87
 #, elixir-autogen, elixir-format
 msgid "New order"
-msgstr "Uus tellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:43
 #, elixir-autogen, elixir-format
 msgid "New subscription"
-msgstr "Uus püsitellimus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:87
 #, elixir-autogen, elixir-format
 msgid "New subscription type"
-msgstr "Uus tellimuse tüüp"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.ex:29
 #, elixir-autogen, elixir-format
 msgid "Providers"
-msgstr "Maksevahendajad"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:472
 #, elixir-autogen, elixir-format
@@ -3531,17 +3531,6 @@ msgid ""
 "- Transaction: {{transaction_number}}\n"
 "- Reason: {{refund_reason}}\n"
 msgstr ""
-"## Kreeditarve {{credit_note_number}}\n"
-"\n"
-"Tere, {{user_name}}!\n"
-"\n"
-"Oleme arve {{invoice_number}} eest tagastanud **{{refund_amount}} {{currency}}**.\n"
-"\n"
-"- Kreeditarve: {{credit_note_number}}\n"
-"- Tagastamise kuupäev: {{refund_date}}\n"
-"- Algne arve: {{invoice_number}}\n"
-"- Tehing: {{transaction_number}}\n"
-"- Põhjus: {{refund_reason}}\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:497
 #, elixir-autogen, elixir-format
@@ -3563,22 +3552,6 @@ msgid ""
 "- Total paid: {{total_paid}} {{currency}}\n"
 "- **Remaining balance: {{remaining_balance}} {{currency}}**\n"
 msgstr ""
-"## Makse laekus\n"
-"\n"
-"Tere, {{user_name}}!\n"
-"\n"
-"Täname makse eest! Saime arve {{invoice_number}} tasumiseks **{{payment_amount}} {{currency}}**.\n"
-"\n"
-"- Kinnitus: {{confirmation_number}}\n"
-"- Makse kuupäev: {{payment_date}}\n"
-"- Makseviis: {{payment_method}}\n"
-"- Tehing: {{transaction_number}}\n"
-"\n"
-"**Saldo**\n"
-"\n"
-"- Arve summa: {{invoice_total}} {{currency}}\n"
-"- Tasutud kokku: {{total_paid}} {{currency}}\n"
-"- **Tasumata jääk: {{remaining_balance}} {{currency}}**\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:451
 #, elixir-autogen, elixir-format
@@ -3589,11 +3562,6 @@ msgid ""
 "\n"
 "Thank you for your payment. We received {{paid_amount}} {{currency}} for invoice {{invoice_number}} on {{payment_date}}.\n"
 msgstr ""
-"## Kviitung {{receipt_number}}\n"
-"\n"
-"Tere, {{user_name}}!\n"
-"\n"
-"Täname makse eest. Saime arve {{invoice_number}} eest {{paid_amount}} {{currency}} kuupäeval {{payment_date}}.\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:425
 #, elixir-autogen, elixir-format
@@ -3602,9 +3570,6 @@ msgid ""
 "- Tax: {{tax_amount}} {{currency}}\n"
 "- **Total due: {{total}} {{currency}}**\n"
 msgstr ""
-"- Vahesumma: {{subtotal}} {{currency}}\n"
-"- Käibemaks: {{tax_amount}} {{currency}}\n"
-"- **Tasumisele kuulub: {{total}} {{currency}}**\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:459
 #, elixir-autogen, elixir-format
@@ -3613,14 +3578,11 @@ msgid ""
 "- Tax: {{tax_amount}} {{currency}}\n"
 "- **Total paid: {{paid_amount}} {{currency}}**\n"
 msgstr ""
-"- Vahesumma: {{subtotal}} {{currency}}\n"
-"- Käibemaks: {{tax_amount}} {{currency}}\n"
-"- **Tasutud kokku: {{paid_amount}} {{currency}}**\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:281
 #, elixir-autogen, elixir-format
 msgid "Credit note"
-msgstr "Kreeditarve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:440
 #, elixir-autogen, elixir-format
@@ -3629,45 +3591,42 @@ msgid ""
 "\n"
 "If you have any questions about this invoice, please contact us.\n"
 msgstr ""
-"Arve kuupäev: {{invoice_date}}. {{payment_terms}}\n"
-"\n"
-"Kui teil on selle arve kohta küsimusi, võtke meiega ühendust.\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:286
 #, elixir-autogen, elixir-format
 msgid "Payment confirmation"
-msgstr "Maksekinnitus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:276
 #, elixir-autogen, elixir-format
 msgid "Receipt"
-msgstr "Kviitung"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:287
 #, elixir-autogen, elixir-format
 msgid "Sent to the customer for a payment against an invoice, with the remaining balance."
-msgstr "Saadetakse kliendile arve eest tehtud makse kohta koos tasumata jäägiga."
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:282
 #, elixir-autogen, elixir-format
 msgid "Sent to the customer when a refund is issued: the amount and the reason."
-msgstr "Saadetakse kliendile raha tagastamisel: summa ja põhjus."
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:270
 #, elixir-autogen, elixir-format
 msgid "Sent to the customer when an invoice is sent: line items, totals, bank transfer details and a link to the invoice."
-msgstr "Saadetakse kliendile arve saatmisel: arve read, summad, pangaülekande andmed ja link arvele."
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:277
 #, elixir-autogen, elixir-format
 msgid "Sent to the customer with the receipt for a paid invoice."
-msgstr "Saadetakse kliendile tasutud arve kviitungiga."
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:465
 #: lib/phoenix_kit_billing/email_defaults.ex:520
 #, elixir-autogen, elixir-format
 msgid "Thank you for your business. If you have any questions, please contact us."
-msgstr "Täname koostöö eest! Küsimuste korral võtke meiega ühendust."
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:486
 #, elixir-autogen, elixir-format
@@ -3676,34 +3635,31 @@ msgid ""
 "\n"
 "If you have any questions about this refund, please contact us.\n"
 msgstr ""
-"Raha kantakse tagasi algsele makseviisile. Selle laekumine teie kontole võib võtta 5–10 tööpäeva.\n"
-"\n"
-"Kui teil on selle tagasimakse kohta küsimusi, võtke meiega ühendust.\n"
 
 #: lib/phoenix_kit_billing/email_defaults.ex:533
 #, elixir-autogen, elixir-format
 msgid "VAT: {{company_vat}}"
-msgstr "KMKR: {{company_vat}}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:485
 #, elixir-autogen, elixir-format
 msgid "[View credit note]({{credit_note_url}})"
-msgstr "[Vaata kreeditarvet]({{credit_note_url}})"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:430
 #, elixir-autogen, elixir-format
 msgid "[View invoice]({{invoice_url}})"
-msgstr "[Vaata arvet]({{invoice_url}})"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:518
 #, elixir-autogen, elixir-format
 msgid "[View payment confirmation]({{payment_url}})"
-msgstr "[Vaata maksekinnitust]({{payment_url}})"
+msgstr ""
 
 #: lib/phoenix_kit_billing/email_defaults.ex:464
 #, elixir-autogen, elixir-format
 msgid "[View receipt]({{receipt_url}})"
-msgstr "[Vaata kviitungit]({{receipt_url}})"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3713,15 +3669,10 @@ msgid ""
 "\n"
 "Here is your invoice from {{company_name}}.\n"
 msgstr ""
-"## Arve {{invoice_number}}\n"
-"\n"
-"Tere, {{user_name}}!\n"
-"\n"
-"Saadame teile arve ettevõttelt {{company_name}}.\n"
 
 #, elixir-autogen, elixir-format
 msgid "### Bank transfer"
-msgstr "### Pangaülekanne"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3732,12 +3683,6 @@ msgid ""
 "Total Paid:        {{total_paid}} {{currency}}\n"
 "Remaining:         {{remaining_balance}} {{currency}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"SALDO KOKKUVÕTE\n"
-"---------------------------------------------\n"
-"Arve kogusumma:    {{invoice_total}} {{currency}}\n"
-"Makstud kokku:     {{total_paid}} {{currency}}\n"
-"Jääk:              {{remaining_balance}} {{currency}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3745,9 +3690,6 @@ msgid ""
 "ISSUED BY (PAYER)\n"
 "---------------------------------------------\n"
 msgstr ""
-"---------------------------------------------\n"
-"VÄLJASTAJA (MAKSJA)\n"
-"---------------------------------------------\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3757,11 +3699,6 @@ msgid ""
 "Name: {{user_name}}\n"
 "Email: {{user_email}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"SAAJA\n"
-"---------------------------------------------\n"
-"Nimi: {{user_name}}\n"
-"E-post: {{user_email}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3770,10 +3707,6 @@ msgid ""
 "---------------------------------------------\n"
 "{{line_items_text}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"READ\n"
-"---------------------------------------------\n"
-"{{line_items_text}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3786,14 +3719,6 @@ msgid ""
 "Payment Method:    {{payment_method}}\n"
 "Transaction #:     {{transaction_number}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"MAKSE ANDMED\n"
-"---------------------------------------------\n"
-"Kinnituse nr:      {{confirmation_number}}\n"
-"Arve nr:           {{invoice_number}}\n"
-"Makse kuupäev:     {{payment_date}}\n"
-"Makseviis:         {{payment_method}}\n"
-"Tehingu nr:        {{transaction_number}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3802,10 +3727,6 @@ msgid ""
 "---------------------------------------------\n"
 "{{refund_reason}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"TAGASIMAKSE PÕHJUS\n"
-"---------------------------------------------\n"
-"{{refund_reason}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3815,11 +3736,6 @@ msgid ""
 "Name: {{user_name}}\n"
 "Email: {{user_email}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"MAKSJA\n"
-"---------------------------------------------\n"
-"Nimi: {{user_name}}\n"
-"E-post: {{user_email}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3832,14 +3748,6 @@ msgid ""
 "Original Invoice:  {{invoice_number}}\n"
 "Transaction #:     {{transaction_number}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"TAGASIMAKSE ANDMED\n"
-"---------------------------------------------\n"
-"Kreeditarve nr:    {{credit_note_number}}\n"
-"Tagasimakse kuupäev: {{refund_date}}\n"
-"Tagasimakse summa: {{refund_amount}} {{currency}}\n"
-"Algne arve:        {{invoice_number}}\n"
-"Tehingu nr:        {{transaction_number}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3852,14 +3760,6 @@ msgid ""
 "TOTAL PAID:  {{paid_amount}} {{currency}}\n"
 "---------------------------------------------\n"
 msgstr ""
-"---------------------------------------------\n"
-"KOKKUVÕTE\n"
-"---------------------------------------------\n"
-"Vahesumma:   {{subtotal}} {{currency}}\n"
-"Käibemaks:   {{tax_amount}} {{currency}}\n"
-"---------------------------------------------\n"
-"MAKSTUD:     {{paid_amount}} {{currency}}\n"
-"---------------------------------------------\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3872,46 +3772,30 @@ msgid ""
 "TOTAL:       {{total}} {{currency}}\n"
 "---------------------------------------------\n"
 msgstr ""
-"---------------------------------------------\n"
-"KOKKUVÕTE\n"
-"---------------------------------------------\n"
-"Vahesumma:   {{subtotal}} {{currency}}\n"
-"Käibemaks:   {{tax_amount}} {{currency}}\n"
-"---------------------------------------------\n"
-"KOKKU:       {{total}} {{currency}}\n"
-"---------------------------------------------\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
 "---------------------------------------------\n"
 "View credit note online: {{credit_note_url}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"Vaata kreeditarvet veebis: {{credit_note_url}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
 "---------------------------------------------\n"
 "View invoice online: {{invoice_url}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"Vaata arvet veebis: {{invoice_url}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
 "---------------------------------------------\n"
 "View payment confirmation online: {{payment_url}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"Vaata makse kinnitust veebis: {{payment_url}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
 "---------------------------------------------\n"
 "View receipt online: {{receipt_url}}\n"
 msgstr ""
-"---------------------------------------------\n"
-"Vaata kviitungit veebis: {{receipt_url}}\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3920,10 +3804,6 @@ msgid ""
 "=============================================\n"
 "STATUS: REFUND ISSUED\n"
 msgstr ""
-"=============================================\n"
-"KREEDITARVE {{credit_note_number}}\n"
-"=============================================\n"
-"OLEK: TAGASIMAKSE TEHTUD\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3931,9 +3811,6 @@ msgid ""
 "INVOICE {{invoice_number}}\n"
 "=============================================\n"
 msgstr ""
-"=============================================\n"
-"ARVE {{invoice_number}}\n"
-"=============================================\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3942,10 +3819,6 @@ msgid ""
 "=============================================\n"
 "STATUS: PAYMENT RECEIVED\n"
 msgstr ""
-"=============================================\n"
-"MAKSE KINNITUS {{confirmation_number}}\n"
-"=============================================\n"
-"OLEK: MAKSE LAEKUNUD\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -3954,66 +3827,60 @@ msgid ""
 "=============================================\n"
 "STATUS: PAID\n"
 msgstr ""
-"=============================================\n"
-"KVIITUNG {{receipt_number}}\n"
-"=============================================\n"
-"OLEK: MAKSTUD\n"
 
 #, elixir-autogen, elixir-format
 msgid "A refund has been processed for your account."
-msgstr "Teie kontole on tehtud tagasimakse."
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "BANK TRANSFER DETAILS"
-msgstr "PANGAÜLEKANDE ANDMED"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "Bank: {{bank_name}}"
-msgstr "Pank: {{bank_name}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
 "Bill To: {{user_name}}\n"
 "Email: {{user_email}}\n"
 msgstr ""
-"Saaja: {{user_name}}\n"
-"E-post: {{user_email}}\n"
 
 #, elixir-autogen, elixir-format
 msgid "Currency: {{currency}}"
-msgstr "Valuuta: {{currency}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "Due Date: {{due_date}}"
-msgstr "Maksetähtaeg: {{due_date}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "IBAN: {{bank_iban}}"
-msgstr "IBAN: {{bank_iban}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "If you have any questions about this invoice, please contact us."
-msgstr "Kui teil on selle arve kohta küsimusi, võtke meiega ühendust."
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "If you have any questions about this refund, please contact us."
-msgstr "Kui teil on selle tagasimakse kohta küsimusi, võtke meiega ühendust."
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "Invoice Date: {{invoice_date}}"
-msgstr "Arve kuupäev: {{invoice_date}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "PAYMENT AMOUNT: {{payment_amount}} {{currency}}"
-msgstr "MAKSE SUMMA: {{payment_amount}} {{currency}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "PAYMENT CONFIRMED: {{payment_date}}"
-msgstr "MAKSE KINNITATUD: {{payment_date}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "PAYMENT DUE: {{due_date}}"
-msgstr "MAKSETÄHTAEG: {{due_date}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
@@ -4021,115 +3888,106 @@ msgid ""
 "Invoice: {{invoice_number}}\n"
 "Currency: {{currency}}\n"
 msgstr ""
-"Makse kuupäev: {{payment_date}}\n"
-"Arve: {{invoice_number}}\n"
-"Valuuta: {{currency}}\n"
 
 #, elixir-autogen, elixir-format
 msgid "Please pay it by {{due_date}}."
-msgstr "Palun tasuge see hiljemalt {{due_date}}."
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "REFUND AMOUNT: {{refund_amount}} {{currency}}"
-msgstr "TAGASIMAKSE SUMMA: {{refund_amount}} {{currency}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "Reference: {{invoice_number}}"
-msgstr "Selgitus: {{invoice_number}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "SWIFT/BIC: {{bank_swift}}"
-msgstr "SWIFT/BIC: {{bank_swift}}"
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
 "Thank you for your business.\n"
 "If you have any questions, please contact us.\n"
 msgstr ""
-"Täname, et valisite meid.\n"
-"Kui teil on küsimusi, võtke meiega ühendust.\n"
 
 #, elixir-autogen, elixir-format
 msgid ""
 "Thank you for your payment!\n"
 "Your payment has been successfully processed.\n"
 msgstr ""
-"Täname makse eest!\n"
-"Teie makse on edukalt töödeldud.\n"
 
 #, elixir-autogen, elixir-format
 msgid "Thank you for your payment."
-msgstr "Täname makse eest."
+msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid ""
 "The refund will be processed to your original payment method.\n"
 "Please allow 5-10 business days for the refund to appear in your account.\n"
 msgstr ""
-"Tagasimakse tehakse teie algsele makseviisile.\n"
-"Palun arvestage, et summa jõuab kontole 5-10 tööpäeva jooksul.\n"
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:239
 #, elixir-autogen, elixir-format
 msgid "%{date} at %{time}"
-msgstr "%{date} kell %{time}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:231
 #, elixir-autogen, elixir-format
 msgid "%{month} %{day}, %{year}"
-msgstr "%{day}. %{month} %{year}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.ex:107
 #, elixir-autogen, elixir-format
 msgid "Account holder:"
-msgstr "Konto omanik:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:576
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:628
 #, elixir-autogen, elixir-format
 msgid "Amount Paid"
-msgstr "Makstud summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:416
 #, elixir-autogen, elixir-format
 msgid "Amount Received"
-msgstr "Laekunud summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:108
 #, elixir-autogen, elixir-format
 msgid "Back"
-msgstr "Tagasi"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:521
 #, elixir-autogen, elixir-format
 msgid "Bank Transfer Details"
-msgstr "Pangaülekande andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:433
 #, elixir-autogen, elixir-format
 msgctxt "document party"
 msgid "Bill To"
-msgstr "Maksja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:381
 #, elixir-autogen, elixir-format
 msgid "Confirmation #:"
-msgstr "Kinnituse nr:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:416
 #, elixir-autogen, elixir-format
 msgid "Credit Note #:"
-msgstr "Kreeditarve nr:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.ex:82
 #, elixir-autogen, elixir-format
 msgid "Credit Note %{number}"
-msgstr "Kreeditarve %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:414
 #, elixir-autogen, elixir-format
 msgid "Credit Note Details"
-msgstr "Kreeditarve andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:419
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:440
@@ -4137,576 +3995,576 @@ msgstr "Kreeditarve andmed"
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:501
 #, elixir-autogen, elixir-format
 msgid "Currency:"
-msgstr "Valuuta:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:546
 #, elixir-autogen, elixir-format
 msgid "Customer IBAN:"
-msgstr "Kliendi IBAN:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:417
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:438
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:499
 #, elixir-autogen, elixir-format
 msgid "Date:"
-msgstr "Kuupäev:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.ex:256
 #, elixir-autogen, elixir-format
 msgid "Document settings saved"
-msgstr "Dokumentide seaded salvestatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:439
 #, elixir-autogen, elixir-format
 msgid "Due Date:"
-msgstr "Maksetähtaeg:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:295
 #, elixir-autogen, elixir-format
 msgid "Footer Text"
-msgstr "Jaluse tekst"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:430
 #, elixir-autogen, elixir-format
 msgctxt "document party"
 msgid "From"
-msgstr "Müüja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:471
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:498
 #, elixir-autogen, elixir-format
 msgid "Invoice #:"
-msgstr "Arve nr:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.ex:49
 #, elixir-autogen, elixir-format
 msgid "Invoice %{number}"
-msgstr "Arve %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:477
 #, elixir-autogen, elixir-format
 msgid "Invoice Date"
-msgstr "Arve kuupäev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:475
 #, elixir-autogen, elixir-format
 msgid "Invoice Date:"
-msgstr "Arve kuupäev:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:473
 #, elixir-autogen, elixir-format
 msgid "Invoice Number"
-msgstr "Arve number"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:470
 #, elixir-autogen, elixir-format
 msgid "Invoice Reference"
-msgstr "Seotud arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:446
 #, elixir-autogen, elixir-format
 msgid "Invoice Total"
-msgstr "Arve summa"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:408
 #, elixir-autogen, elixir-format
 msgid "Issued By (Payer)"
-msgstr "Väljastaja (maksja)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:411
 #, elixir-autogen, elixir-format
 msgid "Issued To (Payee)"
-msgstr "Kellele (saaja)"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:582
 #, elixir-autogen, elixir-format
 msgid "Last Payment Date"
-msgstr "Viimase makse kuupäev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:259
 #: lib/phoenix_kit_billing/web/settings.html.heex:264
 #, elixir-autogen, elixir-format
 msgid "Logo"
-msgstr "Logo"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:253
 #, elixir-autogen, elixir-format
 msgid "On invoices, receipts, credit notes and payment confirmations, and in billing emails"
-msgstr "Arvetel, kviitungitel, kreeditarvetel ja maksekinnitustel ning arvelduse e-kirjades"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:513
 #, elixir-autogen, elixir-format
 msgid "On receipt"
-msgstr "Kättesaamisel"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:482
 #, elixir-autogen, elixir-format
 msgid "Order Number"
-msgstr "Tellimuse number"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:442
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:503
 #, elixir-autogen, elixir-format
 msgid "Order:"
-msgstr "Tellimus:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:532
 #, elixir-autogen, elixir-format
 msgid "Original Amount Paid"
-msgstr "Algselt makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:468
 #, elixir-autogen, elixir-format
 msgid "Original Invoice Reference"
-msgstr "Algne arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:481
 #, elixir-autogen, elixir-format
 msgid "Original Total:"
-msgstr "Algne summa:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:549
 #, elixir-autogen, elixir-format
 msgid "PAID - Receipt #%{number}"
-msgstr "MAKSTUD — kviitung nr %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:366
 #, elixir-autogen, elixir-format
 msgid "Paid in full"
-msgstr "Täielikult makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:411
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:572
 #, elixir-autogen, elixir-format
 msgid "Partial Payment Received"
-msgstr "Osamakse laekunud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:368
 #, elixir-autogen, elixir-format
 msgid "Partial payment"
-msgstr "Osamakse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:433
 #, elixir-autogen, elixir-format
 msgid "Payment %{number} of %{count}"
-msgstr "Makse %{number}/%{count}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:82
 #, elixir-autogen, elixir-format
 msgid "Payment Confirmation %{number}"
-msgstr "Maksekinnitus %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:624
 #, elixir-autogen, elixir-format
 msgid "Payment Confirmed"
-msgstr "Makse kinnitatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:634
 #, elixir-autogen, elixir-format
 msgid "Payment Date"
-msgstr "Makse kuupäev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:422
 #, elixir-autogen, elixir-format
 msgid "Payment Date & Time"
-msgstr "Makse kuupäev ja kellaaeg"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:382
 #, elixir-autogen, elixir-format
 msgid "Payment Date:"
-msgstr "Makse kuupäev:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:379
 #, elixir-autogen, elixir-format
 msgid "Payment Details"
-msgstr "Makse andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:509
 #, elixir-autogen, elixir-format
 msgid "Payment Due"
-msgstr "Maksetähtaeg"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:585
 #, elixir-autogen, elixir-format
 msgid "Payment History"
-msgstr "Maksete ajalugu"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:384
 #, elixir-autogen, elixir-format
 msgid "Payment Method:"
-msgstr "Makseviis:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:492
 #, elixir-autogen, elixir-format
 msgid "Payment Notes"
-msgstr "Makse märkused"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:409
 #, elixir-autogen, elixir-format
 msgid "Payment Received - Invoice Paid in Full"
-msgstr "Makse laekunud — arve täielikult tasutud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:528
 #, elixir-autogen, elixir-format
 msgid "Payment Refunded"
-msgstr "Makse tagastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:713
 #, elixir-autogen, elixir-format
 msgid "Payment Transactions"
-msgstr "Maksetehingud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:550
 #, elixir-autogen, elixir-format
 msgid "Please allow 5-10 business days for the refund to appear in your account."
-msgstr "Tagastuse laekumine kontole võib võtta 5–10 tööpäeva."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:411
 #, elixir-autogen, elixir-format
 msgid "Print Invoice"
-msgstr "Prindi arve"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:465
 #, elixir-autogen, elixir-format
 msgid "Print Receipt"
-msgstr "Prindi kviitung"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:251
 #, elixir-autogen, elixir-format
 msgid "Printed Documents"
-msgstr "Prinditavad dokumendid"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:575
 #, elixir-autogen, elixir-format
 msgid "REFUNDED - %{amount}"
-msgstr "TAGASTATUD — %{amount}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:493
 #, elixir-autogen, elixir-format
 msgid "Reason for Refund"
-msgstr "Tagastuse põhjus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:497
 #, elixir-autogen, elixir-format
 msgid "Receipt #:"
-msgstr "Kviitungi nr:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.ex:59
 #, elixir-autogen, elixir-format
 msgid "Receipt %{number}"
-msgstr "Kviitung %{number}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:495
 #, elixir-autogen, elixir-format
 msgid "Receipt Details"
-msgstr "Kviitungi andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.ex:42
 #, elixir-autogen, elixir-format
 msgid "Receipt not yet generated for this invoice"
-msgstr "Selle arve kviitungit pole veel loodud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:374
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:490
 #, elixir-autogen, elixir-format
 msgid "Received By"
-msgstr "Saaja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:376
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:492
 #, elixir-autogen, elixir-format
 msgid "Received From"
-msgstr "Maksja"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:550
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:592
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:644
 #, elixir-autogen, elixir-format
 msgid "Reference"
-msgstr "Viide"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.ex:112
 #, elixir-autogen, elixir-format
 msgid "Reference:"
-msgstr "Viide:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:450
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:544
 #, elixir-autogen, elixir-format
 msgid "Refund Date"
-msgstr "Tagastuse kuupäev"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:440
 #, elixir-autogen, elixir-format
 msgid "Refund Details"
-msgstr "Tagastuse andmed"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:538
 #, elixir-autogen, elixir-format
 msgid "Refund Payment Information"
-msgstr "Tagastuse teave"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:511
 #, elixir-autogen, elixir-format
 msgid "Refund for Invoice %{number}"
-msgstr "Tagastus arve %{number} eest"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:400
 #, elixir-autogen, elixir-format
 msgid "Refund issued"
-msgstr "Tagastus väljastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:461
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:599
 #, elixir-autogen, elixir-format
 msgid "Remaining Balance"
-msgstr "Tasumata jääk"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:273
 #, elixir-autogen, elixir-format
 msgid "Remove"
-msgstr "Eemalda"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:312
 #, elixir-autogen, elixir-format
 msgid "Save Document Settings"
-msgstr "Salvesta dokumentide seaded"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:283
 #, elixir-autogen, elixir-format
 msgid "Select Image"
-msgstr "Vali pilt"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:327
 #, elixir-autogen, elixir-format
 msgid "Select Logo"
-msgstr "Vali logo"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:477
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:681
 #, elixir-autogen, elixir-format
 msgid "Subtotal:"
-msgstr "Vahesumma:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:485
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:689
 #, elixir-autogen, elixir-format
 msgid "Tax (%{rate}%):"
-msgstr "Maks (%{rate}%):"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:638
 #, elixir-autogen, elixir-format
 msgid "Thank you for your business. If you have any questions about this invoice, please contact us."
-msgstr "Täname teid! Kui teil on selle arve kohta küsimusi, võtke meiega ühendust."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:540
 #, elixir-autogen, elixir-format
 msgid "The refund will be processed to your original payment method or bank account."
-msgstr "Raha tagastatakse algsele makseviisile või teie pangakontole."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:561
 #, elixir-autogen, elixir-format
 msgid "This credit note confirms that a refund has been issued. If you have any questions, please contact us."
-msgstr "See kreeditarve kinnitab, et tagastus on väljastatud. Küsimuste korral võtke meiega ühendust."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:504
 #, elixir-autogen, elixir-format
 msgid "This document confirms receipt of the payment indicated above. Thank you for your business."
-msgstr "See dokument kinnitab ülaltoodud makse laekumist. Täname!"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:764
 #, elixir-autogen, elixir-format
 msgid "This receipt confirms payment has been received. Thank you for your business."
-msgstr "See kviitung kinnitab makse laekumist. Täname teid!"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:452
 #, elixir-autogen, elixir-format
 msgid "Total Paid"
-msgstr "Kokku makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:702
 #, elixir-autogen, elixir-format
 msgid "Total Paid:"
-msgstr "Kokku makstud:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.html.heex:527
 #, elixir-autogen, elixir-format
 msgid "Total Refund:"
-msgstr "Tagastus kokku:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:538
 #, elixir-autogen, elixir-format
 msgid "Total Refunded"
-msgstr "Kokku tagastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:498
 #, elixir-autogen, elixir-format
 msgid "Total:"
-msgstr "Kokku:"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.html.heex:428
 #, elixir-autogen, elixir-format
 msgid "Transaction Number"
-msgstr "Tehingu number"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:66
 #, elixir-autogen, elixir-format
 msgid "Transaction is not a payment"
-msgstr "Tehing ei ole makse"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.ex:70
 #, elixir-autogen, elixir-format
 msgid "Transaction is not a refund"
-msgstr "Tehing ei ole tagastus"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/credit_note_print.ex:55
 #: lib/phoenix_kit_billing/web/payment_confirmation_print.ex:51
 #, elixir-autogen, elixir-format
 msgid "Transaction not found"
-msgstr "Tehingut ei leitud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:287
 #, elixir-autogen, elixir-format
 msgid "Use a version that reads on white. Without one, the project logo is used, then the company name."
-msgstr "Vali versioon, mis on valgel taustal loetav. Selle puudumisel kasutatakse projekti logo, seejärel ettevõtte nime."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:552
 #: lib/phoenix_kit_billing/web/invoice_print.html.heex:579
 #, elixir-autogen, elixir-format
 msgid "on %{date}"
-msgstr "%{date}"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:270
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "April"
-msgstr "aprill"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:274
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "August"
-msgstr "august"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:278
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "December"
-msgstr "detsember"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:268
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "February"
-msgstr "veebruar"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:267
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "January"
-msgstr "jaanuar"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:273
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "July"
-msgstr "juuli"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:272
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "June"
-msgstr "juuni"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:269
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "March"
-msgstr "märts"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:271
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "May"
-msgstr "mai"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:277
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "November"
-msgstr "november"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:276
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "October"
-msgstr "oktoober"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:275
 #, elixir-autogen, elixir-format
 msgctxt "date"
 msgid "September"
-msgstr "september"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:247
 #, elixir-autogen, elixir-format
 msgctxt "invoice status"
 msgid "Draft"
-msgstr "Mustand"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:250
 #, elixir-autogen, elixir-format
 msgctxt "invoice status"
 msgid "Overdue"
-msgstr "Tähtaeg ületatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:249
 #, elixir-autogen, elixir-format
 msgctxt "invoice status"
 msgid "Paid"
-msgstr "Makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:248
 #, elixir-autogen, elixir-format
 msgctxt "invoice status"
 msgid "Sent"
-msgstr "Saadetud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/components/print_document.ex:251
 #, elixir-autogen, elixir-format
 msgctxt "invoice status"
 msgid "Void"
-msgstr "Tühistatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:484
 #, elixir-autogen, elixir-format
 msgctxt "receipt status"
 msgid "Paid"
-msgstr "Makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:481
 #, elixir-autogen, elixir-format
 msgctxt "receipt status"
 msgid "Partially paid"
-msgstr "Osaliselt makstud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:478
 #, elixir-autogen, elixir-format
 msgctxt "receipt status"
 msgid "Refunded"
-msgstr "Tagastatud"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:310
 #, elixir-autogen, elixir-format
 msgid "A few lines about the company: what it does, how to reach it, what the prices include. Printed as written, the same in every language, up to %{max} characters."
-msgstr "Paar rida ettevõttest: millega tegeleb, kuidas ühendust võtta, mida hinnad sisaldavad. Trükitakse nii, nagu kirjutatud, kõigis keeltes ühtemoodi, kuni %{max} märki."
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.ex:306
 #, elixir-autogen, elixir-format
 msgid "Document settings could not be saved"
-msgstr "Dokumentide seadeid ei õnnestunud salvestada"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.ex:285
 #, elixir-autogen, elixir-format
 msgid "The footer text is too long: at most %{max} characters."
-msgstr "Jaluse tekst on liiga pikk: kuni %{max} märki."
+msgstr ""

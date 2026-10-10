@@ -869,10 +869,10 @@ msgstr "Billing profile updated successfully"
 msgid "Billing profiles are created by users"
 msgstr "Billing profiles are created by users"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:187
 #, elixir-autogen, elixir-format
-msgid "Business billing profile (EU)"
-msgstr "Business billing profile (EU)"
+msgid "Business billing profile"
+msgstr "Business billing profile"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
 #, elixir-autogen, elixir-format
@@ -1031,11 +1031,10 @@ msgstr "Company & Bank Information"
 msgid "Company Information"
 msgstr "Company Information"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:280
 #, elixir-autogen, elixir-format
-msgid "Company Name *"
-msgstr "Company Name *"
+msgid "Company Name"
+msgstr "Company Name"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:194
 #, elixir-autogen, elixir-format
@@ -1109,11 +1108,6 @@ msgstr "Copy webhook signing secret"
 #, elixir-autogen, elixir-format
 msgid "Country"
 msgstr "Country"
-
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
-#, elixir-autogen, elixir-format
-msgid "Country *"
-msgstr "Country *"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
 #, elixir-autogen, elixir-format
@@ -1593,11 +1587,10 @@ msgstr "Failed to update subscription: %{reason}"
 msgid "Features"
 msgstr "Features"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:214
 #, elixir-autogen, elixir-format
-msgid "First Name *"
-msgstr "First Name *"
+msgid "First Name"
+msgstr "First Name"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
 #, elixir-autogen, elixir-format
@@ -1804,11 +1797,10 @@ msgstr "Key ID"
 msgid "Key Secret"
 msgstr "Key Secret"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:230
 #, elixir-autogen, elixir-format
-msgid "Last Name *"
-msgstr "Last Name *"
+msgid "Last Name"
+msgstr "Last Name"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:357
@@ -2774,6 +2766,11 @@ msgstr "Start with trial period"
 msgid "Started"
 msgstr "Started"
 
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:399
+#, elixir-autogen, elixir-format
+msgid "State / Region"
+msgstr "State / Region"
+
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
@@ -3207,15 +3204,30 @@ msgstr "Yes"
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr "e.g. 3 months = interval \"month\", count 3"
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:444
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr "e.g., Home Address, Work"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
 #, elixir-autogen, elixir-format
-msgid "e.g., Home Address, Work, Company HQ"
-msgstr "e.g., Home Address, Work, Company HQ"
+msgid "is required for companies"
+msgstr "is required for companies"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
+#, elixir-autogen, elixir-format
+msgid "is required for individuals"
+msgstr "is required for individuals"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
+#, elixir-autogen, elixir-format
+msgid "must be a valid EU VAT number (e.g., %{example})"
+msgstr "must be a valid EU VAT number (e.g., %{example})"
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
+msgstr "must be a valid email address"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
 #, elixir-autogen, elixir-format

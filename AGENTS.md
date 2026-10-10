@@ -94,7 +94,7 @@ alone.
   core's route wiring. Assigns available in admin pages:
   `@phoenix_kit_current_scope`, `@current_locale`, `@url_path`.
 - **Gettext:** own backend `PhoenixKitBilling.Gettext` over `priv/gettext`
-  (`en`, `et`, `ru`, `uk`). `billing_tab!/1` injects `gettext_backend:` and
+  (`en`, `et`, `ru`, `uk`, `de`, `fr` — `de`/`fr` cover only the shared billing profile form so far). `billing_tab!/1` injects `gettext_backend:` and
   `gettext_domain: "default"` into every `Tab.new!/1` call, so tab labels
   localize. `priv/gettext/default.pot` is **maintained by hand** — tab labels are
   plain strings inside `Tab.new!(label: ...)` and `mix gettext.extract` cannot
@@ -214,7 +214,7 @@ lib/phoenix_kit_billing/
     ├── *_print.ex                       # Invoice, receipt, credit note, payment confirmation
     │                                    #   (shared parts: components/print_document.ex)
     ├── project_billing_live.ex          # "Customer billing" project-extension tab
-    └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers
+    └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers, BillingProfileFields (shared billing profile form fields)
 ```
 
 ### Schemas and tables

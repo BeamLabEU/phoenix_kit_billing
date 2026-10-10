@@ -56,6 +56,7 @@ defmodule PhoenixKitBilling.BillingProfile do
 
   use Ecto.Schema
   use PhoenixKit.SchemaPrefix
+  use Gettext, backend: PhoenixKitBilling.Gettext
   import Ecto.Changeset
   import Ecto.Query, warn: false
 
@@ -106,42 +107,138 @@ defmodule PhoenixKitBilling.BillingProfile do
     timestamps(type: :utc_datetime)
   end
 
+  @form_fields [
+    :type,
+    :name,
+    :first_name,
+    :last_name,
+    :middle_name,
+    :phone,
+    :email,
+    :company_name,
+    :company_vat_number,
+    :company_registration_number,
+    :company_legal_address,
+    :address_line1,
+    :address_line2,
+    :city,
+    :state,
+    :postal_code,
+    :country
+  ]
+
+  # Mirrors the varchar sizes of `phoenix_kit_billing_profiles`, so over-long
+  # input is a changeset error rather than a Postgrex exception.
+  @max_lengths [
+    name: 255,
+    first_name: 255,
+    last_name: 255,
+    middle_name: 255,
+    phone: 255,
+    email: 255,
+    company_name: 255,
+    company_vat_number: 20,
+    company_registration_number: 30,
+    address_line1: 255,
+    address_line2: 255,
+    city: 255,
+    state: 255,
+    postal_code: 20
+  ]
+
+  @address_required_fields [:address_line1, :city, :postal_code, :country]
+
+  @doc """
+  Field names a billing profile form submits — everything `fields_changeset/3`
+  casts. Use it to whitelist params in a caller that builds the form itself.
+
+  Excludes `:user_uuid`, `:is_default` and `:metadata`, which a caller sets
+  from its own context rather than from user input.
+  """
+  @spec form_fields() :: [atom()]
+  def form_fields, do: @form_fields
+
   @doc """
   Creates a changeset for billing profile creation and updates.
+
+  Applies the `fields_changeset/3` rules, then adds the owner (`:user_uuid`,
+  required), `:is_default` and `:metadata`.
   """
   def changeset(profile, attrs) do
     profile
-    |> cast(attrs, [
-      :user_uuid,
-      :type,
-      :is_default,
-      :name,
-      :first_name,
-      :last_name,
-      :middle_name,
-      :phone,
-      :email,
-      :company_name,
-      :company_vat_number,
-      :company_registration_number,
-      :company_legal_address,
-      :address_line1,
-      :address_line2,
-      :city,
-      :state,
-      :postal_code,
-      :country,
-      :metadata
-    ])
+    |> fields_changeset(attrs)
+    |> cast(attrs, [:user_uuid, :is_default, :metadata])
     |> validate_required([:user_uuid, :type])
+    # Named explicitly — see the note in `Invoice.changeset/2`.
+    |> foreign_key_constraint(:user_uuid, name: :fk_billing_profiles_user_uuid)
+  end
+
+  @doc """
+  Changeset over the user-facing form fields only (see `form_fields/0`).
+
+  Carries the same field rules as `changeset/2` — type, the fields each type
+  needs, country length, email format, EU VAT number, auto-generated display
+  name — but does not require or cast `:user_uuid` and does not cast
+  `:is_default`, so a form that has no persisted owner yet (a checkout) can
+  validate with it.
+
+  For a new profile pass `%BillingProfile{}` as the first argument.
+
+  ## Options
+
+    * `:require_email` - also require `:email` (default `false`)
+    * `:require_address` - also require `:address_line1`, `:city`,
+      `:postal_code` and `:country` (default `false`). A blank `country` param
+      counts as missing here, although Ecto would otherwise replace it with the
+      schema default `"EE"`; without this option a blank country keeps the
+      default, as `changeset/2` does.
+  """
+  @spec fields_changeset(%__MODULE__{}, map(), keyword()) :: Ecto.Changeset.t()
+  def fields_changeset(%__MODULE__{} = profile, attrs, opts \\ []) do
+    profile
+    |> cast(attrs, @form_fields)
+    |> blank_country_to_nil(Keyword.get(opts, :require_address, false), attrs)
+    |> validate_required(required_by_opts(opts))
     |> validate_inclusion(:type, @valid_types)
     |> validate_length(:country, is: 2)
-    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email address")
+    |> validate_max_lengths()
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/,
+      message: gettext("must be a valid email address")
+    )
     |> validate_type_specific_fields()
     |> validate_vat_number()
     |> maybe_set_display_name()
-    # Named explicitly — see the note in `Invoice.changeset/2`.
-    |> foreign_key_constraint(:user_uuid, name: :fk_billing_profiles_user_uuid)
+  end
+
+  # Ecto casts a blank param to the struct default, which would let a blank
+  # country select slip through `require_address` as "EE".
+  defp blank_country_to_nil(changeset, true, attrs) do
+    case Enum.find_value(["country", :country], &Map.get(attrs, &1)) do
+      country when is_binary(country) ->
+        if String.trim(country) == "", do: force_change(changeset, :country, nil), else: changeset
+
+      _ ->
+        changeset
+    end
+  end
+
+  defp blank_country_to_nil(changeset, false, _attrs), do: changeset
+
+  # Postgres varchar(n) counts code points, Ecto counts graphemes by default:
+  # "e" + a combining accent is one grapheme but two code points.
+  defp validate_max_lengths(changeset) do
+    Enum.reduce(@max_lengths, changeset, fn {field, max}, acc ->
+      validate_length(acc, field, max: max, count: :codepoints)
+    end)
+  end
+
+  defp required_by_opts(opts) do
+    email = if Keyword.get(opts, :require_email, false), do: [:email], else: []
+
+    address =
+      if Keyword.get(opts, :require_address, false), do: @address_required_fields, else: []
+
+    email ++ address
   end
 
   defp validate_type_specific_fields(changeset) do
@@ -150,11 +247,13 @@ defmodule PhoenixKitBilling.BillingProfile do
     case type do
       "individual" ->
         changeset
-        |> validate_required([:first_name, :last_name], message: "is required for individuals")
+        |> validate_required([:first_name, :last_name],
+          message: gettext("is required for individuals")
+        )
 
       "company" ->
         changeset
-        |> validate_required([:company_name], message: "is required for companies")
+        |> validate_required([:company_name], message: gettext("is required for companies"))
 
       _ ->
         changeset
@@ -177,7 +276,9 @@ defmodule PhoenixKitBilling.BillingProfile do
           add_error(
             changeset,
             :company_vat_number,
-            "must be a valid EU VAT number (e.g., #{country}123456789)"
+            gettext("must be a valid EU VAT number (e.g., %{example})",
+              example: "#{country}123456789"
+            )
           )
         end
 
@@ -205,6 +306,14 @@ defmodule PhoenixKitBilling.BillingProfile do
           _ ->
             ""
         end
+
+      # first + last name can exceed the column on their own.
+      name =
+        name
+        |> String.codepoints()
+        |> Enum.take(Keyword.fetch!(@max_lengths, :name))
+        |> Enum.join()
+        |> String.trim_trailing()
 
       if name != "" do
         put_change(changeset, :name, name)

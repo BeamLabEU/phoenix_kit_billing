@@ -870,9 +870,9 @@ msgstr ""
 msgid "Billing profiles are created by users"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:187
 #, elixir-autogen, elixir-format
-msgid "Business billing profile (EU)"
+msgid "Business billing profile"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:463
@@ -1032,10 +1032,9 @@ msgstr ""
 msgid "Company Information"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:179
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:310
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:280
 #, elixir-autogen, elixir-format
-msgid "Company Name *"
+msgid "Company Name"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:194
@@ -1109,11 +1108,6 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:254
 #, elixir-autogen, elixir-format
 msgid "Country"
-msgstr ""
-
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:410
-#, elixir-autogen, elixir-format
-msgid "Country *"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:431
@@ -1594,10 +1588,9 @@ msgstr ""
 msgid "Features"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:116
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:238
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:214
 #, elixir-autogen, elixir-format
-msgid "First Name *"
+msgid "First Name"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:603
@@ -1805,10 +1798,9 @@ msgstr ""
 msgid "Key Secret"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:133
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:254
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:230
 #, elixir-autogen, elixir-format
-msgid "Last Name *"
+msgid "Last Name"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:212
@@ -2775,6 +2767,11 @@ msgstr ""
 msgid "Started"
 msgstr ""
 
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:399
+#, elixir-autogen, elixir-format
+msgid "State / Region"
+msgstr ""
+
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:188
 #, elixir-autogen, elixir-format
 msgid "Status & Period"
@@ -3208,14 +3205,29 @@ msgstr ""
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:515
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:444
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:329
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:254
 #, elixir-autogen, elixir-format
-msgid "e.g., Home Address, Work, Company HQ"
+msgid "is required for companies"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:249
+#, elixir-autogen, elixir-format
+msgid "is required for individuals"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:277
+#, elixir-autogen, elixir-format
+msgid "must be a valid EU VAT number (e.g., %{example})"
+msgstr ""
+
+#: lib/phoenix_kit_billing/schemas/billing_profile.ex:206
+#, elixir-autogen, elixir-format
+msgid "must be a valid email address"
 msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.ex:157
