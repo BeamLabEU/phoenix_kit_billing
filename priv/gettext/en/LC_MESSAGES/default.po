@@ -869,7 +869,7 @@ msgstr "Billing profile updated successfully"
 msgid "Billing profiles are created by users"
 msgstr "Billing profiles are created by users"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:187
 #, elixir-autogen, elixir-format
 msgid "Business billing profile"
 msgstr "Business billing profile"

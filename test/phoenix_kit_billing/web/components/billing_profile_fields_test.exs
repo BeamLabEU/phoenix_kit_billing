@@ -321,7 +321,7 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFieldsTest do
           do: id
     end
 
-    for locale <- ~w(de fr et ru) do
+    for locale <- ~w(de fr et ru uk) do
       test "#{locale} translates every string the shared form uses" do
         path = "priv/gettext/#{unquote(locale)}/LC_MESSAGES/default.po"
         %Expo.Messages{messages: messages} = Expo.PO.parse_file!(path)

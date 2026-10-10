@@ -872,7 +872,7 @@ msgstr "Платёжный профиль успешно обновлён"
 msgid "Billing profiles are created by users"
 msgstr "Платёжные профили создаются пользователями"
 
-#: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:95
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:187
 #, elixir-autogen, elixir-format
 msgid "Business billing profile"
 msgstr "Корпоративный платёжный профиль"
