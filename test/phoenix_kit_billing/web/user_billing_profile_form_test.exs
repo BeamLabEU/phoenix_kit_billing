@@ -113,6 +113,25 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileFormTest do
     assert default.uuid == second.uuid
   end
 
+  test "a submitted user_uuid cannot move the profile to another user", %{
+    conn: conn,
+    user: user
+  } do
+    profile = profile_for(user)
+    other = fixture_user()
+
+    {:ok, view, _html} = live(conn, "/en/dashboard/billing-profiles/#{profile.uuid}/edit")
+
+    render_submit(view, "save", %{
+      "billing_profile" => %{"first_name" => "Oksana", "user_uuid" => other.uuid}
+    })
+
+    assert [saved] = Billing.list_user_billing_profiles(user.uuid)
+    assert saved.uuid == profile.uuid
+    assert saved.first_name == "Oksana"
+    assert Billing.list_user_billing_profiles(other.uuid) == []
+  end
+
   test "the new route still opens an empty form", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/en/dashboard/billing-profiles/new")
 
