@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.20.0 - 2026-10-10
+
+Ukrainian translations (PR #47) and translated, branded printable documents
+(PR #48).
+
+### Added
+
+- **Ukrainian (`uk`)** — a complete `priv/gettext/uk` catalogue (675 entries,
+  plurals included); the four financial emails render in Ukrainian.
+- **Printed-document branding.** A "Printed Documents" card under Billing →
+  Settings sets a logo (a media-library file; unset falls back to the project
+  logo, then the company name) and a footer text of up to 1000 characters.
+  Both close every printable document, and the footer closes every financial
+  email too. A PNG/JPEG/GIF billing logo replaces the site logo in the email
+  header. Saving needs `manage_settings`. New settings:
+  `billing_document_logo_file_uuid`, `billing_document_footer`.
+- `PhoenixKitBilling.DocumentBranding` and `Web.Components.PrintDocument`
+  (the shared parts of the four print views).
+
+### Changed
+
+- **The invoice, receipt, credit note and payment confirmation print views are
+  translated** (`en`, `et`, `ru`, `uk`): labels, dates (with genitive month
+  names) and `<html lang>` follow the locale. The company address is written
+  in the reader's language, postal-code-first for UA/RU/BY/KZ, and the same
+  formatting now applies to the customer.
+- The seller block shows the registration number; the invoice's bank block
+  shows the account holder and drops empty rows.
+
+### Fixed
+
+- **The invoice's parties were swapped** — the seller now sits under From and
+  the customer under Bill To.
+- The invoice status filter's "Voided" option no longer reads as the action
+  label "Void" in Ukrainian.
+
 ## 0.19.1 - 2026-10-04
 
 Follow-up fixes to the 0.19.0 billing emails (PR #46 review).
