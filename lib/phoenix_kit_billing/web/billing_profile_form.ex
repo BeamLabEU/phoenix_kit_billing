@@ -14,7 +14,6 @@ defmodule PhoenixKitBilling.Web.BillingProfileForm do
   alias PhoenixKit.Settings
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.CountryData
-  alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.BillingProfile

@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.21.0 - 2026-10-10
+
+A shared billing profile form (PR #50), the dashboard edit-link fix (PR #49)
+and Ukrainian printed documents (PR #51).
+
+### Added
+
+- **`Web.Components.BillingProfileFields`** — the billing profile form fields,
+  defined once and rendered by the dashboard form, the admin form and any other
+  caller (the e-commerce checkout). Inputs bind to `@form[:field]`; the caller
+  owns the `<form>`, its events and the submit button.
+- `BillingProfile.fields_changeset/3` and `BillingProfile.form_fields/0` — the
+  user-facing field rules without the owner or `is_default`, with
+  `:require_email` and `:require_address` options, so a form with no persisted
+  owner yet can validate. Field lengths mirror the column sizes and count code
+  points like Postgres.
+- **German (`de`) and French (`fr`) catalogues** for the shared billing profile
+  form; every other string falls back to English.
+- Ukrainian translations for the printed billing documents and the billing
+  profile form.
+
+### Changed
+
+- The billing profile validation messages are translated through
+  `PhoenixKitBilling.Gettext`.
+- The business billing profile label drops its "EU" qualifier.
+- `get_default_billing_profile/1` returns the most recently updated default
+  instead of raising when older data holds several.
+
+### Fixed
+
+- **The dashboard "Edit billing profile" link opened the "New Billing Profile"
+  form**, and saving created a duplicate. Core routes the page with `:uuid`; the
+  form read only `id`. Both are accepted now.
+- Saving a billing profile as default clears the flag on the user's other
+  profiles in the same transaction, so a user keeps one default.
+- An over-long display name (first + last name) is cut to the column size
+  instead of raising `Postgrex.Error`.
+
 ## 0.20.0 - 2026-10-10
 
 Ukrainian translations (PR #47) and translated, branded printable documents

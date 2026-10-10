@@ -11,7 +11,6 @@ defmodule PhoenixKitBilling.Web.UserBillingProfileForm do
   import PhoenixKitBilling.Web.Components.BillingProfileFields, only: [billing_profile_fields: 1]
 
   alias PhoenixKit.Utils.CountryData
-  alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.BillingProfile
