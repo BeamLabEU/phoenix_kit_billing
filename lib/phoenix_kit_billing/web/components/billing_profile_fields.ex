@@ -21,7 +21,7 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
   before it renders or validates, e.g.
   `Gettext.put_locale(PhoenixKitBilling.Gettext, locale)` in `mount/3`
   (the locale is per process; `Gettext.with_locale/3` scopes it to a function).
-  Catalogues ship for `en`, `et`, `ru`, `de` and `fr`; the `de` and `fr`
+  Catalogues ship for `en`, `et`, `ru`, `uk`, `de` and `fr`; the `de` and `fr`
   catalogues translate the fields shown here, other strings fall back to English.
   Core's own error messages ("can't be blank", length limits) follow the locale
   of core's backend.

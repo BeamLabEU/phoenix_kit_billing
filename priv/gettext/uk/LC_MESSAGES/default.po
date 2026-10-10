@@ -1033,7 +1033,7 @@ msgstr "Реквізити компанії та банку"
 msgid "Company Information"
 msgstr "Реквізити компанії"
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:261
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:280
 #, elixir-autogen, elixir-format
 msgid "Company Name"
 msgstr "Назва компанії"
@@ -1589,7 +1589,7 @@ msgstr "Не вдалося оновити підписку: %{reason}"
 msgid "Features"
 msgstr "Можливості"
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:195
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:214
 #, elixir-autogen, elixir-format
 msgid "First Name"
 msgstr "Ім'я"
@@ -1799,7 +1799,7 @@ msgstr "Key ID"
 msgid "Key Secret"
 msgstr "Key Secret"
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:211
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:230
 #, elixir-autogen, elixir-format
 msgid "Last Name"
 msgstr "Прізвище"
@@ -2768,7 +2768,7 @@ msgstr "Почати з пробного періоду"
 msgid "Started"
 msgstr "Розпочато"
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:380
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:399
 #, elixir-autogen, elixir-format
 msgid "State / Region"
 msgstr "Область / регіон"
@@ -3206,7 +3206,7 @@ msgstr "Так"
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr "напр., 3 місяці = інтервал «month», кількість 3"
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:425
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:444
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr "напр., Домашня адреса, Робота"

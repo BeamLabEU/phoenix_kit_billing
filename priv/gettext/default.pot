@@ -1032,7 +1032,7 @@ msgstr ""
 msgid "Company Information"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:261
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:280
 #, elixir-autogen, elixir-format
 msgid "Company Name"
 msgstr ""
@@ -1588,7 +1588,7 @@ msgstr ""
 msgid "Features"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:195
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:214
 #, elixir-autogen, elixir-format
 msgid "First Name"
 msgstr ""
@@ -1798,7 +1798,7 @@ msgstr ""
 msgid "Key Secret"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:211
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:230
 #, elixir-autogen, elixir-format
 msgid "Last Name"
 msgstr ""
@@ -2767,7 +2767,7 @@ msgstr ""
 msgid "Started"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:380
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:399
 #, elixir-autogen, elixir-format
 msgid "State / Region"
 msgstr ""
@@ -3205,7 +3205,7 @@ msgstr ""
 msgid "e.g. 3 months = interval \"month\", count 3"
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:425
+#: lib/phoenix_kit_billing/web/components/billing_profile_fields.ex:444
 #, elixir-autogen, elixir-format
 msgid "e.g., Home Address, Work"
 msgstr ""
