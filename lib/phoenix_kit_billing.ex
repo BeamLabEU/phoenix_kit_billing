@@ -47,6 +47,7 @@ defmodule PhoenixKitBilling do
 
   alias PhoenixKit.Dashboard.Tab
   alias PhoenixKit.Settings
+  alias PhoenixKit.Users.Permissions
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKit.Utils.Number
@@ -463,7 +464,8 @@ defmodule PhoenixKitBilling do
         priority: 200,
         match: :prefix,
         group: :main,
-        live_view: {PhoenixKitBilling.Web.UserOrders, :index}
+        live_view: {PhoenixKitBilling.Web.UserOrders, :index},
+        user_menu: &__MODULE__.user_menu_with_shop?/1
       ),
       billing_tab!(
         id: :dashboard_billing_profiles,
@@ -472,9 +474,28 @@ defmodule PhoenixKitBilling do
         path: "billing-profiles",
         priority: 850,
         match: :prefix,
-        group: :account
+        group: :account,
+        user_menu: &__MODULE__.user_menu_with_shop?/1
       )
     ]
+  end
+
+  @doc """
+  Whether billing's user tabs ("My Orders", "Billing Profiles") are offered in
+  the avatar dropdown (the `Tab` option `:user_menu`): only while the shop
+  module is installed and enabled. Without a storefront a visitor has no
+  orders of their own to look at, so the entries would be noise in every
+  signed-in user's menu. The shop is found by its module key, duck-typed —
+  billing does not depend on `phoenix_kit_ecommerce`.
+
+  A core without the `:user_menu` option ignores the key, so this costs no
+  core floor.
+  """
+  @spec user_menu_with_shop?(term()) :: boolean()
+  def user_menu_with_shop?(_scope) do
+    Permissions.feature_enabled?("shop")
+  rescue
+    _ -> false
   end
 
   # Builds a `Tab` with this module's gettext backend/domain defaults
