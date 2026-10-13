@@ -23,7 +23,10 @@ defmodule PhoenixKitBilling.UserMenuTabsTest do
   @moduletag :requires_core_user_menu
 
   test "both user tabs are gated on the shop module" do
-    for tab <- PhoenixKitBilling.user_dashboard_tabs() do
+    tabs = PhoenixKitBilling.user_dashboard_tabs()
+    assert Enum.map(tabs, & &1.id) == [:dashboard_orders, :dashboard_billing_profiles]
+
+    for tab <- tabs do
       assert tab.metadata[:user_menu] == (&PhoenixKitBilling.user_menu_with_shop?/1),
              "#{inspect(tab.id)} is not gated on the shop"
     end
@@ -60,6 +63,10 @@ defmodule PhoenixKitBilling.UserMenuTabsTest do
       on_exit(fn -> :persistent_term.erase(StubShop) end)
 
       refute PhoenixKitBilling.user_menu_with_shop?(nil)
+
+      for tab <- PhoenixKitBilling.user_dashboard_tabs() do
+        refute Tab.user_menu?(tab, nil)
+      end
     end
   end
 end
