@@ -186,4 +186,21 @@ i18n_exclude =
 
 integration_exclude = if repo_available, do: [], else: [:integration]
 
-ExUnit.start(exclude: i18n_exclude ++ integration_exclude)
+# The avatar-dropdown flag (`Tab` option `:user_menu`, read by
+# `Tab.user_menu?/2`). An older core ignores the option, so the tests about
+# it run once the dep resolves to a release that ships it.
+user_menu_exclude =
+  if Code.ensure_loaded?(PhoenixKit.Dashboard.Tab) and
+       function_exported?(PhoenixKit.Dashboard.Tab, :user_menu?, 2) do
+    []
+  else
+    Logger.info(
+      "[test_helper] PhoenixKit.Dashboard.Tab.user_menu?/2 not available - avatar-dropdown " <>
+        "tab tests excluded. They will run automatically once `phoenix_kit` is " <>
+        "upgraded to a release that ships it."
+    )
+
+    [:requires_core_user_menu]
+  end
+
+ExUnit.start(exclude: i18n_exclude ++ integration_exclude ++ user_menu_exclude)

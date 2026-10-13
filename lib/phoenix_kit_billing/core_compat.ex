@@ -67,6 +67,8 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Users.Auth, :list_users_paginated, 1},
     {PhoenixKit.Users.Auth.Scope, :can?, 2},
     {PhoenixKit.Users.Permissions, :users_with_permission, 1},
+    # user_menu_with_shop?/1 — the avatar-dropdown gate on the shop module.
+    {PhoenixKit.Users.Permissions, :feature_enabled?, 1},
     {PhoenixKit.Users.Roles, :users_with_role, 1},
     {PhoenixKit.PubSub.Manager, :broadcast, 2},
     {PhoenixKit.PubSub.Manager, :subscribe, 1},

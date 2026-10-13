@@ -23,7 +23,9 @@ endpoints, and Oban workers for renewals and dunning.
   Profiles, Currencies, Payment Providers (`/admin/settings/billing/providers`);
   a settings tab at `/admin/settings/billing`; user-dashboard tabs "My Orders"
   (`/dashboard/billing-orders`) and "Billing Profiles"
-  (`/dashboard/billing-profiles`).
+  (`/dashboard/billing-profiles`). Both are also offered in the avatar
+  dropdown (`Tab` option `user_menu:`), but only while the shop module is
+  enabled — `user_menu_with_shop?/1` checks the `"shop"` key duck-typed.
 - **Module key** `"billing"`; settings prefix `billing_`. `required_modules/0`
   returns `["emails"]` (invoice delivery).
 
@@ -455,6 +457,9 @@ probes with `psql -lqt` and falls back to a connection attempt.
 - Excludes `:requires_phoenix_kit_i18n_api` when the resolved core lacks
   `PhoenixKit.Dashboard.Tab.localized_label/1`; those tests re-enable themselves on
   a core that ships it.
+- Excludes `:requires_core_user_menu` when the resolved core lacks
+  `PhoenixKit.Dashboard.Tab.user_menu?/2`; likewise re-enabled by a core that
+  ships it.
 
 Support modules under `test/support/`: `DataCase` (Ecto SQL sandbox),
 `LiveCase` (LiveView cases wired to the test `Endpoint` + `Router`), `Test.Repo`,
