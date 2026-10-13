@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.22.0 - 2026-10-13
+
+The avatar dropdown lists "My Orders" and "Billing Profiles" beside a shop
+(PR #52).
+
+### Added
+
+- **Avatar-menu entries for the user tabs.** Both user-dashboard tabs carry the
+  core `user_menu:` option, gated by `PhoenixKitBilling.user_menu_with_shop?/1`:
+  they appear in the dropdown only while the shop module (key `"shop"`,
+  duck-typed) is installed and enabled. A core without the option ignores it, so
+  the dependency floor is unchanged.
+
+### Tests
+
+- The shop gate is now covered on its positive path too: a stand-in `"shop"`
+  module registered in `ModuleRegistry` proves the tabs reach the dropdown while
+  it is enabled and leave it when it is switched off.
+
 ## 0.21.0 - 2026-10-10
 
 A shared billing profile form (PR #50), the dashboard edit-link fix (PR #49)

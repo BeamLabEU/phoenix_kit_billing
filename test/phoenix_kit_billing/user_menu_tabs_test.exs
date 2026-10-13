@@ -4,9 +4,21 @@ defmodule PhoenixKitBilling.UserMenuTabsTest do
   shop: without a storefront a visitor has no orders of their own, so the
   entries would be noise in every signed-in user's menu.
   """
-  use ExUnit.Case, async: true
+  # Not async: the positive test registers a stand-in "shop" module in the
+  # global `PhoenixKit.ModuleRegistry`.
+  use ExUnit.Case, async: false
 
   alias PhoenixKit.Dashboard.Tab
+  alias PhoenixKit.ModuleRegistry
+
+  defmodule StubShop do
+    @moduledoc false
+    # Just enough of `PhoenixKit.Module` for the registry to learn the "shop" key
+    # and ask `enabled?/0`; the registry reads every callback through `safe_call`.
+    def module_key, do: "shop"
+    def permission_metadata, do: %{key: "shop", label: "Shop", icon: "hero-shopping-cart"}
+    def enabled?, do: :persistent_term.get(__MODULE__, true)
+  end
 
   @moduletag :requires_core_user_menu
 
@@ -23,6 +35,31 @@ defmodule PhoenixKitBilling.UserMenuTabsTest do
 
     for tab <- PhoenixKitBilling.user_dashboard_tabs() do
       refute Tab.user_menu?(tab, nil)
+    end
+  end
+
+  describe "with a shop module registered" do
+    setup do
+      :ok = ModuleRegistry.register(StubShop)
+      on_exit(fn -> ModuleRegistry.unregister(StubShop) end)
+    end
+
+    test "the tabs reach the dropdown while the shop is enabled" do
+      :persistent_term.put(StubShop, true)
+      on_exit(fn -> :persistent_term.erase(StubShop) end)
+
+      assert PhoenixKitBilling.user_menu_with_shop?(nil)
+
+      for tab <- PhoenixKitBilling.user_dashboard_tabs() do
+        assert Tab.user_menu?(tab, nil), "#{inspect(tab.id)} missing from the dropdown"
+      end
+    end
+
+    test "they leave it again when the shop is switched off" do
+      :persistent_term.put(StubShop, false)
+      on_exit(fn -> :persistent_term.erase(StubShop) end)
+
+      refute PhoenixKitBilling.user_menu_with_shop?(nil)
     end
   end
 end
