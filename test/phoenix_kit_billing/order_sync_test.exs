@@ -398,6 +398,43 @@ defmodule PhoenixKitBilling.OrderSyncTest do
       end
     end
 
+    test "a revision that is not a whole number does not fail the query", %{order: order} do
+      scope = from(o in Order, where: o.uuid == ^order.uuid)
+
+      for {stored, current} <- [
+            {"x", 1},
+            {1.5, 1},
+            {nil, 1},
+            {%{"a" => 1}, 1},
+            {0, 1},
+            {-3, 1},
+            {1, "x"},
+            {1, 1.5},
+            {1, 0}
+          ] do
+        Repo.update_all(scope,
+          set: [
+            metadata: %{
+              "revision" => current,
+              "sync" => %{"state" => "synced", "revision" => stored}
+            }
+          ]
+        )
+
+        row = stored(order)
+
+        for mode <- [:pending, :synced, :any] do
+          assert %MapSet{} = ids(Order.where_sync(scope, mode)), inspect({stored, current, mode})
+        end
+
+        # Where the stored mark is for revision 1 and the order reads as 1, it is current.
+        expected = if stored == 1, do: "synced", else: "pending"
+        assert Order.sync(row)["state"] == expected, inspect({stored, current})
+        assert order.uuid in ids(Order.where_sync(scope, :synced)) == (expected == "synced")
+        assert order.uuid in ids(Order.where_sync(scope, :pending)) == (expected == "pending")
+      end
+    end
+
     test "an order stored without a revision counts as revision 1", %{order: order} do
       Repo.update_all(from(o in Order, where: o.uuid == ^order.uuid),
         set: [metadata: %{"sync" => %{"state" => "synced", "revision" => 1}}]

@@ -396,7 +396,11 @@ defmodule PhoenixKitBilling.Order do
   def sync(%__MODULE__{metadata: metadata} = order) do
     current = revision(order)
     stored = if is_map(metadata["sync"]), do: metadata["sync"], else: %{}
-    settled? = stored["state"] in ~w(synced failed) and stored["revision"] == current
+
+    settled? =
+      stored["state"] in ~w(synced failed) and is_integer(stored["revision"]) and
+        stored["revision"] == current
+
     state = if settled?, do: stored["state"], else: "pending"
 
     %{
@@ -408,6 +412,33 @@ defmodule PhoenixKitBilling.Order do
       "error" => if(state == "failed", do: stored["error"]),
       "revision" => current
     }
+  end
+
+  # Whether the mark was written for the order's current revision. A stored
+  # revision that is not a positive whole number reads as none (the mark is
+  # not current) instead of failing the cast and the whole query; the order's
+  # own revision then reads as 1, as `revision/1` does.
+  defmacrop sync_revision_current?(metadata) do
+    quote do
+      fragment(
+        """
+        CASE WHEN jsonb_typeof(?->'sync'->'revision') = 'number'
+                  AND (?->'sync'->'revision')::text ~ '^[1-9][0-9]*$'
+             THEN (?->'sync'->'revision')::text::numeric
+        END = coalesce(
+          CASE WHEN jsonb_typeof(?->'revision') = 'number'
+                    AND (?->'revision')::text ~ '^[1-9][0-9]*$'
+               THEN (?->'revision')::text::numeric
+          END, 1)
+        """,
+        unquote(metadata),
+        unquote(metadata),
+        unquote(metadata),
+        unquote(metadata),
+        unquote(metadata),
+        unquote(metadata)
+      )
+    end
   end
 
   @doc """
@@ -422,8 +453,7 @@ defmodule PhoenixKitBilling.Order do
     from(o in query,
       where:
         fragment("?->'sync'->>'state'", o.metadata) == "synced" and
-          fragment("(?->'sync'->>'revision')::int", o.metadata) ==
-            fragment("coalesce((?->>'revision')::int, 1)", o.metadata)
+          sync_revision_current?(o.metadata)
     )
   end
 
@@ -431,10 +461,9 @@ defmodule PhoenixKitBilling.Order do
     from(o in query,
       where:
         not fragment(
-          "coalesce(?->'sync'->>'state' IN ('synced', 'failed') AND (?->'sync'->>'revision')::int = coalesce((?->>'revision')::int, 1), false)",
+          "coalesce(?->'sync'->>'state' IN ('synced', 'failed') AND ?, false)",
           o.metadata,
-          o.metadata,
-          o.metadata
+          sync_revision_current?(o.metadata)
         )
     )
   end
