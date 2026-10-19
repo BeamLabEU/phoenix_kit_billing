@@ -59,6 +59,41 @@ defmodule PhoenixKitBilling.OrderRevisionRaceTest do
     assert Order.revision(Billing.get_order(order.uuid)) == 9
   end
 
+  test "a mark waits for an update that holds the row and is then refused as stale", %{
+    order: order
+  } do
+    test_pid = self()
+
+    # The update holds the row lock until it is told to commit.
+    updater =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          {:ok, _} = Billing.update_order(order, %{"notes" => "held"})
+          send(test_pid, :updated)
+
+          receive do
+            :commit -> :ok
+          end
+        end)
+      end)
+
+    assert_receive :updated, 5_000
+
+    marker =
+      Task.async(fn -> Billing.put_order_sync(order, %{state: "synced", revision: 1}) end)
+
+    # It cannot answer while the update holds the row.
+    assert Task.yield(marker, 300) == nil
+
+    send(updater.pid, :commit)
+    assert {:ok, {:ok, :ok}} = Task.yield(updater, 5_000)
+    assert {:ok, {:error, :stale_revision}} = Task.yield(marker, 5_000)
+
+    stored = Billing.get_order(order.uuid)
+    assert Order.revision(stored) == 2
+    refute Map.has_key?(stored.metadata, "sync")
+  end
+
   test "an update racing a mark for the revision it read never leaves a stale mark", %{
     order: order
   } do
