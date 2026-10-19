@@ -2497,11 +2497,12 @@ defmodule PhoenixKitBilling do
   `order` is an `Order` or its uuid. `attrs` takes (atom or string keys):
 
     * `:state` (required) - `"synced"` or `"failed"`
-    * `:revision` - the revision of the order the external system took (see
-      `PhoenixKitBilling.Order.revision/1`). When given and no longer the
+    * `:revision` (required) - the revision of the order the external system
+      took (see `PhoenixKitBilling.Order.revision/1`). When it is no longer the
       order's current revision, nothing is written and `{:error, :stale_revision}`
-      comes back: the order changed after it was read. When omitted the mark is
-      written for the current revision.
+      comes back: the order changed after it was read. A mark with no revision
+      could land on a revision the external system never saw, so it is refused
+      as invalid.
     * `:external_id`, `:external_number`, `:external_status` - what the external
       system calls the order. A key left out keeps the stored value, so a
       `"failed"` mark on an order taken earlier does not forget its id.
@@ -2537,7 +2538,7 @@ defmodule PhoenixKitBilling do
         Map.new(attrs, fn {k, v} -> {to_string(k), v} end),
         Map.keys(@order_sync_types)
       )
-      |> Ecto.Changeset.validate_required(:state)
+      |> Ecto.Changeset.validate_required([:state, :revision])
       |> Ecto.Changeset.validate_inclusion(:state, ~w(synced failed))
       |> Ecto.Changeset.validate_number(:revision, greater_than: 0)
       |> Ecto.Changeset.validate_length(:external_id, max: 255)
@@ -2558,11 +2559,11 @@ defmodule PhoenixKitBilling do
       is_nil(order) ->
         {:error, :not_found}
 
-      params[:revision] not in [nil, current] ->
+      params.revision != current ->
         {:error, :stale_revision}
 
       true ->
-        sync = order_sync_mark(order.metadata["sync"], params, current)
+        sync = order_sync_mark(order.metadata["sync"], params)
 
         {1, _} =
           Order
@@ -2583,7 +2584,7 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp order_sync_mark(stored, params, revision) do
+  defp order_sync_mark(stored, params) do
     stored = if is_map(stored), do: stored, else: %{}
 
     given =
@@ -2596,7 +2597,7 @@ defmodule PhoenixKitBilling do
       stored
       |> Map.take(["external_id", "external_number", "external_status", "synced_at"])
       |> Map.merge(given)
-      |> Map.merge(%{"state" => params.state, "revision" => params[:revision] || revision})
+      |> Map.merge(%{"state" => params.state, "revision" => params.revision})
       |> put_order_sync_error(params)
 
     cond do

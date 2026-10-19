@@ -115,6 +115,7 @@ defmodule PhoenixKitBilling.OrderRevisionRaceTest do
           # The mark won the lock; the update then moved the revision on.
           assert Order.revision(stored) == revision + 1
           assert Order.sync(stored)["state"] == "pending"
+          assert stored.metadata["sync"]["revision"] == revision
 
         {:error, :stale_revision} ->
           # The update won; the mark wrote nothing for the old revision.

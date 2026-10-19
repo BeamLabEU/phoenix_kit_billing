@@ -61,6 +61,29 @@ defmodule PhoenixKitBilling.OrderSyncTest do
       assert Order.revision(order) == 4
     end
 
+    test "every field the export reads moves it: number, buyer and the three times", %{
+      order: order
+    } do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      changes = [
+        %{"order_number" => "ORD-RENUMBERED"},
+        %{"user_uuid" => fixture_user().uuid},
+        %{"confirmed_at" => now},
+        %{"paid_at" => now},
+        %{"cancelled_at" => now}
+      ]
+
+      final =
+        Enum.reduce(changes, order, fn change, current ->
+          assert {:ok, updated} = Billing.update_order(current, change)
+          assert Order.revision(updated) == Order.revision(current) + 1, inspect(change)
+          updated
+        end)
+
+      assert Order.revision(final) == 6
+    end
+
     test "a status change adds 1", %{order: order} do
       assert {:ok, order} = Billing.confirm_order(order)
       assert Order.revision(order) == 2
@@ -109,7 +132,13 @@ defmodule PhoenixKitBilling.OrderSyncTest do
     end
 
     test "an update from a stale struct keeps a mark written meanwhile", %{order: order} do
-      {:ok, _} = Billing.put_order_sync(order, %{state: "synced", external_id: "ext-1"})
+      {:ok, _} =
+        Billing.put_order_sync(order, %{
+          revision: Order.revision(order),
+          state: "synced",
+          external_id: "ext-1"
+        })
+
       assert {:ok, updated} = Billing.update_order(order, %{"notes" => "later"})
 
       assert updated.metadata["sync"]["external_id"] == "ext-1"
@@ -156,7 +185,13 @@ defmodule PhoenixKitBilling.OrderSyncTest do
     test "works in every status and takes a uuid", %{order: order} do
       {:ok, confirmed} = Billing.confirm_order(order)
       {:ok, paid} = Billing.mark_order_paid(confirmed)
-      assert {:ok, marked} = Billing.put_order_sync(paid.uuid, %{"state" => "synced"})
+
+      assert {:ok, marked} =
+               Billing.put_order_sync(paid.uuid, %{
+                 "state" => "synced",
+                 "revision" => Order.revision(paid)
+               })
+
       assert marked.status == "paid"
 
       {:ok, other} =
@@ -168,7 +203,13 @@ defmodule PhoenixKitBilling.OrderSyncTest do
         })
 
       {:ok, cancelled} = Billing.cancel_order(other)
-      assert {:ok, _} = Billing.put_order_sync(cancelled, %{state: "failed", error: "no"})
+
+      assert {:ok, _} =
+               Billing.put_order_sync(cancelled, %{
+                 revision: Order.revision(cancelled),
+                 state: "failed",
+                 error: "no"
+               })
     end
 
     test "broadcasts no order event" do
@@ -183,7 +224,9 @@ defmodule PhoenixKitBilling.OrderSyncTest do
       {:ok, order} = Billing.update_order(order, %{"notes" => "heard"})
       assert_receive {:order_updated, _}
 
-      assert {:ok, _} = Billing.put_order_sync(order, %{state: "synced"})
+      assert {:ok, _} =
+               Billing.put_order_sync(order, %{revision: Order.revision(order), state: "synced"})
+
       refute_receive {:order_updated, _}, 50
     end
 
@@ -202,21 +245,31 @@ defmodule PhoenixKitBilling.OrderSyncTest do
       assert marked.metadata["sync"]["revision"] == 2
     end
 
-    test "without a revision the mark is written for the current one", %{order: order} do
-      {:ok, order} = Billing.update_order(order, %{"notes" => "changed"})
-      assert {:ok, marked} = Billing.put_order_sync(order, %{state: "synced"})
-      assert marked.metadata["sync"]["revision"] == 2
+    test "refuses a mark with no revision: it could land on one the system never saw", %{
+      order: order
+    } do
+      assert {:error, cs} = Billing.put_order_sync(order, %{state: "synced"})
+      assert %{revision: ["can't be blank"]} = errors_on(cs)
+      assert {:error, cs} = Billing.put_order_sync(order, %{state: "synced", revision: nil})
+      assert %{revision: ["can't be blank"]} = errors_on(cs)
+      refute Map.has_key?(stored(order).metadata, "sync")
     end
 
     test "failed keeps the id the order already has and shows the error", %{order: order} do
       {:ok, _} =
         Billing.put_order_sync(order, %{
           state: "synced",
+          revision: 1,
           external_id: "ext-1",
           external_number: "N-1"
         })
 
-      assert {:ok, failed} = Billing.put_order_sync(order, %{state: "failed", error: "locked"})
+      assert {:ok, failed} =
+               Billing.put_order_sync(order, %{
+                 revision: Order.revision(order),
+                 state: "failed",
+                 error: "locked"
+               })
 
       assert Order.sync(failed) == %{
                "state" => "failed",
@@ -228,7 +281,9 @@ defmodule PhoenixKitBilling.OrderSyncTest do
                "revision" => 1
              }
 
-      assert {:ok, again} = Billing.put_order_sync(order, %{state: "synced"})
+      assert {:ok, again} =
+               Billing.put_order_sync(order, %{revision: Order.revision(order), state: "synced"})
+
       refute Map.has_key?(again.metadata["sync"], "error")
     end
 
@@ -241,20 +296,22 @@ defmodule PhoenixKitBilling.OrderSyncTest do
 
     test "answers not_found and validation errors", %{order: order} do
       assert {:error, :not_found} =
-               Billing.put_order_sync(Ecto.UUID.generate(), %{state: "synced"})
+               Billing.put_order_sync(Ecto.UUID.generate(), %{state: "synced", revision: 1})
 
-      assert {:error, :not_found} = Billing.put_order_sync("nope", %{state: "synced"})
+      assert {:error, :not_found} =
+               Billing.put_order_sync("nope", %{state: "synced", revision: 1})
 
-      assert {:error, cs} = Billing.put_order_sync(order, %{state: "pending"})
+      assert {:error, cs} = Billing.put_order_sync(order, %{state: "pending", revision: 1})
       assert %{state: [_ | _]} = errors_on(cs)
       assert {:error, cs} = Billing.put_order_sync(order, %{})
-      assert %{state: ["can't be blank"]} = errors_on(cs)
+      assert %{state: ["can't be blank"], revision: ["can't be blank"]} = errors_on(cs)
       assert {:error, cs} = Billing.put_order_sync(order, %{state: "synced", revision: 0})
       assert %{revision: [_ | _]} = errors_on(cs)
 
       assert {:error, cs} =
                Billing.put_order_sync(order, %{
                  state: "failed",
+                 revision: 1,
                  error: String.duplicate("x", 2001)
                })
 
@@ -268,7 +325,13 @@ defmodule PhoenixKitBilling.OrderSyncTest do
     test "an unmarked order is pending; a mark settles it; a change reopens it", %{order: order} do
       assert Order.sync(order)["state"] == "pending"
 
-      {:ok, marked} = Billing.put_order_sync(order, %{state: "synced", external_id: "ext-1"})
+      {:ok, marked} =
+        Billing.put_order_sync(order, %{
+          revision: Order.revision(order),
+          state: "synced",
+          external_id: "ext-1"
+        })
+
       assert Order.sync(marked)["state"] == "synced"
 
       {:ok, changed} = Billing.update_order(marked, %{"notes" => "later"})
@@ -286,7 +349,8 @@ defmodule PhoenixKitBilling.OrderSyncTest do
           "billing_snapshot" => %{"email" => "g@example.com"}
         })
 
-      {:ok, synced} = Billing.put_order_sync(synced, %{state: "synced"})
+      {:ok, synced} =
+        Billing.put_order_sync(synced, %{revision: Order.revision(synced), state: "synced"})
 
       {:ok, failed} =
         Billing.create_order(fixture_user(), %{
@@ -295,7 +359,12 @@ defmodule PhoenixKitBilling.OrderSyncTest do
           "billing_snapshot" => %{"email" => "g@example.com"}
         })
 
-      {:ok, failed} = Billing.put_order_sync(failed, %{state: "failed", error: "x"})
+      {:ok, failed} =
+        Billing.put_order_sync(failed, %{
+          revision: Order.revision(failed),
+          state: "failed",
+          error: "x"
+        })
 
       {:ok, reopened} =
         Billing.create_order(fixture_user(), %{
@@ -304,7 +373,9 @@ defmodule PhoenixKitBilling.OrderSyncTest do
           "billing_snapshot" => %{"email" => "g@example.com"}
         })
 
-      {:ok, reopened} = Billing.put_order_sync(reopened, %{state: "synced"})
+      {:ok, reopened} =
+        Billing.put_order_sync(reopened, %{revision: Order.revision(reopened), state: "synced"})
+
       {:ok, reopened} = Billing.update_order(reopened, %{"notes" => "later"})
 
       all = [pending, synced, failed, reopened]

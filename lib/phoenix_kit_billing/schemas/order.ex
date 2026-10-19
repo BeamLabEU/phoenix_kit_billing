@@ -45,8 +45,9 @@ defmodule PhoenixKitBilling.Order do
 
   - `"revision"`: a counter of the changes an external system cares about. A
     new order starts at 1 (an order stored before the counter existed reads as
-    1). Every update that changes the status, the line items, an amount, the
-    currency, the payment, the notes, the billing details, or any other
+    1). Every update that changes the status, the order number, the buyer, the
+    line items, an amount, the currency, the payment, the notes, the billing
+    details, a confirmation, payment or cancellation time, or any other
     `metadata` key adds 1. `internal_notes` and the frozen `base_*` figures do
     not move it. The increment is made under a row lock, so two concurrent
     updates both count. `revision/1` reads it.
@@ -362,9 +363,10 @@ defmodule PhoenixKitBilling.Order do
 
   # What an external system reads of an order. `internal_notes` and the frozen
   # `base_*` figures are not among them.
-  @revision_fields ~w(status payment_method payment_option_uuid line_items subtotal tax_amount
-                      tax_rate discount_amount discount_code total currency billing_profile_uuid
-                      billing_snapshot notes)a
+  @revision_fields ~w(status order_number user_uuid payment_method payment_option_uuid line_items
+                      subtotal tax_amount tax_rate discount_amount discount_code total currency
+                      billing_profile_uuid billing_snapshot notes confirmed_at paid_at
+                      cancelled_at)a
 
   @doc """
   The revision of an order: how many times it changed in a way an external
