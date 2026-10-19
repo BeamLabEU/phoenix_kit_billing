@@ -2375,6 +2375,13 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Confirms an order.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, or `{:error, changeset}` when the stored status does
+  not allow the transition.
   """
   def confirm_order(%Order{} = order) do
     result =
@@ -2400,6 +2407,13 @@ defmodule PhoenixKitBilling do
   ## Options
 
   - `:payment_method` - The payment method used (e.g., "bank", "stripe", "paypal")
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_payable}` when the stored status
+  is not `"confirmed"`, or `{:error, changeset}`.
   """
   def mark_order_paid(%Order{} = order, opts \\ []) do
     result =
@@ -2431,6 +2445,13 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Marks an order as refunded.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_refundable}` when the stored
+  status is not `"paid"`, or `{:error, changeset}`.
   """
   def mark_order_refunded(%Order{} = order) do
     transition_order(order, fn current ->
@@ -2446,6 +2467,13 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Cancels an order.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_cancellable}` when the stored
+  status is not `"draft"`, `"pending"` or `"confirmed"`, or `{:error, changeset}`.
   """
   def cancel_order(%Order{} = order, reason \\ nil) do
     result =
@@ -2492,20 +2520,21 @@ defmodule PhoenixKitBilling do
   # transaction too (`maybe_mark_linked_order_paid/1`), where a rollback would
   # abort the whole settlement.
   defp transition_order(%Order{} = order, fun) when is_function(fun, 1) do
-    {:ok, result} =
-      repo().transaction(fn ->
-        fun.(%{order | status: lock_order_status(order)})
-      end)
-
-    result
+    case repo().transaction(fn -> fun.(%{order | status: lock_order_status(order)}) end) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  # SELECT status ... FOR UPDATE. A row that has vanished keeps the caller's
-  # status, so the UPDATE that follows fails the way it always did.
+  # SELECT status ... FOR NO KEY UPDATE. That lock queues transitions behind
+  # each other (it conflicts with itself and with the UPDATE that follows) but
+  # not with the FOR KEY SHARE an invoice insert takes on the order through
+  # its foreign key. A row that has vanished keeps the caller's status, so the
+  # UPDATE that follows fails the way it always did.
   defp lock_order_status(%Order{uuid: uuid, status: status}) do
     Order
     |> where([o], o.uuid == ^uuid)
-    |> lock("FOR UPDATE")
+    |> lock("FOR NO KEY UPDATE")
     |> select([o], o.status)
     |> repo().one()
     |> Kernel.||(status)
@@ -4299,6 +4328,12 @@ defmodule PhoenixKitBilling do
   ## Examples
 
       {:ok, transaction} = Billing.record_refund(invoice, %{amount: "50.00", description: "Partial refund"}, admin)
+
+  Returns `{:ok, transaction}`, `{:error, :invalid_amount}` for an amount that
+  is not positive, or `{:error, :exceeds_paid_amount}` when the amount is more
+  than the invoice has been paid. The bound is checked on the invoice struct
+  first and again on the invoice row under lock, so a stale `invoice` cannot
+  refund more than is currently paid.
   """
   def record_refund(%Invoice{} = invoice, attrs, admin_user) do
     amount = parse_decimal(attrs[:amount] || attrs["amount"])
@@ -4348,7 +4383,11 @@ defmodule PhoenixKitBilling do
 
         case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
           {:ok, transaction} ->
-            invoice_broadcasts = apply_transaction_to_invoice(invoice, amount)
+            # From the LOCKED invoice: `paid_amount_changeset/2` is a plain
+            # `change/2`, so against the caller's older struct it drops the
+            # update whenever the ledger sum happens to equal the old value,
+            # leaving the column out of step with the ledger.
+            invoice_broadcasts = apply_transaction_to_invoice(locked, amount)
 
             transaction_broadcast =
               if Decimal.negative?(amount),
