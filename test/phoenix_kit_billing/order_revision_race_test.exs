@@ -99,6 +99,12 @@ defmodule PhoenixKitBilling.OrderRevisionRaceTest do
   } do
     test_pid = self()
 
+    # Registered first, so a failing assertion cannot leave the committed
+    # invoice behind (it runs before the setup's order delete).
+    on_exit(fn ->
+      Repo.delete_all(from(i in PhoenixKitBilling.Invoice, where: i.order_uuid == ^order.uuid))
+    end)
+
     updater =
       Task.async(fn ->
         Repo.transaction(fn ->
@@ -122,11 +128,7 @@ defmodule PhoenixKitBilling.OrderRevisionRaceTest do
     assert {:ok, {:ok, :ok}} = Task.yield(updater, 5_000)
 
     # Answered while the update still held the row, not after its commit.
-    assert {:ok, {:ok, invoice}} = result
-
-    on_exit(fn ->
-      Repo.delete_all(from(i in PhoenixKitBilling.Invoice, where: i.uuid == ^invoice.uuid))
-    end)
+    assert {:ok, {:ok, _invoice}} = result
   end
 
   test "an update racing a mark for the revision it read never leaves a stale mark", %{
