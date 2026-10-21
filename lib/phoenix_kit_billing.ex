@@ -2429,9 +2429,19 @@ defmodule PhoenixKitBilling do
   """
   def mark_order_refunded(%Order{} = order) do
     if order.status == "paid" do
-      order
-      |> Order.status_changeset("refunded")
-      |> repo().update()
+      result =
+        order
+        |> Order.status_changeset("refunded")
+        |> repo().update()
+
+      case result do
+        {:ok, refunded_order} ->
+          Events.broadcast_order_refunded(refunded_order)
+          {:ok, refunded_order}
+
+        error ->
+          error
+      end
     else
       {:error, :order_not_refundable}
     end
