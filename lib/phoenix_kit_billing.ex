@@ -2375,12 +2375,21 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Confirms an order.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, or `{:error, changeset}` when the stored status does
+  not allow the transition.
   """
   def confirm_order(%Order{} = order) do
     result =
-      order
-      |> Order.status_changeset("confirmed")
-      |> repo().update()
+      transition_order(order, fn current ->
+        current
+        |> Order.status_changeset("confirmed")
+        |> repo().update()
+      end)
 
     case result do
       {:ok, confirmed_order} ->
@@ -2398,84 +2407,147 @@ defmodule PhoenixKitBilling do
   ## Options
 
   - `:payment_method` - The payment method used (e.g., "bank", "stripe", "paypal")
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_payable}` when the stored status
+  is not `"confirmed"`, or `{:error, changeset}`.
   """
   def mark_order_paid(%Order{} = order, opts \\ []) do
-    if Order.payable?(order) do
-      changeset = Order.status_changeset(order, "paid")
+    result =
+      transition_order(order, fn current ->
+        if Order.payable?(current) do
+          changeset = Order.status_changeset(current, "paid")
 
-      changeset =
-        case opts[:payment_method] do
-          nil -> changeset
-          pm -> Ecto.Changeset.put_change(changeset, :payment_method, pm)
+          changeset =
+            case opts[:payment_method] do
+              nil -> changeset
+              pm -> Ecto.Changeset.put_change(changeset, :payment_method, pm)
+            end
+
+          repo().update(changeset)
+        else
+          {:error, :order_not_payable}
         end
+      end)
 
-      result = repo().update(changeset)
+    case result do
+      {:ok, paid_order} ->
+        Events.broadcast_order_paid(paid_order)
+        {:ok, paid_order}
 
-      case result do
-        {:ok, paid_order} ->
-          Events.broadcast_order_paid(paid_order)
-          {:ok, paid_order}
-
-        error ->
-          error
-      end
-    else
-      {:error, :order_not_payable}
+      error ->
+        error
     end
   end
 
   @doc """
   Marks an order as refunded.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_refundable}` when the stored
+  status is not `"paid"`, or `{:error, changeset}`.
   """
   def mark_order_refunded(%Order{} = order) do
-    if order.status == "paid" do
-      result =
-        order
-        |> Order.status_changeset("refunded")
-        |> repo().update()
+    result =
+      transition_order(order, fn current ->
+        if current.status == "paid" do
+          current
+          |> Order.status_changeset("refunded")
+          |> repo().update()
+        else
+          {:error, :order_not_refundable}
+        end
+      end)
 
-      case result do
-        {:ok, refunded_order} ->
-          Events.broadcast_order_refunded(refunded_order)
-          {:ok, refunded_order}
+    case result do
+      {:ok, refunded_order} ->
+        Events.broadcast_order_refunded(refunded_order)
+        {:ok, refunded_order}
 
-        error ->
-          error
-      end
-    else
-      {:error, :order_not_refundable}
+      error ->
+        error
     end
   end
 
   @doc """
   Cancels an order.
+
+  Takes a row lock on the order for the duration of the call and checks the
+  transition against the order's stored status, not the struct's, so call it
+  inside your own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, order}`, `{:error, :order_not_cancellable}` when the stored
+  status is not `"draft"`, `"pending"` or `"confirmed"`, or `{:error, changeset}`.
   """
   def cancel_order(%Order{} = order, reason \\ nil) do
-    if Order.cancellable?(order) do
-      changeset =
-        order
-        |> Order.status_changeset("cancelled")
+    result =
+      transition_order(order, fn current ->
+        if Order.cancellable?(current) do
+          changeset =
+            current
+            |> Order.status_changeset("cancelled")
 
-      changeset =
-        if reason do
-          Ecto.Changeset.put_change(changeset, :internal_notes, reason)
+          changeset =
+            if reason do
+              Ecto.Changeset.put_change(changeset, :internal_notes, reason)
+            else
+              changeset
+            end
+
+          repo().update(changeset)
         else
-          changeset
+          {:error, :order_not_cancellable}
         end
+      end)
 
-      result = repo().update(changeset)
+    case result do
+      {:ok, cancelled_order} ->
+        Events.broadcast_order_cancelled(cancelled_order)
+        {:ok, cancelled_order}
 
-      case result do
-        {:ok, cancelled_order} ->
-          Events.broadcast_order_cancelled(cancelled_order)
-          {:ok, cancelled_order}
-
-        error ->
-          error
-      end
-    else
-      {:error, :order_not_cancellable}
+      error ->
+        error
     end
+  end
+
+  # Runs a status transition against the order's CURRENT status. The guards
+  # (`Order.payable?/1`, `Order.cancellable?/1`) and `Order.status_changeset/2`
+  # read `status` off the struct they are handed, and the UPDATE filters on
+  # the primary key only - so a struct read before another caller moved the
+  # order would pass its check and overwrite that transition (a payment and a
+  # cancellation both succeeding, the order ending `cancelled` with `paid_at`
+  # set). The row is locked and its status re-read inside the transaction, and
+  # `fun` gets the caller's struct with that status, so check and write are
+  # one step. Same pattern as `lock_invoice_for_update/1`.
+  #
+  # Refusals are RETURNED, not rolled back: this runs inside the invoice-paid
+  # transaction too (`maybe_mark_linked_order_paid/1`), where a rollback would
+  # abort the whole settlement.
+  defp transition_order(%Order{} = order, fun) when is_function(fun, 1) do
+    case repo().transaction(fn -> fun.(%{order | status: lock_order_status(order)}) end) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # SELECT status ... FOR NO KEY UPDATE. That lock queues transitions behind
+  # each other (it conflicts with itself and with the UPDATE that follows) but
+  # not with the FOR KEY SHARE an invoice insert takes on the order through
+  # its foreign key. A row that has vanished keeps the caller's status, so the
+  # UPDATE that follows fails the way it always did.
+  defp lock_order_status(%Order{uuid: uuid, status: status}) do
+    Order
+    |> where([o], o.uuid == ^uuid)
+    |> lock("FOR NO KEY UPDATE")
+    |> select([o], o.status)
+    |> repo().one()
+    |> Kernel.||(status)
   end
 
   @doc """
@@ -2486,6 +2558,148 @@ defmodule PhoenixKitBilling do
   end
 
   def delete_order(_order), do: {:error, :can_only_delete_drafts}
+
+  @order_sync_types %{
+    state: :string,
+    revision: :integer,
+    external_id: :string,
+    external_number: :string,
+    external_status: :string,
+    error: :string
+  }
+
+  @doc """
+  Records an external system's mark on an order, in any status.
+
+  Writes only `metadata["sync"]`: the status, the amounts, `updated_at` and
+  `metadata["revision"]` are not touched, and no order event is broadcast, so
+  the mark does not make the order look changed. The row is locked while the
+  mark is checked and written.
+
+  `order` is an `Order` or its uuid. `attrs` takes (atom or string keys):
+
+    * `:state` (required) - `"synced"` or `"failed"`
+    * `:revision` (required) - the revision of the order the external system
+      took (see `PhoenixKitBilling.Order.revision/1`). When it is no longer the
+      order's current revision, nothing is written and `{:error, :stale_revision}`
+      comes back: the order changed after it was read. A mark with no revision
+      could land on a revision the external system never saw, so it is refused
+      as invalid.
+    * `:external_id`, `:external_number`, `:external_status` - what the external
+      system calls the order. A key left out keeps the stored value, so a
+      `"failed"` mark on an order taken earlier does not forget its id.
+    * `:error` - why the external system refused it; kept only with `"failed"`.
+
+  A mark belongs to the revision it was written for: once the order changes,
+  `PhoenixKitBilling.Order.sync/1` reports it as `"pending"` again.
+
+  Returns `{:ok, order}`, `{:error, :not_found}`, `{:error, :stale_revision}`
+  or `{:error, changeset}` for invalid `attrs`. Repeating a call with the same
+  `attrs` leaves the stored mark as it is.
+  """
+  @spec put_order_sync(Order.t() | String.t(), map()) ::
+          {:ok, Order.t()} | {:error, :not_found | :stale_revision | Ecto.Changeset.t()}
+  def put_order_sync(%Order{uuid: uuid}, attrs), do: put_order_sync(uuid, attrs)
+
+  def put_order_sync(uuid, attrs) when is_binary(uuid) and is_map(attrs) do
+    with {:ok, params} <- order_sync_params(attrs),
+         true <- UUIDUtils.valid?(uuid) || {:error, :not_found} do
+      repo().transaction(fn ->
+        case write_order_sync(uuid, params) do
+          :ok -> get_order(uuid)
+          {:error, reason} -> repo().rollback(reason)
+        end
+      end)
+    end
+  end
+
+  defp order_sync_params(attrs) do
+    changeset =
+      {%{}, @order_sync_types}
+      |> Ecto.Changeset.cast(
+        Map.new(attrs, fn {k, v} -> {to_string(k), v} end),
+        Map.keys(@order_sync_types)
+      )
+      |> Ecto.Changeset.validate_required([:state, :revision])
+      |> Ecto.Changeset.validate_inclusion(:state, ~w(synced failed))
+      |> Ecto.Changeset.validate_number(:revision, greater_than: 0)
+      |> Ecto.Changeset.validate_length(:external_id, max: 255)
+      |> Ecto.Changeset.validate_length(:external_number, max: 255)
+      |> Ecto.Changeset.validate_length(:external_status, max: 255)
+      |> Ecto.Changeset.validate_length(:error, max: 2000)
+
+    if changeset.valid?,
+      do: {:ok, Ecto.Changeset.apply_changes(changeset)},
+      else: {:error, changeset}
+  end
+
+  defp write_order_sync(uuid, params) do
+    # NO KEY UPDATE, like `lock_order_status/1`: it queues behind every other
+    # writer of the row but not behind the FOR KEY SHARE an invoice insert
+    # takes on it through its foreign key.
+    order = Order |> where([o], o.uuid == ^uuid) |> lock("FOR NO KEY UPDATE") |> repo().one()
+    current = order && Order.revision(order)
+
+    cond do
+      is_nil(order) ->
+        {:error, :not_found}
+
+      params.revision != current ->
+        {:error, :stale_revision}
+
+      true ->
+        sync = order_sync_mark(order.metadata["sync"], params)
+
+        {1, _} =
+          Order
+          |> where([o], o.uuid == ^uuid)
+          |> update([o],
+            set: [
+              metadata:
+                fragment(
+                  "jsonb_set(coalesce(?, '{}'::jsonb), '{sync}', ?, true)",
+                  o.metadata,
+                  type(^sync, :map)
+                )
+            ]
+          )
+          |> repo().update_all([])
+
+        :ok
+    end
+  end
+
+  defp order_sync_mark(stored, params) do
+    stored = if is_map(stored), do: stored, else: %{}
+
+    given =
+      for key <- [:external_id, :external_number, :external_status],
+          value = params[key],
+          into: %{},
+          do: {Atom.to_string(key), value}
+
+    mark =
+      stored
+      |> Map.take(["external_id", "external_number", "external_status", "synced_at"])
+      |> Map.merge(given)
+      |> Map.merge(%{"state" => params.state, "revision" => params.revision})
+      |> put_order_sync_error(params)
+
+    cond do
+      Map.reject(mark, &nil_value?/1) == Map.reject(stored, &nil_value?/1) -> stored
+      params.state == "synced" -> Map.put(mark, "synced_at", now_iso())
+      true -> mark
+    end
+  end
+
+  defp put_order_sync_error(mark, %{state: "failed", error: error}) when is_binary(error),
+    do: Map.put(mark, "error", error)
+
+  defp put_order_sync_error(mark, _params), do: mark
+
+  defp nil_value?({_key, value}), do: is_nil(value)
+
+  defp now_iso, do: DateTime.to_iso8601(UtilsDate.utc_now())
 
   defp apply_order_filters(query, filters) do
     Enum.reduce(filters, query, fn
@@ -4266,6 +4480,12 @@ defmodule PhoenixKitBilling do
   ## Examples
 
       {:ok, transaction} = Billing.record_refund(invoice, %{amount: "50.00", description: "Partial refund"}, admin)
+
+  Returns `{:ok, transaction}`, `{:error, :invalid_amount}` for an amount that
+  is not positive, or `{:error, :exceeds_paid_amount}` when the amount is more
+  than the invoice has been paid. The bound is checked on the invoice struct
+  first and again on the invoice row under lock, so a stale `invoice` cannot
+  refund more than is currently paid.
   """
   def record_refund(%Invoice{} = invoice, attrs, admin_user) do
     amount = parse_decimal(attrs[:amount] || attrs["amount"])
@@ -4294,17 +4514,32 @@ defmodule PhoenixKitBilling do
         # on an invoice read before the transaction, so two concurrent
         # payments could each see the same remaining balance and both pass -
         # check-then-act on money. A positive amount that no longer fits
-        # rolls the whole thing back.
+        # rolls the whole thing back. A refund (negative amount) is bounded
+        # the same way by the locked invoice's paid_amount; without this the
+        # second of two refunds that each fit only died later, when the
+        # recalculated paid_amount went negative and `update!` raised.
         locked = lock_invoice_for_update(invoice)
 
-        if Decimal.positive?(amount) and
-             Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt do
-          repo().rollback(:exceeds_remaining)
+        cond do
+          Decimal.positive?(amount) and
+              Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt ->
+            repo().rollback(:exceeds_remaining)
+
+          Decimal.negative?(amount) and
+              Decimal.compare(Decimal.negate(amount), locked.paid_amount) == :gt ->
+            repo().rollback(:exceeds_paid_amount)
+
+          true ->
+            :ok
         end
 
         case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
           {:ok, transaction} ->
-            invoice_broadcasts = apply_transaction_to_invoice(invoice, amount)
+            # From the LOCKED invoice: `paid_amount_changeset/2` is a plain
+            # `change/2`, so against the caller's older struct it drops the
+            # update whenever the ledger sum happens to equal the old value,
+            # leaving the column out of step with the ledger.
+            invoice_broadcasts = apply_transaction_to_invoice(locked, amount)
 
             transaction_broadcast =
               if Decimal.negative?(amount),
