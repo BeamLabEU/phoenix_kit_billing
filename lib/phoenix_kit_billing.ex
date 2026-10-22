@@ -2454,18 +2454,7 @@ defmodule PhoenixKitBilling do
   status is not `"paid"`, or `{:error, changeset}`.
   """
   def mark_order_refunded(%Order{} = order) do
-    result =
-      transition_order(order, fn current ->
-        if current.status == "paid" do
-          current
-          |> Order.status_changeset("refunded")
-          |> repo().update()
-        else
-          {:error, :order_not_refundable}
-        end
-      end)
-
-    case result do
+    case refund_order(order) do
       {:ok, refunded_order} ->
         Events.broadcast_order_refunded(refunded_order)
         {:ok, refunded_order}
@@ -2473,6 +2462,20 @@ defmodule PhoenixKitBilling do
       error ->
         error
     end
+  end
+
+  # The transition without the broadcast, for `record_refund/3`, which runs it
+  # inside its transaction and sends the broadcast after the commit.
+  defp refund_order(%Order{} = order) do
+    transition_order(order, fn current ->
+      if current.status == "paid" do
+        current
+        |> Order.status_changeset("refunded")
+        |> repo().update()
+      else
+        {:error, :order_not_refundable}
+      end
+    end)
   end
 
   @doc """
@@ -4598,11 +4601,12 @@ defmodule PhoenixKitBilling do
       end
 
     if Decimal.negative?(amount) do
-      handle_refund_transaction(invoice.uuid)
+      order_broadcasts = handle_refund_transaction(invoice.uuid)
       InvoiceEvents.enqueue(:refunded, get_invoice!(invoice.uuid))
+      became_paid ++ order_broadcasts
+    else
+      became_paid
     end
-
-    became_paid
   end
 
   @doc """
@@ -5375,15 +5379,19 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp maybe_mark_linked_order_refunded(%{order_uuid: nil}), do: :ok
+  # Returns the broadcasts to send once the surrounding transaction commits.
+  defp maybe_mark_linked_order_refunded(%{order_uuid: nil}), do: []
 
   defp maybe_mark_linked_order_refunded(%{order_uuid: order_uuid}) do
     case get_order!(order_uuid) do
       %Order{status: "paid"} = order ->
-        mark_order_refunded(order)
+        case refund_order(order) do
+          {:ok, refunded} -> [{:broadcast_order_refunded, refunded}]
+          _ -> []
+        end
 
       _ ->
-        :ok
+        []
     end
   end
 
@@ -5398,6 +5406,8 @@ defmodule PhoenixKitBilling do
       |> repo().update!()
 
       maybe_mark_linked_order_refunded(invoice)
+    else
+      []
     end
   end
 
