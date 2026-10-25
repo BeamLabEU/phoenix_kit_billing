@@ -404,21 +404,10 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
   end
 
   describe "subscriptions" do
-    # NOTE: the subscription create/update/status-transition tests that
-    # persist a `Subscription` are SKIPPED here because the
-    # `phoenix_kit_subscriptions` table built by core's versioned migrations
-    # on this test DB is MISSING the `subscription_type_uuid` column that the
-    # `PhoenixKitBilling.Subscription` schema declares. No core migration adds
-    # that column via ADD COLUMN — it only exists via V65's conditional
-    # RENAME of `plan_uuid` (which V33 never creates as `plan_uuid`; V33 uses
-    # an integer `plan_id`). On a from-scratch `ensure_current/2` build the
-    # column therefore never materializes, so every `Subscription` insert
-    # raises `Postgrex.Error (undefined_column) subscription_type_uuid`.
-    #
-    # This is a core migration-chain gap (not a billing-module bug and not
-    # fixable from test code). Once core ships the column (or the marker is
-    # repaired), drop the `@tag :skip` markers below. The non-persisting
-    # error paths are exercised unconditionally.
+    # These tests were `@tag :skip` while a from-scratch build of
+    # `phoenix_kit_subscriptions` lacked `subscription_type_uuid`. It exists
+    # (core's chain creates it), so they run; the non-persisting error paths
+    # below never needed it.
 
     test "create_subscription/2 with unknown type returns error (no insert)" do
       user = fixture_user()
@@ -431,8 +420,7 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
       assert Billing.get_subscription("not-a-uuid") == nil
     end
 
-    @tag :skip
-    test "create_subscription/2 with no trial is active (BLOCKED: missing column)" do
+    test "create_subscription/2 with no trial is active" do
       user = fixture_user()
 
       {:ok, type} =
@@ -448,8 +436,7 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
       assert sub.status == "active"
     end
 
-    @tag :skip
-    test "status transitions: cancel / pause / resume (BLOCKED: missing column)" do
+    test "status transitions: cancel / pause / resume" do
       user = fixture_user()
 
       {:ok, type} =
@@ -468,8 +455,7 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
       assert cancelled.status == "cancelled"
     end
 
-    @tag :skip
-    test "edit-save persists a changed payment method (BLOCKED: missing column)" do
+    test "edit-save persists a changed payment method" do
       # Mirrors the SubscriptionForm edit-save path: when an admin changes
       # the payment method (and optionally the type) in edit mode, the new
       # `payment_method_uuid` must persist via `update_subscription/2`

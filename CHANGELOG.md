@@ -1,3 +1,26 @@
+## Unreleased
+
+### Changed
+
+- The migration chain is now V6. V2 and V3 alter `phoenix_kit_currencies` and
+  `phoenix_kit_orders`, which V4 creates, so on a database without core's copy
+  of those tables the chain failed at V2 before adopting anything. V6 emits the
+  base `CREATE TABLE IF NOT EXISTS` of those two tables between V1 and V2 (a
+  no-op wherever core created them), carrying core's seed rows (the EUR/GBP/USD
+  currencies and the bank transfer, cash on delivery, PayPal and card payment
+  options) only when it creates the table itself, never over a host's own rows.
+  Published versions' statements are untouched, and `down/1` never drops a
+  table. With it the chain builds all eleven tables without core
+  (`test/phoenix_kit_billing/integration/migrations_build_alone_test.exs`, core's
+  `ModuleChainCheck`). See core's
+  `dev_docs/plans/2026-10-25-module-table-ownership.md`.
+
+### Fixed
+
+- Four subscription tests no longer `@tag :skip`: `subscription_type_uuid`
+  exists on a from-scratch build, so the documented "core chain gap" is gone.
+  The matching AGENTS.md landmine and TODO are removed.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
