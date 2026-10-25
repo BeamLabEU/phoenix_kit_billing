@@ -226,7 +226,7 @@ lib/phoenix_kit_billing/
 | `PaymentOption` | `phoenix_kit_payment_options` | Checkout options |
 | `Currency` | `phoenix_kit_currencies` | Rates, `is_default`, `rounding_rule`, `rate_updated_at` |
 | `WebhookEvent` | `phoenix_kit_webhook_events` | Provider event log |
-| `NumberSequence` | `phoenix_kit_billing_number_sequences` | Counter behind order, invoice and receipt numbers, one row per (scope, year); created by V7 |
+| `NumberSequence` | `phoenix_kit_billing_number_sequences` | Counter behind order, invoice, receipt and transaction numbers, one row per (scope, year); created by V7 |
 
 Invoice status workflow: `draft → sent → paid`, with `sent → overdue → paid` and
 `→ void` as the exits.
@@ -411,8 +411,8 @@ in hosts; the test suite applies it by executing
   core migration. The email templates core seeds for billing are not carried:
   `EmailDefaults` is billing's own fallback.
 - **V7 adds the number counter**: `phoenix_kit_billing_number_sequences`, the
-  one table this chain creates itself (core never had it). Order, invoice and
-  receipt numbers come from it, taken in the transaction that inserts the row
+  one table this chain creates itself (core never had it). Order, invoice,
+  receipt and transaction numbers come from it, taken in the transaction that inserts the row
   using the number (`next_number/2` in `PhoenixKitBilling`); the old
   `count(rows of the year) + 1` handed out a taken number once a row was
   deleted. `down/1` below V7 drops the table.

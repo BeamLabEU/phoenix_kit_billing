@@ -1,7 +1,8 @@
 defmodule PhoenixKitBilling.NumberSequence do
   @moduledoc """
-  The counter behind order, invoice and receipt numbers: the last value handed
-  out for a scope (`"order"`, `"invoice"` or `"receipt"`) in a year.
+  The counter behind order, invoice, receipt and transaction numbers: the last
+  value handed out for a scope (`"order"`, `"invoice"`, `"receipt"` or
+  `"transaction"`) in a year.
 
   The context takes the next value inside the transaction that inserts the row
   using it (see `PhoenixKitBilling`), so nothing else reads or writes this

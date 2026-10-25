@@ -191,7 +191,7 @@ defmodule PhoenixKitBilling.Migrations do
 
   `down/1` below V6 only moves the marker and never drops a table.
 
-  ## V7 — a counter for order, invoice and receipt numbers
+  ## V7 — a counter for order, invoice, receipt and transaction numbers
 
   Numbers used to be `count(rows of the year) + 1`. Delete any row of the year
   but the last and the count falls behind a number already taken: the insert
@@ -200,7 +200,7 @@ defmodule PhoenixKitBilling.Migrations do
 
   V7 creates `phoenix_kit_billing_number_sequences` — `(scope, year)` primary
   key, `last_value`, `updated_at` — the counter the numbers now come from
-  (`scope` is `order`, `invoice` or `receipt`). The code takes a number with a
+  (`scope` is `order`, `invoice`, `receipt` or `transaction`). The code takes a number with a
   row-locking `UPDATE` inside the transaction that inserts the row using it, so
   creates queue up, a rolled-back insert gives its number back, and deleting a
   row never frees one. A scope with no row yet for the year is seeded from the
@@ -480,7 +480,7 @@ defmodule PhoenixKitBilling.Migrations do
     ]
   end
 
-  # V7 — the counter behind order, invoice and receipt numbers (see the
+  # V7 — the counter behind order, invoice, receipt and transaction numbers (see the
   # moduledoc). A table of this chain's own, so `IF NOT EXISTS` is all the
   # idempotence it needs.
   defp v7_statements(p) do

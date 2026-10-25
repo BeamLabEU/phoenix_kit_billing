@@ -6,7 +6,7 @@ defmodule PhoenixKitBilling.MigrationsNumberSequencesTest do
 
   @moduledoc """
   V7 creates `phoenix_kit_billing_number_sequences`, the counter behind order,
-  invoice and receipt numbers. Built in a scratch schema on the test database,
+  invoice, receipt and transaction numbers. Built in a scratch schema on the test database,
   the same way the V6 seed tests do.
   """
 

@@ -128,4 +128,49 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
     assert Enum.all?(results, &match?({:ok, _}, &1))
     assert sequence(results, :receipt_number) == expected(1..6)
   end
+
+  test "concurrent payments and mark-paid on different invoices get distinct transaction numbers",
+       %{user: user} do
+    {:ok, order} = Billing.create_order(user, order_attrs())
+
+    invoices =
+      for _ <- 1..8 do
+        {:ok, invoice} = Billing.create_invoice_from_order(order)
+        {:ok, sent} = invoice |> Ecto.Changeset.change(%{status: "sent"}) |> Repo.update()
+        sent
+      end
+
+    results =
+      parallel(8, fn n ->
+        invoice = Enum.at(invoices, n - 1)
+
+        if rem(n, 2) == 0 do
+          Billing.record_payment(
+            invoice,
+            %{amount: Decimal.new("10.00"), payment_method: "bank"},
+            nil
+          )
+        else
+          Billing.mark_invoice_paid(invoice)
+        end
+      end)
+
+    assert Enum.all?(results, &match?({:ok, _}, &1))
+
+    numbers =
+      from(t in Transaction, where: t.user_uuid == ^user.uuid, select: t.transaction_number)
+      |> Repo.all()
+      |> Enum.map(&(&1 |> String.split("-") |> List.last()))
+      |> Enum.sort()
+
+    assert numbers == expected(1..8)
+
+    receipts =
+      from(i in Invoice, where: i.user_uuid == ^user.uuid, select: i.receipt_number)
+      |> Repo.all()
+      |> Enum.map(&(&1 |> String.split("-") |> List.last()))
+      |> Enum.sort()
+
+    assert receipts == expected(1..8)
+  end
 end

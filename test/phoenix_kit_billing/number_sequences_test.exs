@@ -416,4 +416,108 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert paid.receipt_number == number("RCP", 1)
     end
   end
+
+  describe "transactions" do
+    setup %{user: user} do
+      %{invoice: user |> new_order() |> new_invoice() |> sent()}
+    end
+
+    defp pay(invoice, amount \\ "1.00", extra \\ %{}) do
+      Billing.record_payment(
+        invoice,
+        Map.merge(%{amount: Decimal.new(amount), payment_method: "bank"}, extra),
+        nil
+      )
+    end
+
+    test "numbers run on from 0001", %{invoice: invoice} do
+      assert {:ok, first} = pay(invoice)
+      assert {:ok, second} = pay(invoice)
+
+      assert first.transaction_number == number("TXN", 1)
+      assert second.transaction_number == number("TXN", 2)
+      assert last_value("transaction") == 2
+    end
+
+    test "deleting a transaction does not free its number", %{invoice: invoice} do
+      [_, second, third] = for _ <- 1..3, do: elem(pay(invoice), 1)
+
+      Repo.delete!(second)
+      assert {:ok, next} = pay(invoice)
+      assert next.transaction_number == number("TXN", 4)
+
+      Repo.delete!(third)
+      assert {:ok, next} = pay(invoice)
+      assert next.transaction_number == number("TXN", 5)
+    end
+
+    test "a settlement from mark_invoice_paid takes its number from the same counter", %{
+      invoice: invoice
+    } do
+      assert {:ok, first} = pay(invoice)
+      assert {:ok, _} = Billing.mark_invoice_paid(Billing.get_invoice(invoice.uuid))
+
+      [_, settlement] =
+        Repo.all(
+          from(t in Transaction,
+            where: t.invoice_uuid == ^invoice.uuid,
+            order_by: t.transaction_number
+          )
+        )
+
+      assert first.transaction_number == number("TXN", 1)
+      assert settlement.transaction_number == number("TXN", 2)
+    end
+
+    test "a counter-less year starts after the numbers already there", %{invoice: invoice} do
+      for n <- [3, 10] do
+        Repo.insert!(%Transaction{
+          transaction_number: number("TXN", n),
+          amount: Decimal.new("1.00"),
+          currency: "EUR",
+          payment_method: "bank",
+          invoice_uuid: invoice.uuid,
+          user_uuid: invoice.user_uuid
+        })
+      end
+
+      assert last_value("transaction") == nil
+      assert {:ok, next} = pay(invoice)
+      assert next.transaction_number == number("TXN", 11)
+    end
+
+    test "a payment that fails its changeset gives the number back", %{invoice: invoice} do
+      assert {:ok, _} = pay(invoice)
+      assert {:error, %Ecto.Changeset{}} = pay(invoice, "1.00", %{payment_method: "bogus"})
+      assert last_value("transaction") == 1
+
+      assert {:ok, next} = pay(invoice)
+      assert next.transaction_number == number("TXN", 2)
+    end
+
+    test "a number that collides is an error and leaves the invoice and the counter alone", %{
+      invoice: invoice
+    } do
+      Repo.insert!(%Transaction{
+        transaction_number: number("TXN", 1),
+        amount: Decimal.new("1.00"),
+        currency: "EUR",
+        payment_method: "bank",
+        invoice_uuid: invoice.uuid,
+        user_uuid: invoice.user_uuid
+      })
+
+      Repo.insert_all(@sequences, [%{scope: "transaction", year: @year, last_value: 0}])
+
+      assert {:error, changeset} = pay(invoice)
+      assert %{transaction_number: [_]} = errors_on(changeset)
+      assert last_value("transaction") == 0
+      assert Decimal.equal?(Billing.get_invoice(invoice.uuid).paid_amount, Decimal.new("0"))
+    end
+
+    test "generate_transaction_number/0 hands out the next value" do
+      assert Billing.generate_transaction_number() == number("TXN", 1)
+      assert Billing.generate_transaction_number() == number("TXN", 2)
+    end
+  end
 end

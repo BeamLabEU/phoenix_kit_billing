@@ -3960,7 +3960,11 @@ defmodule PhoenixKitBilling do
       }
 
       %Transaction{}
-      |> Transaction.changeset(build_transaction_attrs(invoice, outstanding, attrs, admin_user))
+      |> Transaction.changeset(
+        invoice
+        |> build_transaction_attrs(outstanding, attrs, admin_user)
+        |> put_transaction_number()
+      )
       |> repo().insert()
     else
       :ok
@@ -4262,6 +4266,15 @@ defmodule PhoenixKitBilling do
     |> repo().aggregate(:count)
   end
 
+  defp rows_of_year("transaction", year) do
+    {first_day, last_day} = year_bounds(year)
+
+    Transaction
+    |> where([t], fragment("DATE(?)", t.inserted_at) >= ^first_day)
+    |> where([t], fragment("DATE(?)", t.inserted_at) <= ^last_day)
+    |> repo().aggregate(:count)
+  end
+
   defp rows_of_year("receipt", year) do
     {first_day, last_day} = year_bounds(year)
 
@@ -4289,6 +4302,11 @@ defmodule PhoenixKitBilling do
 
         "receipt" ->
           repo().one(from(i in Invoice, select: max(number_suffix(i.receipt_number, ^pattern))))
+
+        "transaction" ->
+          repo().one(
+            from(t in Transaction, select: max(number_suffix(t.transaction_number, ^pattern)))
+          )
       end
 
     highest || 0
@@ -4532,9 +4550,12 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  # Inside the transaction that inserts the row - see next_number/2.
+  defp put_transaction_number(attrs),
+    do: Map.put(attrs, :transaction_number, generate_transaction_number())
+
   defp build_transaction_attrs(invoice, amount, attrs, admin_user) do
     %{
-      transaction_number: generate_transaction_number(),
       amount: amount,
       currency: invoice.currency,
       payment_method: attrs[:payment_method] || attrs["payment_method"] || "bank",
@@ -4653,6 +4674,8 @@ defmodule PhoenixKitBilling do
             :ok
         end
 
+        transaction_attrs = put_transaction_number(transaction_attrs)
+
         case %Transaction{} |> Transaction.changeset(transaction_attrs) |> repo().insert() do
           {:ok, transaction} ->
             # From the LOCKED invoice: `paid_amount_changeset/2` is a plain
@@ -4761,27 +4784,14 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
-  Generates a unique transaction number.
+  Takes the next transaction number (`TXN-2026-0001`) from the counter.
+
+  Call it inside the transaction that inserts the transaction row: the counter
+  row stays locked until that transaction ends, and a rollback gives the number
+  back. Called on its own it uses up a value.
   """
   def generate_transaction_number do
-    prefix = Settings.get_setting("billing_transaction_prefix", "TXN")
-    year = Date.utc_today().year
-    count = count_transactions_this_year()
-    "#{prefix}-#{year}-#{String.pad_leading(Integer.to_string(count), 4, "0")}"
-  end
-
-  defp count_transactions_this_year do
-    year = Date.utc_today().year
-    start_of_year = Date.new!(year, 1, 1)
-    end_of_year = Date.new!(year, 12, 31)
-
-    count =
-      Transaction
-      |> where([t], fragment("DATE(?)", t.inserted_at) >= ^start_of_year)
-      |> where([t], fragment("DATE(?)", t.inserted_at) <= ^end_of_year)
-      |> repo().aggregate(:count)
-
-    count + 1
+    next_number("transaction", Settings.get_setting("billing_transaction_prefix", "TXN"))
   end
 
   defp parse_decimal(value) when is_binary(value) do
