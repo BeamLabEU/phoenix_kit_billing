@@ -16,7 +16,6 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
   alias PhoenixKitBilling.Transaction
 
   @sequences "phoenix_kit_billing_number_sequences"
-  @year Date.utc_today().year
 
   setup do
     # Rolled back with the test's sandbox transaction.
@@ -24,10 +23,16 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
     %{user: fixture_user()}
   end
 
-  defp number(prefix, n, year \\ @year),
+  # At runtime: a module attribute would freeze the year at compile time.
+  defp year, do: Date.utc_today().year
+
+  # An install that predates the counter: the numbered rows stay, the counter goes.
+  defp forget_counter, do: Repo.delete_all(from(s in @sequences))
+
+  defp number(prefix, n, year \\ year()),
     do: "#{prefix}-#{year}-#{String.pad_leading(to_string(n), 4, "0")}"
 
-  defp last_value(scope, year \\ @year) do
+  defp last_value(scope, year \\ year()) do
     Repo.one(
       from(s in @sequences, where: s.scope == ^scope and s.year == ^year, select: s.last_value)
     )
@@ -127,7 +132,7 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       # 0003, which is taken.
       insert_order(user, number("ORD", 3))
       insert_order(user, number("ORD", 10))
-      assert last_value("order") == nil
+      forget_counter()
 
       assert new_order(user).order_number == number("ORD", 11)
       assert last_value("order") == 11
@@ -140,14 +145,14 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
     end
 
     test "the numbers of another year do not count", %{user: user} do
-      old = insert_order(user, number("ORD", 99, @year - 1))
+      old = insert_order(user, number("ORD", 99, year() - 1))
 
       Repo.update_all(from(o in Order, where: o.uuid == ^old.uuid),
-        set: [inserted_at: DateTime.new!(Date.new!(@year - 1, 6, 1), ~T[12:00:00])]
+        set: [inserted_at: DateTime.new!(Date.new!(year() - 1, 6, 1), ~T[12:00:00])]
       )
 
       assert new_order(user).order_number == number("ORD", 1)
-      assert last_value("order", @year - 1) == nil
+      assert last_value("order", year() - 1) == nil
     end
 
     test "a number the caller supplies does not use up a counter value", %{user: user} do
@@ -175,11 +180,61 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert %{order_number: [_]} = errors_on(changeset)
     end
 
-    test "a generated number that collides is an error and keeps the counter where it was", %{
+    test "a supplied number ahead of the counter lifts it without using a value", %{user: user} do
+      assert new_order(user).order_number == number("ORD", 1)
+      assert insert_order(user, number("ORD", 3)).order_number == number("ORD", 3)
+      assert last_value("order") == 3
+
+      # The counter was lifted to 3, so the next one is 4: 0002 is skipped
+      # rather than 0003 met.
+      assert new_order(user).order_number == number("ORD", 4)
+    end
+
+    test "a supplied number behind the counter leaves it alone", %{user: user} do
+      for _ <- 1..3, do: new_order(user)
+      insert_order(user, "OTHER-#{year() - 1}-0900")
+
+      assert last_value("order") == 3
+      assert new_order(user).order_number == number("ORD", 4)
+    end
+
+    test "a supplied number lifts a year with no counter row past the rows already there", %{
       user: user
     } do
+      for _ <- 1..4, do: new_order(user)
+      forget_counter()
+
+      assert insert_order(user, number("SO", 2)).order_number == number("SO", 2)
+      assert last_value("order") == 4
+
+      assert insert_order(user, number("ORD", 30)).order_number == number("ORD", 30)
+      assert new_order(user).order_number == number("ORD", 31)
+    end
+
+    test "a number changed by update_order lifts the counter too", %{user: user} do
+      order = new_order(user)
+
+      assert {:ok, _} = Billing.update_order(order, %{"order_number" => number("ORD", 10)})
+      assert last_value("order") == 10
+      assert new_order(user).order_number == number("ORD", 11)
+    end
+
+    test "a number changed by update_order that fails validation takes nothing", %{user: user} do
+      order = new_order(user)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Billing.update_order(order, %{
+                 "order_number" => number("ORD", 10),
+                 "total" => Decimal.new("-1")
+               })
+
+      assert last_value("order") == 1
+    end
+
+    test "a generated number that collides anyway is an error and keeps the counter where it was",
+         %{user: user} do
       insert_order(user, number("ORD", 1))
-      Repo.insert_all(@sequences, [%{scope: "order", year: @year, last_value: 0}])
+      Repo.update_all(from(s in @sequences), set: [last_value: 0])
 
       assert {:error, changeset} = Billing.create_order(user, order_attrs())
       assert %{order_number: [_]} = errors_on(changeset)
@@ -214,7 +269,7 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
         {:ok, _} = Billing.create_invoice_from_order(order, invoice_number: number("INV", n))
       end
 
-      assert last_value("invoice") == nil
+      forget_counter()
       assert new_invoice(order).invoice_number == number("INV", 8)
     end
 
@@ -235,11 +290,35 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert %{invoice_number: [_]} = errors_on(changeset)
     end
 
-    test "a generated number that collides is an error and keeps the counter where it was", %{
-      order: order
-    } do
+    test "a supplied number ahead of the counter lifts it without using a value", %{order: order} do
+      assert new_invoice(order).invoice_number == number("INV", 1)
+
+      {:ok, supplied} = Billing.create_invoice_from_order(order, invoice_number: number("INV", 3))
+      assert supplied.invoice_number == number("INV", 3)
+      assert last_value("invoice") == 3
+
+      assert new_invoice(order).invoice_number == number("INV", 4)
+    end
+
+    test "a number changed by update_invoice lifts the counter, the receipt number the receipt one",
+         %{order: order} do
+      invoice = new_invoice(order)
+
+      assert {:ok, _} =
+               Billing.update_invoice(invoice, %{
+                 "invoice_number" => number("INV", 10),
+                 "receipt_number" => number("RCP", 6)
+               })
+
+      assert last_value("invoice") == 10
+      assert last_value("receipt") == 6
+      assert new_invoice(order).invoice_number == number("INV", 11)
+    end
+
+    test "a generated number that collides anyway is an error and keeps the counter where it was",
+         %{order: order} do
       {:ok, _} = Billing.create_invoice_from_order(order, invoice_number: number("INV", 1))
-      Repo.insert_all(@sequences, [%{scope: "invoice", year: @year, last_value: 0}])
+      Repo.update_all(from(s in @sequences), set: [last_value: 0])
 
       assert {:error, changeset} = Billing.create_invoice_from_order(order)
       assert %{invoice_number: [_]} = errors_on(changeset)
@@ -301,18 +380,30 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert %{invoice_number: [_]} = errors_on(changeset)
     end
 
+    test "a supplied number ahead of the counter lifts it without using a value", %{user: user} do
+      assert {:ok, first} = standalone(user)
+      assert {:ok, supplied} = standalone(user, %{invoice_number: number("INV", 5)})
+
+      assert {first.invoice_number, supplied.invoice_number} ==
+               {number("INV", 1), number("INV", 5)}
+
+      assert {:ok, next} = standalone(user)
+      assert next.invoice_number == number("INV", 6)
+    end
+
     test "a counter-less year starts after the numbers already there", %{user: user} do
       assert {:ok, _} = standalone(user, %{invoice_number: number("INV", 12)})
+      forget_counter()
 
       assert {:ok, next} = standalone(user)
       assert next.invoice_number == number("INV", 13)
     end
 
     test "the invoices of another year do not count", %{user: user} do
-      {:ok, old} = standalone(user, %{invoice_number: number("INV", 40, @year - 1)})
+      {:ok, old} = standalone(user, %{invoice_number: number("INV", 40, year() - 1)})
 
       Repo.update_all(from(i in Invoice, where: i.uuid == ^old.uuid),
-        set: [inserted_at: DateTime.new!(Date.new!(@year - 1, 6, 1), ~T[12:00:00])]
+        set: [inserted_at: DateTime.new!(Date.new!(year() - 1, 6, 1), ~T[12:00:00])]
       )
 
       assert {:ok, next} = standalone(user)
@@ -406,8 +497,8 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
 
       invoice
       |> Ecto.Changeset.change(%{
-        receipt_number: number("RCP", 30, @year - 1),
-        receipt_generated_at: DateTime.new!(Date.new!(@year - 1, 6, 1), ~T[12:00:00])
+        receipt_number: number("RCP", 30, year() - 1),
+        receipt_generated_at: DateTime.new!(Date.new!(year() - 1, 6, 1), ~T[12:00:00])
       })
       |> Repo.update!()
 
@@ -507,7 +598,7 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
         user_uuid: invoice.user_uuid
       })
 
-      Repo.insert_all(@sequences, [%{scope: "transaction", year: @year, last_value: 0}])
+      Repo.insert_all(@sequences, [%{scope: "transaction", year: year(), last_value: 0}])
 
       assert {:error, changeset} = pay(invoice)
       assert %{transaction_number: [_]} = errors_on(changeset)
@@ -518,6 +609,114 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
     test "generate_transaction_number/0 hands out the next value" do
       assert Billing.generate_transaction_number() == number("TXN", 1)
       assert Billing.generate_transaction_number() == number("TXN", 2)
+    end
+  end
+
+  describe "inside the caller's transaction" do
+    # A changeset that fails validation is an ordinary error: the caller's
+    # transaction goes on, and its next query runs.
+    defp inside_transaction(fun) do
+      {:ok, result} = Repo.transaction(fn -> fun.() end)
+      result
+    end
+
+    test "an invalid order is an error and the caller carries on", %{user: user} do
+      {error, count} =
+        inside_transaction(fn ->
+          error = Billing.create_order(user, order_attrs(%{"total" => Decimal.new("-1")}))
+          {error, Repo.aggregate(Order, :count)}
+        end)
+
+      assert {:error, %Ecto.Changeset{}} = error
+      assert count == 0
+    end
+
+    test "an invalid order, then a valid one, in one transaction", %{user: user} do
+      {error, order} =
+        inside_transaction(fn ->
+          error = Billing.create_order(user, order_attrs(%{"total" => Decimal.new("-1")}))
+          {error, new_order(user)}
+        end)
+
+      assert {:error, %Ecto.Changeset{}} = error
+      assert order.order_number == number("ORD", 1)
+    end
+
+    test "an invalid invoice from an order is an error and the caller carries on", %{user: user} do
+      order = new_order(user)
+
+      {error, count} =
+        inside_transaction(fn ->
+          error = Billing.create_invoice_from_order(%{order | total: nil})
+          {error, Repo.aggregate(Invoice, :count)}
+        end)
+
+      assert {:error, %Ecto.Changeset{}} = error
+      assert count == 0
+      assert last_value("invoice") == nil
+    end
+
+    test "an invalid standalone invoice is an error and the caller carries on", %{user: user} do
+      {error, invoice} =
+        inside_transaction(fn ->
+          error = standalone(user, %{total: Decimal.new("-1")})
+          {error, standalone(user)}
+        end)
+
+      assert {:error, %Ecto.Changeset{}} = error
+      assert {:ok, %Invoice{invoice_number: invoice_number}} = invoice
+      assert invoice_number == number("INV", 1)
+    end
+
+    test "an order update that fails validation is an error and the caller carries on", %{
+      user: user
+    } do
+      order = new_order(user)
+
+      count =
+        inside_transaction(fn ->
+          assert {:error, %Ecto.Changeset{}} =
+                   Billing.update_order(order, %{
+                     "order_number" => number("ORD", 10),
+                     "total" => Decimal.new("-1")
+                   })
+
+          Repo.aggregate(Order, :count)
+        end)
+
+      assert count == 1
+    end
+
+    test "a receipt refused up front is an error and the caller carries on", %{user: user} do
+      invoice = user |> new_order() |> new_invoice() |> sent()
+
+      count =
+        inside_transaction(fn ->
+          assert {:error, :no_payments} = Billing.generate_receipt(invoice)
+          Repo.aggregate(Invoice, :count)
+        end)
+
+      assert count == 1
+    end
+  end
+
+  describe "how far back the seed looks" do
+    test "a number on a row from the last days of the previous year still counts", %{user: user} do
+      insert_order(user, number("ORD", 7),
+        inserted_at: DateTime.new!(Date.new!(year() - 1, 12, 31), ~T[12:00:00])
+      )
+
+      forget_counter()
+      assert new_order(user).order_number == number("ORD", 8)
+    end
+
+    test "a number on an older row does not", %{user: user} do
+      insert_order(user, number("ORD", 7),
+        inserted_at: DateTime.new!(Date.new!(year() - 1, 12, 30), ~T[12:00:00])
+      )
+
+      forget_counter()
+      assert new_order(user).order_number == number("ORD", 1)
     end
   end
 end

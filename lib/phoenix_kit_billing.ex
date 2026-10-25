@@ -69,6 +69,18 @@ defmodule PhoenixKitBilling do
 
   require Logger
 
+  # Appended to the docs of every function that takes a document number.
+  @numbering_note """
+  The number comes from a per-year counter row that stays locked until the
+  transaction that inserts the row commits. Called inside your own
+  `Repo.transaction`, that is until yours commits, so keep it short: concurrent
+  creates of the same kind wait for it. A changeset that fails validation comes
+  back as `{:error, changeset}` and leaves your transaction usable; a failure in
+  the database itself (a number that is already taken) aborts it. Needs the
+  default READ COMMITTED isolation - under REPEATABLE READ or SERIALIZABLE a
+  concurrent create raises a serialization failure (`40001`).
+  """
+
   # §13: namespace for the currency-table cache — see `children/0`,
   # `get_base_currency/0`, `get_currency_by_code/1`,
   # `invalidate_currency_cache/0`.
@@ -2289,6 +2301,8 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Creates an order for a user.
+
+  #{@numbering_note}
   """
   def create_order(user_or_uuid, attrs) do
     user_uuid = extract_user_uuid(user_or_uuid)
@@ -2309,21 +2323,24 @@ defmodule PhoenixKitBilling do
   # `maybe_set_billing_snapshot/1` returns an error tuple when the chosen
   # billing profile has vanished; passing that to a changeset would raise.
   #
-  # The number is taken in the transaction that inserts the order: a failed
-  # insert rolls the counter back with it, and the PubSub event goes out only
-  # once the order is committed.
+  # A number the caller supplied is kept (and lifts the counter, see
+  # `insert_numbered/4`); otherwise one is generated.
   defp insert_order(attrs, config) do
-    result =
-      repo().transaction(fn ->
-        attrs = maybe_set_order_number(attrs, config)
+    source =
+      cond do
+        Map.has_key?(attrs, :order_number) -> {:supplied, attrs.order_number}
+        Map.has_key?(attrs, "order_number") -> {:supplied, attrs["order_number"]}
+        true -> :generate
+      end
 
-        case %Order{} |> Order.changeset(attrs) |> repo().insert() do
-          {:ok, order} -> order
-          {:error, changeset} -> repo().rollback(changeset)
-        end
-      end)
+    build = fn number ->
+      attrs = if number, do: Map.put(attrs, "order_number", number), else: attrs
+      Order.changeset(%Order{}, attrs)
+    end
 
-    case result do
+    # PubSub after the transaction that inserts the order has ended - the
+    # commit, unless the caller's own transaction encloses this call.
+    case insert_numbered(build, "order", config.order_prefix, source) do
       {:ok, order} ->
         Events.broadcast_order_created(order)
         {:ok, order}
@@ -2335,6 +2352,8 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Creates an order from attributes (user_uuid included in attrs).
+
+  #{@numbering_note}
   """
   def create_order(attrs) when is_map(attrs) do
     config = get_config()
@@ -2362,6 +2381,9 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Updates an order.
+
+  A new `order_number` of this year's shape (`PREFIX-YYYY-NNNN`) lifts the
+  year's counter to at least its NNNN, so the counter never reaches it.
   """
   def update_order(%Order{} = order, attrs) do
     if Order.editable?(order) do
@@ -2371,7 +2393,7 @@ defmodule PhoenixKitBilling do
       result =
         order
         |> Order.changeset(attrs)
-        |> repo().update()
+        |> update_numbered(order_number: "order")
 
       case result do
         {:ok, updated_order} ->
@@ -2738,15 +2760,6 @@ defmodule PhoenixKitBilling do
     end)
   end
 
-  defp maybe_set_order_number(attrs, config) do
-    # Check both atom and string keys since params may come from forms (string keys)
-    if Map.has_key?(attrs, :order_number) || Map.has_key?(attrs, "order_number") do
-      attrs
-    else
-      Map.put(attrs, "order_number", next_number("order", config.order_prefix))
-    end
-  end
-
   defp maybe_set_default_currency(attrs) do
     # Check both atom and string keys
     if Map.has_key?(attrs, :currency) || Map.has_key?(attrs, "currency") do
@@ -3025,6 +3038,8 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Creates an invoice from an order.
+
+  #{@numbering_note}
   """
   def create_invoice_from_order(%Order{} = order, opts \\ []) do
     config = get_config()
@@ -3035,30 +3050,24 @@ defmodule PhoenixKitBilling do
       |> Keyword.put_new(:bank_details, get_bank_details())
       |> Keyword.put_new(:payment_terms, get_payment_terms())
 
-    insert_invoice(fn ->
-      # Lazy: a number the caller supplied must not use up a counter value.
-      opts =
-        Keyword.put_new_lazy(opts, :invoice_number, fn ->
-          next_number("invoice", config.invoice_prefix)
-        end)
+    source =
+      if Keyword.has_key?(opts, :invoice_number),
+        do: {:supplied, opts[:invoice_number]},
+        else: :generate
 
+    build = fn number ->
+      opts = if source == :generate, do: Keyword.put(opts, :invoice_number, number), else: opts
       order |> Invoice.from_order(opts) |> Invoice.changeset(%{})
-    end)
+    end
+
+    insert_invoice(build, config, source)
   end
 
-  # Builds the changeset and inserts it in one transaction, so the number the
-  # builder takes is given back if the insert fails. PubSub only after the
-  # commit.
-  defp insert_invoice(build_changeset) do
-    result =
-      repo().transaction(fn ->
-        case build_changeset.() |> repo().insert() do
-          {:ok, invoice} -> invoice
-          {:error, changeset} -> repo().rollback(changeset)
-        end
-      end)
-
-    case result do
+  # The PubSub event goes out after the transaction that inserts the invoice
+  # has ended - the commit, unless the caller's own transaction encloses this
+  # call.
+  defp insert_invoice(build, config, source) do
+    case insert_numbered(build, "invoice", config.invoice_prefix, source) do
       {:ok, created_invoice} ->
         Events.broadcast_invoice_created(created_invoice)
         {:ok, created_invoice}
@@ -3070,31 +3079,39 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Creates a standalone invoice (without order).
+
+  #{@numbering_note}
   """
   def create_invoice(user_or_uuid, attrs) do
     user_uuid = extract_user_uuid(user_or_uuid)
     config = get_config()
+    attrs = Map.put(attrs, :user_uuid, user_uuid)
 
-    insert_invoice(fn ->
-      attrs =
-        attrs
-        |> Map.put(:user_uuid, user_uuid)
-        |> Map.put_new_lazy(:invoice_number, fn ->
-          next_number("invoice", config.invoice_prefix)
-        end)
+    source =
+      if Map.has_key?(attrs, :invoice_number),
+        do: {:supplied, attrs.invoice_number},
+        else: :generate
 
-      %Invoice{} |> Invoice.changeset(attrs)
-    end)
+    build = fn number ->
+      attrs = if number, do: Map.put(attrs, :invoice_number, number), else: attrs
+      Invoice.changeset(%Invoice{}, attrs)
+    end
+
+    insert_invoice(build, config, source)
   end
 
   @doc """
   Updates an invoice.
+
+  A new `invoice_number` or `receipt_number` of this year's shape
+  (`PREFIX-YYYY-NNNN`) lifts the year's counter for it to at least its NNNN,
+  so the counter never reaches it.
   """
   def update_invoice(%Invoice{} = invoice, attrs) do
     if Invoice.editable?(invoice) do
       invoice
       |> Invoice.changeset(attrs)
-      |> repo().update()
+      |> update_numbered(invoice_number: "invoice", receipt_number: "receipt")
     else
       {:error, :invoice_not_editable}
     end
@@ -3883,6 +3900,9 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Marks an invoice as paid (generates receipt).
+
+  Takes the invoice row lock, then a transaction number (for the settlement
+  row) and a receipt number. #{@numbering_note}
   """
   def mark_invoice_paid(%Invoice{} = invoice, admin_user \\ nil) do
     if Invoice.payable?(invoice) do
@@ -4022,40 +4042,65 @@ defmodule PhoenixKitBilling do
   - "paid" - fully paid
   - "partially_paid" - partial payment received
   - "refunded" - fully refunded after payment
+
+  Returns `{:error, :receipt_already_generated}` or `{:error, :no_payments}`
+  when there is nothing to issue. Two concurrent calls on one invoice issue one
+  receipt: the second finds it on the locked row.
+
+  Takes the invoice row lock, then a receipt number. #{@numbering_note}
   """
   def generate_receipt(%Invoice{} = invoice) do
+    # The caller's struct settles the common refusals without a transaction;
+    # the locked row below settles the race.
+    case receipt_blocker(invoice) do
+      nil -> issue_receipt(invoice)
+      reason -> {:error, reason}
+    end
+  end
+
+  defp receipt_blocker(%Invoice{} = invoice) do
     cond do
       # Already has a receipt
       not is_nil(invoice.receipt_number) ->
-        {:error, :receipt_already_generated}
+        :receipt_already_generated
 
       # No payments yet
       is_nil(invoice.paid_amount) or Decimal.eq?(invoice.paid_amount, Decimal.new(0)) ->
-        {:error, :no_payments}
+        :no_payments
 
-      # Has payments - generate receipt
       true ->
-        config = get_config()
-
-        # Invoice row first, then the counter: the order mark_invoice_paid/2
-        # and record_payment/3 take them in, so the two cannot deadlock.
-        repo().transaction(fn ->
-          lock_invoice_for_update(invoice)
-          receipt_number = next_number("receipt", config.receipt_prefix)
-
-          invoice
-          |> Ecto.Changeset.change(%{
-            receipt_number: receipt_number,
-            receipt_generated_at: UtilsDate.utc_now(),
-            receipt_data: build_receipt_data(invoice)
-          })
-          |> repo().update()
-          |> case do
-            {:ok, updated} -> updated
-            {:error, changeset} -> repo().rollback(changeset)
-          end
-        end)
+        nil
     end
+  end
+
+  defp issue_receipt(%Invoice{} = invoice) do
+    config = get_config()
+
+    # Invoice row first, then the counter: the order mark_invoice_paid/2 and
+    # record_payment/3 take them in, so the two cannot deadlock. Everything
+    # below is read from the locked row, not from the caller's struct.
+    repo().transaction(fn ->
+      locked = lock_invoice_for_update(invoice)
+
+      case receipt_blocker(locked) do
+        nil -> :ok
+        reason -> repo().rollback(reason)
+      end
+
+      receipt_number = next_number("receipt", config.receipt_prefix)
+
+      locked
+      |> Ecto.Changeset.change(%{
+        receipt_number: receipt_number,
+        receipt_generated_at: UtilsDate.utc_now(),
+        receipt_data: build_receipt_data(locked)
+      })
+      |> repo().update()
+      |> case do
+        {:ok, updated} -> updated
+        {:error, changeset} -> repo().rollback(changeset)
+      end
+    end)
   end
 
   defp build_receipt_data(invoice) do
@@ -4202,6 +4247,66 @@ defmodule PhoenixKitBilling do
     "#{prefix}-#{year}-#{String.pad_leading(to_string(sequence), 4, "0")}"
   end
 
+  # Inserts what `build` makes, with a number. `build.(nil)` is the record as
+  # the caller described it - a generated number is not needed to judge it - and
+  # `build.(number)` the one to insert.
+  #
+  # Validated first: a changeset that fails is returned as it is, without a
+  # transaction and without taking a number, so a caller's own transaction
+  # carries on. Only a valid one opens the transaction in which the number is
+  # taken (or, for a number the caller supplied, the counter is lifted past it -
+  # see `raise_sequence_floor/2`) and the row inserted; a failure of the insert
+  # itself (a number already taken) rolls both back.
+  defp insert_numbered(build, scope, prefix, source) do
+    case build.(nil) do
+      %Ecto.Changeset{valid?: false} = invalid ->
+        {:error, invalid}
+
+      _valid ->
+        repo().transaction(fn ->
+          number =
+            case source do
+              :generate ->
+                next_number(scope, prefix)
+
+              {:supplied, supplied} ->
+                raise_sequence_floor(scope, supplied)
+                supplied
+            end
+
+          case build.(number) |> repo().insert() do
+            {:ok, record} -> record
+            {:error, changeset} -> repo().rollback(changeset)
+          end
+        end)
+    end
+  end
+
+  # An update that changes a number (`numbers`: field -> scope) lifts the
+  # counter past it in the same transaction; any other update is a plain one.
+  defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers) do
+    floors =
+      for {field, scope} <- numbers,
+          number = Map.get(changeset.changes, field),
+          is_binary(number),
+          do: {scope, number}
+
+    if floors == [] do
+      repo().update(changeset)
+    else
+      repo().transaction(fn ->
+        Enum.each(floors, fn {scope, number} -> raise_sequence_floor(scope, number) end)
+
+        case repo().update(changeset) do
+          {:ok, record} -> record
+          {:error, changeset} -> repo().rollback(changeset)
+        end
+      end)
+    end
+  end
+
+  defp update_numbered(%Ecto.Changeset{} = changeset, _numbers), do: repo().update(changeset)
+
   defp next_sequence(scope, year) do
     bump =
       from(s in NumberSequence,
@@ -4213,40 +4318,86 @@ defmodule PhoenixKitBilling do
       )
 
     case repo().update_all(bump, []) do
-      {1, [value]} -> value
-      {0, []} -> start_sequence(scope, year)
+      {1, [value]} ->
+        value
+
+      {0, []} ->
+        # ON CONFLICT: two callers can both get here, and the second must take
+        # the next value, not fail on the first one's row.
+        conflict =
+          from(s in NumberSequence,
+            update: [
+              set: [last_value: fragment("? + 1", s.last_value), updated_at: fragment("now()")]
+            ]
+          )
+
+        insert_sequence(scope, year, sequence_seed(scope, year) + 1, conflict)
     end
   end
 
-  # No counter row for this scope and year yet. It starts after what is already
-  # numbered, so an install that predates the counter carries on from where it
-  # was. ON CONFLICT: two callers can both get here, and the second must take
-  # the next value, not fail on the first one's row.
-  defp start_sequence(scope, year) do
-    seed = max(rows_of_year(scope, year), highest_number_of_year(scope, year))
+  # A number the caller typed (or changed to) that has this year's shape lifts
+  # the counter to at least its NNNN, without using a value: the counter would
+  # otherwise reach it one day, and every create after that would meet it - the
+  # rollback gives the value back, so the same one every time.
+  defp raise_sequence_floor(scope, number) when is_binary(number) do
+    year = Date.utc_today().year
 
-    bump =
+    case Regex.run(Regex.compile!("-#{year}-([0-9]{1,15})$"), number) do
+      [_, digits] -> lift_sequence(scope, year, String.to_integer(digits))
+      nil -> :ok
+    end
+  end
+
+  defp raise_sequence_floor(_scope, _number), do: :ok
+
+  defp lift_sequence(scope, year, floor) do
+    lift = fn value ->
       from(s in NumberSequence,
         update: [
-          set: [last_value: fragment("? + 1", s.last_value), updated_at: fragment("now()")]
+          set: [
+            last_value: fragment("GREATEST(?, ?)", s.last_value, type(^value, :integer)),
+            updated_at: fragment("now()")
+          ]
         ]
       )
+    end
 
-    %NumberSequence{last_value: value} =
+    case repo().update_all(
+           from(s in lift.(floor), where: s.scope == ^scope and s.year == ^year),
+           []
+         ) do
+      {1, _} ->
+        :ok
+
+      {0, _} ->
+        # No row yet: it starts at the rows already numbered, or the floor.
+        value = max(sequence_seed(scope, year), floor)
+        insert_sequence(scope, year, value, lift.(value))
+        :ok
+    end
+  end
+
+  defp insert_sequence(scope, year, value, on_conflict) do
+    %NumberSequence{last_value: inserted} =
       repo().insert!(
         %NumberSequence{
           scope: scope,
           year: year,
-          last_value: seed + 1,
+          last_value: value,
           updated_at: UtilsDate.utc_now()
         },
-        on_conflict: bump,
+        on_conflict: on_conflict,
         conflict_target: [:scope, :year],
         returning: [:last_value]
       )
 
-    value
+    inserted
   end
+
+  # What is already numbered, so an install that predates the counter carries
+  # on from where it was.
+  defp sequence_seed(scope, year),
+    do: max(rows_of_year(scope, year), highest_number_of_year(scope, year))
 
   defp rows_of_year("order", year) do
     {first_day, last_day} = year_bounds(year)
@@ -4288,24 +4439,45 @@ defmodule PhoenixKitBilling do
   defp year_bounds(year), do: {Date.new!(year, 1, 1), Date.new!(year, 12, 31)}
 
   # The highest NNNN among numbers shaped `PREFIX-YEAR-NNNN`, whatever the
-  # prefix. The digits are capped so a freak number cannot overflow bigint.
+  # prefix. The digits are capped so a freak number cannot overflow bigint, and
+  # only rows from the last day of the previous year on are read - a number of
+  # this year sits on a row made this year, give or take a day for the clock.
   defp highest_number_of_year(scope, year) do
     pattern = "-#{year}-([0-9]{1,15})$"
+    since = DateTime.new!(Date.add(Date.new!(year, 1, 1), -1), ~T[00:00:00])
 
     highest =
       case scope do
         "order" ->
-          repo().one(from(o in Order, select: max(number_suffix(o.order_number, ^pattern))))
+          repo().one(
+            from(o in Order,
+              where: o.inserted_at >= ^since,
+              select: max(number_suffix(o.order_number, ^pattern))
+            )
+          )
 
         "invoice" ->
-          repo().one(from(i in Invoice, select: max(number_suffix(i.invoice_number, ^pattern))))
+          repo().one(
+            from(i in Invoice,
+              where: i.inserted_at >= ^since,
+              select: max(number_suffix(i.invoice_number, ^pattern))
+            )
+          )
 
         "receipt" ->
-          repo().one(from(i in Invoice, select: max(number_suffix(i.receipt_number, ^pattern))))
+          repo().one(
+            from(i in Invoice,
+              where: i.receipt_generated_at >= ^since,
+              select: max(number_suffix(i.receipt_number, ^pattern))
+            )
+          )
 
         "transaction" ->
           repo().one(
-            from(t in Transaction, select: max(number_suffix(t.transaction_number, ^pattern)))
+            from(t in Transaction,
+              where: t.inserted_at >= ^since,
+              select: max(number_suffix(t.transaction_number, ^pattern))
+            )
           )
       end
 
@@ -4502,6 +4674,9 @@ defmodule PhoenixKitBilling do
   ## Examples
 
       {:ok, transaction} = Billing.record_payment(invoice, %{amount: "100.00", payment_method: "bank"}, admin)
+
+  Takes the invoice row lock, then a transaction number, and a receipt number
+  when the payment settles the invoice. #{@numbering_note}
   """
   def record_payment(%Invoice{} = invoice, attrs, admin_user) do
     amount = parse_decimal(attrs[:amount] || attrs["amount"])
