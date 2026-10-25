@@ -224,6 +224,13 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert new_order(user).order_number == number("ORD", 31)
     end
 
+    test "a number that is not zero-padded does not lift the counter", %{user: user} do
+      assert new_order(user).order_number == number("ORD", 1)
+
+      assert insert_order(user, "ORD-#{year()}-7").order_number == "ORD-#{year()}-7"
+      assert last_value("order") == 1
+    end
+
     test "only a number with the configured prefix lifts the counter", %{user: user} do
       assert new_order(user).order_number == number("ORD", 1)
 
@@ -784,8 +791,38 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert count == 5
     end
 
+    test "a run of them longer than the bound is stepped over in one create", %{user: user} do
+      for _ <- 1..3, do: new_order(user)
+      for n <- 4..33, do: insert_order(user, number("ORD", n))
+      rewind("order", 3)
+
+      assert new_order(user).order_number == number("ORD", 34)
+    end
+
+    test "that also holds when the caller rolls back on any error", %{user: user} do
+      for n <- 1..30, do: insert_order(user, number("ORD", n))
+      rewind("order", 0)
+
+      assert {:ok, order} =
+               Repo.transaction(fn ->
+                 case Billing.create_order(user, order_attrs()) do
+                   {:ok, order} -> order
+                   {:error, changeset} -> Repo.rollback(changeset)
+                 end
+               end)
+
+      assert order.order_number == number("ORD", 31)
+    end
+
     test "up to a bound, then an error that keeps the progress", %{user: user} do
+      # Rows too old for the look-ahead at the highest number, so only the
+      # skipping is left.
       for n <- 1..21, do: insert_order(user, number("ORD", n))
+
+      Repo.update_all(from(o in Order),
+        set: [inserted_at: DateTime.new!(Date.new!(year() - 2, 6, 1), ~T[12:00:00])]
+      )
+
       rewind("order", 0)
 
       {error, count} =
@@ -794,9 +831,11 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
           {error, Repo.aggregate(Order, :count)}
         end)
 
-      # 20 numbers tried, all taken: an error, the caller's transaction usable...
+      # 20 numbers tried, all taken: an error that says so, the caller's
+      # transaction usable...
       assert {:error, changeset} = error
-      assert %{order_number: [_]} = errors_on(changeset)
+      assert %{order_number: [message]} = errors_on(changeset)
+      assert message =~ "generated numbers were already taken"
       assert count == 21
       # ...and the counter left past them, so the next create gets through.
       assert last_value("order") == 20

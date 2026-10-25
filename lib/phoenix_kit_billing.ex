@@ -88,16 +88,21 @@ defmodule PhoenixKitBilling do
   A changeset that fails validation comes back as `{:error, changeset}` and
   leaves your transaction usable. So does a generated number that a row made
   outside the counter already has (an older node, a number typed by hand): the
-  next one is tried, up to #{@number_attempts} times. A number you supply that is taken, or
-  any other failure in the database, comes back as `{:error, changeset}` too but
-  aborts your transaction.
+  next one is tried (first lifting the counter to the highest number there is),
+  up to #{@number_attempts} times; if all of those are taken it comes back as
+  `{:error, changeset}` with an error on the number field, leaves your
+  transaction usable and keeps the counter's progress. A number you supply that
+  is taken, or any other failure in the database, comes back as
+  `{:error, changeset}` too but aborts your transaction.
   """
 
   # For the functions that record money.
   @payment_note """
   #{@numbering_note}
-  Any error aborts your transaction: these write several rows together, so a
-  failure rolls the whole call back.
+  Any error aborts your transaction, as these write several rows together,
+  except running out of attempts on taken transaction numbers: that returns
+  `{:error, changeset}`, leaves your transaction usable and keeps the counter's
+  progress.
   """
 
   # §13: namespace for the currency-table cache — see `children/0`,
@@ -4337,8 +4342,12 @@ defmodule PhoenixKitBilling do
   # undone, the number stays used up, and the next one is tried, up to
   # `@number_attempts` times. Any other error is returned as it is.
   #
+  # The first time a number is found taken, the counter is first lifted to the
+  # highest number of this year with the configured prefix, so a long run of
+  # numbers made outside the counter is stepped over at once, not 20 at a time.
+  #
   # Returns `{:ok, record}`, `{:error, changeset}`, or `{:exhausted, changeset}`
-  # when every number tried was taken.
+  # when every number tried was taken (with an error that says so).
   defp insert_with_number(build, scope, prefix, field, attempt \\ 1) do
     number = next_number(scope, prefix)
 
@@ -4357,12 +4366,31 @@ defmodule PhoenixKitBilling do
                 "(#{attempt}/#{@number_attempts})"
             )
 
+            if attempt == 1, do: lift_to_highest_number(scope, prefix)
             insert_with_number(build, scope, prefix, field, attempt + 1)
 
           true ->
-            {:exhausted, changeset}
+            {:exhausted, numbers_taken(changeset, field)}
         end
     end
+  end
+
+  defp lift_to_highest_number(scope, prefix) do
+    year = Date.utc_today().year
+    highest = highest_number_of_year(scope, year, configured_number_pattern(prefix, year))
+    if highest > 0, do: lift_sequence(scope, year, highest)
+  end
+
+  # What the changeset says when every number tried was taken, in place of the
+  # database's "has already been taken" for the last one.
+  defp numbers_taken(%Ecto.Changeset{} = changeset, field) do
+    changeset = %{changeset | errors: Keyword.delete(changeset.errors, field)}
+
+    Ecto.Changeset.add_error(
+      changeset,
+      field,
+      "could not be generated: the next #{@number_attempts} generated numbers were already taken"
+    )
   end
 
   defp number_taken?(%Ecto.Changeset{errors: errors}, field) do
@@ -4444,7 +4472,7 @@ defmodule PhoenixKitBilling do
   # anyway is skipped by `insert_with_number/5`.)
   defp raise_sequence_floor(scope, prefix, number) when is_binary(number) do
     year = Date.utc_today().year
-    pattern = Regex.compile!("^#{Regex.escape(prefix)}-#{year}-([0-9]{1,15})$")
+    pattern = Regex.compile!(configured_number_pattern(prefix, year))
 
     case Regex.run(pattern, number) do
       [_, digits] -> lift_sequence(scope, year, String.to_integer(digits))
@@ -4453,6 +4481,11 @@ defmodule PhoenixKitBilling do
   end
 
   defp raise_sequence_floor(_scope, _prefix, _number), do: :ok
+
+  # `PREFIX-YEAR-NNNN` as this counter writes it: the digits are zero-padded to
+  # at least four, so a shorter run (`ORD-2026-7`) is not a number it hands out.
+  defp configured_number_pattern(prefix, year),
+    do: "^#{Regex.escape(prefix)}-#{year}-([0-9]{4,15})$"
 
   defp lift_sequence(scope, year, floor) do
     lift = fn value ->
@@ -4546,8 +4579,8 @@ defmodule PhoenixKitBilling do
   # prefix. The digits are capped so a freak number cannot overflow bigint, and
   # only rows from the last day of the previous year on are read - a number of
   # this year sits on a row made this year, give or take a day for the clock.
-  defp highest_number_of_year(scope, year) do
-    pattern = "-#{year}-([0-9]{1,15})$"
+  defp highest_number_of_year(scope, year, pattern \\ nil) do
+    pattern = pattern || "-#{year}-([0-9]{1,15})$"
     since = DateTime.new!(Date.add(Date.new!(year, 1, 1), -1), ~T[00:00:00])
 
     highest =
