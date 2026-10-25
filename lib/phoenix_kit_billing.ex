@@ -3213,22 +3213,46 @@ defmodule PhoenixKitBilling do
   defp blank_number?(_number), do: false
 
   @doc """
-  Updates an invoice.
+  Updates a draft invoice.
+
+  Takes a row lock on the invoice and checks that it is still a draft on the
+  stored row, not the struct's. The status is not editable here (see
+  `Invoice.changeset/2`).
 
   A new `invoice_number` or `receipt_number` of this year's shape with the
   configured prefix (`PREFIX-YYYY-NNNN`) lifts the year's counter for it to at
-  least its NNNN, so the counter never reaches it. The update opens a
-  transaction, and locks the invoice row, only then.
+  least its NNNN, so the counter never reaches it (invoice row first, then the
+  counter).
+
+  Returns `{:ok, invoice}`, `{:error, :invoice_not_editable}`,
+  `{:error, :invoice_not_found}` or `{:error, changeset}`. Refusals are
+  returned, not rolled back, so a transaction of the caller's stays usable.
   """
   def update_invoice(%Invoice{} = invoice, attrs) do
-    if Invoice.editable?(invoice) do
-      invoice
-      |> Invoice.changeset(attrs)
-      |> update_numbered([invoice_number: "invoice", receipt_number: "receipt"], fn ->
-        lock_invoice_for_update(invoice)
-      end)
-    else
-      {:error, :invoice_not_editable}
+    unwrap_transaction(fn ->
+      case fetch_locked_invoice(invoice) do
+        nil ->
+          {:error, :invoice_not_found}
+
+        locked ->
+          if Invoice.editable?(locked) do
+            locked
+            |> Invoice.changeset(attrs)
+            |> update_numbered_locked(invoice_number: "invoice", receipt_number: "receipt")
+          else
+            {:error, :invoice_not_editable}
+          end
+      end
+    end)
+  end
+
+  # Runs `fun` in a transaction and returns what it returned. For functions
+  # that report a refusal as a value: nothing has been written when they do,
+  # and a rollback would doom a transaction the caller may be holding.
+  defp unwrap_transaction(fun) do
+    case repo().transaction(fun) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -4626,25 +4650,13 @@ defmodule PhoenixKitBilling do
   # counter past it in the same transaction, after `lock` has taken the row; any
   # other update is a plain one.
   defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers, lock) do
-    year = current_year()
-
-    floors =
-      for {field, scope} <- numbers,
-          number = Map.get(changeset.changes, field),
-          is_binary(number),
-          do: {scope, number}
-
-    if floors == [] do
+    if number_floors(changeset, numbers) == [] do
       repo().update(changeset)
     else
       repo().transaction(fn ->
         lock.()
 
-        Enum.each(floors, fn {scope, number} ->
-          raise_sequence_floor(scope, number_prefix(scope), year, number)
-        end)
-
-        case repo().update(changeset) do
+        case update_numbered_locked(changeset, numbers) do
           {:ok, record} -> record
           {:error, changeset} -> repo().rollback(changeset)
         end
@@ -4654,6 +4666,29 @@ defmodule PhoenixKitBilling do
 
   defp update_numbered(%Ecto.Changeset{} = changeset, _numbers, _lock),
     do: repo().update(changeset)
+
+  # The same inside a transaction that already holds the row: lifts the counter,
+  # then updates in a savepoint, and returns the result as a value so a taken
+  # number does not doom the caller's transaction.
+  defp update_numbered_locked(%Ecto.Changeset{valid?: true} = changeset, numbers) do
+    year = current_year()
+
+    Enum.each(number_floors(changeset, numbers), fn {scope, number} ->
+      raise_sequence_floor(scope, number_prefix(scope), year, number)
+    end)
+
+    repo().update(changeset, mode: :savepoint)
+  end
+
+  defp update_numbered_locked(%Ecto.Changeset{} = changeset, _numbers),
+    do: repo().update(changeset, mode: :savepoint)
+
+  defp number_floors(changeset, numbers) do
+    for {field, scope} <- numbers,
+        number = Map.get(changeset.changes, field),
+        is_binary(number),
+        do: {scope, number}
+  end
 
   defp number_prefix("order"), do: Settings.get_setting_cached("billing_order_prefix", "ORD")
   defp number_prefix("invoice"), do: Settings.get_setting_cached("billing_invoice_prefix", "INV")
