@@ -173,4 +173,81 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
 
     assert receipts == expected(1..8)
   end
+
+  test "concurrent receipts for one invoice issue exactly one", %{user: user} do
+    {:ok, order} = Billing.create_order(user, order_attrs())
+    {:ok, invoice} = Billing.create_invoice_from_order(order)
+
+    {:ok, stale} =
+      invoice |> Ecto.Changeset.change(%{paid_amount: Decimal.new("4.00")}) |> Repo.update()
+
+    # Every caller holds the same stale struct, which has no receipt yet.
+    results = parallel(6, fn _ -> Billing.generate_receipt(stale) end)
+
+    assert [{:ok, issued}] = Enum.filter(results, &match?({:ok, _}, &1))
+    assert issued.receipt_number =~ ~r/-0001$/
+
+    others = Enum.reject(results, &match?({:ok, _}, &1))
+    assert others == List.duplicate({:error, :receipt_already_generated}, 5)
+
+    assert Repo.get!(Invoice, invoice.uuid).receipt_number == issued.receipt_number
+    assert Repo.one(from(s in @sequences, where: s.scope == "receipt", select: s.last_value)) == 1
+  end
+
+  # Two first-of-the-year creates that both miss the counter row: the second one
+  # reaches the INSERT while the first one's row is still uncommitted, waits on
+  # it, and must then take the next value instead of failing on the key.
+  test "the second of two creates that both found no counter row takes the next value", %{
+    user: user
+  } do
+    test_pid = self()
+
+    first =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          {:ok, order} = Billing.create_order(user, order_attrs())
+          send(test_pid, {:first_inserted, order})
+
+          receive do
+            :commit -> order
+          end
+        end)
+      end)
+
+    assert_receive {:first_inserted, first_order}, 5_000
+
+    second = Task.async(fn -> Billing.create_order(user, order_attrs()) end)
+
+    # The second create is stuck on the first one's uncommitted counter row.
+    :ok = wait_until_a_backend_waits_on_a_lock()
+    send(first.pid, :commit)
+
+    assert {:ok, ^first_order} = Task.await(first, 30_000)
+    assert {:ok, second_order} = Task.await(second, 30_000)
+
+    assert first_order.order_number =~ ~r/-0001$/
+    assert second_order.order_number =~ ~r/-0002$/
+  end
+
+  defp wait_until_a_backend_waits_on_a_lock(attempts \\ 200) do
+    waiting =
+      Repo.query!("""
+      SELECT count(*) FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock'
+      """).rows
+
+    cond do
+      waiting != [[0]] ->
+        :ok
+
+      attempts == 0 ->
+        flunk("no create ever waited on the counter row")
+
+      true ->
+        receive do
+        after
+          25 -> wait_until_a_backend_waits_on_a_lock(attempts - 1)
+        end
+    end
+  end
 end
