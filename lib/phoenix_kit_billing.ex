@@ -60,6 +60,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.InvoiceEvents
+  alias PhoenixKitBilling.NumberSequence
   alias PhoenixKitBilling.Order
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
@@ -2298,18 +2299,31 @@ defmodule PhoenixKitBilling do
       attrs
       |> Map.put("user_uuid", user_uuid)
       |> maybe_set_default_currency()
-      |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
     with %{} = attrs <- attrs do
-      insert_order(attrs)
+      insert_order(attrs, config)
     end
   end
 
   # `maybe_set_billing_snapshot/1` returns an error tuple when the chosen
   # billing profile has vanished; passing that to a changeset would raise.
-  defp insert_order(attrs) do
-    case %Order{} |> Order.changeset(attrs) |> repo().insert() do
+  #
+  # The number is taken in the transaction that inserts the order: a failed
+  # insert rolls the counter back with it, and the PubSub event goes out only
+  # once the order is committed.
+  defp insert_order(attrs, config) do
+    result =
+      repo().transaction(fn ->
+        attrs = maybe_set_order_number(attrs, config)
+
+        case %Order{} |> Order.changeset(attrs) |> repo().insert() do
+          {:ok, order} -> order
+          {:error, changeset} -> repo().rollback(changeset)
+        end
+      end)
+
+    case result do
       {:ok, order} ->
         Events.broadcast_order_created(order)
         {:ok, order}
@@ -2332,11 +2346,10 @@ defmodule PhoenixKitBilling do
       attrs
       |> Map.put("user_uuid", user_uuid)
       |> maybe_set_default_currency()
-      |> maybe_set_order_number(config)
       |> maybe_set_billing_snapshot()
 
     with %{} = attrs <- attrs do
-      insert_order(attrs)
+      insert_order(attrs, config)
     end
   end
 
@@ -2730,7 +2743,7 @@ defmodule PhoenixKitBilling do
     if Map.has_key?(attrs, :order_number) || Map.has_key?(attrs, "order_number") do
       attrs
     else
-      Map.put(attrs, "order_number", generate_order_number(config.order_prefix))
+      Map.put(attrs, "order_number", next_number("order", config.order_prefix))
     end
   end
 
@@ -3019,16 +3032,31 @@ defmodule PhoenixKitBilling do
     opts =
       opts
       |> Keyword.put_new(:due_days, config.invoice_due_days)
-      |> Keyword.put_new(:invoice_number, generate_invoice_number(config.invoice_prefix))
       |> Keyword.put_new(:bank_details, get_bank_details())
       |> Keyword.put_new(:payment_terms, get_payment_terms())
 
-    invoice = Invoice.from_order(order, opts)
+    insert_invoice(fn ->
+      # Lazy: a number the caller supplied must not use up a counter value.
+      opts =
+        Keyword.put_new_lazy(opts, :invoice_number, fn ->
+          next_number("invoice", config.invoice_prefix)
+        end)
 
+      order |> Invoice.from_order(opts) |> Invoice.changeset(%{})
+    end)
+  end
+
+  # Builds the changeset and inserts it in one transaction, so the number the
+  # builder takes is given back if the insert fails. PubSub only after the
+  # commit.
+  defp insert_invoice(build_changeset) do
     result =
-      invoice
-      |> Invoice.changeset(%{})
-      |> repo().insert()
+      repo().transaction(fn ->
+        case build_changeset.() |> repo().insert() do
+          {:ok, invoice} -> invoice
+          {:error, changeset} -> repo().rollback(changeset)
+        end
+      end)
 
     case result do
       {:ok, created_invoice} ->
@@ -3047,24 +3075,16 @@ defmodule PhoenixKitBilling do
     user_uuid = extract_user_uuid(user_or_uuid)
     config = get_config()
 
-    attrs =
-      attrs
-      |> Map.put(:user_uuid, user_uuid)
-      |> Map.put_new(:invoice_number, generate_invoice_number(config.invoice_prefix))
+    insert_invoice(fn ->
+      attrs =
+        attrs
+        |> Map.put(:user_uuid, user_uuid)
+        |> Map.put_new_lazy(:invoice_number, fn ->
+          next_number("invoice", config.invoice_prefix)
+        end)
 
-    result =
-      %Invoice{}
-      |> Invoice.changeset(attrs)
-      |> repo().insert()
-
-    case result do
-      {:ok, created_invoice} ->
-        Events.broadcast_invoice_created(created_invoice)
-        {:ok, created_invoice}
-
-      error ->
-        error
-    end
+      %Invoice{} |> Invoice.changeset(attrs)
+    end)
   end
 
   @doc """
@@ -3867,7 +3887,6 @@ defmodule PhoenixKitBilling do
   def mark_invoice_paid(%Invoice{} = invoice, admin_user \\ nil) do
     if Invoice.payable?(invoice) do
       config = get_config()
-      receipt_number = generate_receipt_number(config.receipt_prefix)
 
       result =
         repo().transaction(fn ->
@@ -3894,6 +3913,10 @@ defmodule PhoenixKitBilling do
               repo().rollback(reason)
 
             _recorded_or_nothing_to_record ->
+              # Taken here, with the invoice locked, so a failure above gives
+              # no receipt number away.
+              receipt_number = next_number("receipt", config.receipt_prefix)
+
               paid =
                 locked
                 |> Invoice.paid_changeset(receipt_number)
@@ -4009,15 +4032,25 @@ defmodule PhoenixKitBilling do
       # Has payments - generate receipt
       true ->
         config = get_config()
-        receipt_number = generate_receipt_number(config.receipt_prefix)
 
-        invoice
-        |> Ecto.Changeset.change(%{
-          receipt_number: receipt_number,
-          receipt_generated_at: UtilsDate.utc_now(),
-          receipt_data: build_receipt_data(invoice)
-        })
-        |> repo().update()
+        # Invoice row first, then the counter: the order mark_invoice_paid/2
+        # and record_payment/3 take them in, so the two cannot deadlock.
+        repo().transaction(fn ->
+          lock_invoice_for_update(invoice)
+          receipt_number = next_number("receipt", config.receipt_prefix)
+
+          invoice
+          |> Ecto.Changeset.change(%{
+            receipt_number: receipt_number,
+            receipt_generated_at: UtilsDate.utc_now(),
+            receipt_data: build_receipt_data(invoice)
+          })
+          |> repo().update()
+          |> case do
+            {:ok, updated} -> updated
+            {:error, changeset} -> repo().rollback(changeset)
+          end
+        end)
     end
   end
 
@@ -4134,53 +4167,131 @@ defmodule PhoenixKitBilling do
   # NUMBER GENERATION
   # ============================================
 
-  defp generate_order_number(prefix) do
+  # The trailing digits of a number shaped `PREFIX-YEAR-NNNN`, as an integer;
+  # NULL when the number does not end that way.
+  defmacrop number_suffix(column, pattern) do
+    quote do
+      type(
+        fragment(
+          "CAST(substring(? from ?) AS bigint)",
+          unquote(column),
+          type(unquote(pattern), :string)
+        ),
+        :integer
+      )
+    end
+  end
+
+  # Numbers come from `phoenix_kit_billing_number_sequences`: one counter per
+  # (scope, year), not per prefix, so changing a prefix mid-year carries the
+  # sequence on. They used to be `count(rows of the year) + 1`, which hands out
+  # a taken number once any row but the last is deleted - and again and again,
+  # as the count no longer grows - and the same number to two concurrent calls.
+  #
+  # MUST run inside the transaction that inserts the row using the number. The
+  # counter row stays locked until that transaction ends, so concurrent creates
+  # queue up, a rolled-back insert gives its number back (no gap), and a
+  # deleted row never frees one. A caller that supplied a number takes none.
+  defp next_number(scope, prefix) do
     year = Date.utc_today().year
-    sequence = get_next_sequence("order", year)
+    sequence = next_sequence(scope, year)
     "#{prefix}-#{year}-#{String.pad_leading(to_string(sequence), 4, "0")}"
   end
 
-  defp generate_invoice_number(prefix) do
-    year = Date.utc_today().year
-    sequence = get_next_sequence("invoice", year)
-    "#{prefix}-#{year}-#{String.pad_leading(to_string(sequence), 4, "0")}"
+  defp next_sequence(scope, year) do
+    bump =
+      from(s in NumberSequence,
+        where: s.scope == ^scope and s.year == ^year,
+        update: [
+          set: [last_value: fragment("? + 1", s.last_value), updated_at: fragment("now()")]
+        ],
+        select: s.last_value
+      )
+
+    case repo().update_all(bump, []) do
+      {1, [value]} -> value
+      {0, []} -> start_sequence(scope, year)
+    end
   end
 
-  defp generate_receipt_number(prefix) do
-    year = Date.utc_today().year
-    sequence = get_next_sequence("receipt", year)
-    "#{prefix}-#{year}-#{String.pad_leading(to_string(sequence), 4, "0")}"
+  # No counter row for this scope and year yet. It starts after what is already
+  # numbered, so an install that predates the counter carries on from where it
+  # was. ON CONFLICT: two callers can both get here, and the second must take
+  # the next value, not fail on the first one's row.
+  defp start_sequence(scope, year) do
+    seed = max(rows_of_year(scope, year), highest_number_of_year(scope, year))
+
+    bump =
+      from(s in NumberSequence,
+        update: [
+          set: [last_value: fragment("? + 1", s.last_value), updated_at: fragment("now()")]
+        ]
+      )
+
+    %NumberSequence{last_value: value} =
+      repo().insert!(
+        %NumberSequence{
+          scope: scope,
+          year: year,
+          last_value: seed + 1,
+          updated_at: UtilsDate.utc_now()
+        },
+        on_conflict: bump,
+        conflict_target: [:scope, :year],
+        returning: [:last_value]
+      )
+
+    value
   end
 
-  defp get_next_sequence(type, year) do
-    # Simple approach: count existing records for the year
-    # For production, consider using a separate sequence table
-    start_of_year = Date.new!(year, 1, 1)
-    end_of_year = Date.new!(year, 12, 31)
+  defp rows_of_year("order", year) do
+    {first_day, last_day} = year_bounds(year)
 
-    count =
-      case type do
+    Order
+    |> where([o], fragment("DATE(?)", o.inserted_at) >= ^first_day)
+    |> where([o], fragment("DATE(?)", o.inserted_at) <= ^last_day)
+    |> repo().aggregate(:count)
+  end
+
+  defp rows_of_year("invoice", year) do
+    {first_day, last_day} = year_bounds(year)
+
+    Invoice
+    |> where([i], fragment("DATE(?)", i.inserted_at) >= ^first_day)
+    |> where([i], fragment("DATE(?)", i.inserted_at) <= ^last_day)
+    |> repo().aggregate(:count)
+  end
+
+  defp rows_of_year("receipt", year) do
+    {first_day, last_day} = year_bounds(year)
+
+    Invoice
+    |> where([i], not is_nil(i.receipt_number))
+    |> where([i], fragment("DATE(?)", i.receipt_generated_at) >= ^first_day)
+    |> where([i], fragment("DATE(?)", i.receipt_generated_at) <= ^last_day)
+    |> repo().aggregate(:count)
+  end
+
+  defp year_bounds(year), do: {Date.new!(year, 1, 1), Date.new!(year, 12, 31)}
+
+  # The highest NNNN among numbers shaped `PREFIX-YEAR-NNNN`, whatever the
+  # prefix. The digits are capped so a freak number cannot overflow bigint.
+  defp highest_number_of_year(scope, year) do
+    pattern = "-#{year}-([0-9]{1,15})$"
+
+    highest =
+      case scope do
         "order" ->
-          Order
-          |> where([o], fragment("DATE(?)", o.inserted_at) >= ^start_of_year)
-          |> where([o], fragment("DATE(?)", o.inserted_at) <= ^end_of_year)
-          |> repo().aggregate(:count)
+          repo().one(from(o in Order, select: max(number_suffix(o.order_number, ^pattern))))
 
         "invoice" ->
-          Invoice
-          |> where([i], fragment("DATE(?)", i.inserted_at) >= ^start_of_year)
-          |> where([i], fragment("DATE(?)", i.inserted_at) <= ^end_of_year)
-          |> repo().aggregate(:count)
+          repo().one(from(i in Invoice, select: max(number_suffix(i.invoice_number, ^pattern))))
 
         "receipt" ->
-          Invoice
-          |> where([i], not is_nil(i.receipt_number))
-          |> where([i], fragment("DATE(?)", i.receipt_generated_at) >= ^start_of_year)
-          |> where([i], fragment("DATE(?)", i.receipt_generated_at) <= ^end_of_year)
-          |> repo().aggregate(:count)
+          repo().one(from(i in Invoice, select: max(number_suffix(i.receipt_number, ^pattern))))
       end
 
-    count + 1
+    highest || 0
   end
 
   # ============================================
@@ -4589,7 +4700,7 @@ defmodule PhoenixKitBilling do
     became_paid =
       if Invoice.fully_paid?(updated_invoice) && updated_invoice.status in ["sent", "overdue"] do
         config = get_config()
-        receipt_number = generate_receipt_number(config.receipt_prefix)
+        receipt_number = next_number("receipt", config.receipt_prefix)
 
         paid =
           updated_invoice
