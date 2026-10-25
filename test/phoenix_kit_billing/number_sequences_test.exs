@@ -29,6 +29,11 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
   # An install that predates the counter: the numbered rows stay, the counter goes.
   defp forget_counter, do: Repo.delete_all(from(s in @sequences))
 
+  # Where the counter stands: an old node, or a person, has taken numbers it
+  # has not reached.
+  defp rewind(scope, value),
+    do: Repo.update_all(from(s in @sequences, where: s.scope == ^scope), set: [last_value: value])
+
   defp number(prefix, n, year \\ year()),
     do: "#{prefix}-#{year}-#{String.pad_leading(to_string(n), 4, "0")}"
 
@@ -198,17 +203,34 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert new_order(user).order_number == number("ORD", 4)
     end
 
-    test "a supplied number lifts a year with no counter row past the rows already there", %{
+    test "a supplied number lifts a year with no counter row to the rows already there", %{
+      user: user
+    } do
+      for n <- ["A", "B", "C"], do: insert_order(user, "MANUAL-#{n}")
+
+      assert insert_order(user, number("ORD", 2)).order_number == number("ORD", 2)
+      assert last_value("order") == 3
+      assert new_order(user).order_number == number("ORD", 4)
+    end
+
+    test "a supplied number higher than the rows there lifts a year with no counter row to it", %{
       user: user
     } do
       for _ <- 1..4, do: new_order(user)
       forget_counter()
 
-      assert insert_order(user, number("SO", 2)).order_number == number("SO", 2)
-      assert last_value("order") == 4
-
       assert insert_order(user, number("ORD", 30)).order_number == number("ORD", 30)
+      assert last_value("order") == 30
       assert new_order(user).order_number == number("ORD", 31)
+    end
+
+    test "only a number with the configured prefix lifts the counter", %{user: user} do
+      assert new_order(user).order_number == number("ORD", 1)
+
+      assert insert_order(user, number("OTHER", 50)).order_number == number("OTHER", 50)
+      assert last_value("order") == 1
+
+      assert new_order(user).order_number == number("ORD", 2)
     end
 
     test "a number changed by update_order lifts the counter too", %{user: user} do
@@ -229,16 +251,6 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
                })
 
       assert last_value("order") == 1
-    end
-
-    test "a generated number that collides anyway is an error and keeps the counter where it was",
-         %{user: user} do
-      insert_order(user, number("ORD", 1))
-      Repo.update_all(from(s in @sequences), set: [last_value: 0])
-
-      assert {:error, changeset} = Billing.create_order(user, order_attrs())
-      assert %{order_number: [_]} = errors_on(changeset)
-      assert last_value("order") == 0
     end
   end
 
@@ -313,16 +325,6 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert last_value("invoice") == 10
       assert last_value("receipt") == 6
       assert new_invoice(order).invoice_number == number("INV", 11)
-    end
-
-    test "a generated number that collides anyway is an error and keeps the counter where it was",
-         %{order: order} do
-      {:ok, _} = Billing.create_invoice_from_order(order, invoice_number: number("INV", 1))
-      Repo.update_all(from(s in @sequences), set: [last_value: 0])
-
-      assert {:error, changeset} = Billing.create_invoice_from_order(order)
-      assert %{invoice_number: [_]} = errors_on(changeset)
-      assert last_value("invoice") == 0
     end
 
     test "a failed insert announces nothing", %{order: order} do
@@ -586,26 +588,6 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert next.transaction_number == number("TXN", 2)
     end
 
-    test "a number that collides is an error and leaves the invoice and the counter alone", %{
-      invoice: invoice
-    } do
-      Repo.insert!(%Transaction{
-        transaction_number: number("TXN", 1),
-        amount: Decimal.new("1.00"),
-        currency: "EUR",
-        payment_method: "bank",
-        invoice_uuid: invoice.uuid,
-        user_uuid: invoice.user_uuid
-      })
-
-      Repo.insert_all(@sequences, [%{scope: "transaction", year: year(), last_value: 0}])
-
-      assert {:error, changeset} = pay(invoice)
-      assert %{transaction_number: [_]} = errors_on(changeset)
-      assert last_value("transaction") == 0
-      assert Decimal.equal?(Billing.get_invoice(invoice.uuid).paid_amount, Decimal.new("0"))
-    end
-
     test "generate_transaction_number/0 hands out the next value" do
       assert Billing.generate_transaction_number() == number("TXN", 1)
       assert Billing.generate_transaction_number() == number("TXN", 2)
@@ -717,6 +699,118 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
 
       forget_counter()
       assert new_order(user).order_number == number("ORD", 1)
+    end
+  end
+
+  describe "a failed create says what it was doing" do
+    test "so a form can show the errors", %{user: user} do
+      assert {:error, %Ecto.Changeset{action: :insert}} =
+               Billing.create_order(user, order_attrs(%{"total" => Decimal.new("-1")}))
+
+      assert {:error, %Ecto.Changeset{action: :insert}} =
+               standalone(user, %{total: Decimal.new("-1")})
+
+      order = new_order(user)
+
+      assert {:error, %Ecto.Changeset{action: :insert}} =
+               Billing.create_invoice_from_order(%{order | total: nil})
+
+      assert {:error, %Ecto.Changeset{action: :update}} =
+               Billing.update_order(order, %{"total" => Decimal.new("-1")})
+    end
+  end
+
+  describe "a number taken outside the counter is skipped" do
+    # The row an old node, or a person, made with a number the counter has not
+    # reached: the counter is put back to where it stood before.
+    test "an order", %{user: user} do
+      for _ <- 1..3, do: new_order(user)
+      insert_order(user, number("ORD", 4))
+      rewind("order", 3)
+
+      assert new_order(user).order_number == number("ORD", 5)
+      assert last_value("order") == 5
+    end
+
+    test "an invoice from an order", %{user: user} do
+      order = new_order(user)
+      for _ <- 1..3, do: new_invoice(order)
+      {:ok, _} = Billing.create_invoice_from_order(order, invoice_number: number("INV", 4))
+      rewind("invoice", 3)
+
+      assert new_invoice(order).invoice_number == number("INV", 5)
+    end
+
+    test "a standalone invoice", %{user: user} do
+      for _ <- 1..3, do: standalone(user)
+      assert {:ok, _} = standalone(user, %{invoice_number: number("INV", 4)})
+      rewind("invoice", 3)
+
+      assert {:ok, next} = standalone(user)
+      assert next.invoice_number == number("INV", 5)
+    end
+
+    test "a transaction", %{user: user} do
+      invoice = user |> new_order() |> new_invoice() |> sent()
+      for _ <- 1..3, do: pay(invoice)
+
+      Repo.insert!(%Transaction{
+        transaction_number: number("TXN", 4),
+        amount: Decimal.new("1.00"),
+        currency: "EUR",
+        payment_method: "bank",
+        invoice_uuid: invoice.uuid,
+        user_uuid: invoice.user_uuid
+      })
+
+      rewind("transaction", 3)
+
+      assert {:ok, next} = pay(invoice)
+      assert next.transaction_number == number("TXN", 5)
+    end
+
+    test "inside the caller's transaction, which carries on", %{user: user} do
+      for _ <- 1..3, do: new_order(user)
+      insert_order(user, number("ORD", 4))
+      rewind("order", 3)
+
+      {order, count} =
+        inside_transaction(fn ->
+          order = new_order(user)
+          {order, Repo.aggregate(Order, :count)}
+        end)
+
+      assert order.order_number == number("ORD", 5)
+      assert count == 5
+    end
+
+    test "up to a bound, then an error that keeps the progress", %{user: user} do
+      for n <- 1..21, do: insert_order(user, number("ORD", n))
+      rewind("order", 0)
+
+      {error, count} =
+        inside_transaction(fn ->
+          error = Billing.create_order(user, order_attrs())
+          {error, Repo.aggregate(Order, :count)}
+        end)
+
+      # 20 numbers tried, all taken: an error, the caller's transaction usable...
+      assert {:error, changeset} = error
+      assert %{order_number: [_]} = errors_on(changeset)
+      assert count == 21
+      # ...and the counter left past them, so the next create gets through.
+      assert last_value("order") == 20
+      assert new_order(user).order_number == number("ORD", 22)
+    end
+
+    test "but not an error of another kind", %{user: user} do
+      assert new_order(user).order_number == number("ORD", 1)
+
+      assert {:error, changeset} = Billing.create_order(Ecto.UUID.generate(), order_attrs())
+      assert %{user_uuid: [_]} = errors_on(changeset)
+
+      # The number went back with the failed insert.
+      assert last_value("order") == 1
     end
   end
 end
