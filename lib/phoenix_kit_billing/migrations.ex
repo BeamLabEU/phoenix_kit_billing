@@ -229,18 +229,24 @@ defmodule PhoenixKitBilling.Migrations do
   row using it, so creates queue up, a rolled-back insert gives its number
   back, and deleting a row never frees one. A scope with no row yet for the
   year is seeded from the rows already there (the larger of their count and
-  their highest number), so an existing install continues where it was. A
-  number the caller types, or changes a row to, that has this year's shape
-  (`PREFIX-YYYY-NNNN`) lifts the counter to at least NNNN without using a
-  value, so the counter never runs into it.
+  their highest number), so an existing install continues where it was.
+
+  Numbers taken outside the counter are met in two ways. A number the caller
+  types, or changes a row to, that has this year's shape with the configured
+  prefix (`PREFIX-YYYY-NNNN`) lifts the counter to at least NNNN without using
+  a value. A generated number that a row already has (a node that still counts
+  rows, or a number typed in another shape) is skipped: the insert runs in a
+  savepoint, and on a unique-index conflict on that number the next one is
+  tried, up to 20 times, each skipped number staying used up. After 20 taken
+  numbers in a row the create returns `{:error, changeset}`, with the counter
+  left past them, so the next call gets further. Receipts have no unique index,
+  so nothing is skipped there.
 
   **Run V7 before the code that uses it.** Without the table every create
-  raises `undefined_table`. Do not run old and new code side by side: an old
-  node still numbers by `count + 1`, can take a number the counter has not
-  reached yet, and from then on every generated number meets it (the create
-  fails with `{:error, changeset}`, and the counter is given back each time).
-  If it happens, lift the counter by hand to the highest number in use
-  (`UPDATE phoenix_kit_billing_number_sequences SET last_value = ...`).
+  raises `undefined_table`. Old nodes that still number by `count + 1` can keep
+  running next to new ones for a while - the skip above steps over the numbers
+  they take - but finish the rollout quickly: an old node can also meet a
+  number the counter issued, and its create then fails on the unique index.
 
   Unlike every table above, this one is created by this chain, not by core, so
   `down/1` below V7 drops it. A later `up/1` then reseeds from the rows that
@@ -248,7 +254,10 @@ defmodule PhoenixKitBilling.Migrations do
 
   Locks. A create holds its counter row until its transaction ends. Take them
   in this order, everywhere: order counter, invoice counter, invoice row,
-  transaction counter, receipt counter, order row (`FOR NO KEY UPDATE`). A host
+  transaction counter, receipt counter, order row (`FOR NO KEY UPDATE`). (An
+  `update_invoice` that changes a number locks the invoice row first, then
+  lifts the counters - no other path waits on that row while holding a counter
+  it needs.) A host
   that wraps several creates in one transaction must keep that order, or two of
   them can deadlock (Postgres aborts one). The subscription renewal worker
   creates its invoice inside the transaction that also charges the payment
