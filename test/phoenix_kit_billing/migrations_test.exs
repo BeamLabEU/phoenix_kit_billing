@@ -627,7 +627,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
                  "up_statements(#{inspect(prefix)}) contains: #{stmt}"
         end
 
-        for target <- [0, 1, 2, 3, 4] do
+        for target <- 0..6 do
           # The one table this chain creates itself (V7) is dropped on the way
           # down; that exact statement is pinned above, so it is the only one
           # let through here.
@@ -891,7 +891,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
       refute Enum.any?(
                stmts,
-               &(&1 =~ ~r/DROP TABLE(?! IF EXISTS public\.phoenix_kit_billing_number_sequences)/i)
+               &(&1 =~ ~r/DROP TABLE(?! IF EXISTS public\.phoenix_kit_billing_number_sequences$)/i)
              )
 
       assert List.last(stmts) =~ "pkb_schema:1"
@@ -949,7 +949,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
       refute Enum.any?(
                stmts,
-               &(&1 =~ ~r/DROP TABLE(?! IF EXISTS public\.phoenix_kit_billing_number_sequences)/i)
+               &(&1 =~ ~r/DROP TABLE(?! IF EXISTS public\.phoenix_kit_billing_number_sequences$)/i)
              )
 
       assert List.last(stmts) =~ "pkb_schema:2"

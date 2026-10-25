@@ -191,25 +191,6 @@ defmodule PhoenixKitBilling.Migrations do
 
   `down/1` below V6 only moves the marker and never drops a table.
 
-  ## V7 — a counter for order, invoice, receipt and transaction numbers
-
-  Numbers used to be `count(rows of the year) + 1`. Delete any row of the year
-  but the last and the count falls behind a number already taken: the insert
-  fails on the unique index, and keeps failing, because the count no longer
-  grows. Two concurrent creates read the same count and collide the same way.
-
-  V7 creates `phoenix_kit_billing_number_sequences` — `(scope, year)` primary
-  key, `last_value`, `updated_at` — the counter the numbers now come from
-  (`scope` is `order`, `invoice`, `receipt` or `transaction`). The code takes a number with a
-  row-locking `UPDATE` inside the transaction that inserts the row using it, so
-  creates queue up, a rolled-back insert gives its number back, and deleting a
-  row never frees one. A scope with no row yet for the year is seeded from the
-  rows already there (the larger of their count and their highest number), so
-  an existing install continues where it was.
-
-  Unlike every table above, this one is created by this chain, not by core, so
-  `down/1` below V7 drops it.
-
   ## V5 — a payer need not have an account
 
   `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`
@@ -233,6 +214,46 @@ defmodule PhoenixKitBilling.Migrations do
   exist: re-adding `NOT NULL` would fail anyway, and the only way to make
   it succeed would be to delete or re-attribute money records, which a
   rollback must never do silently.
+
+  ## V7 — a counter for order, invoice, receipt and transaction numbers
+
+  Numbers used to be `count(rows of the year) + 1`. Delete any row of the year
+  but the last and the count falls behind a number already taken: the insert
+  fails on the unique index, and keeps failing, because the count no longer
+  grows. Two concurrent creates read the same count and collide the same way.
+
+  V7 creates `phoenix_kit_billing_number_sequences` — `(scope, year)` primary
+  key, `last_value`, `updated_at` — the counter the numbers now come from
+  (`scope` is `order`, `invoice`, `receipt` or `transaction`). The code takes a
+  number with a row-locking `UPDATE` inside the transaction that inserts the
+  row using it, so creates queue up, a rolled-back insert gives its number
+  back, and deleting a row never frees one. A scope with no row yet for the
+  year is seeded from the rows already there (the larger of their count and
+  their highest number), so an existing install continues where it was. A
+  number the caller types, or changes a row to, that has this year's shape
+  (`PREFIX-YYYY-NNNN`) lifts the counter to at least NNNN without using a
+  value, so the counter never runs into it.
+
+  **Run V7 before the code that uses it.** Without the table every create
+  raises `undefined_table`. Do not run old and new code side by side: an old
+  node still numbers by `count + 1`, can take a number the counter has not
+  reached yet, and from then on every generated number meets it (the create
+  fails with `{:error, changeset}`, and the counter is given back each time).
+  If it happens, lift the counter by hand to the highest number in use
+  (`UPDATE phoenix_kit_billing_number_sequences SET last_value = ...`).
+
+  Unlike every table above, this one is created by this chain, not by core, so
+  `down/1` below V7 drops it. A later `up/1` then reseeds from the rows that
+  survive, so the numbers of deleted top rows can come back.
+
+  Locks. A create holds its counter row until its transaction ends. Take them
+  in this order, everywhere: order counter, invoice counter, invoice row,
+  transaction counter, receipt counter, order row (`FOR NO KEY UPDATE`). A host
+  that wraps several creates in one transaction must keep that order, or two of
+  them can deadlock (Postgres aborts one). The subscription renewal worker
+  creates its invoice inside the transaction that also charges the payment
+  method, so it holds the invoice counter across the provider call: other
+  invoice creates wait for the charge to finish.
   """
 
   use Ecto.Migration
