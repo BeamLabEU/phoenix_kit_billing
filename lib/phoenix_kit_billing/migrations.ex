@@ -191,6 +191,25 @@ defmodule PhoenixKitBilling.Migrations do
 
   `down/1` below V6 only moves the marker and never drops a table.
 
+  ## V7 — a counter for order, invoice and receipt numbers
+
+  Numbers used to be `count(rows of the year) + 1`. Delete any row of the year
+  but the last and the count falls behind a number already taken: the insert
+  fails on the unique index, and keeps failing, because the count no longer
+  grows. Two concurrent creates read the same count and collide the same way.
+
+  V7 creates `phoenix_kit_billing_number_sequences` — `(scope, year)` primary
+  key, `last_value`, `updated_at` — the counter the numbers now come from
+  (`scope` is `order`, `invoice` or `receipt`). The code takes a number with a
+  row-locking `UPDATE` inside the transaction that inserts the row using it, so
+  creates queue up, a rolled-back insert gives its number back, and deleting a
+  row never frees one. A scope with no row yet for the year is seeded from the
+  rows already there (the larger of their count and their highest number), so
+  an existing install continues where it was.
+
+  Unlike every table above, this one is created by this chain, not by core, so
+  `down/1` below V7 drops it.
+
   ## V5 — a payer need not have an account
 
   `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`
@@ -218,7 +237,7 @@ defmodule PhoenixKitBilling.Migrations do
 
   use Ecto.Migration
 
-  @current_version 6
+  @current_version 7
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -276,7 +295,7 @@ defmodule PhoenixKitBilling.Migrations do
     |> Enum.each(&execute/1)
   end
 
-  @doc "Rolls back to `target` (`:version` in `opts`). Never drops the table — see the moduledoc."
+  @doc "Rolls back to `target` (`:version` in `opts`). Never drops a core-created table — see the moduledoc."
   def down(opts \\ []) do
     prefix = validated_prefix(opts)
     target = target_version(opts, 0)
@@ -300,7 +319,8 @@ defmodule PhoenixKitBilling.Migrations do
   `phoenix_kit_currencies` (partial unique default-currency index,
   `rounding_rule`, `rate_updated_at`); `3` additionally adds
   `phoenix_kit_orders`' frozen-currency columns; `4` additionally adopts
-  the remaining ten core-baseline tables (see the moduledoc).
+  the remaining ten core-baseline tables (see the moduledoc); `7`
+  additionally creates the number sequences table.
   """
   @spec up_statements(String.t(), non_neg_integer()) :: [String.t()]
   def up_statements(prefix \\ "public", target \\ @current_version)
@@ -409,11 +429,14 @@ defmodule PhoenixKitBilling.Migrations do
 
       v5 = if target >= 5, do: v5_statements(prefix, p), else: []
 
+      v7 = if target >= 7, do: v7_statements(p), else: []
+
       v1 ++
         v6 ++
         v2 ++
         v3 ++
-        v4 ++ v5 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
+        v4 ++
+        v5 ++ v7 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
     end
   end
 
@@ -453,6 +476,23 @@ defmodule PhoenixKitBilling.Migrations do
         END IF;
       END
       $$
+      """
+    ]
+  end
+
+  # V7 — the counter behind order, invoice and receipt numbers (see the
+  # moduledoc). A table of this chain's own, so `IF NOT EXISTS` is all the
+  # idempotence it needs.
+  defp v7_statements(p) do
+    [
+      """
+      CREATE TABLE IF NOT EXISTS #{p}phoenix_kit_billing_number_sequences (
+        scope character varying(32) NOT NULL,
+        year integer NOT NULL,
+        last_value bigint NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL,
+        PRIMARY KEY (scope, year)
+      )
       """
     ]
   end
@@ -1186,7 +1226,8 @@ defmodule PhoenixKitBilling.Migrations do
   `phoenix_kit_orders` columns V3 added — never the
   `phoenix_kit_payment_provider_configs` table itself. V4 changes no
   shape of its own (pure adoption, like V1), so there is nothing below V4
-  to drop beyond the marker.
+  to drop beyond the marker. Below V7 the V7 counter table is dropped — the
+  only table here that this chain, not core, created.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ "public", target \\ 0)
@@ -1247,7 +1288,16 @@ defmodule PhoenixKitBilling.Migrations do
         "COMMENT ON TABLE #{p}#{@version_table} IS NULL"
       end
 
-    drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
+    # The one table this chain creates itself: the counter holds no money
+    # record, only the last number handed out.
+    drop_v7 =
+      if target < 7 do
+        ["DROP TABLE IF EXISTS #{p}phoenix_kit_billing_number_sequences"]
+      else
+        []
+      end
+
+    drop_v7 ++ drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do
