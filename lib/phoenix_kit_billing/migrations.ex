@@ -236,11 +236,14 @@ defmodule PhoenixKitBilling.Migrations do
   prefix (`PREFIX-YYYY-NNNN`) lifts the counter to at least NNNN without using
   a value. A generated number that a row already has (a node that still counts
   rows, or a number typed in another shape) is skipped: the insert runs in a
-  savepoint, and on a unique-index conflict on that number the next one is
-  tried, up to 20 times, each skipped number staying used up. After 20 taken
-  numbers in a row the create returns `{:error, changeset}`, with the counter
-  left past them, so the next call gets further. Receipts have no unique index,
-  so nothing is skipped there.
+  savepoint, and on a unique-index conflict on that number the counter is
+  first lifted to the highest number of the year with the configured prefix
+  (so a long run is stepped over at once), then the next number is tried, up
+  to 20 times, each skipped number staying used up. If all 20 are taken the
+  create returns `{:error, changeset}` with an error on the number field and
+  the counter left past them. Only numbers zero-padded to four digits or more
+  (`ORD-2026-0007`, as the counter writes them) count. Receipts have no unique
+  index, so nothing is skipped there.
 
   **Run V7 before the code that uses it.** Without the table every create
   raises `undefined_table`. Old nodes that still number by `count + 1` can keep

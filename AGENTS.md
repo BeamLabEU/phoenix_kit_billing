@@ -416,7 +416,7 @@ in hosts; the test suite applies it by executing
   using the number (`next_number/2` in `PhoenixKitBilling`); the old
   `count(rows of the year) + 1` handed out a taken number once a row was
   deleted. A generated number that a row already has is skipped (a savepoint,
-  up to 20 tries). `down/1` below V7 drops the table. A create holds its counter row
+  after lifting the counter to the highest number there; up to 20 tries). `down/1` below V7 drops the table. A create holds its counter row
   until its transaction ends; the lock order and the rules for calling a create
   inside your own transaction are in the V7 section of the `Migrations`
   moduledoc and the `@doc`s.
