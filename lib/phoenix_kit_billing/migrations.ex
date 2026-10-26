@@ -279,12 +279,23 @@ defmodule PhoenixKitBilling.Migrations do
 
   Between kinds, take the locks in this order, everywhere: order counter,
   invoice counter, invoice row, transaction counter, receipt counter, order row.
-  A host that wraps several creates in one transaction must keep that order, or
-  two of them can deadlock (Postgres aborts one).
+  This list is for creates and payments. An update that changes a number is
+  the other way round for its own document: `update_order/2` takes the order
+  row first and then the order counter, `update_invoice/2` the invoice row and
+  then the invoice (or receipt) counter. A host must not copy the create order
+  for those and take the counter before the row. A host that wraps several
+  creates in one transaction must keep that order, or two of them can deadlock
+  (Postgres aborts one).
+
+  A typo in a number typed by hand in the series' own shape (`ORD-2026-9000`
+  for `ORD-2026-0090`) lifts the counter for good: the counter never goes back
+  down, so the numbers in between are skipped for the rest of the year.
 
   The subscription renewal worker creates its invoice inside the transaction
   that also charges the payment method, so it holds the invoice counter across
-  the provider call: other invoice creates wait for the charge to finish.
+  the provider call: other invoice creates wait for the charge to finish. Known
+  and left for a follow-up: create the invoice in a short transaction of its
+  own before the charge.
   """
 
   use Ecto.Migration
