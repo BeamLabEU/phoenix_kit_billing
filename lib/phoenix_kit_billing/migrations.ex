@@ -255,17 +255,26 @@ defmodule PhoenixKitBilling.Migrations do
   `down/1` below V7 drops it. A later `up/1` then reseeds from the rows that
   survive, so the numbers of deleted top rows can come back.
 
-  Locks. A create holds its counter row until its transaction ends. Take them
-  in this order, everywhere: order counter, invoice counter, invoice row,
-  transaction counter, receipt counter, order row (`FOR NO KEY UPDATE`). (An
-  `update_invoice` that changes a number locks the invoice row first, then
-  lifts the counters - no other path waits on that row while holding a counter
-  it needs.) A host
-  that wraps several creates in one transaction must keep that order, or two of
-  them can deadlock (Postgres aborts one). The subscription renewal worker
-  creates its invoice inside the transaction that also charges the payment
-  method, so it holds the invoice counter across the provider call: other
-  invoice creates wait for the charge to finish.
+  Locks. A create holds its counter row until its transaction ends, so the
+  rule is: **a path takes the row locks it needs before its counters, and does
+  not wait for a row lock while holding a counter** - with one exception, below.
+  `update_order` and `update_invoice` that change a number lock their own row
+  (`FOR NO KEY UPDATE`, `FOR UPDATE`) before lifting a counter, which is why a
+  transaction that holds that row and then creates a document cannot deadlock
+  with them. The exception: paying an invoice (`mark_invoice_paid`,
+  `record_payment`) takes the invoice row, then the transaction and receipt
+  counters, and only then the linked order's row (`FOR NO KEY UPDATE`). So a
+  host transaction must not hold an order row and then wait for a transaction
+  or receipt counter.
+
+  Between kinds, take the locks in this order, everywhere: order counter,
+  invoice counter, invoice row, transaction counter, receipt counter, order row.
+  A host that wraps several creates in one transaction must keep that order, or
+  two of them can deadlock (Postgres aborts one).
+
+  The subscription renewal worker creates its invoice inside the transaction
+  that also charges the payment method, so it holds the invoice counter across
+  the provider call: other invoice creates wait for the charge to finish.
   """
 
   use Ecto.Migration

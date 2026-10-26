@@ -2408,7 +2408,8 @@ defmodule PhoenixKitBilling do
 
   A new `order_number` of this year's shape with the configured prefix
   (`PREFIX-YYYY-NNNN`) lifts the year's counter to at least its NNNN, so the
-  counter never reaches it. The update opens a transaction only then.
+  counter never reaches it. The update opens a transaction, and locks the order
+  row first, only then.
   """
   def update_order(%Order{} = order, attrs) do
     if Order.editable?(order) do
@@ -2418,7 +2419,7 @@ defmodule PhoenixKitBilling do
       result =
         order
         |> Order.changeset(attrs)
-        |> update_numbered(order_number: "order")
+        |> update_numbered([order_number: "order"], fn -> lock_order_status(order) end)
 
       case result do
         {:ok, updated_order} ->
@@ -4403,8 +4404,6 @@ defmodule PhoenixKitBilling do
   # An update that changes a number (`numbers`: field -> scope) lifts the
   # counter past it in the same transaction, after `lock` has taken the row; any
   # other update is a plain one.
-  defp update_numbered(changeset, numbers, lock \\ fn -> :ok end)
-
   defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers, lock) do
     floors =
       for {field, scope} <- numbers,
