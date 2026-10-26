@@ -72,10 +72,6 @@ defmodule PhoenixKitBilling do
   # How many numbers a create tries before it gives up on a run of taken ones.
   @number_attempts 20
 
-  # Where the year of a number comes from. Only the test config replaces it, to
-  # pin the date a test runs on.
-  @number_clock Application.compile_env(:phoenix_kit_billing, :number_clock, Date)
-
   # Appended to the docs of the functions that take a document number.
   @numbering_note """
   The number comes from a per-year counter row that stays locked until the
@@ -2354,12 +2350,7 @@ defmodule PhoenixKitBilling do
   # A number the caller supplied is kept (and lifts the counter, see
   # `insert_numbered/4`); otherwise one is generated.
   defp insert_order(attrs, config) do
-    source =
-      cond do
-        Map.has_key?(attrs, :order_number) -> {:supplied, attrs.order_number}
-        Map.has_key?(attrs, "order_number") -> {:supplied, attrs["order_number"]}
-        true -> :generate
-      end
+    {source, attrs} = number_source(attrs, :order_number, "order_number")
 
     build = fn number ->
       attrs = if number, do: Map.put(attrs, "order_number", number), else: attrs
@@ -3093,8 +3084,6 @@ defmodule PhoenixKitBilling do
     insert_invoice(build, config, source)
   end
 
-  defp string_keyed?(attrs), do: attrs |> Map.keys() |> Enum.any?(&is_binary/1)
-
   # The PubSub event goes out after the transaction that inserts the invoice
   # has ended - the commit, unless the caller's own transaction encloses this
   # call.
@@ -3118,17 +3107,12 @@ defmodule PhoenixKitBilling do
     user_uuid = extract_user_uuid(user_or_uuid)
     config = get_config()
 
-    # Keys of the style the caller used (a changeset refuses a map with both);
-    # `invoice_number` counts as supplied under either.
-    key = fn name -> if string_keyed?(attrs), do: Atom.to_string(name), else: name end
+    # Keys of the style the caller used (a changeset refuses a map with both).
+    string_keyed? = string_keyed?(attrs)
+    key = fn name -> if string_keyed?, do: Atom.to_string(name), else: name end
     attrs = Map.put(attrs, key.(:user_uuid), user_uuid)
 
-    source =
-      cond do
-        Map.has_key?(attrs, :invoice_number) -> {:supplied, attrs.invoice_number}
-        Map.has_key?(attrs, "invoice_number") -> {:supplied, attrs["invoice_number"]}
-        true -> :generate
-      end
+    {source, attrs} = number_source(attrs, :invoice_number, key.(:invoice_number))
 
     build = fn number ->
       attrs = if number, do: Map.put(attrs, key.(:invoice_number), number), else: attrs
@@ -3137,6 +3121,26 @@ defmodule PhoenixKitBilling do
 
     insert_invoice(build, config, source)
   end
+
+  defp string_keyed?(attrs), do: attrs |> Map.keys() |> Enum.any?(&is_binary/1)
+
+  # Whether the caller supplied the number, and the attrs to build from: a number
+  # under either key counts (the atom key first), a nil or blank one does not -
+  # the number is generated and no key of it is left behind. A supplied number
+  # is kept under `key`, the style the rest of the attrs use.
+  defp number_source(attrs, field, key) do
+    names = [field, Atom.to_string(field)]
+    rest = Map.drop(attrs, names)
+
+    case names |> Enum.map(&Map.get(attrs, &1)) |> Enum.find(&(not blank_number?(&1))) do
+      nil -> {:generate, rest}
+      supplied -> {{:supplied, supplied}, Map.put(rest, key, supplied)}
+    end
+  end
+
+  defp blank_number?(nil), do: true
+  defp blank_number?(number) when is_binary(number), do: String.trim(number) == ""
+  defp blank_number?(_number), do: false
 
   @doc """
   Updates an invoice.
@@ -4289,7 +4293,11 @@ defmodule PhoenixKitBilling do
   # Read once per public operation and passed down, so a retry that crosses
   # midnight on 31 December cannot draw a number of the new year for a row
   # started in the old one.
-  defp current_year, do: @number_clock.utc_today().year
+  #
+  # `:number_clock` is an internal, test-only key: the module whose `utc_today/0`
+  # dates a number, to pin the date a test runs on. Hosts leave it unset.
+  defp current_year,
+    do: Application.get_env(:phoenix_kit_billing, :number_clock, Date).utc_today().year
 
   # Numbers come from `phoenix_kit_billing_number_sequences`: one counter per
   # (scope, year), not per prefix, so changing a prefix mid-year carries the
@@ -4553,8 +4561,11 @@ defmodule PhoenixKitBilling do
   defp sequence_seed(scope, year),
     do: max(rows_of_year(scope, year), highest_number_of_year(scope, year))
 
-  # Counted on the raw column with a half-open range of UTC instants, so an
-  # index on it can serve the scan (`DATE(column)` cannot use one).
+  # Counted on the raw column with a half-open range of UTC instants - the year
+  # `Date.utc_today().year` names (the former `DATE(column)` went by the
+  # session's time zone). Only the orders' `inserted_at` is indexed, so that scan
+  # can use the index (`DATE(column)` could not); the others stay sequential, once
+  # per scope-year.
   defp rows_of_year("order", year) do
     {first, after_last} = year_bounds(year)
 
@@ -4601,8 +4612,10 @@ defmodule PhoenixKitBilling do
   # previous year on - a number of this year sits on a row made this year, give
   # or take a day for the clock - and a number a window misses is skipped on its
   # unique index. Receipts have no unique index, so nothing would catch a number
-  # issued twice: their scan has no window (it runs once per scope-year, and on
-  # the first taken-number look-ahead), and sees a number written long before.
+  # issued twice: their scan has no window and sees a number written long
+  # before. It runs from `sequence_seed/2` - the first value of a scope-year, and
+  # the no-row path of `lift_sequence/3` - never from the taken-number
+  # look-ahead, which receipts do not go through.
   defp highest_number_of_year(scope, year, pattern \\ nil) do
     pattern = pattern || "-#{year}-([0-9]{1,15})$"
     since = DateTime.new!(Date.add(Date.new!(year, 1, 1), -1), ~T[00:00:00])

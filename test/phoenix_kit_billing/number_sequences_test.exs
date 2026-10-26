@@ -94,6 +94,19 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert last_value("order") == 2
     end
 
+    test "a nil or blank order_number is not a supplied one", %{user: user} do
+      blanks = [
+        %{"order_number" => nil},
+        %{"order_number" => ""},
+        %{"order_number" => "  "},
+        %{order_number: nil}
+      ]
+
+      numbers = for blank <- blanks, do: new_order(user, blank).order_number
+      assert numbers == for(n <- 1..4, do: number("ORD", n))
+      assert last_value("order") == 4
+    end
+
     test "deleting an order of the year does not free its number", %{user: user} do
       [_first, second, third] = for _ <- 1..3, do: new_order(user, %{"status" => "draft"})
 
@@ -388,6 +401,24 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
 
       assert {:error, changeset} = standalone(user, %{invoice_number: "OWN-1"})
       assert %{invoice_number: [_]} = errors_on(changeset)
+    end
+
+    test "a nil or blank invoice_number is not a supplied one", %{user: user} do
+      string_keyed = %{
+        "total" => Decimal.new("10.00"),
+        "currency" => "EUR",
+        "billing_details" => %{"email" => "b@example.com"}
+      }
+
+      assert {:ok, a} = standalone(user, %{invoice_number: nil})
+      assert {:ok, b} = standalone(user, %{invoice_number: ""})
+      assert {:ok, c} = Billing.create_invoice(user, Map.put(string_keyed, "invoice_number", nil))
+      assert {:ok, d} = Billing.create_invoice(user, Map.put(string_keyed, "invoice_number", " "))
+
+      assert Enum.map([a, b, c, d], & &1.invoice_number) ==
+               for(n <- 1..4, do: number("INV", n))
+
+      assert last_value("invoice") == 4
     end
 
     test "string-keyed attributes get a generated number too", %{user: user} do
@@ -868,6 +899,26 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert NumberClock.reads() == 1
       assert {last_value("invoice"), last_value("receipt")} == {20, 30}
       assert {last_value("invoice", year() + 1), last_value("receipt", year() + 1)} == {nil, nil}
+    end
+
+    test "generate_transaction_number/0 reads it once" do
+      clock_flips_after_first_read()
+
+      assert Billing.generate_transaction_number() == number("TXN", 1)
+      assert NumberClock.reads() == 1
+    end
+
+    test "generate_receipt/1 reads it once", %{user: user} do
+      invoice = user |> new_order() |> new_invoice() |> sent()
+
+      {:ok, partly} =
+        invoice |> Ecto.Changeset.change(%{paid_amount: Decimal.new("4.00")}) |> Repo.update()
+
+      clock_flips_after_first_read()
+
+      assert {:ok, receipt} = Billing.generate_receipt(partly)
+      assert receipt.receipt_number == number("RCP", 1)
+      assert NumberClock.reads() == 1
     end
 
     test "a supplied number is lifted into the year the operation started in", %{user: user} do
