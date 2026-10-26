@@ -390,6 +390,33 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert %{invoice_number: [_]} = errors_on(changeset)
     end
 
+    test "string-keyed attributes get a generated number too", %{user: user} do
+      attrs = %{
+        "total" => Decimal.new("10.00"),
+        "currency" => "EUR",
+        "billing_details" => %{"email" => "b@example.com"}
+      }
+
+      assert {:ok, invoice} = Billing.create_invoice(user, attrs)
+      assert invoice.invoice_number == number("INV", 1)
+    end
+
+    test "a supplied number under a string key counts as supplied too", %{user: user} do
+      attrs = %{
+        "total" => Decimal.new("10.00"),
+        "currency" => "EUR",
+        "billing_details" => %{"email" => "b@example.com"},
+        "invoice_number" => number("INV", 5)
+      }
+
+      assert {:ok, invoice} = Billing.create_invoice(user, attrs)
+      assert invoice.invoice_number == number("INV", 5)
+      assert last_value("invoice") == 5
+
+      assert {:ok, next} = standalone(user)
+      assert next.invoice_number == number("INV", 6)
+    end
+
     test "a supplied number ahead of the counter lifts it without using a value", %{user: user} do
       assert {:ok, first} = standalone(user)
       assert {:ok, supplied} = standalone(user, %{invoice_number: number("INV", 5)})

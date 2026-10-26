@@ -3093,6 +3093,8 @@ defmodule PhoenixKitBilling do
     insert_invoice(build, config, source)
   end
 
+  defp string_keyed?(attrs), do: attrs |> Map.keys() |> Enum.any?(&is_binary/1)
+
   # The PubSub event goes out after the transaction that inserts the invoice
   # has ended - the commit, unless the caller's own transaction encloses this
   # call.
@@ -3115,15 +3117,21 @@ defmodule PhoenixKitBilling do
   def create_invoice(user_or_uuid, attrs) do
     user_uuid = extract_user_uuid(user_or_uuid)
     config = get_config()
-    attrs = Map.put(attrs, :user_uuid, user_uuid)
+
+    # Keys of the style the caller used (a changeset refuses a map with both);
+    # `invoice_number` counts as supplied under either.
+    key = fn name -> if string_keyed?(attrs), do: Atom.to_string(name), else: name end
+    attrs = Map.put(attrs, key.(:user_uuid), user_uuid)
 
     source =
-      if Map.has_key?(attrs, :invoice_number),
-        do: {:supplied, attrs.invoice_number},
-        else: :generate
+      cond do
+        Map.has_key?(attrs, :invoice_number) -> {:supplied, attrs.invoice_number}
+        Map.has_key?(attrs, "invoice_number") -> {:supplied, attrs["invoice_number"]}
+        true -> :generate
+      end
 
     build = fn number ->
-      attrs = if number, do: Map.put(attrs, :invoice_number, number), else: attrs
+      attrs = if number, do: Map.put(attrs, key.(:invoice_number), number), else: attrs
       Invoice.changeset(%Invoice{}, attrs)
     end
 
