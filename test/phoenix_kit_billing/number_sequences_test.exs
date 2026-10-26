@@ -13,6 +13,7 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
   alias PhoenixKitBilling.Events
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.Order
+  alias PhoenixKitBilling.Test.NumberClock
   alias PhoenixKitBilling.Transaction
 
   @sequences "phoenix_kit_billing_number_sequences"
@@ -801,6 +802,53 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       paid = order |> new_invoice() |> sent() |> Billing.mark_invoice_paid()
       assert {:ok, %Invoice{receipt_number: receipt}} = paid
       assert receipt == number("RCP", 3)
+    end
+  end
+
+  describe "the year of a number is read once per operation" do
+    # The first read says this year, any later one the next: an operation that
+    # reads the clock again would draw a number of the new year.
+    defp clock_flips_after_first_read do
+      NumberClock.set([
+        Date.new!(year(), 12, 31),
+        Date.new!(year() + 1, 1, 1)
+      ])
+    end
+
+    test "a create that skips a taken number and retries stays in one year", %{user: user} do
+      insert_order(user, number("ORD", 1))
+      rewind("order", 0)
+
+      clock_flips_after_first_read()
+      order = new_order(user)
+
+      assert order.order_number == number("ORD", 2)
+      assert NumberClock.reads() == 1
+      assert last_value("order", year() + 1) == nil
+    end
+
+    test "an update that changes two numbers stays in one year", %{user: user} do
+      invoice = user |> new_order() |> new_invoice()
+
+      clock_flips_after_first_read()
+
+      assert {:ok, _} =
+               Billing.update_invoice(invoice, %{
+                 invoice_number: number("INV", 20),
+                 receipt_number: number("RCP", 30)
+               })
+
+      assert NumberClock.reads() == 1
+      assert {last_value("invoice"), last_value("receipt")} == {20, 30}
+      assert {last_value("invoice", year() + 1), last_value("receipt", year() + 1)} == {nil, nil}
+    end
+
+    test "a supplied number is lifted into the year the operation started in", %{user: user} do
+      clock_flips_after_first_read()
+      assert {:ok, _} = standalone(user, %{invoice_number: number("INV", 7)})
+
+      assert NumberClock.reads() == 1
+      assert last_value("invoice") == 7
     end
   end
 

@@ -72,6 +72,10 @@ defmodule PhoenixKitBilling do
   # How many numbers a create tries before it gives up on a run of taken ones.
   @number_attempts 20
 
+  # Where the year of a number comes from. Only the test config replaces it, to
+  # pin the date a test runs on.
+  @number_clock Application.compile_env(:phoenix_kit_billing, :number_clock, Date)
+
   # Appended to the docs of the functions that take a document number.
   @numbering_note """
   The number comes from a per-year counter row that stays locked until the
@@ -3969,7 +3973,7 @@ defmodule PhoenixKitBilling do
             _recorded_or_nothing_to_record ->
               # Taken here, with the invoice locked, so a failure above gives
               # no receipt number away.
-              receipt_number = next_number("receipt", config.receipt_prefix)
+              receipt_number = next_number("receipt", config.receipt_prefix, current_year())
 
               paid =
                 locked
@@ -4121,7 +4125,7 @@ defmodule PhoenixKitBilling do
       # without rolling it back: a caller's own transaction carries on.
       case receipt_blocker(locked) do
         nil ->
-          receipt_number = next_number("receipt", config.receipt_prefix)
+          receipt_number = next_number("receipt", config.receipt_prefix, current_year())
 
           locked
           |> Ecto.Changeset.change(%{
@@ -4274,6 +4278,11 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  # Read once per public operation and passed down, so a retry that crosses
+  # midnight on 31 December cannot draw a number of the new year for a row
+  # started in the old one.
+  defp current_year, do: @number_clock.utc_today().year
+
   # Numbers come from `phoenix_kit_billing_number_sequences`: one counter per
   # (scope, year), not per prefix, so changing a prefix mid-year carries the
   # sequence on. They used to be `count(rows of the year) + 1`, which hands out
@@ -4284,8 +4293,7 @@ defmodule PhoenixKitBilling do
   # counter row stays locked until that transaction ends, so concurrent creates
   # queue up, a rolled-back insert gives its number back (no gap), and a
   # deleted row never frees one. A caller that supplied a number takes none.
-  defp next_number(scope, prefix) do
-    year = Date.utc_today().year
+  defp next_number(scope, prefix, year) do
     sequence = next_sequence(scope, year)
     "#{prefix}-#{year}-#{String.pad_leading(to_string(sequence), 4, "0")}"
   end
@@ -4298,11 +4306,13 @@ defmodule PhoenixKitBilling do
   # action a form needs to show it), without a transaction and without taking a
   # number, so a caller's own transaction carries on. Only a valid one opens the
   # transaction in which the number is taken (or, for a number the caller
-  # supplied, the counter is lifted past it - see `raise_sequence_floor/3`) and
+  # supplied, the counter is lifted past it - see `raise_sequence_floor/4`) and
   # the row inserted.
   #
   # `field` is the column of the number, which has a unique index.
   defp insert_numbered(build, scope, prefix, field, source) do
+    year = current_year()
+
     case build.(nil) do
       %Ecto.Changeset{valid?: false} = invalid ->
         {:error, %{invalid | action: :insert}}
@@ -4313,10 +4323,10 @@ defmodule PhoenixKitBilling do
             inserted =
               case source do
                 :generate ->
-                  insert_with_number(build, scope, prefix, field)
+                  insert_with_number(build, scope, prefix, field, year)
 
                 {:supplied, supplied} ->
-                  raise_sequence_floor(scope, prefix, supplied)
+                  raise_sequence_floor(scope, prefix, year, supplied)
                   build.(supplied) |> repo().insert()
               end
 
@@ -4349,8 +4359,8 @@ defmodule PhoenixKitBilling do
   #
   # Returns `{:ok, record}`, `{:error, changeset}`, or `{:exhausted, changeset}`
   # when every number tried was taken (with an error that says so).
-  defp insert_with_number(build, scope, prefix, field, attempt \\ 1) do
-    number = next_number(scope, prefix)
+  defp insert_with_number(build, scope, prefix, field, year, attempt \\ 1) do
+    number = next_number(scope, prefix, year)
 
     case build.(number) |> repo().insert(mode: :savepoint) do
       {:ok, record} ->
@@ -4367,8 +4377,8 @@ defmodule PhoenixKitBilling do
                 "(#{attempt}/#{@number_attempts})"
             )
 
-            if attempt == 1, do: lift_to_highest_number(scope, prefix)
-            insert_with_number(build, scope, prefix, field, attempt + 1)
+            if attempt == 1, do: lift_to_highest_number(scope, prefix, year)
+            insert_with_number(build, scope, prefix, field, year, attempt + 1)
 
           true ->
             {:exhausted, numbers_taken(changeset, field)}
@@ -4376,8 +4386,7 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp lift_to_highest_number(scope, prefix) do
-    year = Date.utc_today().year
+  defp lift_to_highest_number(scope, prefix, year) do
     highest = highest_number_of_year(scope, year, configured_number_pattern(prefix, year))
     if highest > 0, do: lift_sequence(scope, year, highest)
   end
@@ -4405,6 +4414,8 @@ defmodule PhoenixKitBilling do
   # counter past it in the same transaction, after `lock` has taken the row; any
   # other update is a plain one.
   defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers, lock) do
+    year = current_year()
+
     floors =
       for {field, scope} <- numbers,
           number = Map.get(changeset.changes, field),
@@ -4418,7 +4429,7 @@ defmodule PhoenixKitBilling do
         lock.()
 
         Enum.each(floors, fn {scope, number} ->
-          raise_sequence_floor(scope, number_prefix(scope), number)
+          raise_sequence_floor(scope, number_prefix(scope), year, number)
         end)
 
         case repo().update(changeset) do
@@ -4468,9 +4479,8 @@ defmodule PhoenixKitBilling do
   # scope's configured prefix lifts the counter to at least its NNNN, without
   # using a value: the counter would otherwise reach it one day. (A number of
   # another shape is not a number this counter would hand out; one that is taken
-  # anyway is skipped by `insert_with_number/5`.)
-  defp raise_sequence_floor(scope, prefix, number) when is_binary(number) do
-    year = Date.utc_today().year
+  # anyway is skipped by `insert_with_number/6`.)
+  defp raise_sequence_floor(scope, prefix, year, number) when is_binary(number) do
     pattern = Regex.compile!(configured_number_pattern(prefix, year))
 
     case Regex.run(pattern, number) do
@@ -4479,7 +4489,7 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp raise_sequence_floor(_scope, _prefix, _number), do: :ok
+  defp raise_sequence_floor(_scope, _prefix, _year, _number), do: :ok
 
   # `PREFIX-YEAR-NNNN` as this counter writes it: the digits are zero-padded to
   # at least four, so a shorter run (`ORD-2026-7`) is not a number it hands out.
@@ -4869,13 +4879,19 @@ defmodule PhoenixKitBilling do
   end
 
   # Takes a transaction number and inserts the row, inside the caller's
-  # transaction - see `insert_with_number/5`.
+  # transaction - see `insert_with_number/6`.
   defp insert_transaction(attrs) do
     build = fn number ->
       Transaction.changeset(%Transaction{}, Map.put(attrs, :transaction_number, number))
     end
 
-    insert_with_number(build, "transaction", transaction_prefix(), :transaction_number)
+    insert_with_number(
+      build,
+      "transaction",
+      transaction_prefix(),
+      :transaction_number,
+      current_year()
+    )
   end
 
   defp transaction_prefix, do: Settings.get_setting("billing_transaction_prefix", "TXN")
@@ -5063,7 +5079,7 @@ defmodule PhoenixKitBilling do
     became_paid =
       if Invoice.fully_paid?(updated_invoice) && updated_invoice.status in ["sent", "overdue"] do
         config = get_config()
-        receipt_number = next_number("receipt", config.receipt_prefix)
+        receipt_number = next_number("receipt", config.receipt_prefix, current_year())
 
         paid =
           updated_invoice
@@ -5131,7 +5147,7 @@ defmodule PhoenixKitBilling do
   back. Called on its own it uses up a value.
   """
   def generate_transaction_number do
-    next_number("transaction", transaction_prefix())
+    next_number("transaction", transaction_prefix(), current_year())
   end
 
   defp parse_decimal(value) when is_binary(value) do
