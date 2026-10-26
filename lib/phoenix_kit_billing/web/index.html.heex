@@ -10,6 +10,7 @@
           <.icon name="hero-arrow-path" class="w-4 h-4" /> {gettext("Refresh")}
         </button>
         <.link
+          :if={@can_orders?}
           navigate={PhoenixKit.Utils.Routes.path("/admin/billing/orders/new")}
           class="btn btn-primary btn-sm"
         >
@@ -19,8 +20,8 @@
     </.admin_page_header>
 
     <%!-- Stats Cards --%>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <div class="stat bg-base-100 rounded-box shadow">
+    <div :if={@stats} class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div :if={@can_orders?} class="stat bg-base-100 rounded-box shadow">
         <div class="stat-figure text-primary">
           <.icon name="hero-clipboard-document-list" class="w-8 h-8" />
         </div>
@@ -31,7 +32,7 @@
         </div>
       </div>
 
-      <div class="stat bg-base-100 rounded-box shadow">
+      <div :if={@can_invoices?} class="stat bg-base-100 rounded-box shadow">
         <div class="stat-figure text-secondary">
           <.icon name="hero-document-text" class="w-8 h-8" />
         </div>
@@ -42,7 +43,7 @@
         </div>
       </div>
 
-      <div class="stat bg-base-100 rounded-box shadow">
+      <div :if={@can_invoices?} class="stat bg-base-100 rounded-box shadow">
         <div class="stat-figure text-success">
           <.icon name="hero-banknotes" class="w-8 h-8" />
         </div>
@@ -58,7 +59,7 @@
         </div>
       </div>
 
-      <div class="stat bg-base-100 rounded-box shadow">
+      <div :if={@can_invoices?} class="stat bg-base-100 rounded-box shadow">
         <div class="stat-figure text-warning">
           <.icon name="hero-clock" class="w-8 h-8" />
         </div>
@@ -72,9 +73,9 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div :if={@can_orders? or @can_invoices?} class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%!-- Recent Orders --%>
-      <div class="card bg-base-100 shadow-xl">
+      <div :if={@can_orders?} class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
             <h2 class="card-title">{gettext("Recent Orders")}</h2>
@@ -136,7 +137,7 @@
       </div>
 
       <%!-- Recent Invoices --%>
-      <div class="card bg-base-100 shadow-xl">
+      <div :if={@can_invoices?} class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
             <h2 class="card-title">{gettext("Recent Invoices")}</h2>
@@ -195,41 +196,50 @@
     </div>
 
     <%!-- Quick Actions --%>
-    <div class="card bg-base-100 shadow-xl mt-6">
+    <div
+      :if={@can_orders? or @can_subscriptions? or @can_settings?}
+      class="card bg-base-100 shadow-xl mt-6"
+    >
       <div class="card-body">
         <h2 class="card-title mb-4">{gettext("Quick Actions")}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           <.link
+            :if={@can_orders?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/billing/orders/new")}
             class="btn btn-outline whitespace-nowrap"
           >
             <.icon name="hero-plus" class="w-5 h-5" /> {gettext("New Order")}
           </.link>
           <.link
+            :if={@can_subscriptions?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/billing/subscriptions")}
             class="btn btn-outline whitespace-nowrap"
           >
             <.icon name="hero-credit-card" class="w-5 h-5" /> {gettext("Subscriptions")}
           </.link>
           <.link
+            :if={@can_subscriptions?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/billing/subscription-types")}
             class="btn btn-outline whitespace-nowrap"
           >
             <.icon name="hero-squares-2x2" class="w-5 h-5" /> {gettext("Subscription Types")}
           </.link>
           <.link
+            :if={@can_orders?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/billing/profiles")}
             class="btn btn-outline whitespace-nowrap"
           >
             <.icon name="hero-users" class="w-5 h-5" /> {gettext("Billing Profiles")}
           </.link>
           <.link
+            :if={@can_settings?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/settings/billing")}
             class="btn btn-outline whitespace-nowrap"
           >
             <.icon name="hero-cog-6-tooth" class="w-5 h-5" /> {gettext("Settings")}
           </.link>
           <.link
+            :if={@can_settings?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/settings/billing/providers")}
             class="btn btn-primary whitespace-nowrap"
           >
@@ -245,6 +255,7 @@
         <div class="flex justify-between items-center mb-4">
           <h2 class="card-title">{gettext("Active Currencies")}</h2>
           <.link
+            :if={@can_settings?}
             navigate={PhoenixKit.Utils.Routes.path("/admin/billing/currencies")}
             class="btn btn-ghost btn-sm"
           >
