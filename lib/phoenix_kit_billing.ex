@@ -2338,10 +2338,11 @@ defmodule PhoenixKitBilling do
   Used for public-facing URLs to prevent ID enumeration.
 
   An order in the trash is not found, as it is on any other customer-facing
-  page; pass `trashed: :include` to find it.
+  page; pass `trashed: :include` to find it. The `:invoices` of a `:preload`
+  leave the trash out too.
   """
   def get_order_by_uuid(uuid, opts \\ []) do
-    preloads = Keyword.get(opts, :preload, [:billing_profile])
+    preloads = opts |> Keyword.get(:preload, [:billing_profile]) |> without_trashed_invoices()
 
     Order
     |> scope_trashed(trashed_option(opts))
@@ -2451,7 +2452,7 @@ defmodule PhoenixKitBilling do
     # editable check nor the forward-only status rule may run on that.
     result =
       unwrap_transaction(fn ->
-        case lock_order(order) do
+        case lock_order(order, attrs) do
           nil -> {:error, :not_found}
           locked -> update_locked_order(locked, attrs)
         end
@@ -2482,14 +2483,21 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  # The stored order, locked `FOR NO KEY UPDATE` like `lock_order_row/1`, with
-  # the associations the caller's struct had loaded. `nil` for a vanished order.
-  defp lock_order(%Order{uuid: uuid} = order) do
-    Order
-    |> where([o], o.uuid == ^uuid)
-    |> lock("FOR NO KEY UPDATE")
-    |> repo().one()
-    |> case do
+  # The stored order, locked, with the associations the caller's struct had
+  # loaded. `nil` for a vanished order. An edit that names an `order_number`
+  # takes the row `FOR UPDATE` straight away - that is what the write would take
+  # anyway, as the number has a unique index - and any other edit `FOR NO KEY
+  # UPDATE`, like `lock_order_row/1`. Either way before the number counter is
+  # touched.
+  defp lock_order(%Order{uuid: uuid} = order, attrs) do
+    query = where(Order, [o], o.uuid == ^uuid)
+
+    stored =
+      if Map.has_key?(attrs, "order_number") or Map.has_key?(attrs, :order_number),
+        do: query |> lock("FOR UPDATE") |> repo().one(),
+        else: query |> lock("FOR NO KEY UPDATE") |> repo().one()
+
+    case stored do
       nil ->
         nil
 
@@ -3394,11 +3402,11 @@ defmodule PhoenixKitBilling do
   # has ended - the commit, unless the caller's own transaction encloses this
   # call.
   #
-  # An invoice of an order that is in the trash is refused (`:order_trashed`),
-  # checked in the insert's transaction with the order row locked (see
-  # `ensure_order_not_trashed_for_invoice/1`).
+  # An invoice of an order that is in the trash or cancelled is refused
+  # (`:order_trashed`, `:order_cancelled`), checked in the insert's transaction
+  # with the order row locked (see `ensure_order_takes_invoice/1`).
   defp insert_invoice(build, config, source, order_uuid) do
-    guard = fn -> ensure_order_not_trashed_for_invoice(order_uuid) end
+    guard = fn -> ensure_order_takes_invoice(order_uuid) end
 
     case insert_numbered(build, "invoice", config.invoice_prefix, :invoice_number, source,
            other_numbers: [receipt_number: "receipt"],
@@ -3438,24 +3446,41 @@ defmodule PhoenixKitBilling do
     insert_invoice(build, config, source, order_uuid)
   end
 
-  # FOR KEY SHARE: what the insert's foreign key takes on the order anyway, and
-  # it conflicts with the FOR UPDATE `trash_order/2` takes - so an order is
-  # trashed before this looks (and the invoice is refused) or after the invoice
-  # is in (and the trash is refused), never in between. Taken before the invoice
-  # counter, which no path that waits for a FOR UPDATE on an order holds.
-  defp ensure_order_not_trashed_for_invoice(order_uuid) do
-    if is_binary(order_uuid) and UUIDUtils.valid?(order_uuid) do
-      trashed_at =
-        from(o in Order,
-          where: o.uuid == ^order_uuid,
-          lock: "FOR KEY SHARE",
-          select: o.trashed_at
-        )
-        |> repo().one()
+  # The order an invoice is created for, or moved onto, must be able to take it:
+  # not in the trash, not cancelled. Checked in the transaction that writes the
+  # invoice, with the order row locked `FOR KEY SHARE` - what the invoice's
+  # foreign key takes on the order anyway. That conflicts with the `FOR UPDATE`
+  # of `trash_order/2`, so an order is trashed before this looks (and the invoice
+  # is refused) or after the invoice is in (and the trash is refused), never in
+  # between. The lock is taken BEFORE the invoice counter; see "Lock order" in
+  # the `PhoenixKitBilling.Migrations` moduledoc.
+  defp ensure_order_takes_invoice(order_uuid) do
+    case lock_order_state(order_uuid) do
+      %{trashed_at: %DateTime{}} -> {:error, :order_trashed}
+      %{status: "cancelled"} -> {:error, :order_cancelled}
+      _ -> :ok
+    end
+  end
 
-      if trashed_at, do: {:error, :order_trashed}, else: :ok
-    else
-      :ok
+  # Restoring an invoice puts back one that was already on its order, so a
+  # cancelled order does not stop it; one in the trash does.
+  defp ensure_order_not_trashed_for_restore(order_uuid) do
+    case lock_order_state(order_uuid) do
+      %{trashed_at: %DateTime{}} -> {:error, :order_trashed}
+      _ -> :ok
+    end
+  end
+
+  # `nil` for no order, an invalid uuid or an order that is gone (the invoice's
+  # foreign key then says what is wrong).
+  defp lock_order_state(order_uuid) do
+    if is_binary(order_uuid) and UUIDUtils.valid?(order_uuid) do
+      from(o in Order,
+        where: o.uuid == ^order_uuid,
+        lock: "FOR KEY SHARE",
+        select: map(o, [:status, :trashed_at])
+      )
+      |> repo().one()
     end
   end
 
@@ -3493,6 +3518,8 @@ defmodule PhoenixKitBilling do
 
   Returns `{:ok, invoice}`, `{:error, :invoice_not_editable}`,
   `{:error, :invoice_trashed}` for an invoice in the trash,
+  `{:error, :order_trashed}` / `{:error, :order_cancelled}` when the edit moves
+  it onto an order that cannot take an invoice,
   `{:error, :invoice_not_found}` or `{:error, changeset}`. Refusals are
   returned, not rolled back, so a transaction of the caller's stays usable.
   """
@@ -3507,14 +3534,29 @@ defmodule PhoenixKitBilling do
 
         locked ->
           if Invoice.editable?(locked) do
-            locked
-            |> Invoice.changeset(attrs)
-            |> update_numbered_locked(invoice_number: "invoice", receipt_number: "receipt")
+            changeset = Invoice.changeset(locked, attrs)
+
+            # Before the counter is touched: a refusal has written nothing.
+            with :ok <- ensure_relinked_order_takes_invoice(changeset) do
+              update_numbered_locked(changeset,
+                invoice_number: "invoice",
+                receipt_number: "receipt"
+              )
+            end
           else
             {:error, :invoice_not_editable}
           end
       end
     end)
+  end
+
+  # An edit that moves the invoice onto another order is held to the rule for a
+  # new invoice: the order must be able to take it.
+  defp ensure_relinked_order_takes_invoice(changeset) do
+    case Ecto.Changeset.get_change(changeset, :order_uuid) do
+      nil -> :ok
+      order_uuid -> ensure_order_takes_invoice(order_uuid)
+    end
   end
 
   # Runs `fun` in a transaction and returns what it returned. For functions
@@ -3598,7 +3640,7 @@ defmodule PhoenixKitBilling do
 
           locked ->
             with true <- Invoice.trashed?(locked) || {:error, :not_trashed},
-                 :ok <- ensure_order_not_trashed_for_invoice(locked.order_uuid) do
+                 :ok <- ensure_order_not_trashed_for_restore(locked.order_uuid) do
               locked |> Invoice.restore_changeset() |> repo().update()
             end
         end
