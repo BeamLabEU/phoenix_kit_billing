@@ -3369,6 +3369,10 @@ defmodule PhoenixKitBilling do
   @doc """
   Creates an invoice from an order.
 
+  Returns `{:error, :order_trashed}` for an order in the trash and
+  `{:error, :order_cancelled}` for a cancelled one (checked on the stored row,
+  and returned as values: your transaction stays usable).
+
   #{@create_note}
   """
   def create_invoice_from_order(order, opts \\ [])
@@ -3423,6 +3427,10 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Creates a standalone invoice (without order).
+
+  With an `order_uuid` it is held to the same rule as `create_invoice_from_order/2`:
+  `{:error, :order_trashed}` or `{:error, :order_cancelled}` when the order cannot
+  take an invoice.
 
   #{@create_note}
   """
