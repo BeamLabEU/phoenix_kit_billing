@@ -4535,44 +4535,46 @@ defmodule PhoenixKitBilling do
   defp sequence_seed(scope, year),
     do: max(rows_of_year(scope, year), highest_number_of_year(scope, year))
 
+  # Counted on the raw column with a half-open range of UTC instants, so an
+  # index on it can serve the scan (`DATE(column)` cannot use one).
   defp rows_of_year("order", year) do
-    {first_day, last_day} = year_bounds(year)
+    {first, after_last} = year_bounds(year)
 
     Order
-    |> where([o], fragment("DATE(?)", o.inserted_at) >= ^first_day)
-    |> where([o], fragment("DATE(?)", o.inserted_at) <= ^last_day)
+    |> where([o], o.inserted_at >= ^first and o.inserted_at < ^after_last)
     |> repo().aggregate(:count)
   end
 
   defp rows_of_year("invoice", year) do
-    {first_day, last_day} = year_bounds(year)
+    {first, after_last} = year_bounds(year)
 
     Invoice
-    |> where([i], fragment("DATE(?)", i.inserted_at) >= ^first_day)
-    |> where([i], fragment("DATE(?)", i.inserted_at) <= ^last_day)
+    |> where([i], i.inserted_at >= ^first and i.inserted_at < ^after_last)
     |> repo().aggregate(:count)
   end
 
   defp rows_of_year("transaction", year) do
-    {first_day, last_day} = year_bounds(year)
+    {first, after_last} = year_bounds(year)
 
     Transaction
-    |> where([t], fragment("DATE(?)", t.inserted_at) >= ^first_day)
-    |> where([t], fragment("DATE(?)", t.inserted_at) <= ^last_day)
+    |> where([t], t.inserted_at >= ^first and t.inserted_at < ^after_last)
     |> repo().aggregate(:count)
   end
 
   defp rows_of_year("receipt", year) do
-    {first_day, last_day} = year_bounds(year)
+    {first, after_last} = year_bounds(year)
 
     Invoice
     |> where([i], not is_nil(i.receipt_number))
-    |> where([i], fragment("DATE(?)", i.receipt_generated_at) >= ^first_day)
-    |> where([i], fragment("DATE(?)", i.receipt_generated_at) <= ^last_day)
+    |> where([i], i.receipt_generated_at >= ^first and i.receipt_generated_at < ^after_last)
     |> repo().aggregate(:count)
   end
 
-  defp year_bounds(year), do: {Date.new!(year, 1, 1), Date.new!(year, 12, 31)}
+  # The first instant of the year and of the next one (UTC).
+  defp year_bounds(year) do
+    {DateTime.new!(Date.new!(year, 1, 1), ~T[00:00:00]),
+     DateTime.new!(Date.new!(year + 1, 1, 1), ~T[00:00:00])}
+  end
 
   # The highest NNNN among numbers shaped `PREFIX-YEAR-NNNN`, whatever the
   # prefix. The digits are capped so a freak number cannot overflow bigint, and

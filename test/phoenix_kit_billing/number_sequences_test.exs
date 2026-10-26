@@ -709,6 +709,86 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
     end
   end
 
+  describe "the rows of the year are counted by their timestamp" do
+    # Numbers that are not in the counter's shape, so only the row count can
+    # place the next number.
+    defp boundary_instants do
+      y = year()
+
+      [
+        DateTime.new!(Date.new!(y - 1, 12, 31), ~T[23:59:59]),
+        DateTime.new!(Date.new!(y, 1, 1), ~T[00:00:00]),
+        DateTime.new!(Date.new!(y, 12, 31), ~T[23:59:59]),
+        DateTime.new!(Date.new!(y + 1, 1, 1), ~T[00:00:00])
+      ]
+    end
+
+    test "orders: the last second before the year and the first after it are out", %{user: user} do
+      for {at, n} <- Enum.with_index(boundary_instants(), 1),
+          do: insert_order(user, "LEGACY-#{n}", inserted_at: at)
+
+      forget_counter()
+      assert new_order(user).order_number == number("ORD", 3)
+    end
+
+    test "invoices: the last second before the year and the first after it are out", %{
+      user: user
+    } do
+      order = new_order(user)
+
+      for {at, n} <- Enum.with_index(boundary_instants(), 1) do
+        {:ok, invoice} = Billing.create_invoice_from_order(order, invoice_number: "LEGACY-#{n}")
+
+        Repo.update_all(from(i in Invoice, where: i.uuid == ^invoice.uuid),
+          set: [inserted_at: at]
+        )
+      end
+
+      forget_counter()
+      assert new_invoice(order).invoice_number == number("INV", 3)
+    end
+
+    test "transactions: the last second before the year and the first after it are out", %{
+      user: user
+    } do
+      invoice = user |> new_order() |> new_invoice() |> sent()
+
+      for {at, n} <- Enum.with_index(boundary_instants(), 1) do
+        Repo.insert!(%Transaction{
+          transaction_number: "LEGACY-#{n}",
+          amount: Decimal.new("1.00"),
+          currency: "EUR",
+          payment_method: "bank",
+          invoice_uuid: invoice.uuid,
+          user_uuid: invoice.user_uuid,
+          inserted_at: at,
+          updated_at: at
+        })
+      end
+
+      forget_counter()
+      assert Billing.generate_transaction_number() == number("TXN", 3)
+    end
+
+    test "receipts: the last second before the year and the first after it are out", %{
+      user: user
+    } do
+      order = new_order(user)
+
+      for {at, n} <- Enum.with_index(boundary_instants(), 1) do
+        order
+        |> new_invoice()
+        |> Ecto.Changeset.change(%{receipt_number: "LEGACY-#{n}", receipt_generated_at: at})
+        |> Repo.update!()
+      end
+
+      forget_counter()
+      paid = order |> new_invoice() |> sent() |> Billing.mark_invoice_paid()
+      assert {:ok, %Invoice{receipt_number: receipt}} = paid
+      assert receipt == number("RCP", 3)
+    end
+  end
+
   describe "a failed create says what it was doing" do
     test "so a form can show the errors", %{user: user} do
       assert {:error, %Ecto.Changeset{action: :insert}} =
