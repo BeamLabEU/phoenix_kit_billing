@@ -501,6 +501,21 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert paid.receipt_number == number("RCP", 10)
     end
 
+    test "a receipt number of this year written long before it still counts", %{order: order} do
+      invoice = order |> new_invoice() |> sent()
+
+      invoice
+      |> Ecto.Changeset.change(%{
+        receipt_number: number("RCP", 50),
+        receipt_generated_at: DateTime.new!(Date.new!(year() - 1, 6, 1), ~T[12:00:00])
+      })
+      |> Repo.update!()
+
+      other = order |> new_invoice() |> sent()
+      assert {:ok, paid} = Billing.mark_invoice_paid(other)
+      assert paid.receipt_number == number("RCP", 51)
+    end
+
     test "the receipts of another year do not count", %{order: order} do
       invoice = order |> new_invoice() |> sent()
 

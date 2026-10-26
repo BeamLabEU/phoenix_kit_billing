@@ -4577,9 +4577,14 @@ defmodule PhoenixKitBilling do
   end
 
   # The highest NNNN among numbers shaped `PREFIX-YEAR-NNNN`, whatever the
-  # prefix. The digits are capped so a freak number cannot overflow bigint, and
-  # only rows from the last day of the previous year on are read - a number of
-  # this year sits on a row made this year, give or take a day for the clock.
+  # prefix. The digits are capped so a freak number cannot overflow bigint.
+  #
+  # Orders, invoices and transactions only read rows from the last day of the
+  # previous year on - a number of this year sits on a row made this year, give
+  # or take a day for the clock - and a number a window misses is skipped on its
+  # unique index. Receipts have no unique index, so nothing would catch a number
+  # issued twice: their scan has no window (it runs once per scope-year, and on
+  # the first taken-number look-ahead), and sees a number written long before.
   defp highest_number_of_year(scope, year, pattern \\ nil) do
     pattern = pattern || "-#{year}-([0-9]{1,15})$"
     since = DateTime.new!(Date.add(Date.new!(year, 1, 1), -1), ~T[00:00:00])
@@ -4605,7 +4610,7 @@ defmodule PhoenixKitBilling do
         "receipt" ->
           repo().one(
             from(i in Invoice,
-              where: i.receipt_generated_at >= ^since,
+              where: not is_nil(i.receipt_number),
               select: max(number_suffix(i.receipt_number, ^pattern))
             )
           )
