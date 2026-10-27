@@ -21,6 +21,7 @@ defmodule PhoenixKitBilling.Web.Index do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitBilling.Web.Trail
 
   @impl true
@@ -32,6 +33,7 @@ defmodule PhoenixKitBilling.Web.Index do
         socket
         |> Trail.landing()
         |> assign(:project_title, project_title)
+        |> assign_capabilities()
         |> load_dashboard_data()
 
       {:ok, socket}
@@ -48,10 +50,34 @@ defmodule PhoenixKitBilling.Web.Index do
     {:noreply, socket}
   end
 
+  # The dashboard sits on the base "billing" key, so it shows a section only
+  # to a holder of the capability that gates the same records elsewhere:
+  # order figures need manage_orders, invoice and revenue figures
+  # manage_invoices. Links point only where the viewer may go.
+  defp assign_capabilities(socket) do
+    assign(socket,
+      can_orders?: Authz.can?(socket, :manage_orders),
+      can_invoices?: Authz.can?(socket, :manage_invoices),
+      can_subscriptions?: Authz.can?(socket, :manage_subscriptions),
+      can_settings?: Authz.can?(socket, :manage_settings)
+    )
+  end
+
   defp load_dashboard_data(socket) do
-    stats = Billing.get_dashboard_stats()
-    recent_orders = Billing.list_orders(limit: 5, sort_by: :inserted_at, sort_order: :desc)
-    recent_invoices = Billing.list_invoices(limit: 5, sort_by: :inserted_at, sort_order: :desc)
+    %{can_orders?: orders?, can_invoices?: invoices?} = socket.assigns
+
+    stats = if orders? or invoices?, do: Billing.get_dashboard_stats(), else: nil
+
+    recent_orders =
+      if orders?,
+        do: Billing.list_orders(limit: 5, sort_by: :inserted_at, sort_order: :desc),
+        else: []
+
+    recent_invoices =
+      if invoices?,
+        do: Billing.list_invoices(limit: 5, sort_by: :inserted_at, sort_order: :desc),
+        else: []
+
     currencies = Billing.list_currencies(enabled: true)
 
     socket
