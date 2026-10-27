@@ -33,6 +33,15 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   - `charge.refunded` - Refund processed
   - `setup_intent.succeeded` - Card saved successfully
 
+  `charge.refunded` is the one refund event this provider consumes. Its
+  Charge object carries the running total refunded on the charge, so a
+  refund is recorded as the part of that total the ledger does not hold yet
+  and a redelivery or a refund the host already recorded adds nothing. The
+  `refund.created` / `refund.updated` events describe the same refunds one
+  by one and are deliberately not consumed: the two streams cannot be
+  matched against each other (a Charge does not list its refunds by
+  default), so reading both would record a partial refund twice.
+
   ## Dependencies
 
   Talks to the Stripe REST API directly over `Req` — no `stripe` hex
@@ -829,15 +838,21 @@ defmodule PhoenixKitBilling.Providers.Stripe do
      }}
   end
 
+  # A Charge's `amount_refunded` is the running total refunded on it, not
+  # the amount of the refund that raised this event - hence
+  # `amount_refunded_total`, which the processor reduces to the part not yet
+  # in the ledger. `payment_intent` is what ties the charge to a Checkout
+  # payment, which is recorded under the PaymentIntent id and has no charge id.
   defp normalize_event("charge.refunded", object) do
     {:ok,
      %{
        type: "refund.created",
        data: %{
          charge_id: object["id"],
-         amount_refunded: object["amount_refunded"],
+         payment_intent_id: object["payment_intent"],
+         amount_refunded_total: object["amount_refunded"],
          currency: object["currency"],
-         refund_id: List.first(object["refunds"]["data"] || [])["id"]
+         refund_id: latest_refund_id(object)
        }
      }}
   end
@@ -860,4 +875,10 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   defp normalize_event(_type, _object) do
     {:error, :unknown_event}
   end
+
+  # Stripe's Charge reference lists `refunds` as "not returned by default"
+  # (newest first when present), so this is usually nil: the refund id is
+  # then unknown.
+  defp latest_refund_id(%{"refunds" => %{"data" => [%{"id" => id} | _]}}), do: id
+  defp latest_refund_id(_charge), do: nil
 end

@@ -270,17 +270,16 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   end
 
   defp process_refund(data) do
-    charge_id = data[:charge_id] || data[:payment_intent_id]
-
-    with {:ok, charge_id} <- ensure_present(charge_id, :no_charge_id),
-         {:ok, original_tx} <- find_transaction_by_provider_id(charge_id),
+    with {:ok, payment_ids} <- refund_payment_ids(data),
+         {:ok, original_tx} <- find_payment_transaction(payment_ids),
          {:ok, invoice} <- get_invoice(original_tx.invoice_uuid),
-         {:ok, amount} <- refund_amount(data, invoice, original_tx) do
+         :ok <- ensure_refund_not_recorded(invoice, refund_id(data)),
+         {:ok, amount} <- refund_amount(data, invoice, original_tx, payment_ids) do
       refund_attrs = %{
         amount: amount,
         payment_method: original_tx.payment_method,
         description: refund_description(data),
-        provider_transaction_id: data[:refund_id] || data[:charge_id],
+        provider_transaction_id: data[:refund_id],
         provider_data: data
       }
 
@@ -309,13 +308,33 @@ defmodule PhoenixKitBilling.WebhookProcessor do
         Logger.warning("Refund webhook missing charge_id: #{inspect(data)}")
         {:ok, :ignored}
 
+      # Not retried: on a Stripe account shared with other sites most of these
+      # are their refunds, and a non-2xx would only make Stripe redeliver them
+      # for days. The `:unmatched_refund` result leaves a note on the stored
+      # event (see `mark_event_processed/2`) so the miss can be found later.
       {:error, :transaction_not_found} ->
-        Logger.warning("Refund webhook references unknown charge: #{inspect(charge_id)}")
-        {:ok, :ignored}
+        Logger.error(
+          "Refund webhook matches no recorded payment, so it was NOT applied: " <>
+            "charge #{inspect(data[:charge_id])}, " <>
+            "payment intent #{inspect(data[:payment_intent_id])}, " <>
+            "refund #{inspect(data[:refund_id])}. If the payment belongs to this " <>
+            "shop, reconcile it by hand; a payment taken by another site on the " <>
+            "same account lands here too."
+        )
+
+        {:ok, :unmatched_refund}
 
       {:error, :invoice_not_found} ->
         Logger.warning("Refund webhook's original transaction has no matching invoice")
         {:ok, :ignored}
+
+      {:error, :already_recorded} ->
+        Logger.info("Refund #{inspect(data[:refund_id])} is already in the ledger; skipping")
+        {:ok, :already_recorded}
+
+      {:error, :already_refunded} ->
+        Logger.info("Refund webhook reports nothing beyond what the ledger already holds")
+        {:ok, :already_refunded}
     end
   end
 
@@ -361,11 +380,60 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
-  defp find_transaction_by_provider_id(charge_id) do
-    case repo().get_by(Transaction, provider_transaction_id: charge_id) do
+  # The ids a refund event names its payment by. Stripe sends a charge and,
+  # for anything paid through a PaymentIntent, that too.
+  defp refund_payment_ids(data) do
+    case [data[:charge_id], data[:payment_intent_id]] |> Enum.reject(&is_nil/1) |> Enum.uniq() do
+      [] -> {:error, :no_charge_id}
+      ids -> {:ok, ids}
+    end
+  end
+
+  # A payment is recorded under whichever id the event that created it
+  # carried: a Checkout payment under its PaymentIntent (`pi_...`, with no
+  # charge id anywhere), a saved-card charge under the charge, and the other
+  # id may sit in `provider_data`. Only payments (positive amounts) match - a
+  # refund recorded without a refund id once reused the charge id, and
+  # matched itself on the next refund.
+  defp find_payment_transaction(provider_ids) do
+    Transaction
+    |> where([t], t.amount > 0)
+    |> where(
+      [t],
+      t.provider_transaction_id in ^provider_ids or
+        fragment("?->>'payment_intent_id'", t.provider_data) in ^provider_ids or
+        fragment("?->>'charge_id'", t.provider_data) in ^provider_ids
+    )
+    |> order_by([t], asc: t.inserted_at, asc: t.uuid)
+    |> limit(1)
+    |> repo().one()
+    |> case do
       nil -> {:error, :transaction_not_found}
       tx -> {:ok, tx}
     end
+  end
+
+  # The provider's id for THIS refund, when the event has one. EveryPay names
+  # a payment and its refund by one reference, which says nothing about which
+  # refund this is.
+  defp refund_id(data) do
+    id = data[:refund_id]
+    if id in [data[:charge_id], data[:payment_intent_id]], do: nil, else: id
+  end
+
+  defp ensure_refund_not_recorded(_invoice, nil), do: :ok
+
+  defp ensure_refund_not_recorded(invoice, refund_id) do
+    recorded? =
+      repo().exists?(
+        from(t in Transaction,
+          where:
+            t.invoice_uuid == ^invoice.uuid and t.amount < 0 and
+              t.provider_transaction_id == ^refund_id
+        )
+      )
+
+    if recorded?, do: {:error, :already_recorded}, else: :ok
   end
 
   # §7/E5: the webhook's own reported amount is a provider minor unit,
@@ -386,7 +454,17 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # already-existing path rather than through a guessed conversion
   # factor - it trusts what THIS shop already knows about the invoice
   # instead of a webhook figure it cannot safely interpret.
-  defp refund_amount(data, invoice, original_tx) do
+  defp refund_amount(data, invoice, original_tx, payment_ids) do
+    case webhook_amount_for_key(data, :amount_refunded_total) do
+      {:ok, total} ->
+        unrecorded_refund(total, invoice, original_tx, payment_ids)
+
+      :error ->
+        per_refund_amount(data, invoice, original_tx)
+    end
+  end
+
+  defp per_refund_amount(data, invoice, original_tx) do
     case webhook_amount(data, :amount_refunded, :amount) do
       {:ok, amount} ->
         {:ok, amount}
@@ -401,12 +479,52 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
+  # Stripe reports a charge's refunds as one running total that grows with
+  # every refund. What is new is that total less what the ledger already
+  # holds for the payment - which also covers a redelivered event, events
+  # arriving out of order, and a refund the host recorded itself after
+  # creating it at Stripe.
+  #
+  # Read outside the invoice lock `record_refund/3` takes, so two events for
+  # the same charge handled at the same instant could each see the other's
+  # row missing. The row they write is still bounded by the locked
+  # paid_amount.
+  defp unrecorded_refund(total, invoice, original_tx, payment_ids) do
+    delta = Decimal.sub(total, recorded_refund_total(invoice, original_tx, payment_ids))
+
+    if Decimal.positive?(delta), do: {:ok, delta}, else: {:error, :already_refunded}
+  end
+
+  defp recorded_refund_total(invoice, original_tx, payment_ids) do
+    from(t in Transaction,
+      where:
+        t.invoice_uuid == ^invoice.uuid and t.amount < 0 and
+          t.payment_method == ^original_tx.payment_method,
+      select: {t.amount, t.provider_data}
+    )
+    |> repo().all()
+    |> Enum.reject(fn {_amount, provider_data} ->
+      refund_of_other_payment?(provider_data, payment_ids)
+    end)
+    |> Enum.reduce(Decimal.new(0), fn {amount, _provider_data}, sum ->
+      Decimal.add(sum, Decimal.abs(amount))
+    end)
+  end
+
+  # A refund this processor recorded names the payment it reversed. One
+  # recorded by hand or by the host names none, and counts toward whichever
+  # payment of the invoice asks.
+  defp refund_of_other_payment?(provider_data, payment_ids) do
+    named =
+      [provider_data["charge_id"], provider_data["payment_intent_id"]]
+      |> Enum.reject(&is_nil/1)
+
+    named != [] and not Enum.any?(named, &(&1 in payment_ids))
+  end
+
   defp refund_description(data) do
     data[:reason] || data[:description] || "Provider refund webhook"
   end
-
-  defp ensure_present(nil, error), do: {:error, error}
-  defp ensure_present(value, _error), do: {:ok, value}
 
   defp payment_method_exists?(provider, provider_pm_id) do
     repo().exists?(
@@ -463,18 +581,14 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
-  defp mark_event_processed(%WebhookEvent{} = webhook_event, {:ok, _}) do
-    webhook_event
-    |> WebhookEvent.processed_changeset()
-    |> repo().update()
-    |> case do
-      {:ok, _} ->
-        :ok
+  # Processed, but with a note: a refund that matched no payment was
+  # acknowledged, not applied.
+  defp mark_event_processed(%WebhookEvent{} = webhook_event, {:ok, :unmatched_refund}) do
+    mark_processed(webhook_event, "refund matches no recorded payment; not applied")
+  end
 
-      {:error, reason} ->
-        Logger.warning("Could not mark webhook event processed: #{inspect(reason)}")
-        :ok
-    end
+  defp mark_event_processed(%WebhookEvent{} = webhook_event, {:ok, _}) do
+    mark_processed(webhook_event, nil)
   end
 
   defp mark_event_processed(%WebhookEvent{} = webhook_event, {:error, reason}) do
@@ -487,6 +601,20 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
       {:error, fail_reason} ->
         Logger.warning("Could not mark webhook event failed: #{inspect(fail_reason)}")
+        :ok
+    end
+  end
+
+  defp mark_processed(%WebhookEvent{} = webhook_event, note) do
+    webhook_event
+    |> WebhookEvent.processed_changeset(note)
+    |> repo().update()
+    |> case do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Could not mark webhook event processed: #{inspect(reason)}")
         :ok
     end
   end
