@@ -13,6 +13,9 @@ defmodule PhoenixKitBilling.MigrationsAdoptionTest do
 
   @schema "pkb_v6_seed_test"
 
+  # V7's counter table is the one thing a rollback below V7 drops.
+  defp v7_drop, do: ["DROP TABLE IF EXISTS public.phoenix_kit_billing_number_sequences"]
+
   describe "the order of the statements" do
     test "the base tables come before the first statement that touches them" do
       statements = Migrations.up_statements("public")
@@ -43,8 +46,8 @@ defmodule PhoenixKitBilling.MigrationsAdoptionTest do
       end
     end
 
-    test "down from V6 only rewrites the marker" do
-      assert [marker] = Migrations.down_statements("public", 5)
+    test "down to 5 rewrites the marker and drops the V7 counter" do
+      assert [marker] = Migrations.down_statements("public", 5) -- v7_drop()
       assert marker =~ "pkb_schema:5"
     end
   end

@@ -214,11 +214,93 @@ defmodule PhoenixKitBilling.Migrations do
   exist: re-adding `NOT NULL` would fail anyway, and the only way to make
   it succeed would be to delete or re-attribute money records, which a
   rollback must never do silently.
+
+  ## V7 — a counter for order, invoice, receipt and transaction numbers
+
+  Numbers used to be `count(rows of the year) + 1`. Delete any row of the year
+  but the last and the count falls behind a number already taken: the insert
+  fails on the unique index, and keeps failing, because the count no longer
+  grows. Two concurrent creates read the same count and collide the same way.
+
+  V7 creates `phoenix_kit_billing_number_sequences` — `(scope, year)` primary
+  key, `last_value`, `updated_at` — the counter the numbers now come from
+  (`scope` is `order`, `invoice`, `receipt` or `transaction`). The code takes a
+  number with a row-locking `UPDATE` inside the transaction that inserts the
+  row using it, so creates queue up, a rolled-back insert gives its number
+  back, and deleting a row never frees one. A scope with no row yet for the
+  year is seeded from the rows already there (the larger of their count and
+  their highest number), so an existing install continues where it was.
+
+  Numbers taken outside the counter are met in two ways. A number the caller
+  types, or changes a row to, that has this year's shape with the configured
+  prefix (`PREFIX-YYYY-NNNN`) lifts the counter to at least NNNN without using
+  a value. A generated number that a row already has (a node that still counts
+  rows, or a number typed in another shape) is skipped: the insert runs in a
+  savepoint, and on a unique-index conflict on that number the counter is
+  first lifted to the highest number of the year with the configured prefix
+  (so a long run is stepped over at once), then the next number is tried, up
+  to 20 times, each skipped number staying used up. If all 20 are taken the
+  create returns `{:error, changeset}` with an error on the number field and
+  the counter left past them. Only numbers zero-padded to four digits or more
+  (`ORD-2026-0007`, as the counter writes them) count.
+
+  Receipts have no unique index on purpose: a receipt number is written by an
+  `UPDATE` inside the payment transaction, and a unique violation there would
+  roll back the money record - the opposite of what a number clash deserves.
+  So nothing is skipped for receipts, and the counter's only guard against a
+  reissue is the seed. The seed reads orders, invoices and transactions from the
+  last day of the previous year on (a number of this year sits on a row made
+  this year, give or take a day for the clock, and a miss is skipped on the
+  unique index), but the receipt seed is unwindowed: it reads every receipt
+  number, once per scope-year, so a `RCP-<year>-NNNN` written long before the
+  year (set by hand in late December, clock skew) is seen.
+
+  **Run V7 before the code that uses it.** Without the table every create
+  raises `undefined_table`. Old nodes that still number by `count + 1` can keep
+  running next to new ones for a while - the skip above steps over the numbers
+  they take - but finish the rollout quickly: an old node can also meet a
+  number the counter issued, and its create then fails on the unique index.
+
+  Unlike every table above, this one is created by this chain, not by core, so
+  `down/1` below V7 drops it. A later `up/1` then reseeds from the rows that
+  survive, so the numbers of deleted top rows can come back.
+
+  Locks. A create holds its counter row until its transaction ends, so the
+  rule is: **a path takes the row locks it needs before its counters, and does
+  not wait for a row lock while holding a counter** - with one exception, below.
+  `update_order` and `update_invoice` that change a number lock their own row
+  (`FOR NO KEY UPDATE`, `FOR UPDATE`) before lifting a counter, which is why a
+  transaction that holds that row and then creates a document cannot deadlock
+  with them. The exception: paying an invoice (`mark_invoice_paid`,
+  `record_payment`) takes the invoice row, then the transaction and receipt
+  counters, and only then the linked order's row (`FOR NO KEY UPDATE`). So a
+  host transaction must not hold an order row and then wait for a transaction
+  or receipt counter.
+
+  Between kinds, take the locks in this order, everywhere: order counter,
+  invoice counter, invoice row, transaction counter, receipt counter, order row.
+  This list is for creates and payments. An update that changes a number is
+  the other way round for its own document: `update_order/2` takes the order
+  row first and then the order counter, `update_invoice/2` the invoice row and
+  then the invoice (or receipt) counter. A host must not copy the create order
+  for those and take the counter before the row. A host that wraps several
+  creates in one transaction must keep that order, or two of them can deadlock
+  (Postgres aborts one).
+
+  A typo in a number typed by hand in the series' own shape (`ORD-2026-9000`
+  for `ORD-2026-0090`) lifts the counter for good: the counter never goes back
+  down, so the numbers in between are skipped for the rest of the year.
+
+  The subscription renewal worker creates its invoice inside the transaction
+  that also charges the payment method, so it holds the invoice counter across
+  the provider call: other invoice creates wait for the charge to finish. Known
+  and left for a follow-up: create the invoice in a short transaction of its
+  own before the charge.
   """
 
   use Ecto.Migration
 
-  @current_version 6
+  @current_version 7
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -276,7 +358,7 @@ defmodule PhoenixKitBilling.Migrations do
     |> Enum.each(&execute/1)
   end
 
-  @doc "Rolls back to `target` (`:version` in `opts`). Never drops the table — see the moduledoc."
+  @doc "Rolls back to `target` (`:version` in `opts`). Never drops a core-created table — see the moduledoc."
   def down(opts \\ []) do
     prefix = validated_prefix(opts)
     target = target_version(opts, 0)
@@ -300,7 +382,8 @@ defmodule PhoenixKitBilling.Migrations do
   `phoenix_kit_currencies` (partial unique default-currency index,
   `rounding_rule`, `rate_updated_at`); `3` additionally adds
   `phoenix_kit_orders`' frozen-currency columns; `4` additionally adopts
-  the remaining ten core-baseline tables (see the moduledoc).
+  the remaining ten core-baseline tables (see the moduledoc); `7`
+  additionally creates the number sequences table.
   """
   @spec up_statements(String.t(), non_neg_integer()) :: [String.t()]
   def up_statements(prefix \\ "public", target \\ @current_version)
@@ -409,11 +492,14 @@ defmodule PhoenixKitBilling.Migrations do
 
       v5 = if target >= 5, do: v5_statements(prefix, p), else: []
 
+      v7 = if target >= 7, do: v7_statements(p), else: []
+
       v1 ++
         v6 ++
         v2 ++
         v3 ++
-        v4 ++ v5 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
+        v4 ++
+        v5 ++ v7 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
     end
   end
 
@@ -453,6 +539,23 @@ defmodule PhoenixKitBilling.Migrations do
         END IF;
       END
       $$
+      """
+    ]
+  end
+
+  # V7 — the counter behind order, invoice, receipt and transaction numbers (see the
+  # moduledoc). A table of this chain's own, so `IF NOT EXISTS` is all the
+  # idempotence it needs.
+  defp v7_statements(p) do
+    [
+      """
+      CREATE TABLE IF NOT EXISTS #{p}phoenix_kit_billing_number_sequences (
+        scope character varying(32) NOT NULL,
+        year integer NOT NULL,
+        last_value bigint NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL,
+        PRIMARY KEY (scope, year)
+      )
       """
     ]
   end
@@ -1186,7 +1289,8 @@ defmodule PhoenixKitBilling.Migrations do
   `phoenix_kit_orders` columns V3 added — never the
   `phoenix_kit_payment_provider_configs` table itself. V4 changes no
   shape of its own (pure adoption, like V1), so there is nothing below V4
-  to drop beyond the marker.
+  to drop beyond the marker. Below V7 the V7 counter table is dropped — the
+  only table here that this chain, not core, created.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ "public", target \\ 0)
@@ -1247,7 +1351,16 @@ defmodule PhoenixKitBilling.Migrations do
         "COMMENT ON TABLE #{p}#{@version_table} IS NULL"
       end
 
-    drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
+    # The one table this chain creates itself: the counter holds no money
+    # record, only the last number handed out.
+    drop_v7 =
+      if target < 7 do
+        ["DROP TABLE IF EXISTS #{p}phoenix_kit_billing_number_sequences"]
+      else
+        []
+      end
+
+    drop_v7 ++ drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do
