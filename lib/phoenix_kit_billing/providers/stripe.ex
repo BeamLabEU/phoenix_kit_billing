@@ -309,7 +309,12 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   @doc """
-  Creates a refund for a Stripe charge.
+  Creates a refund for a Stripe payment.
+
+  `provider_transaction_id` is the id the payment was recorded under: a
+  charge (`ch_…`, as saved-card charges are recorded) or a PaymentIntent
+  (`pi_…`, as Checkout payments are recorded). Stripe takes the two as
+  different parameters, so the id decides which one is sent.
 
   ## Options
 
@@ -358,10 +363,14 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
   defp build_refund_params(provider_transaction_id, amount, opts) do
     with {:ok, params} <-
-           maybe_put_refund_amount(%{charge: provider_transaction_id}, amount, opts) do
+           maybe_put_refund_amount(refund_target(provider_transaction_id), amount, opts) do
       {:ok, maybe_put_refund_reason(params, opts)}
     end
   end
+
+  # A PaymentIntent id sent as `charge` is answered with "No such charge".
+  defp refund_target("pi_" <> _ = payment_intent_id), do: %{payment_intent: payment_intent_id}
+  defp refund_target(charge_id), do: %{charge: charge_id}
 
   defp maybe_put_refund_amount(params, nil, _opts), do: {:ok, params}
 
@@ -510,10 +519,26 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
     body_encoded = if body, do: encode_body(body), else: ""
 
+    # TEST-ONLY seam: `:stripe_req_options` is never set in any shipped
+    # config - this merge is a no-op in production. It lets tests point the
+    # request at a `Req.Test` stub and read the form body Stripe would get.
+    # Whoever can write Application env for this node already controls far
+    # bigger levers, so the key does not widen what such an attacker can do.
+    # Same shape as `:paypal_req_options`.
+    extra_opts = Application.get_env(:phoenix_kit_billing, :stripe_req_options, [])
+
     request =
       case method do
-        :get -> Req.new(method: :get, url: url, headers: headers)
-        :post -> Req.new(method: :post, url: url, headers: headers, body: body_encoded)
+        :get ->
+          Req.new(Keyword.merge([method: :get, url: url, headers: headers], extra_opts))
+
+        :post ->
+          Req.new(
+            Keyword.merge(
+              [method: :post, url: url, headers: headers, body: body_encoded],
+              extra_opts
+            )
+          )
       end
 
     case Req.request(request) do
