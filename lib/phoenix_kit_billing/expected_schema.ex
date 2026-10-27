@@ -22,7 +22,7 @@ defmodule PhoenixKitBilling.ExpectedSchema do
   @schema_token "__SCHEMA__"
   @name_marker_exempt "__PK_NAME_EXEMPT__"
   @name_marker_always "__PK_NAME_ALWAYS__"
-  @chain_hash "047cfc1868d550aa5630c9f84c83ba1181fb7d414224331bfa5f076daf99177e"
+  @chain_hash "c4161edde7326e3159c9c0f055d196edbcdcef312c0b5a247a496dbde293018e"
 
   def objects(prefix) do
     prefix = normalize_prefix!(prefix)
@@ -97,6 +97,17 @@ defmodule PhoenixKitBilling.ExpectedSchema do
 
   defp raw_objects do
     [
+      %{
+        id: "table:phoenix_kit_billing_number_sequences",
+        owner: :phoenix_kit_billing,
+        check: {:catalog, %{name: "phoenix_kit_billing_number_sequences", kind: :table}},
+        create: "CREATE TABLE IF NOT EXISTS __SCHEMA__.phoenix_kit_billing_number_sequences ()",
+        since: 1,
+        class: :table,
+        revisions: [{1, %{}}],
+        presence: :required,
+        backfill: nil
+      },
       %{
         id: "table:phoenix_kit_billing_profiles",
         owner: :phoenix_kit_billing,
@@ -215,6 +226,64 @@ defmodule PhoenixKitBilling.ExpectedSchema do
         since: 1,
         class: :table,
         revisions: [{1, %{}}],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_billing_number_sequences.last_value",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{table: "phoenix_kit_billing_number_sequences", column: "last_value", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_billing_number_sequences ADD COLUMN IF NOT EXISTS \"last_value\" bigint",
+        since: 1,
+        class: :column,
+        revisions: [{1, %{default: nil, type: "bigint", pos: 3, not_null: true}}],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_billing_number_sequences.scope",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{table: "phoenix_kit_billing_number_sequences", column: "scope", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_billing_number_sequences ADD COLUMN IF NOT EXISTS \"scope\" character varying(32)",
+        since: 1,
+        class: :column,
+        revisions: [{1, %{default: nil, type: "character varying(32)", pos: 1, not_null: true}}],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_billing_number_sequences.updated_at",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{table: "phoenix_kit_billing_number_sequences", column: "updated_at", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_billing_number_sequences ADD COLUMN IF NOT EXISTS \"updated_at\" timestamp with time zone DEFAULT now() NOT NULL",
+        since: 1,
+        class: :column,
+        revisions: [
+          {1, %{default: "now()", type: "timestamp with time zone", pos: 4, not_null: true}}
+        ],
+        presence: :required,
+        backfill: :default
+      },
+      %{
+        id: "column:phoenix_kit_billing_number_sequences.year",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{table: "phoenix_kit_billing_number_sequences", column: "year", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_billing_number_sequences ADD COLUMN IF NOT EXISTS \"year\" integer",
+        since: 1,
+        class: :column,
+        revisions: [{1, %{default: nil, type: "integer", pos: 2, not_null: true}}],
         presence: :required,
         backfill: nil
       },
@@ -4557,6 +4626,37 @@ defmodule PhoenixKitBilling.ExpectedSchema do
              predicate: nil,
              opclasses: ["uuid_ops"],
              name_template: nil
+           }}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id:
+          "constraint:phoenix_kit_billing_number_sequences.phoenix_kit_billing_number_sequences_pkey",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{
+             name: "phoenix_kit_billing_number_sequences_pkey",
+             table: "phoenix_kit_billing_number_sequences",
+             kind: :constraint
+           }},
+        create:
+          "DO $$\nBEGIN\n  IF NOT EXISTS (\n    SELECT 1\n    FROM pg_constraint c\n    JOIN pg_class t ON t.oid = c.conrelid\n    JOIN pg_namespace n ON n.oid = t.relnamespace\n    WHERE c.conname = 'phoenix_kit_billing_number_sequences_pkey'\n      AND t.relname = 'phoenix_kit_billing_number_sequences'\n      AND n.nspname = '__SCHEMA__'\n  ) THEN\n    ALTER TABLE __SCHEMA__.phoenix_kit_billing_number_sequences ADD CONSTRAINT phoenix_kit_billing_number_sequences_pkey PRIMARY KEY (scope, year);\n  END IF;\nEND\n$$",
+        since: 1,
+        class: :constraint,
+        revisions: [
+          {1,
+           %{
+             type: "p",
+             columns: ["scope", "year"],
+             definition: "PRIMARY KEY (scope, year)",
+             name_template: nil,
+             foreign_table: nil,
+             foreign_columns: nil,
+             on_delete: nil,
+             on_update: nil
            }}
         ],
         presence: :required,

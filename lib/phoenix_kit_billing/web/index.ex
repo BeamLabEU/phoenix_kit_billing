@@ -11,7 +11,6 @@ defmodule PhoenixKitBilling.Web.Index do
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
-  alias PhoenixKit.Utils.Routes
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.TimeDisplay
   import PhoenixKitBilling.Web.Components.CurrencyDisplay
@@ -21,20 +20,18 @@ defmodule PhoenixKitBilling.Web.Index do
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Paths
   alias PhoenixKitBilling.Web.Authz
   alias PhoenixKitBilling.Web.Trail
 
   @impl true
   def mount(_params, _session, socket) do
     if Billing.enabled?() do
-      project_title = Settings.get_project_title()
-
       socket =
         socket
         |> Trail.landing()
-        |> assign(:project_title, project_title)
         |> assign_capabilities()
-        |> load_dashboard_data()
+        |> assign(stats: nil, recent_orders: [], recent_invoices: [], currencies: [])
 
       {:ok, socket}
     else
@@ -47,7 +44,10 @@ defmodule PhoenixKitBilling.Web.Index do
 
   @impl true
   def handle_params(_params, _url, socket) do
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:project_title, Settings.get_project_title())
+     |> load_dashboard_data()}
   end
 
   # The dashboard sits on the base "billing" key, so it shows a section only
@@ -78,7 +78,8 @@ defmodule PhoenixKitBilling.Web.Index do
         do: Billing.list_invoices(limit: 5, sort_by: :inserted_at, sort_order: :desc),
         else: []
 
-    currencies = Billing.list_currencies(enabled: true)
+    currencies =
+      if socket.assigns.can_settings?, do: Billing.list_currencies(enabled: true), else: []
 
     socket
     |> assign(:stats, stats)
@@ -94,11 +95,11 @@ defmodule PhoenixKitBilling.Web.Index do
 
   @impl true
   def handle_event("view_order", %{"uuid" => uuid}, socket) do
-    {:noreply, push_navigate(socket, to: Routes.path("/admin/billing/orders/#{uuid}"))}
+    {:noreply, push_navigate(socket, to: Paths.order_detail(uuid))}
   end
 
   @impl true
   def handle_event("view_invoice", %{"uuid" => uuid}, socket) do
-    {:noreply, push_navigate(socket, to: Routes.path("/admin/billing/invoices/#{uuid}"))}
+    {:noreply, push_navigate(socket, to: Paths.invoice_detail(uuid))}
   end
 end

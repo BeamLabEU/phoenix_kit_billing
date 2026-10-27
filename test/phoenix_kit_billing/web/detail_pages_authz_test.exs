@@ -105,6 +105,7 @@ defmodule PhoenixKitBilling.Web.DetailPagesAuthzTest do
       refute html =~ "Paid Revenue"
       refute html =~ "Total Orders"
       refute html =~ "Payment Providers"
+      refute html =~ "Active Currencies"
     end
 
     test "each capability reveals only its own section", %{conn: conn} = ctx do
@@ -115,6 +116,7 @@ defmodule PhoenixKitBilling.Web.DetailPagesAuthzTest do
       assert html =~ "Total Orders"
       refute html =~ ctx.invoice.invoice_number
       refute html =~ "Paid Revenue"
+      refute html =~ "Active Currencies"
 
       {:ok, _view, html} =
         live(conn_with(conn, ["billing", "billing.manage_invoices"]), "/en/admin/billing/")
@@ -123,6 +125,33 @@ defmodule PhoenixKitBilling.Web.DetailPagesAuthzTest do
       assert html =~ "Paid Revenue"
       refute html =~ ctx.order.order_number
       refute html =~ "Total Orders"
+      refute html =~ "Active Currencies"
+    end
+
+    test "settings holders see currencies on load and refresh", %{conn: conn} do
+      {:ok, view, html} =
+        live(conn_with(conn, ["billing", "billing.manage_settings"]), "/en/admin/billing/")
+
+      assert html =~ "Active Currencies"
+      assert has_element?(view, "a[href='/admin/billing/currencies']")
+
+      assert view |> element("button[phx-click='refresh']") |> render_click() =~
+               "Active Currencies"
+    end
+
+    test "dashboard navigation reloads recent records", %{conn: conn} = ctx do
+      {:ok, view, _html} =
+        live(conn_with(conn, ["billing", "billing.manage_orders"]), "/en/admin/billing/")
+
+      assert {:ok, order} =
+               Billing.create_order(ctx.order.user_uuid, %{
+                 "total" => Decimal.new("7.00"),
+                 "currency" => "EUR",
+                 "billing_snapshot" => %{"email" => "g@example.com"}
+               })
+
+      refute render(view) =~ order.order_number
+      assert render_patch(view, "/en/admin/billing/?refresh=1") =~ order.order_number
     end
   end
 end

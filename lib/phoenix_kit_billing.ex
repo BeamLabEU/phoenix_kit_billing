@@ -3079,9 +3079,9 @@ defmodule PhoenixKitBilling do
       |> Keyword.put_new(:payment_terms, get_payment_terms())
 
     source =
-      if Keyword.has_key?(opts, :invoice_number),
-        do: {:supplied, opts[:invoice_number]},
-        else: :generate
+      if blank_number?(opts[:invoice_number]),
+        do: :generate,
+        else: {:supplied, opts[:invoice_number]}
 
     build = fn number ->
       opts = if source == :generate, do: Keyword.put(opts, :invoice_number, number), else: opts
@@ -3095,7 +3095,9 @@ defmodule PhoenixKitBilling do
   # has ended - the commit, unless the caller's own transaction encloses this
   # call.
   defp insert_invoice(build, config, source) do
-    case insert_numbered(build, "invoice", config.invoice_prefix, :invoice_number, source) do
+    case insert_numbered(build, "invoice", config.invoice_prefix, :invoice_number, source,
+           receipt_number: "receipt"
+         ) do
       {:ok, created_invoice} ->
         Events.broadcast_invoice_created(created_invoice)
         {:ok, created_invoice}
@@ -4333,7 +4335,7 @@ defmodule PhoenixKitBilling do
   # the row inserted.
   #
   # `field` is the column of the number, which has a unique index.
-  defp insert_numbered(build, scope, prefix, field, source) do
+  defp insert_numbered(build, scope, prefix, field, source, other_numbers \\ []) do
     year = current_year()
 
     case build.(nil) do
@@ -4354,11 +4356,17 @@ defmodule PhoenixKitBilling do
               end
 
             case inserted do
-              {:ok, record} -> {:inserted, record}
+              {:ok, record} ->
+                raise_record_sequence_floors(record, other_numbers, year)
+                {:inserted, record}
+
               # A run of taken numbers: nothing is wrong with what is inserted,
               # so the counter keeps the progress it made past them.
-              {:exhausted, changeset} -> {:exhausted, changeset}
-              {:error, changeset} -> repo().rollback(changeset)
+              {:exhausted, changeset} ->
+                {:exhausted, changeset}
+
+              {:error, changeset} ->
+                repo().rollback(changeset)
             end
           end)
 
@@ -4367,6 +4375,17 @@ defmodule PhoenixKitBilling do
           {:ok, {:exhausted, changeset}} -> {:error, changeset}
           {:error, _changeset} = error -> error
         end
+    end
+  end
+
+  # Imported invoices may already carry a receipt number. Lift its counter in
+  # the same transaction, after the invoice one, so a later payment cannot
+  # issue that receipt number again.
+  defp raise_record_sequence_floors(record, numbers, year) do
+    for {field, scope} <- numbers,
+        number = Map.fetch!(record, field),
+        is_binary(number) do
+      raise_sequence_floor(scope, number_prefix(scope), year, number)
     end
   end
 
