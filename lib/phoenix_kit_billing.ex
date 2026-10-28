@@ -5849,7 +5849,7 @@ defmodule PhoenixKitBilling do
         Billing.start_order_payment(order, success_url: "https://shop.example/orders/1")
   """
   @spec start_order_payment(Order.t() | String.t(), keyword()) ::
-          {:ok, %{invoice: %Invoice{}, url: String.t()}} | {:error, term()}
+          {:ok, %{invoice: struct(), url: String.t()}} | {:error, term()}
   defdelegate start_order_payment(order_or_uuid, opts),
     to: PhoenixKitBilling.OrderPayment,
     as: :start

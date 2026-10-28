@@ -50,7 +50,7 @@ defmodule PhoenixKitBilling.OrderPayment do
   @session_reuse_seconds 3600
 
   @spec start(Order.t() | String.t(), keyword()) ::
-          {:ok, %{invoice: %Invoice{}, url: String.t()}} | {:error, term()}
+          {:ok, %{invoice: struct(), url: String.t()}} | {:error, term()}
   def start(order_or_uuid, opts) do
     success_url = Keyword.fetch!(opts, :success_url)
     opts = Keyword.put_new(opts, :cancel_url, success_url)

@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
 
   use PhoenixKitBilling.DataCase, async: false
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Order, WebhookProcessor}
@@ -295,7 +296,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       1..4
       |> Enum.map(fn _ ->
         Task.async(fn ->
-          Ecto.Adapters.SQL.Sandbox.allow(Repo, parent, self())
+          Sandbox.allow(Repo, parent, self())
           Req.Test.allow(__MODULE__, parent, self())
           Billing.start_order_payment(order, @urls)
         end)
