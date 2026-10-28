@@ -47,7 +47,7 @@ defmodule PhoenixKitBilling.OrderPayment do
   # hours; one hour is short enough to be live on every provider we know.
   @session_reuse_seconds 3600
 
-  @spec start(%Order{} | String.t(), keyword()) ::
+  @spec start(Order.t() | String.t(), keyword()) ::
           {:ok, %{invoice: %Invoice{}, url: String.t()}} | {:error, term()}
   def start(order_or_uuid, opts) do
     success_url = Keyword.fetch!(opts, :success_url)

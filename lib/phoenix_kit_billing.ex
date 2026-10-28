@@ -2665,7 +2665,7 @@ defmodule PhoenixKitBilling do
   or `{:error, changeset}` for invalid `attrs`. Repeating a call with the same
   `attrs` leaves the stored mark as it is.
   """
-  @spec put_order_sync(%Order{} | String.t(), map()) ::
+  @spec put_order_sync(Order.t() | String.t(), map()) ::
           {:ok, Order.t()} | {:error, :not_found | :stale_revision | Ecto.Changeset.t()}
   def put_order_sync(%Order{uuid: uuid}, attrs), do: put_order_sync(uuid, attrs)
 
@@ -5848,7 +5848,7 @@ defmodule PhoenixKitBilling do
       {:ok, %{invoice: invoice, url: url}} =
         Billing.start_order_payment(order, success_url: "https://shop.example/orders/1")
   """
-  @spec start_order_payment(%Order{} | String.t(), keyword()) ::
+  @spec start_order_payment(Order.t() | String.t(), keyword()) ::
           {:ok, %{invoice: %Invoice{}, url: String.t()}} | {:error, term()}
   defdelegate start_order_payment(order_or_uuid, opts),
     to: PhoenixKitBilling.OrderPayment,
