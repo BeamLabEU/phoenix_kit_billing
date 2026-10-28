@@ -58,17 +58,17 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
     user
   end
 
-  # An issued EUR 30.00 invoice with a linked order, as a Checkout Session
-  # would be created for it.
-  defp invoice_fixture(user) do
+  # An issued invoice (EUR 30.00 unless told otherwise) with a linked order,
+  # as a Checkout Session would be created for it.
+  defp invoice_fixture(user, currency \\ "EUR", total \\ "30.00") do
     {:ok, order} =
       Billing.create_order(user, %{
         "line_items" => [
-          %{"name" => "Item", "quantity" => 1, "unit_price" => "30.00", "total" => "30.00"}
+          %{"name" => "Item", "quantity" => 1, "unit_price" => total, "total" => total}
         ],
-        "subtotal" => Decimal.new("30.00"),
-        "total" => Decimal.new("30.00"),
-        "currency" => "EUR",
+        "subtotal" => Decimal.new(total),
+        "total" => Decimal.new(total),
+        "currency" => currency,
         "status" => "pending",
         "billing_snapshot" => %{"email" => user.email}
       })
@@ -85,7 +85,7 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
 
   defp event_id, do: "evt_#{System.unique_integer([:positive])}"
 
-  defp checkout_completed(invoice, payment_intent, cents \\ 3000) do
+  defp checkout_completed(invoice, payment_intent, cents, currency) do
     %{
       "id" => event_id(),
       "type" => "checkout.session.completed",
@@ -97,7 +97,7 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
           "payment_status" => "paid",
           "payment_intent" => payment_intent,
           "amount_total" => cents,
-          "currency" => "eur",
+          "currency" => currency,
           "metadata" => %{"invoice_uuid" => invoice.uuid}
         }
       }
@@ -114,7 +114,7 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
         "object" => "charge",
         "amount" => amount,
         "amount_refunded" => refunded_total,
-        "currency" => "eur",
+        "currency" => Keyword.get(opts, :currency, "eur"),
         "payment_intent" => payment_intent,
         "refunded" => refunded_total >= amount
       }
@@ -155,8 +155,9 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
   end
 
   # Pays the invoice the way a Checkout Session does: `checkout.session.completed`.
-  defp pay_by_checkout(invoice, payment_intent) do
-    assert {:ok, %{status: "paid"}} = deliver(checkout_completed(invoice, payment_intent))
+  defp pay_by_checkout(invoice, payment_intent, cents \\ 3000, currency \\ "eur") do
+    assert {:ok, %{status: "paid"}} =
+             deliver(checkout_completed(invoice, payment_intent, cents, currency))
   end
 
   describe "a payment taken through Checkout (stored under the PaymentIntent id)" do
@@ -520,6 +521,184 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
       stored = Repo.get_by!(WebhookEvent, provider: "stripe", event_id: "evt_mine_2")
       assert stored.processed
       assert is_nil(stored.error_message)
+    end
+  end
+
+  describe "a running total the ledger cannot take in" do
+    # 25.00 of the invoice is already refunded, against another payment; the
+    # total Stripe reports for THIS payment is the whole 30.00. Nothing this
+    # processor can record reconciles the two.
+    defp ledger_ahead_of_stripe(payment_intent) do
+      {invoice, _order} = invoice_fixture(user_fixture())
+      pay_by_checkout(invoice, payment_intent)
+
+      {:ok, _other} =
+        Billing.record_refund(
+          Billing.get_invoice!(invoice.uuid),
+          %{
+            amount: Decimal.new("25.00"),
+            payment_method: "stripe",
+            provider_transaction_id: "re_other_#{payment_intent}",
+            provider_data: %{"payment_intent_id" => "pi_other_#{payment_intent}"}
+          },
+          nil
+        )
+
+      invoice
+    end
+
+    test "fails the event instead of acknowledging it as a duplicate" do
+      invoice = ledger_ahead_of_stripe("pi_gap_1")
+
+      log =
+        capture_log([level: :error], fn ->
+          assert {:error, :refund_exceeds_paid_amount} =
+                   deliver(charge_refunded("ch_gap_1", "pi_gap_1", 3000, event_id: "evt_gap_1"))
+        end)
+
+      assert log =~ "ch_gap_1"
+      assert log =~ "pi_gap_1"
+
+      # Nothing was recorded, and the invoice is not mistaken for refunded.
+      assert refunded_cents(invoice) == 2500
+      assert Decimal.equal?(Billing.get_invoice!(invoice.uuid).paid_amount, Decimal.new("5.00"))
+
+      # The stored event is failed, so Stripe redelivers it and the processor
+      # counts the attempt.
+      stored = Repo.get_by!(WebhookEvent, provider: "stripe", event_id: "evt_gap_1")
+      refute stored.processed
+      assert stored.retry_count == 1
+      assert stored.error_message =~ "refund_exceeds_paid_amount"
+    end
+
+    test "a redelivery reads the ledger as it is by then and records the remainder" do
+      invoice = ledger_ahead_of_stripe("pi_gap_2")
+      payload = charge_refunded("ch_gap_2", "pi_gap_2", 3000, event_id: "evt_gap_2")
+
+      capture_log([level: :error], fn ->
+        assert {:error, :refund_exceeds_paid_amount} = deliver(payload)
+      end)
+
+      # The row turns out to be this payment's own (what a concurrent event
+      # that had not committed yet looks like a moment later).
+      from(t in Transaction, where: t.provider_transaction_id == "re_other_pi_gap_2")
+      |> Repo.update_all(set: [provider_data: %{"payment_intent_id" => "pi_gap_2"}])
+
+      assert {:ok, %Transaction{amount: amount}} = deliver(payload)
+      assert Decimal.equal?(amount, Decimal.new("-5.00"))
+      assert refunded_cents(invoice) == 3000
+
+      stored = Repo.get_by!(WebhookEvent, provider: "stripe", event_id: "evt_gap_2")
+      assert stored.processed
+    end
+
+    test "an event in a currency the shop does not know is not guessed at" do
+      {invoice, _order} = invoice_fixture(user_fixture())
+      pay_by_checkout(invoice, "pi_gbp_1")
+
+      log =
+        capture_log([level: :error], fn ->
+          assert {:error, :refund_total_indeterminate} =
+                   deliver(
+                     charge_refunded("ch_gbp_1", "pi_gbp_1", 1000,
+                       currency: "gbp",
+                       event_id: "evt_gbp_1"
+                     )
+                   )
+        end)
+
+      assert log =~ "ch_gbp_1"
+
+      # Not "the whole payment" and not anything else.
+      assert refunded_cents(invoice) == 0
+      assert Decimal.equal?(Billing.get_invoice!(invoice.uuid).paid_amount, Decimal.new("30.00"))
+
+      stored = Repo.get_by!(WebhookEvent, provider: "stripe", event_id: "evt_gbp_1")
+      refute stored.processed
+      assert stored.retry_count == 1
+    end
+
+    test "a zero-decimal currency reconciles the running total in whole units" do
+      {:ok, _jpy} =
+        Billing.create_currency(%{
+          code: "JPY",
+          name: "Yen",
+          symbol: "¥",
+          decimal_places: 0,
+          exchange_rate: "150.0"
+        })
+
+      {invoice, _order} = invoice_fixture(user_fixture(), "JPY", "1000")
+      pay_by_checkout(invoice, "pi_jpy_1", 1000, "jpy")
+
+      opts = [amount: 1000, currency: "jpy"]
+
+      assert {:ok, %Transaction{amount: first}} =
+               deliver(charge_refunded("ch_jpy_1", "pi_jpy_1", 300, opts))
+
+      assert {:ok, %Transaction{amount: second}} =
+               deliver(charge_refunded("ch_jpy_1", "pi_jpy_1", 1000, opts))
+
+      assert Decimal.equal?(first, Decimal.new("-300"))
+      assert Decimal.equal?(second, Decimal.new("-700"))
+    end
+  end
+
+  describe "a provider that reports one refund at a time" do
+    test "a refund larger than what was paid is still dropped as already applied" do
+      {invoice, _order} = invoice_fixture(user_fixture())
+
+      {:ok, _payment} =
+        Billing.record_payment(
+          invoice,
+          %{
+            amount: Decimal.new("30.00"),
+            payment_method: "razorpay",
+            provider_transaction_id: "pay_rz_1"
+          },
+          nil
+        )
+
+      assert {:ok, %Transaction{}} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_rz_1",
+                 provider: :razorpay,
+                 type: "refund.created",
+                 data: %{
+                   charge_id: "pay_rz_1",
+                   refund_id: "rfnd_1",
+                   amount_refunded: 3000,
+                   currency: "EUR"
+                 }
+               })
+
+      # The same refund again under another event id: the id is in the ledger.
+      assert {:ok, :already_recorded} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_rz_2",
+                 provider: :razorpay,
+                 type: "refund.created",
+                 data: %{
+                   charge_id: "pay_rz_1",
+                   refund_id: "rfnd_1",
+                   amount_refunded: 3000,
+                   currency: "EUR"
+                 }
+               })
+
+      # A different refund of an amount nothing is left to refund.
+      assert {:ok, :already_refunded} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_rz_3",
+                 provider: :razorpay,
+                 type: "refund.created",
+                 data: %{
+                   charge_id: "pay_rz_1",
+                   refund_id: "rfnd_2",
+                   amount_refunded: 1000,
+                   currency: "EUR"
+                 }
+               })
     end
   end
 end

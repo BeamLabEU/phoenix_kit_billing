@@ -60,6 +60,29 @@ defmodule PhoenixKitBilling.Providers.StripeRefundEventsTest do
     assert data.payment_intent_id == nil
   end
 
+  # They describe the refunds `charge.refunded` already reports, and the two
+  # streams cannot be matched against each other.
+  test "the refund.created and refund.updated events are not consumed" do
+    refund = %{
+      "id" => "re_test_refund_1",
+      "object" => "refund",
+      "amount" => 1500,
+      "charge" => "ch_test_refund_1",
+      "currency" => "eur",
+      "payment_intent" => "pi_test_refund_1",
+      "status" => "succeeded"
+    }
+
+    for type <- ["refund.created", "refund.updated"] do
+      assert {:error, :unknown_event} =
+               Stripe.handle_webhook_event(%{
+                 "id" => "evt_refund",
+                 "type" => type,
+                 "data" => %{"object" => refund}
+               })
+    end
+  end
+
   test "a refunds list that is empty leaves the refund id unknown" do
     assert {:ok, %WebhookEventData{data: data}} =
              Stripe.handle_webhook_event(charge_refunded(%{"refunds" => %{"data" => []}}))
