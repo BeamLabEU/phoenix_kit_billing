@@ -287,6 +287,45 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     assert {:error, :already_paid} = Billing.start_order_payment(order, @urls)
   end
 
+  test "concurrent starts open one invoice and one session", %{stripe: stripe, counter: counter} do
+    order = order!(stripe)
+    parent = self()
+
+    results =
+      1..4
+      |> Enum.map(fn _ ->
+        Task.async(fn ->
+          Ecto.Adapters.SQL.Sandbox.allow(Repo, parent, self())
+          Req.Test.allow(__MODULE__, parent, self())
+          Billing.start_order_payment(order, @urls)
+        end)
+      end)
+      |> Task.await_many(15_000)
+
+    assert Enum.all?(results, &match?({:ok, %{url: "https://checkout.stripe.test/1"}}, &1))
+    assert :counters.get(counter, 1) == 1
+    assert length(Billing.list_invoices_for_order(order.uuid)) == 1
+  end
+
+  test "an existing draft invoice is sent and reused, and an overdue one is reused", %{
+    stripe: stripe
+  } do
+    order = order!(stripe)
+    {:ok, draft} = Billing.create_invoice_from_order(order)
+
+    {:ok, %{invoice: sent}} = Billing.start_order_payment(order, @urls)
+    assert sent.uuid == draft.uuid and sent.status == "sent"
+
+    Repo.update_all(from(i in Invoice, where: i.uuid == ^sent.uuid), set: [status: "overdue"])
+    {:ok, %{invoice: overdue}} = Billing.start_order_payment(order, @urls)
+    assert overdue.uuid == sent.uuid and overdue.status == "overdue"
+  end
+
+  test "the :provider option overrides the option's provider", %{cod: cod} do
+    assert {:ok, %{url: _}} =
+             Billing.start_order_payment(order!(cod), [{:provider, :stripe} | @urls])
+  end
+
   test "success_url is required", %{stripe: stripe} do
     assert_raise KeyError, fn -> Billing.start_order_payment(order!(stripe), []) end
   end
