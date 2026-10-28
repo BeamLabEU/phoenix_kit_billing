@@ -118,6 +118,18 @@ Providers are configured in admin settings. The system uses hosted checkout — 
 # Redirect user to session.url
 ```
 
+To pay an order with an online payment option, let billing do the whole chain
+(open invoice, made payable without an email, checkout session at the option's
+provider). It is idempotent: a second call returns the same invoice and, while
+it is live, the same URL.
+
+```elixir
+{:ok, %{invoice: invoice, url: url}} =
+  Billing.start_order_payment(order, success_url: "https://example.com/orders/1")
+```
+
+The payment is confirmed by the provider's webhook, never by the return URL.
+
 Webhooks are handled automatically at `/webhooks/billing/:provider`.
 
 > **Host setup — raw body reader.** Webhook signature verification needs

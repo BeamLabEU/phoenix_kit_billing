@@ -510,11 +510,21 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
     body_encoded = if body, do: encode_body(body), else: ""
 
-    request =
+    # TEST-ONLY seam: `:stripe_req_options` is never set in any shipped
+    # config - this merge is a no-op in production. It lets tests point the
+    # request at a `Req.Test` stub and read the form body Stripe would get.
+    # Whoever can write Application env for this node already controls far
+    # bigger levers, so the key does not widen what such an attacker can do.
+    # Same shape as `:paypal_req_options`.
+    extra_opts = Application.get_env(:phoenix_kit_billing, :stripe_req_options, [])
+
+    request_opts =
       case method do
-        :get -> Req.new(method: :get, url: url, headers: headers)
-        :post -> Req.new(method: :post, url: url, headers: headers, body: body_encoded)
+        :get -> [method: :get, url: url, headers: headers]
+        :post -> [method: :post, url: url, headers: headers, body: body_encoded]
       end
+
+    request = request_opts |> Keyword.merge(extra_opts) |> Req.new()
 
     case Req.request(request) do
       {:ok, %{status: status, body: response_body}} when status in 200..299 ->
