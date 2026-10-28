@@ -325,6 +325,13 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   (`pi_…`, as Checkout payments are recorded). Stripe takes the two as
   different parameters, so the id decides which one is sent.
 
+  This only creates the refund at Stripe. Record it in the ledger with
+  `PhoenixKitBilling.record_refund/3`, passing `payment_method: "stripe"` and
+  the returned `provider_refund_id` as `provider_transaction_id`: the webhook
+  that follows counts only refunds of the same payment method toward what the
+  ledger already holds, and `record_refund/3` defaults to `"bank"` - a refund
+  recorded under that default is recorded a second time when Stripe reports it.
+
   ## Options
 
   - `:currency` - Currency code, required only when `amount` is given (a
@@ -536,19 +543,13 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     # Same shape as `:paypal_req_options`.
     extra_opts = Application.get_env(:phoenix_kit_billing, :stripe_req_options, [])
 
-    request =
+    request_opts =
       case method do
-        :get ->
-          Req.new(Keyword.merge([method: :get, url: url, headers: headers], extra_opts))
-
-        :post ->
-          Req.new(
-            Keyword.merge(
-              [method: :post, url: url, headers: headers, body: body_encoded],
-              extra_opts
-            )
-          )
+        :get -> [method: :get, url: url, headers: headers]
+        :post -> [method: :post, url: url, headers: headers, body: body_encoded]
       end
+
+    request = request_opts |> Keyword.merge(extra_opts) |> Req.new()
 
     case Req.request(request) do
       {:ok, %{status: status, body: response_body}} when status in 200..299 ->
@@ -763,7 +764,7 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     end
   end
 
-  # `amount_total` / `amount` / `amount_refunded` below are Stripe's OWN
+  # `amount_total` / `amount` / `amount_refunded_total` below are Stripe's OWN
   # raw minor-unit integers, passed through unconverted — Stripe already
   # reports these at ITS OWN currency-correct scale (a JPY charge comes
   # back as "1000", not "100000"), so no conversion belongs here. The
