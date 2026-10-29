@@ -229,7 +229,31 @@ defmodule PhoenixKitBilling.OrderPayment do
 
       nil ->
         checkout_opts = Keyword.take(opts, [:success_url, :cancel_url, :customer_email])
-        Billing.create_checkout_session(invoice, provider, checkout_opts)
+
+        with {:ok, url} <- Billing.create_checkout_session(invoice, provider, checkout_opts) do
+          record_amount_due(invoice)
+          {:ok, url}
+        end
+    end
+  end
+
+  # Billing records the session under `metadata["checkout"]` without the amount
+  # it was opened for; this adds it, so `reusable_url/2` can tell a stale session.
+  # Best effort, like billing's own record: without it the session is simply
+  # not reused.
+  defp record_amount_due(%Invoice{uuid: uuid} = invoice) do
+    with %Invoice{metadata: %{"checkout" => %{} = checkout} = metadata} = stored <-
+           repo().get(Invoice, uuid),
+         {:ok, _} <-
+           stored
+           |> Ecto.Changeset.change(%{
+             metadata:
+               Map.put(metadata, "checkout", Map.put(checkout, "amount_due", amount_due(invoice)))
+           })
+           |> repo().update() do
+      :ok
+    else
+      _ -> :ok
     end
   end
 
