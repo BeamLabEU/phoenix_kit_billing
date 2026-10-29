@@ -477,6 +477,16 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     assert Billing.list_invoices_for_order(order.uuid) == []
   end
 
+  test "a call made inside a transaction is refused and does nothing", %{stripe: stripe} do
+    order = order!(stripe)
+
+    assert {:error, :in_transaction} =
+             Repo.transaction(fn -> Billing.start_order_payment(order, @urls) end)
+             |> elem(1)
+
+    assert Billing.list_invoices_for_order(order.uuid) == []
+  end
+
   describe "the per-order lock" do
     setup do
       config = Application.fetch_env!(:phoenix_kit_billing, Repo)

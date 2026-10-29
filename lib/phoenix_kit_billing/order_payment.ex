@@ -44,7 +44,23 @@ defmodule PhoenixKitBilling.OrderPayment do
   the reason is one of `:order_not_found`, `:order_not_payable` (cancelled,
   refunded, no online payment option), `:already_paid`,
   `:provider_not_available`, `:lock_timeout` (another start for the same
-  order held the lock for too long), or whatever billing's own functions return.
+  order held the lock for too long), `:in_transaction` (see below), or whatever
+  billing's own functions return.
+
+  ## The order lock
+
+  The lock is a Postgres *session* advisory lock on one pinned connection, so
+  the repo needs session pooling (PgBouncer in transaction mode does not keep
+  it on one connection). Its holder keeps that connection for the whole call,
+  provider request included: up to 60 s (the checkout timeout) if the provider
+  is slow. A second start for the same order polls for the lock, one short
+  checkout per try, up to 30 s by default; set
+  `config :phoenix_kit_billing, :order_payment_lock_wait_ms, ms` to change it.
+
+  Call it **outside a transaction**. Inside one, an aborted transaction would
+  make the unlock fail and leave the lock on the connection, and the invoice
+  events billing broadcasts would go out before your commit; so a call made in
+  a transaction answers `{:error, :in_transaction}` and does nothing.
   """
 
   import Ecto.Query
@@ -54,8 +70,8 @@ defmodule PhoenixKitBilling.OrderPayment do
 
   # A session is reused only while it is surely still live. Stripe keeps a
   # Checkout session for at least 30 minutes, but Razorpay's payment link
-  # expires after 30 minutes and PayPal and EveryPay set their own limits, so
-  # the window is 20 minutes, inside the shortest we know of.
+  # expires after 30 minutes (PayPal and EveryPay record no expiry), so the
+  # window is 20 minutes, inside the shortest we know of.
   @session_reuse_seconds 1200
 
   # The connection is held while the lock is waited for and the provider is
@@ -70,7 +86,8 @@ defmodule PhoenixKitBilling.OrderPayment do
     success_url = Keyword.fetch!(opts, :success_url)
     opts = Keyword.put_new(opts, :cancel_url, success_url)
 
-    with {:ok, uuid} <- order_uuid(order_or_uuid) do
+    with :ok <- ensure_not_in_transaction(),
+         {:ok, uuid} <- order_uuid(order_or_uuid) do
       # Everything from "which invoice" to "the session is recorded" runs under
       # the order's lock, so two clicks cannot open two sessions for one
       # invoice. It is a session-level lock on one pinned connection and no
@@ -90,6 +107,10 @@ defmodule PhoenixKitBilling.OrderPayment do
          {:ok, url} <- session_url(invoice, provider, opts) do
       {:ok, %{invoice: repo().get!(Invoice, invoice.uuid), url: url}}
     end
+  end
+
+  defp ensure_not_in_transaction do
+    if repo().in_transaction?(), do: {:error, :in_transaction}, else: :ok
   end
 
   defp order_uuid(%Order{uuid: uuid}), do: order_uuid(uuid)
@@ -231,7 +252,7 @@ defmodule PhoenixKitBilling.OrderPayment do
         checkout_opts = Keyword.take(opts, [:success_url, :cancel_url, :customer_email])
 
         with {:ok, url} <- Billing.create_checkout_session(invoice, provider, checkout_opts) do
-          record_amount_due(invoice)
+          record_amount_due(invoice, url)
           {:ok, url}
         end
     end
@@ -239,10 +260,11 @@ defmodule PhoenixKitBilling.OrderPayment do
 
   # Billing records the session under `metadata["checkout"]` without the amount
   # it was opened for; this adds it, so `reusable_url/2` can tell a stale session.
-  # Best effort, like billing's own record: without it the session is simply
-  # not reused.
-  defp record_amount_due(%Invoice{uuid: uuid} = invoice) do
-    with %Invoice{metadata: %{"checkout" => %{} = checkout} = metadata} = stored <-
+  # Only the record of the session just opened (its URL) is touched. Best
+  # effort, like billing's own record: without it the session is simply not
+  # reused.
+  defp record_amount_due(%Invoice{uuid: uuid} = invoice, url) do
+    with %Invoice{metadata: %{"checkout" => %{"url" => ^url} = checkout} = metadata} = stored <-
            repo().get(Invoice, uuid),
          {:ok, _} <-
            stored

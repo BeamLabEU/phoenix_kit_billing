@@ -78,6 +78,14 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   - `:customer_email` - Pre-fill customer email
   - `:metadata` - Additional metadata to attach
 
+  ## Amount
+
+  Stripe is asked for the amount due, `total - paid_amount`. The invoice's line
+  items are sent as they are when they add up to it; otherwise (tax, a
+  discount, a part payment) one line "Invoice <number>" for the amount due is
+  sent. An invoice with nothing left to pay answers `{:error, :nothing_to_pay}`
+  and no session is opened.
+
   ## Examples
 
       iex> create_checkout_session(invoice, success_url: "https://...", cancel_url: "https://...")
