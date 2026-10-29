@@ -87,6 +87,14 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   - `:customer_email` - Pre-fill customer email
   - `:metadata` - Additional metadata to attach
 
+  ## Amount
+
+  Stripe is asked for the amount due, `total - paid_amount`. The invoice's line
+  items are sent as they are when they add up to it; otherwise (tax, a
+  discount, a part payment) one line "Invoice <number>" for the amount due is
+  sent. An invoice with nothing left to pay answers `{:error, :nothing_to_pay}`
+  and no session is opened.
+
   ## Examples
 
       iex> create_checkout_session(invoice, success_url: "https://...", cancel_url: "https://...")
@@ -597,10 +605,28 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     [{"#{key}[#{idx}]", to_string(item)}]
   end
 
+  # Stripe charges the sum of the line items, while the invoice is paid by
+  # `total - paid_amount`, which also carries tax, discount and shipping that
+  # are not line items. When the two differ (tax, a discount, a part payment)
+  # the session is one line for the amount due, so Stripe takes exactly what
+  # the webhook will book.
   defp build_line_items(invoice) do
     currency =
       invoice.currency || raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
 
+    with {:ok, items} <- item_lines(invoice, currency),
+         {:ok, due} <- amount_due(invoice, currency),
+         :ok <- ensure_positive(due) do
+      if line_items_total(items) == due,
+        do: {:ok, items},
+        else: {:ok, [amount_due_line(invoice, currency, due)]}
+    end
+  end
+
+  defp ensure_positive(due) when due > 0, do: :ok
+  defp ensure_positive(_due), do: {:error, :nothing_to_pay}
+
+  defp item_lines(invoice, currency) do
     (invoice.line_items || [])
     |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
       case MinorUnits.to_minor_units(parse_decimal_amount(item["unit_price"]), currency) do
@@ -626,6 +652,37 @@ defmodule PhoenixKitBilling.Providers.Stripe do
       {:ok, items} -> {:ok, Enum.reverse(items)}
       {:error, _reason} = error -> error
     end
+  end
+
+  defp amount_due(invoice, currency) do
+    paid = parse_decimal_amount(Map.get(invoice, :paid_amount))
+    due = Decimal.sub(parse_decimal_amount(Map.get(invoice, :total)), paid)
+    MinorUnits.to_minor_units(due, currency)
+  end
+
+  # A non-integer quantity cannot be summed in minor units; it counts as "the
+  # lines do not add up", so the amount due is charged as one line.
+  defp line_items_total(items) do
+    Enum.reduce_while(items, 0, fn item, sum ->
+      case item.quantity do
+        quantity when is_integer(quantity) ->
+          {:cont, sum + item.price_data.unit_amount * quantity}
+
+        _ ->
+          {:halt, :unknown}
+      end
+    end)
+  end
+
+  defp amount_due_line(invoice, currency, due) do
+    %{
+      price_data: %{
+        currency: String.downcase(currency),
+        product_data: %{name: "Invoice #{invoice.invoice_number}"},
+        unit_amount: due
+      },
+      quantity: 1
+    }
   end
 
   defp parse_decimal_amount(nil), do: Decimal.new(0)

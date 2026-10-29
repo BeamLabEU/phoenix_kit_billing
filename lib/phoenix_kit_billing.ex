@@ -5842,6 +5842,26 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  Starts the online payment of an order and returns where to send the buyer.
+
+  Finds or creates the order's open invoice, makes it payable without sending
+  an email, and opens a checkout session at the provider of the order's
+  payment option. Calling it again for the same order returns the same invoice
+  and, while it is still live, the same session URL. Options and error reasons
+  are on `PhoenixKitBilling.OrderPayment`.
+
+  ## Examples
+
+      {:ok, %{invoice: invoice, url: url}} =
+        Billing.start_order_payment(order, success_url: "https://shop.example/orders/1")
+  """
+  @spec start_order_payment(Order.t() | String.t(), keyword()) ::
+          {:ok, %{invoice: Invoice.t(), url: String.t()}} | {:error, term()}
+  defdelegate start_order_payment(order_or_uuid, opts),
+    to: PhoenixKitBilling.OrderPayment,
+    as: :start
+
+  @doc """
   Creates a setup session for saving a payment method.
 
   Returns the setup URL to redirect the user to.
