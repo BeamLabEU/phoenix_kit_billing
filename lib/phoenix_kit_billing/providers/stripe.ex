@@ -33,6 +33,15 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   - `charge.refunded` - Refund processed
   - `setup_intent.succeeded` - Card saved successfully
 
+  `charge.refunded` is the one refund event this provider consumes. Its
+  Charge object carries the running total refunded on the charge, so a
+  refund is recorded as the part of that total the ledger does not hold yet
+  and a redelivery or a refund the host already recorded adds nothing. The
+  `refund.created` / `refund.updated` events describe the same refunds one
+  by one and are deliberately not consumed: the two streams cannot be
+  matched against each other (a Charge does not list its refunds by
+  default), so reading both would record a partial refund twice.
+
   ## Dependencies
 
   Talks to the Stripe REST API directly over `Req` — no `stripe` hex
@@ -309,7 +318,19 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   @doc """
-  Creates a refund for a Stripe charge.
+  Creates a refund for a Stripe payment.
+
+  `provider_transaction_id` is the id the payment was recorded under: a
+  charge (`ch_…`, as saved-card charges are recorded) or a PaymentIntent
+  (`pi_…`, as Checkout payments are recorded). Stripe takes the two as
+  different parameters, so the id decides which one is sent.
+
+  This only creates the refund at Stripe. Record it in the ledger with
+  `PhoenixKitBilling.record_refund/3`, passing `payment_method: "stripe"` and
+  the returned `provider_refund_id` as `provider_transaction_id`: the webhook
+  that follows counts only refunds of the same payment method toward what the
+  ledger already holds, and `record_refund/3` defaults to `"bank"` - a refund
+  recorded under that default is recorded a second time when Stripe reports it.
 
   ## Options
 
@@ -358,10 +379,14 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
   defp build_refund_params(provider_transaction_id, amount, opts) do
     with {:ok, params} <-
-           maybe_put_refund_amount(%{charge: provider_transaction_id}, amount, opts) do
+           maybe_put_refund_amount(refund_target(provider_transaction_id), amount, opts) do
       {:ok, maybe_put_refund_reason(params, opts)}
     end
   end
+
+  # A PaymentIntent id sent as `charge` is answered with "No such charge".
+  defp refund_target("pi_" <> _ = payment_intent_id), do: %{payment_intent: payment_intent_id}
+  defp refund_target(charge_id), do: %{charge: charge_id}
 
   defp maybe_put_refund_amount(params, nil, _opts), do: {:ok, params}
 
@@ -510,11 +535,21 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
     body_encoded = if body, do: encode_body(body), else: ""
 
-    request =
+    # TEST-ONLY seam: `:stripe_req_options` is never set in any shipped
+    # config - this merge is a no-op in production. It lets tests point the
+    # request at a `Req.Test` stub and read the form body Stripe would get.
+    # Whoever can write Application env for this node already controls far
+    # bigger levers, so the key does not widen what such an attacker can do.
+    # Same shape as `:paypal_req_options`.
+    extra_opts = Application.get_env(:phoenix_kit_billing, :stripe_req_options, [])
+
+    request_opts =
       case method do
-        :get -> Req.new(method: :get, url: url, headers: headers)
-        :post -> Req.new(method: :post, url: url, headers: headers, body: body_encoded)
+        :get -> [method: :get, url: url, headers: headers]
+        :post -> [method: :post, url: url, headers: headers, body: body_encoded]
       end
+
+    request = request_opts |> Keyword.merge(extra_opts) |> Req.new()
 
     case Req.request(request) do
       {:ok, %{status: status, body: response_body}} when status in 200..299 ->
@@ -729,7 +764,7 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     end
   end
 
-  # `amount_total` / `amount` / `amount_refunded` below are Stripe's OWN
+  # `amount_total` / `amount` / `amount_refunded_total` below are Stripe's OWN
   # raw minor-unit integers, passed through unconverted — Stripe already
   # reports these at ITS OWN currency-correct scale (a JPY charge comes
   # back as "1000", not "100000"), so no conversion belongs here. The
@@ -804,15 +839,21 @@ defmodule PhoenixKitBilling.Providers.Stripe do
      }}
   end
 
+  # A Charge's `amount_refunded` is the running total refunded on it, not
+  # the amount of the refund that raised this event - hence
+  # `amount_refunded_total`, which the processor reduces to the part not yet
+  # in the ledger. `payment_intent` is what ties the charge to a Checkout
+  # payment, which is recorded under the PaymentIntent id and has no charge id.
   defp normalize_event("charge.refunded", object) do
     {:ok,
      %{
        type: "refund.created",
        data: %{
          charge_id: object["id"],
-         amount_refunded: object["amount_refunded"],
+         payment_intent_id: object["payment_intent"],
+         amount_refunded_total: object["amount_refunded"],
          currency: object["currency"],
-         refund_id: List.first(object["refunds"]["data"] || [])["id"]
+         refund_id: latest_refund_id(object)
        }
      }}
   end
@@ -835,4 +876,10 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   defp normalize_event(_type, _object) do
     {:error, :unknown_event}
   end
+
+  # Stripe's Charge reference lists `refunds` as "not returned by default"
+  # (newest first when present), so this is usually nil: the refund id is
+  # then unknown.
+  defp latest_refund_id(%{"refunds" => %{"data" => [%{"id" => id} | _]}}), do: id
+  defp latest_refund_id(_charge), do: nil
 end

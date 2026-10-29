@@ -5007,6 +5007,13 @@ defmodule PhoenixKitBilling do
   - `attrs` - Transaction attributes including :amount (positive value), :description (reason)
   - `admin_user` - The admin user recording the refund
 
+  `attrs[:payment_method]` defaults to `"bank"`. A refund made at a payment
+  provider (`Providers.create_refund/4`) must be recorded with that provider's
+  method (`"stripe"`, ...) and its refund id as `:provider_transaction_id`;
+  the provider's refund webhook reconciles against refunds of the payment's
+  own method, so one recorded as `"bank"` is recorded again when the webhook
+  arrives.
+
   ## Examples
 
       {:ok, transaction} = Billing.record_refund(invoice, %{amount: "50.00", description: "Partial refund"}, admin)
