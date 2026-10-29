@@ -5044,9 +5044,31 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp do_record_transaction(invoice, amount, attrs, admin_user) do
-    transaction_attrs = build_transaction_attrs(invoice, amount, attrs, admin_user)
+  # Internal webhook entry point. Read the refund ledger under the same
+  # invoice lock as the insert, so concurrent deliveries cannot both claim
+  # the same unrecorded part of a cumulative refund.
+  @doc false
+  def record_provider_refund(%Invoice{} = invoice, attrs, amount_fun)
+      when is_function(amount_fun, 1) do
+    do_record_transaction(
+      invoice,
+      fn locked ->
+        case amount_fun.(locked) do
+          {:ok, amount} ->
+            if Decimal.positive?(amount),
+              do: Decimal.negate(amount),
+              else: repo().rollback(:invalid_amount)
 
+          {:error, reason} ->
+            repo().rollback(reason)
+        end
+      end,
+      attrs,
+      nil
+    )
+  end
+
+  defp do_record_transaction(invoice, amount_or_fun, attrs, admin_user) do
     result =
       repo().transaction(fn ->
         # Re-check the balance on the LOCKED invoice. The caller's check runs
@@ -5058,6 +5080,8 @@ defmodule PhoenixKitBilling do
         # second of two refunds that each fit only died later, when the
         # recalculated paid_amount went negative and `update!` raised.
         locked = lock_invoice_for_update(invoice)
+        amount = transaction_amount(amount_or_fun, locked)
+        transaction_attrs = build_transaction_attrs(locked, amount, attrs, admin_user)
 
         cond do
           Decimal.positive?(amount) and
@@ -5090,6 +5114,11 @@ defmodule PhoenixKitBilling do
         error
     end
   end
+
+  defp transaction_amount(amount_fun, locked) when is_function(amount_fun, 1),
+    do: amount_fun.(locked)
+
+  defp transaction_amount(amount, _locked), do: amount
 
   # Inside the transaction, with the invoice locked: the ledger row, then the
   # invoice brought in line with it. Returns what the transaction returns.

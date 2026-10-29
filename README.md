@@ -120,8 +120,9 @@ Providers are configured in admin settings. The system uses hosted checkout — 
 
 To pay an order with an online payment option, let billing do the whole chain
 (open invoice, made payable without an email, checkout session at the option's
-provider). It is idempotent: a second call returns the same invoice and, while
-it is live, the same URL.
+provider). A second call returns the same invoice and reuses a recent checkout
+URL when its provider, remaining balance, currency, return URLs and customer
+email match. All providers charge the invoice's remaining balance.
 
 ```elixir
 {:ok, %{invoice: invoice, url: url}} =

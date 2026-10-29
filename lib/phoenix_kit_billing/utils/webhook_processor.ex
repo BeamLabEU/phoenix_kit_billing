@@ -90,13 +90,13 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # Event Handlers
   # ===========================================
 
-  defp process_event(%{type: "checkout.completed", data: data}) do
+  defp process_event(%{type: "checkout.completed", provider: provider, data: data}) do
     Logger.info("Processing checkout.completed: #{inspect(data)}")
 
     case data do
       %{mode: "payment", invoice_uuid: invoice_uuid} when not is_nil(invoice_uuid) ->
         # One-time payment for invoice
-        process_invoice_payment(invoice_uuid, data)
+        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider))
 
       %{mode: "setup", user_uuid: user_uuid} when not is_nil(user_uuid) ->
         # Setup session - card saved
@@ -114,13 +114,13 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     {:ok, :expired}
   end
 
-  defp process_event(%{type: "payment.succeeded", data: data}) do
+  defp process_event(%{type: "payment.succeeded", provider: provider, data: data}) do
     Logger.info("Processing payment.succeeded: #{inspect(data)}")
 
     case data do
       %{invoice_uuid: invoice_uuid} when not is_nil(invoice_uuid) ->
         # Payment for invoice (e.g., subscription renewal)
-        process_invoice_payment(invoice_uuid, data)
+        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider))
 
       _ ->
         Logger.warning("Payment succeeded without invoice_uuid: #{inspect(data)}")
@@ -141,10 +141,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
-  defp process_event(%{type: "refund.created", data: data}) do
+  defp process_event(%{type: "refund.created", provider: provider, data: data}) do
     Logger.info("Processing refund.created: #{inspect(data)}")
     # Record refund transaction
-    process_refund(data)
+    process_refund(Map.put(data, :provider, to_string(provider)))
   end
 
   defp process_event(%{type: "setup.completed", data: data}) do
@@ -271,19 +271,23 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp process_refund(data) do
     with {:ok, payment_ids} <- refund_payment_ids(data),
-         {:ok, original_tx} <- find_payment_transaction(payment_ids),
-         {:ok, invoice} <- get_invoice(original_tx.invoice_uuid),
-         :ok <- ensure_refund_not_recorded(invoice, refund_id(data)),
-         {:ok, amount} <- refund_amount(data, invoice, original_tx, payment_ids) do
+         {:ok, original_tx} <- find_payment_transaction(payment_ids, data.provider),
+         {:ok, invoice} <- get_invoice(original_tx.invoice_uuid) do
       refund_attrs = %{
-        amount: amount,
         payment_method: original_tx.payment_method,
         description: refund_description(data),
         provider_transaction_id: refund_id(data),
         provider_data: data
       }
 
-      case Billing.record_refund(invoice, refund_attrs, nil) do
+      result =
+        Billing.record_provider_refund(invoice, refund_attrs, fn locked ->
+          with :ok <- ensure_refund_not_recorded(locked, data) do
+            refund_amount(data, locked, original_tx, payment_ids)
+          end
+        end)
+
+      case result do
         {:ok, transaction} ->
           Logger.info(
             "Refund recorded for invoice #{invoice.invoice_number}: " <>
@@ -294,6 +298,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
         {:error, :exceeds_paid_amount} ->
           refund_exceeds_paid_amount(invoice, data)
+
+        {:error, reason} when reason in [:already_recorded, :already_refunded] ->
+          {:ok, reason}
 
         {:error, reason} ->
           {:error, reason}
@@ -324,34 +331,14 @@ defmodule PhoenixKitBilling.WebhookProcessor do
       {:error, :invoice_not_found} ->
         Logger.warning("Refund webhook's original transaction has no matching invoice")
         {:ok, :ignored}
-
-      {:error, :already_recorded} ->
-        Logger.info("Refund #{inspect(data[:refund_id])} is already in the ledger; skipping")
-        {:ok, :already_recorded}
-
-      {:error, :already_refunded} ->
-        Logger.info("Refund webhook reports nothing beyond what the ledger already holds")
-        {:ok, :already_refunded}
-
-      # Failures to apply a running total (see `refund_amount/4` and
-      # `refund_exceeds_paid_amount/2`): the event is failed, not acknowledged.
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
   # A running total is cut down to what the ledger lacks (`unrecorded_refund/4`),
   # so a duplicate never reaches `record_refund/3`: exceeding what the invoice
   # has been paid means the ledger and Stripe disagree (a refund booked against
-  # another payment, an amount edited by hand), or that a concurrent event had
-  # not committed yet when the ledger was read. Acknowledging it as "already
-  # refunded" would drop a real refund without a trace, so the event FAILS:
-  # the response is not 2xx, Stripe redelivers, the ledger is read again (a
-  # row that was merely late is seen then), and the processor gives up after
-  # five attempts - each one logged as an error.
-  #
-  # Only the overshoot is caught here. A concurrent pair of events whose
-  # combined amount still fits in `paid_amount` is not.
+  # another payment, an amount edited by hand). Fail the event so a redelivery
+  # can reconcile it once the ledger is corrected.
   #
   # A provider that reports one refund at a time has no running total to
   # reconcile: a refund that does not fit there is a duplicate or one already
@@ -363,8 +350,8 @@ defmodule PhoenixKitBilling.WebhookProcessor do
         "#{total} (minor units) refunded on charge #{inspect(data[:charge_id])} " <>
         "(payment intent #{inspect(data[:payment_intent_id])}), more than the " <>
         "#{Decimal.to_string(invoice.paid_amount)} #{invoice.currency} the invoice still " <>
-        "holds after the refunds already in the ledger. The ledger and Stripe disagree, " <>
-        "or a concurrent event is not committed yet; the event is failed so Stripe " <>
+        "holds after the refunds already in the ledger. The ledger and Stripe disagree; " <>
+        "the event is failed so Stripe " <>
         "redelivers it."
     )
 
@@ -437,9 +424,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # id may sit in `provider_data`. Only payments (positive amounts) match - a
   # refund recorded without a refund id once reused the charge id, and
   # matched itself on the next refund.
-  defp find_payment_transaction(provider_ids) do
+  defp find_payment_transaction(provider_ids, provider) do
     Transaction
-    |> where([t], t.amount > 0)
+    |> where([t], t.amount > 0 and t.payment_method == ^provider)
     |> where(
       [t],
       t.provider_transaction_id in ^provider_ids or
@@ -463,9 +450,19 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     if id in [data[:charge_id], data[:payment_intent_id]], do: nil, else: id
   end
 
-  defp ensure_refund_not_recorded(_invoice, nil), do: :ok
+  # A cumulative total can include earlier refunds missing from the ledger,
+  # even when its latest refund id is already recorded. Reconcile the total.
+  defp ensure_refund_not_recorded(_invoice, %{amount_refunded_total: total})
+       when is_integer(total),
+       do: :ok
 
-  defp ensure_refund_not_recorded(invoice, refund_id) do
+  defp ensure_refund_not_recorded(invoice, data) do
+    ensure_refund_id_not_recorded(invoice, refund_id(data))
+  end
+
+  defp ensure_refund_id_not_recorded(_invoice, nil), do: :ok
+
+  defp ensure_refund_id_not_recorded(invoice, refund_id) do
     recorded? =
       repo().exists?(
         from(t in Transaction,
@@ -552,11 +549,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # arriving out of order, and a refund the host recorded itself after
   # creating it at Stripe.
   #
-  # Read outside the invoice lock `record_refund/3` takes, so two events for
-  # the same charge handled at the same instant could each see the other's
-  # row missing. `record_refund/3` bounds the row by the locked paid_amount,
-  # and an overshoot beyond it fails the event (`refund_exceeds_paid_amount/2`)
-  # so it is read again; one that still fits is not caught.
+  # Called inside `record_provider_refund/3`, with the invoice row locked
+  # until the ledger insert commits, including when another event reports the
+  # same total under a different event id.
   defp unrecorded_refund(total, invoice, original_tx, payment_ids) do
     delta = Decimal.sub(total, recorded_refund_total(invoice, original_tx, payment_ids))
 

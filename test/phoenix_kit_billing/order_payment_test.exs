@@ -8,6 +8,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
   use PhoenixKitBilling.DataCase, async: false
 
   alias Ecto.Adapters.SQL.Sandbox
+  alias PhoenixKit.Modules.Billing, as: LegacyBilling
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Order, WebhookProcessor}
@@ -151,6 +152,42 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
 
     assert second.invoice.uuid == first.invoice.uuid
     assert second.url == "https://checkout.stripe.test/2"
+  end
+
+  test "a session is replaced when its return URLs or customer email change", %{stripe: stripe} do
+    order = order!(stripe)
+    {:ok, first} = Billing.start_order_payment(order, @urls)
+
+    opts = Keyword.put(@urls, :success_url, "https://shop.test/another-order")
+    {:ok, second} = Billing.start_order_payment(order, opts)
+    assert second.url != first.url
+
+    opts = Keyword.put(opts, :cancel_url, "https://shop.test/another-cancel")
+    {:ok, third} = Billing.start_order_payment(order, opts)
+    assert third.url != second.url
+
+    opts = Keyword.put(opts, :customer_email, "other@example.com")
+    {:ok, fourth} = Billing.start_order_payment(order, opts)
+    assert fourth.url != third.url
+  end
+
+  test "a session in another currency is not reused for the same numeric amount", %{
+    stripe: stripe
+  } do
+    order = order!(stripe)
+    {:ok, first} = Billing.start_order_payment(order, @urls)
+
+    Repo.update_all(from(i in Invoice, where: i.uuid == ^first.invoice.uuid),
+      set: [currency: "USD"]
+    )
+
+    {:ok, second} = Billing.start_order_payment(order, @urls)
+    assert second.url != first.url
+  end
+
+  test "the legacy billing namespace exposes order payments", %{stripe: stripe} do
+    assert {:ok, %{invoice: %Invoice{}, url: _url}} =
+             LegacyBilling.start_order_payment(order!(stripe), @urls)
   end
 
   test "sends Stripe the invoice, the amount and both return URLs", %{stripe: stripe} do

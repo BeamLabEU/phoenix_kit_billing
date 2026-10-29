@@ -269,7 +269,7 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
       assert refunded_cents(invoice) == 2000
     end
 
-    test "an API version that lists the refunds names the refund, and a replay of it is dropped by that id" do
+    test "an API version that lists the refunds names the refund and reconciles a replay by total" do
       {invoice, _order} = invoice_fixture(user_fixture())
       pay_by_checkout(invoice, "pi_checkout_7")
 
@@ -284,7 +284,7 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
 
       # A different event that reports the same refund, with a total this
       # ledger has already passed.
-      assert {:ok, :already_recorded} =
+      assert {:ok, :already_refunded} =
                deliver(
                  charge_refunded("ch_checkout_7", "pi_checkout_7", 1000,
                    refunds: ["re_2", "re_1"]
@@ -401,6 +401,46 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
   end
 
   describe "refunds this ledger already knows about" do
+    test "a recorded latest refund does not hide an earlier refund in the running total" do
+      {invoice, _order} = invoice_fixture(user_fixture())
+      pay_by_checkout(invoice, "pi_host_latest")
+
+      {:ok, _refund} =
+        Billing.record_refund(
+          Billing.get_invoice!(invoice.uuid),
+          %{amount: "10.00", payment_method: "stripe", provider_transaction_id: "re_latest"},
+          nil
+        )
+
+      assert {:ok, %Transaction{amount: amount}} =
+               deliver(
+                 charge_refunded("ch_host_latest", "pi_host_latest", 2000,
+                   refunds: ["re_latest", "re_earlier"]
+                 )
+               )
+
+      assert Decimal.equal?(amount, Decimal.new("-10.00"))
+      assert refunded_cents(invoice) == 2000
+    end
+
+    test "a payment id belonging to another provider is not matched" do
+      {invoice, _order} = invoice_fixture(user_fixture())
+
+      {:ok, _payment} =
+        Billing.record_payment(
+          invoice,
+          %{amount: "30.00", payment_method: "paypal", provider_transaction_id: "pi_foreign"},
+          nil
+        )
+
+      capture_log(fn ->
+        assert {:ok, :unmatched_refund} =
+                 deliver(charge_refunded("ch_foreign", "pi_foreign", 1000))
+      end)
+
+      assert refund_rows(invoice) == []
+    end
+
     test "a refund the host recorded after creating it at Stripe is not recorded again by the webhook" do
       {invoice, _order} = invoice_fixture(user_fixture())
       pay_by_checkout(invoice, "pi_host_1")
@@ -645,6 +685,43 @@ defmodule PhoenixKitBilling.StripeRefundWebhooksTest do
   end
 
   describe "a provider that reports one refund at a time" do
+    for provider <- [:paypal, :razorpay, :everypay] do
+      test "#{provider} payments retain their provider and can be refunded" do
+        provider = unquote(provider)
+        {invoice, _order} = invoice_fixture(user_fixture())
+        payment_id = "#{provider}_payment"
+
+        assert {:ok, _invoice} =
+                 WebhookProcessor.process(%{
+                   event_id: event_id(),
+                   provider: provider,
+                   type: "payment.succeeded",
+                   data: %{
+                     invoice_uuid: invoice.uuid,
+                     charge_id: payment_id,
+                     amount: 3000,
+                     currency: "EUR"
+                   }
+                 })
+
+        assert {:ok, %Transaction{payment_method: method, amount: amount}} =
+                 WebhookProcessor.process(%{
+                   event_id: event_id(),
+                   provider: provider,
+                   type: "refund.created",
+                   data: %{
+                     charge_id: payment_id,
+                     refund_id: "refund_#{provider}",
+                     amount: 1000,
+                     currency: "EUR"
+                   }
+                 })
+
+        assert method == to_string(provider)
+        assert Decimal.equal?(amount, Decimal.new("-10.00"))
+      end
+    end
+
     test "a refund larger than what was paid is still dropped as already applied" do
       {invoice, _order} = invoice_fixture(user_fixture())
 

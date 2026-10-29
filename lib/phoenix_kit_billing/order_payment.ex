@@ -28,8 +28,9 @@ defmodule PhoenixKitBilling.OrderPayment do
        only a `sent` or `overdue` invoice is payable, and the buyer is
        emailed when the payment lands, not when the checkout opens.
     4. A checkout session recorded on the invoice (`metadata["checkout"]`)
-       for the same provider is reused while it is younger than 20 minutes;
-       otherwise a new one is opened and recorded. The payment itself is
+       for the same provider, amount, currency, return URLs and customer email
+       is reused while it is younger than 20 minutes; otherwise a new one is
+       opened and recorded. The payment itself is
        confirmed by the provider's webhook, never by the return URL.
 
   ## Options
@@ -244,7 +245,7 @@ defmodule PhoenixKitBilling.OrderPayment do
   end
 
   defp session_url(invoice, provider, opts) do
-    case reusable_url(invoice, provider) do
+    case reusable_url(invoice, provider, opts) do
       url when is_binary(url) ->
         {:ok, url}
 
@@ -252,25 +253,26 @@ defmodule PhoenixKitBilling.OrderPayment do
         checkout_opts = Keyword.take(opts, [:success_url, :cancel_url, :customer_email])
 
         with {:ok, url} <- Billing.create_checkout_session(invoice, provider, checkout_opts) do
-          record_amount_due(invoice, url)
+          record_checkout_context(invoice, url, opts)
           {:ok, url}
         end
     end
   end
 
   # Billing records the session under `metadata["checkout"]` without the amount
-  # it was opened for; this adds it, so `reusable_url/2` can tell a stale session.
+  # it was opened for; this adds the amount and request context so a session
+  # cannot be reused with a different currency, recipient or return route.
   # Only the record of the session just opened (its URL) is touched. Best
   # effort, like billing's own record: without it the session is simply not
   # reused.
-  defp record_amount_due(%Invoice{uuid: uuid} = invoice, url) do
+  defp record_checkout_context(%Invoice{uuid: uuid} = invoice, url, opts) do
     with %Invoice{metadata: %{"checkout" => %{"url" => ^url} = checkout} = metadata} = stored <-
            repo().get(Invoice, uuid),
          {:ok, _} <-
            stored
            |> Ecto.Changeset.change(%{
              metadata:
-               Map.put(metadata, "checkout", Map.put(checkout, "amount_due", amount_due(invoice)))
+               Map.put(metadata, "checkout", Map.merge(checkout, checkout_context(invoice, opts)))
            })
            |> repo().update() do
       :ok
@@ -284,20 +286,34 @@ defmodule PhoenixKitBilling.OrderPayment do
   # its amount (by an older billing) is never reused.
   defp reusable_url(
          %Invoice{metadata: %{"checkout" => %{"url" => url} = checkout}} = invoice,
-         provider
+         provider,
+         opts
        )
        when is_binary(url) do
+    context = checkout_context(invoice, opts)
+
     with true <- checkout["provider"] == to_string(provider),
-         true <- checkout["amount_due"] == amount_due(invoice),
+         true <- Map.take(checkout, Map.keys(context)) == context,
          {:ok, created_at, _} <- DateTime.from_iso8601(checkout["created_at"] || ""),
-         true <- DateTime.diff(DateTime.utc_now(), created_at) < @session_reuse_seconds do
+         age = DateTime.diff(DateTime.utc_now(), created_at),
+         true <- age >= 0 and age < @session_reuse_seconds do
       url
     else
       _ -> nil
     end
   end
 
-  defp reusable_url(_invoice, _provider), do: nil
+  defp reusable_url(_invoice, _provider, _opts), do: nil
+
+  defp checkout_context(invoice, opts) do
+    %{
+      "amount_due" => amount_due(invoice),
+      "currency" => invoice.currency,
+      "success_url" => opts[:success_url],
+      "cancel_url" => opts[:cancel_url],
+      "customer_email" => opts[:customer_email]
+    }
+  end
 
   defp amount_due(invoice), do: invoice |> Invoice.remaining_amount() |> Decimal.to_string()
 
