@@ -5811,6 +5811,7 @@ defmodule PhoenixKitBilling do
             "provider_session_id" => session.id,
             "url" => session.url,
             "provider" => to_string(provider),
+            "amount_due" => invoice |> Invoice.remaining_amount() |> Decimal.to_string(),
             "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
           })
 

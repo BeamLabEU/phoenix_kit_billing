@@ -582,14 +582,16 @@ defmodule PhoenixKitBilling.Providers.Stripe do
       invoice.currency || raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
 
     with {:ok, items} <- item_lines(invoice, currency),
-         {:ok, due} <- amount_due(invoice, currency) do
-      if line_items_total(items) == due do
-        {:ok, items}
-      else
-        {:ok, [amount_due_line(invoice, currency, due)]}
-      end
+         {:ok, due} <- amount_due(invoice, currency),
+         :ok <- ensure_positive(due) do
+      if line_items_total(items) == due,
+        do: {:ok, items},
+        else: {:ok, [amount_due_line(invoice, currency, due)]}
     end
   end
+
+  defp ensure_positive(due) when due > 0, do: :ok
+  defp ensure_positive(_due), do: {:error, :nothing_to_pay}
 
   defp item_lines(invoice, currency) do
     (invoice.line_items || [])
@@ -621,13 +623,21 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
   defp amount_due(invoice, currency) do
     paid = parse_decimal_amount(Map.get(invoice, :paid_amount))
-    due = Decimal.sub(parse_decimal_amount(invoice.total), paid)
+    due = Decimal.sub(parse_decimal_amount(Map.get(invoice, :total)), paid)
     MinorUnits.to_minor_units(due, currency)
   end
 
+  # A non-integer quantity cannot be summed in minor units; it counts as "the
+  # lines do not add up", so the amount due is charged as one line.
   defp line_items_total(items) do
-    Enum.reduce(items, 0, fn item, sum ->
-      sum + item.price_data.unit_amount * item.quantity
+    Enum.reduce_while(items, 0, fn item, sum ->
+      case item.quantity do
+        quantity when is_integer(quantity) ->
+          {:cont, sum + item.price_data.unit_amount * quantity}
+
+        _ ->
+          {:halt, :unknown}
+      end
     end)
   end
 

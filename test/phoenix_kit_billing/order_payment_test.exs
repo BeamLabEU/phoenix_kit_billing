@@ -426,7 +426,6 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       assert stripe_charge(first) == 2500
 
       {:ok, _} = Billing.record_payment(invoice, %{amount: Decimal.new("10.00")}, nil)
-      Repo.update_all(from(i in Invoice, where: i.uuid == ^invoice.uuid), set: [metadata: %{}])
 
       {:ok, _} = Billing.start_order_payment(order, @urls)
 
@@ -444,6 +443,31 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       assert_received {:stripe_body, params}
       assert params["line_items[0][price_data][product_data][name]"] == "Vase"
     end
+  end
+
+  test "a session opened for another amount is not reused", %{stripe: stripe} do
+    order = order!(stripe)
+    {:ok, %{invoice: invoice, url: first}} = Billing.start_order_payment(order, @urls)
+
+    {:ok, _} = Billing.record_payment(invoice, %{amount: Decimal.new("10.00")}, nil)
+    {:ok, %{url: second}} = Billing.start_order_payment(order, @urls)
+
+    assert first != second
+  end
+
+  test "a string quantity is charged as the amount due, not a crash", %{stripe: stripe} do
+    capture_stripe_body()
+
+    order =
+      order!(stripe, %{
+        "line_items" => [
+          %{"name" => "Vase", "quantity" => "1", "unit_price" => "25.00", "total" => "25.00"}
+        ]
+      })
+
+    assert {:ok, _} = Billing.start_order_payment(order, @urls)
+    assert_received {:stripe_body, params}
+    assert Enum.any?(params, fn {k, v} -> k =~ "unit_amount" and v == "2500" end)
   end
 
   test "an order with a zero total is not payable online", %{stripe: stripe} do
@@ -506,6 +530,21 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       assert {:ok, %{url: "https://x.test/"}} = Task.await(task, 15_000)
 
       assert try_lock(conn, order)
+    end
+
+    test "a start that cannot get the lock answers :lock_timeout and leaves no invoice", %{
+      stripe: stripe,
+      conn: conn
+    } do
+      order = order!(stripe)
+      key = PhoenixKitBilling.OrderPayment.lock_key(order.uuid)
+      Postgrex.query!(conn, "SELECT pg_advisory_lock(hashtext($1))", [key])
+
+      Application.put_env(:phoenix_kit_billing, :order_payment_lock_wait_ms, 300)
+      on_exit(fn -> Application.delete_env(:phoenix_kit_billing, :order_payment_lock_wait_ms) end)
+
+      assert {:error, :lock_timeout} = Billing.start_order_payment(order, @urls)
+      assert Billing.list_invoices_for_order(order.uuid) == []
     end
 
     test "is released when the provider fails", %{stripe: stripe, conn: conn} do

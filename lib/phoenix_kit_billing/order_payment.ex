@@ -138,48 +138,56 @@ defmodule PhoenixKitBilling.OrderPayment do
       else: {:error, :provider_not_available}
   end
 
-  # The lock is polled with `pg_try_advisory_lock` rather than waited for, so a
-  # start that cannot get it answers `{:error, :lock_timeout}` instead of
-  # holding the connection until the pool kills it.
+  # The lock is polled with `pg_try_advisory_lock`, one short checkout per
+  # try, so a waiter holds no pool connection while it sleeps and a start that
+  # cannot get the lock answers `{:error, :lock_timeout}`. Only the holder
+  # keeps its connection (the lock lives on it) while the provider is called.
   defp with_order_lock(uuid, fun) do
-    repo().checkout(
-      fn ->
-        key = lock_key(uuid)
-        deadline = System.monotonic_time(:millisecond) + @lock_wait_ms
-
-        if acquire_lock(key, deadline) do
-          try do
-            fun.()
-          after
-            repo().query!("SELECT pg_advisory_unlock(hashtext($1))", [key])
-          end
-        else
-          {:error, :lock_timeout}
-        end
-      end,
-      timeout: @checkout_timeout
-    )
+    key = lock_key(uuid)
+    deadline = System.monotonic_time(:millisecond) + lock_wait_ms()
+    lock_loop(key, deadline, fun)
   end
+
+  defp lock_loop(key, deadline, fun) do
+    attempt =
+      repo().checkout(
+        fn ->
+          %{rows: [[locked?]]} =
+            repo().query!("SELECT pg_try_advisory_lock(hashtext($1))", [key])
+
+          if locked? do
+            try do
+              {:locked, fun.()}
+            after
+              repo().query!("SELECT pg_advisory_unlock(hashtext($1))", [key])
+            end
+          else
+            :busy
+          end
+        end,
+        timeout: @checkout_timeout
+      )
+
+    case attempt do
+      {:locked, result} ->
+        result
+
+      :busy ->
+        if System.monotonic_time(:millisecond) >= deadline do
+          {:error, :lock_timeout}
+        else
+          Process.sleep(@lock_poll_ms)
+          lock_loop(key, deadline, fun)
+        end
+    end
+  end
+
+  defp lock_wait_ms,
+    do: Application.get_env(:phoenix_kit_billing, :order_payment_lock_wait_ms, @lock_wait_ms)
 
   @doc false
   @spec lock_key(String.t()) :: String.t()
   def lock_key(uuid), do: "billing_order_payment:" <> uuid
-
-  defp acquire_lock(key, deadline) do
-    %{rows: [[locked?]]} = repo().query!("SELECT pg_try_advisory_lock(hashtext($1))", [key])
-
-    cond do
-      locked? ->
-        true
-
-      System.monotonic_time(:millisecond) >= deadline ->
-        false
-
-      true ->
-        Process.sleep(@lock_poll_ms)
-        acquire_lock(key, deadline)
-    end
-  end
 
   defp find_or_create_invoice(order) do
     open =
@@ -225,9 +233,16 @@ defmodule PhoenixKitBilling.OrderPayment do
     end
   end
 
-  defp reusable_url(%Invoice{metadata: %{"checkout" => %{"url" => url} = checkout}}, provider)
+  # A session is reused only for the amount it was opened for: a part payment
+  # or a changed total in between makes it stale. A session recorded without
+  # its amount (by an older billing) is never reused.
+  defp reusable_url(
+         %Invoice{metadata: %{"checkout" => %{"url" => url} = checkout}} = invoice,
+         provider
+       )
        when is_binary(url) do
     with true <- checkout["provider"] == to_string(provider),
+         true <- checkout["amount_due"] == amount_due(invoice),
          {:ok, created_at, _} <- DateTime.from_iso8601(checkout["created_at"] || ""),
          true <- DateTime.diff(DateTime.utc_now(), created_at) < @session_reuse_seconds do
       url
@@ -237,6 +252,8 @@ defmodule PhoenixKitBilling.OrderPayment do
   end
 
   defp reusable_url(_invoice, _provider), do: nil
+
+  defp amount_due(invoice), do: invoice |> Invoice.remaining_amount() |> Decimal.to_string()
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 end
