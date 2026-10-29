@@ -4,10 +4,14 @@ defmodule PhoenixKitBilling.OrderPayment do
   invoice, makes it payable and opens a checkout session at the provider of
   the order's payment option.
 
-  The public entry point is `PhoenixKitBilling.start_order_payment/2`; this
-  module only composes billing's own public functions
-  (`create_invoice_from_order/2`, `send_invoice/2`, `create_checkout_session/3`),
-  so their errors reach the caller as they are.
+  The public entry point is `PhoenixKitBilling.start_order_payment/2`. This
+  module composes billing's public functions (`create_invoice_from_order/2`,
+  `send_invoice/2`, `create_checkout_session/3`), so their errors reach the
+  caller as they are; it also reads `Invoice` and `Order` with its own queries
+  and calls `Providers.*` for the provider lookup.
+
+  Whether the caller may pay this order at all (that it is the buyer's own) is
+  the caller's concern: the order is found by its uuid alone.
 
   ## Steps
 
@@ -17,12 +21,14 @@ defmodule PhoenixKitBilling.OrderPayment do
        is reused, or one is created from the order. Steps 2 to 4 run under a
        per-order advisory lock (held on one connection, outside any
        transaction, so billing's invoice events still follow their commits),
-       so two clicks cannot create two invoices or two live sessions.
+       so two clicks cannot create two invoices or two live sessions. The lock
+       is a *session* lock: the repo must use session pooling (PgBouncer in
+       transaction mode does not keep it on one connection).
     3. A `draft` invoice is sent **without an email** (`send_email: false`):
        only a `sent` or `overdue` invoice is payable, and the buyer is
        emailed when the payment lands, not when the checkout opens.
     4. A checkout session recorded on the invoice (`metadata["checkout"]`)
-       for the same provider is reused while it is younger than one hour;
+       for the same provider is reused while it is younger than 20 minutes;
        otherwise a new one is opened and recorded. The payment itself is
        confirmed by the provider's webhook, never by the return URL.
 
@@ -37,37 +43,46 @@ defmodule PhoenixKitBilling.OrderPayment do
   Returns `{:ok, %{invoice: invoice, url: url}}` or `{:error, reason}`, where
   the reason is one of `:order_not_found`, `:order_not_payable` (cancelled,
   refunded, no online payment option), `:already_paid`,
-  `:provider_not_available`, or whatever billing's own functions return.
+  `:provider_not_available`, `:lock_timeout` (another start for the same
+  order held the lock for too long), or whatever billing's own functions return.
   """
 
-  import Ecto.Query, warn: false
+  import Ecto.Query
 
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Order, PaymentOption, Providers}
 
-  # Stripe keeps a Checkout session for at least 30 minutes and up to 24
-  # hours; one hour is short enough to be live on every provider we know.
-  @session_reuse_seconds 3600
+  # A session is reused only while it is surely still live. Stripe keeps a
+  # Checkout session for at least 30 minutes, but Razorpay's payment link
+  # expires after 30 minutes and PayPal and EveryPay set their own limits, so
+  # the window is 20 minutes, inside the shortest we know of.
+  @session_reuse_seconds 1200
+
+  # The connection is held while the lock is waited for and the provider is
+  # called (Req waits 15 s itself), so its checkout timeout is well above both.
+  @checkout_timeout 60_000
+  @lock_wait_ms 30_000
+  @lock_poll_ms 50
 
   @spec start(Order.t() | String.t(), keyword()) ::
-          {:ok, %{invoice: struct(), url: String.t()}} | {:error, term()}
+          {:ok, %{invoice: Invoice.t(), url: String.t()}} | {:error, term()}
   def start(order_or_uuid, opts) do
     success_url = Keyword.fetch!(opts, :success_url)
     opts = Keyword.put_new(opts, :cancel_url, success_url)
 
-    with {:ok, order} <- load_order(order_or_uuid) do
+    with {:ok, uuid} <- order_uuid(order_or_uuid) do
       # Everything from "which invoice" to "the session is recorded" runs under
       # the order's lock, so two clicks cannot open two sessions for one
       # invoice. It is a session-level lock on one pinned connection and no
       # transaction: the invoice events billing broadcasts while creating and
       # sending the invoice must go out after their own commits.
-      with_order_lock(order, fn -> start_locked(order, opts) end)
+      with_order_lock(uuid, fn -> start_locked(uuid, opts) end)
     end
   end
 
-  defp start_locked(order, opts) do
-    # Re-read under the lock: the order may have been paid while we waited.
-    with {:ok, order} <- load_order(order.uuid),
+  defp start_locked(uuid, opts) do
+    # Read under the lock: the order may have been paid while we waited.
+    with {:ok, order} <- load_order(uuid),
          :ok <- ensure_payable(order),
          {:ok, provider} <- resolve_provider(order, opts),
          {:ok, invoice} <- find_or_create_invoice(order),
@@ -77,27 +92,33 @@ defmodule PhoenixKitBilling.OrderPayment do
     end
   end
 
-  defp load_order(%Order{uuid: uuid}), do: load_order(uuid)
+  defp order_uuid(%Order{uuid: uuid}), do: order_uuid(uuid)
 
-  defp load_order(uuid) when is_binary(uuid) do
+  defp order_uuid(uuid) when is_binary(uuid) do
     case Ecto.UUID.cast(uuid) do
-      {:ok, uuid} ->
-        case repo().get(Order, uuid) do
-          nil -> {:error, :order_not_found}
-          order -> {:ok, repo().preload(order, :payment_option)}
-        end
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :order_not_found}
+    end
+  end
 
-      :error ->
-        {:error, :order_not_found}
+  defp load_order(uuid) do
+    case repo().get(Order, uuid) do
+      nil -> {:error, :order_not_found}
+      order -> {:ok, repo().preload(order, :payment_option)}
     end
   end
 
   defp ensure_payable(%Order{status: "paid"}), do: {:error, :already_paid}
 
-  defp ensure_payable(%Order{status: status}) when status in ~w(draft pending confirmed),
-    do: :ok
+  defp ensure_payable(%Order{status: status, total: total})
+       when status in ~w(draft pending confirmed) do
+    if payable_amount?(total), do: :ok, else: {:error, :order_not_payable}
+  end
 
   defp ensure_payable(_order), do: {:error, :order_not_payable}
+
+  defp payable_amount?(%Decimal{} = total), do: Decimal.compare(total, 0) == :gt
+  defp payable_amount?(_total), do: false
 
   defp resolve_provider(%Order{payment_option: option}, opts) do
     case {opts[:provider], option} do
@@ -117,17 +138,47 @@ defmodule PhoenixKitBilling.OrderPayment do
       else: {:error, :provider_not_available}
   end
 
-  defp with_order_lock(%Order{uuid: uuid}, fun) do
-    repo().checkout(fn ->
-      key = "billing_order_payment:" <> uuid
-      repo().query!("SELECT pg_advisory_lock(hashtext($1))", [key])
+  # The lock is polled with `pg_try_advisory_lock` rather than waited for, so a
+  # start that cannot get it answers `{:error, :lock_timeout}` instead of
+  # holding the connection until the pool kills it.
+  defp with_order_lock(uuid, fun) do
+    repo().checkout(
+      fn ->
+        key = lock_key(uuid)
+        deadline = System.monotonic_time(:millisecond) + @lock_wait_ms
 
-      try do
-        fun.()
-      after
-        repo().query!("SELECT pg_advisory_unlock(hashtext($1))", [key])
-      end
-    end)
+        if acquire_lock(key, deadline) do
+          try do
+            fun.()
+          after
+            repo().query!("SELECT pg_advisory_unlock(hashtext($1))", [key])
+          end
+        else
+          {:error, :lock_timeout}
+        end
+      end,
+      timeout: @checkout_timeout
+    )
+  end
+
+  @doc false
+  @spec lock_key(String.t()) :: String.t()
+  def lock_key(uuid), do: "billing_order_payment:" <> uuid
+
+  defp acquire_lock(key, deadline) do
+    %{rows: [[locked?]]} = repo().query!("SELECT pg_try_advisory_lock(hashtext($1))", [key])
+
+    cond do
+      locked? ->
+        true
+
+      System.monotonic_time(:millisecond) >= deadline ->
+        false
+
+      true ->
+        Process.sleep(@lock_poll_ms)
+        acquire_lock(key, deadline)
+    end
   end
 
   defp find_or_create_invoice(order) do

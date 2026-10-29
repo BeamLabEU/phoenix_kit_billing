@@ -38,8 +38,6 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       })
     end)
 
-    Req.Test.allow(__MODULE__, self(), self())
-
     stripe = option!("stripe", %{type: "online", provider: "stripe", active: true})
     cod = option!("cod", %{type: "offline", provider: nil, active: true})
 
@@ -329,5 +327,193 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
 
   test "success_url is required", %{stripe: stripe} do
     assert_raise KeyError, fn -> Billing.start_order_payment(order!(stripe), []) end
+  end
+
+  describe "the amount Stripe is asked for" do
+    defp capture_stripe_body do
+      test_pid = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test_pid, {:stripe_body, URI.decode_query(body)})
+
+        Req.Test.json(conn, %{
+          "id" => "cs_amount",
+          "url" => "https://x.test/",
+          "expires_at" => 4_102_444_800
+        })
+      end)
+    end
+
+    # What Stripe would charge: the sum of unit_amount * quantity.
+    defp stripe_charge(params) do
+      amounts =
+        for {k, v} <- params, String.ends_with?(k, "[unit_amount]"), into: %{} do
+          {String.replace(k, "[price_data][unit_amount]", ""), String.to_integer(v)}
+        end
+
+      Enum.reduce(amounts, 0, fn {prefix, amount}, sum ->
+        sum + amount * String.to_integer(Map.get(params, prefix <> "[quantity]", "1"))
+      end)
+    end
+
+    defp pay!(invoice, amount_minor) do
+      assert {:ok, paid} =
+               WebhookProcessor.process(%{
+                 event_id: "evt_amount_#{System.unique_integer([:positive])}",
+                 provider: :stripe,
+                 type: "checkout.completed",
+                 data: %{
+                   mode: "payment",
+                   invoice_uuid: invoice.uuid,
+                   amount_total: amount_minor,
+                   currency: "EUR",
+                   payment_intent_id: "pi_#{System.unique_integer([:positive])}"
+                 }
+               })
+
+      paid
+    end
+
+    test "an order with tax is charged its total, and the webhook pays it", %{stripe: stripe} do
+      capture_stripe_body()
+
+      order =
+        order!(stripe, %{
+          "subtotal" => Decimal.new("25.00"),
+          "tax_amount" => Decimal.new("5.00"),
+          "tax_rate" => Decimal.new("0.20"),
+          "total" => Decimal.new("30.00")
+        })
+
+      {:ok, %{invoice: invoice}} = Billing.start_order_payment(order, @urls)
+
+      assert_received {:stripe_body, params}
+      assert stripe_charge(params) == 3000
+      assert params["line_items[0][price_data][product_data][name]"] =~ invoice.invoice_number
+
+      assert pay!(invoice, 3000).status == "paid"
+      assert Repo.get!(Order, order.uuid).status == "paid"
+    end
+
+    test "an order with a discount is charged its total, and the webhook pays it", %{
+      stripe: stripe
+    } do
+      capture_stripe_body()
+
+      order =
+        order!(stripe, %{
+          "subtotal" => Decimal.new("25.00"),
+          "discount_amount" => Decimal.new("5.00"),
+          "total" => Decimal.new("20.00")
+        })
+
+      {:ok, %{invoice: invoice}} = Billing.start_order_payment(order, @urls)
+
+      assert_received {:stripe_body, params}
+      assert stripe_charge(params) == 2000
+
+      assert pay!(invoice, 2000).status == "paid"
+      assert Repo.get!(Order, order.uuid).status == "paid"
+    end
+
+    test "a partly paid invoice is charged what is left", %{stripe: stripe} do
+      capture_stripe_body()
+      order = order!(stripe)
+
+      {:ok, %{invoice: invoice}} = Billing.start_order_payment(order, @urls)
+      assert_received {:stripe_body, first}
+      assert stripe_charge(first) == 2500
+
+      {:ok, _} = Billing.record_payment(invoice, %{amount: Decimal.new("10.00")}, nil)
+      Repo.update_all(from(i in Invoice, where: i.uuid == ^invoice.uuid), set: [metadata: %{}])
+
+      {:ok, _} = Billing.start_order_payment(order, @urls)
+
+      assert_received {:stripe_body, params}
+      assert stripe_charge(params) == 1500
+
+      assert pay!(invoice, 1500).status == "paid"
+      assert Repo.get!(Order, order.uuid).status == "paid"
+    end
+
+    test "an order whose lines add up to the total keeps its own lines", %{stripe: stripe} do
+      capture_stripe_body()
+      {:ok, _} = Billing.start_order_payment(order!(stripe), @urls)
+
+      assert_received {:stripe_body, params}
+      assert params["line_items[0][price_data][product_data][name]"] == "Vase"
+    end
+  end
+
+  test "an order with a zero total is not payable online", %{stripe: stripe} do
+    order = order!(stripe, %{"total" => Decimal.new("0")})
+
+    assert {:error, :order_not_payable} = Billing.start_order_payment(order, @urls)
+    assert Billing.list_invoices_for_order(order.uuid) == []
+  end
+
+  describe "the per-order lock" do
+    setup do
+      config = Application.fetch_env!(:phoenix_kit_billing, Repo)
+
+      {:ok, conn} =
+        Postgrex.start_link(
+          Keyword.take(config, [:hostname, :port, :username, :password, :database])
+        )
+
+      {:ok, conn: conn}
+    end
+
+    defp try_lock(conn, order) do
+      key = PhoenixKitBilling.OrderPayment.lock_key(order.uuid)
+
+      %{rows: [[locked?]]} =
+        Postgrex.query!(conn, "SELECT pg_try_advisory_lock(hashtext($1))", [key])
+
+      locked?
+    end
+
+    test "is held on another connection while the provider is called, and released after", %{
+      stripe: stripe,
+      conn: conn
+    } do
+      order = order!(stripe)
+      parent = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        send(parent, {:in_stripe, self()})
+
+        receive do
+          :go -> :ok
+        after
+          10_000 -> :timeout
+        end
+
+        Req.Test.json(conn, %{
+          "id" => "cs_lock",
+          "url" => "https://x.test/",
+          "expires_at" => 4_102_444_800
+        })
+      end)
+
+      task = Task.async(fn -> Billing.start_order_payment(order, @urls) end)
+
+      assert_receive {:in_stripe, stripe_pid}, 5_000
+      refute try_lock(conn, order)
+
+      send(stripe_pid, :go)
+      assert {:ok, %{url: "https://x.test/"}} = Task.await(task, 15_000)
+
+      assert try_lock(conn, order)
+    end
+
+    test "is released when the provider fails", %{stripe: stripe, conn: conn} do
+      order = order!(stripe)
+      Req.Test.stub(__MODULE__, fn conn -> Plug.Conn.send_resp(conn, 500, "{}") end)
+
+      assert {:error, _} = Billing.start_order_payment(order, @urls)
+      assert try_lock(conn, order)
+    end
   end
 end

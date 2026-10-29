@@ -572,10 +572,26 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     [{"#{key}[#{idx}]", to_string(item)}]
   end
 
+  # Stripe charges the sum of the line items, while the invoice is paid by
+  # `total - paid_amount`, which also carries tax, discount and shipping that
+  # are not line items. When the two differ (tax, a discount, a part payment)
+  # the session is one line for the amount due, so Stripe takes exactly what
+  # the webhook will book.
   defp build_line_items(invoice) do
     currency =
       invoice.currency || raise(ArgumentError, "invoice #{invoice.uuid} has no currency")
 
+    with {:ok, items} <- item_lines(invoice, currency),
+         {:ok, due} <- amount_due(invoice, currency) do
+      if line_items_total(items) == due do
+        {:ok, items}
+      else
+        {:ok, [amount_due_line(invoice, currency, due)]}
+      end
+    end
+  end
+
+  defp item_lines(invoice, currency) do
     (invoice.line_items || [])
     |> Enum.reduce_while({:ok, []}, fn item, {:ok, acc} ->
       case MinorUnits.to_minor_units(parse_decimal_amount(item["unit_price"]), currency) do
@@ -601,6 +617,29 @@ defmodule PhoenixKitBilling.Providers.Stripe do
       {:ok, items} -> {:ok, Enum.reverse(items)}
       {:error, _reason} = error -> error
     end
+  end
+
+  defp amount_due(invoice, currency) do
+    paid = parse_decimal_amount(Map.get(invoice, :paid_amount))
+    due = Decimal.sub(parse_decimal_amount(invoice.total), paid)
+    MinorUnits.to_minor_units(due, currency)
+  end
+
+  defp line_items_total(items) do
+    Enum.reduce(items, 0, fn item, sum ->
+      sum + item.price_data.unit_amount * item.quantity
+    end)
+  end
+
+  defp amount_due_line(invoice, currency, due) do
+    %{
+      price_data: %{
+        currency: String.downcase(currency),
+        product_data: %{name: "Invoice #{invoice.invoice_number}"},
+        unit_amount: due
+      },
+      quantity: 1
+    }
   end
 
   defp parse_decimal_amount(nil), do: Decimal.new(0)

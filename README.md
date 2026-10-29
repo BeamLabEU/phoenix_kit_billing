@@ -129,6 +129,9 @@ it is live, the same URL.
 ```
 
 The payment is confirmed by the provider's webhook, never by the return URL.
+The per-order lock is a Postgres session advisory lock, so the repo needs
+session pooling (PgBouncer in transaction mode does not keep it on one
+connection).
 
 Webhooks are handled automatically at `/webhooks/billing/:provider`.
 
