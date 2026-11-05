@@ -147,7 +147,9 @@ alone.
 - **Money is `Decimal`.** Schemas use UUIDv7 primary keys
   (`@primary_key {:uuid, UUIDv7, autogenerate: true}`) and every table-backed
   schema does `use PhoenixKit.SchemaPrefix`.
-- **Async billing work runs on Oban** (renewal and dunning workers). Never spawn a
+- **Async billing work runs on Oban** (renewal, dunning and durable event workers),
+  all on the `:billing` queue, which `oban_queues/0` declares: a worker on an
+  undeclared queue waits forever and nothing fails. Never spawn a
   bare `Task` for it.
 - **Config lives in PhoenixKit Settings**, not application env; read it through
   `PhoenixKitBilling.get_config/0` and friends. Provider registration is automatic
@@ -198,6 +200,7 @@ lib/phoenix_kit_billing/
 ├── invoice_events.ex                    # Durable paid/refunded/voided hook for other modules (Oban)
 ├── migrations.ex                        # Module-owned migration chain
 ├── notifications.ex                     # Audience resolution + copy for core notifications
+├── order_events.ex                      # Durable paid/refunded/cancelled hook for other modules (Oban)
 ├── paths.ex                             # Centralized URL helpers
 ├── supervisor.ex                        # Registers providers, logs the CoreCompat report
 ├── compat/                              # Legacy PhoenixKit.Modules.Billing delegates
@@ -206,7 +209,7 @@ lib/phoenix_kit_billing/
 ├── providers/                           # Provider behaviour (10 callbacks, `detach_payment_method/1` optional), registry, 4 impls, types
 ├── schemas/                             # 11 Ecto schemas
 ├── utils/                               # IBAN data, webhook_processor.ex
-├── workers/                             # Oban: subscription renewal, dunning
+├── workers/                             # Oban: subscription renewal, dunning, invoice and order events
 └── web/
     ├── routes.ex                        # generate/1 (webhooks) + admin_routes/0 + admin_locale_routes/0
     ├── webhook_controller.ex            # stripe / paypal / razorpay / everypay actions
@@ -272,6 +275,14 @@ and skips an invoice of it that is in the trash, making a new one.
   availability checks, routing to the right implementation.
 - **`Utils.WebhookProcessor`** — normalizes provider webhooks into transactions
   and status updates.
+- **`InvoiceEvents` and `OrderEvents`** — durable hooks for other modules: one Oban
+  job per (event, handler), enqueued in the transaction that changed the record,
+  delivered at least once with the record re-read. A handler is found through
+  `billing_invoice_event_handlers/0` or `billing_order_event_handlers/0`, or the
+  `:invoice_event_handlers` and `:order_event_handlers` config, and is not handed
+  `event_uuid`: an order's handler keys on the order's uuid and the event, as an
+  order reaches each status once. An order's `:refunded` takes a full refund. PubSub
+  still goes out after the commit.
 - **`EmailDefaults`** — the fallback copy for the four financial emails, handed
   to `PhoenixKit.Mailer.send_from_template/4` as `:defaults`. Resolution order is
   an active database template, then a host override file for the recipient's
@@ -310,8 +321,8 @@ per-user form with a `:user:<user_uuid>` suffix.
 Trashing announces `{:order_trashed, order}` / `{:order_restored, order}` and
 `{:invoice_trashed, invoice}` / `{:invoice_restored, invoice}` on the order and
 invoice topics - and nothing else with them: not `:order_updated`, `:order_cancelled`
-or `:invoice_voided`, and no durable `InvoiceEvents` event. A subscriber with a
-strict `handle_info/2` needs a catch-all clause for these.
+or `:invoice_voided`, and no durable `InvoiceEvents` or `OrderEvents` event. A
+subscriber with a strict `handle_info/2` needs a catch-all clause for these.
 
 ### Permissions
 

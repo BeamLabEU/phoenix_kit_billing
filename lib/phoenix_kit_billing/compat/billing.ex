@@ -29,6 +29,7 @@ defmodule PhoenixKit.Modules.Billing do
   # loses its Tailwind @source line and its notification types with no error
   # anywhere. (`module_stats/0`, resolved the same way, is under "Utilities".)
   defdelegate css_sources(), to: PhoenixKitBilling
+  defdelegate oban_queues(), to: PhoenixKitBilling
   defdelegate notification_types(), to: PhoenixKitBilling
   defdelegate email_templates(), to: PhoenixKitBilling
 

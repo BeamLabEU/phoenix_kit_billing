@@ -199,6 +199,47 @@ def handle_info({:order_created, order}, socket) do
 end
 ```
 
+### Durable Events
+
+PubSub is a notification, not a delivery: a listener that is restarting never
+hears it. For work that must happen, such as writing off stock or sending an
+email, register a handler. Each event is an Oban job, enqueued in the transaction
+that changed the record, so it commits with the change or not at all.
+
+| Module | Events | Module callback | Handler function | Host config |
+|---|---|---|---|---|
+| `PhoenixKitBilling.InvoiceEvents` | `:paid`, `:refunded`, `:voided` | `billing_invoice_event_handlers/0` | `handle_invoice_event/2` | `:invoice_event_handlers` |
+| `PhoenixKitBilling.OrderEvents` | `:paid`, `:refunded`, `:cancelled` | `billing_order_event_handlers/0` | `handle_order_event/2` | `:order_event_handlers` |
+
+```elixir
+# In your PhoenixKit.Module
+def billing_order_event_handlers, do: [MyApp.OrderHandler]
+
+defmodule MyApp.OrderHandler do
+  @spec handle_order_event(:paid | :refunded | :cancelled, PhoenixKitBilling.Order.t()) ::
+          :ok | {:error, term()}
+  def handle_order_event(:paid, order), do: MyApp.Warehouse.write_off(order)
+  def handle_order_event(_event, _order), do: :ok
+end
+```
+
+Or from the host: `config :phoenix_kit_billing, order_event_handlers: [MyApp.OrderHandler]`.
+
+- Delivery is **at-least-once**, so a handler must be idempotent. It is not handed
+  the job's `event_uuid`: key on the order's uuid and the event, which is safe
+  because an order reaches each of these statuses only once.
+- The handler gets the order **as it is now**, re-read when the job runs.
+- `{:error, _}` or a raise retries, up to 20 attempts. A job whose handler is no
+  longer registered, or whose order is gone, is cancelled.
+- An order's `:refunded` takes a full refund: a partial one leaves the order
+  `"paid"` and fires no order event. An order paid through its invoice fires both
+  modules' `:paid`.
+
+The jobs run on the `billing` queue, which the module declares through
+`oban_queues/0`. `mix phoenix_kit.update` adds it to a host's Oban config, and
+`mix phoenix_kit.doctor` reports it when it is missing. Without it the jobs wait
+and nothing fails.
+
 ### Trash
 
 Orders and draft invoices are not deleted from the admin: they go to a trash
@@ -350,6 +391,8 @@ lib/
     ├── mix_tasks/
     │   └── phoenix_kit_billing.install.ex    # Install mix task
     ├── events.ex                     # PubSub event broadcasts
+    ├── invoice_events.ex             # Durable invoice events for other modules
+    ├── order_events.ex               # Durable order events for other modules
     ├── paths.ex                      # Centralized URL path helpers
     ├── supervisor.ex                 # OTP Supervisor
     ├── providers/
@@ -371,6 +414,8 @@ lib/
     │   ├── transaction.ex            # Payment/refund transactions
     │   └── webhook_event.ex          # Provider webhook log
     ├── workers/
+    │   ├── invoice_event_worker.ex          # Oban: durable invoice events
+    │   ├── order_event_worker.ex            # Oban: durable order events
     │   ├── subscription_renewal_worker.ex   # Oban: subscription renewals
     │   └── subscription_dunning_worker.ex   # Oban: failed payment retries
     └── web/                          # Admin LiveViews, controllers, components
@@ -436,8 +481,8 @@ Use `PhoenixKitBilling.DataCase` for schema/context tests and
 - Check that webhook URLs are registered with the provider (e.g., `https://yourdomain.com/webhooks/billing/stripe`)
 - Review `phoenix_kit_webhook_events` table for received events
 
-### Subscription renewals not running
-- Ensure Oban is configured in the parent app with the `billing` queue
+### Subscription renewals or durable events not running
+- Ensure Oban is configured in the parent app with the `billing` queue: `mix phoenix_kit.update` adds it, and `mix phoenix_kit.doctor` reports it when it is missing
 - Check Oban dashboard for failed jobs
 
 ## License

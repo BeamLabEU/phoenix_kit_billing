@@ -62,6 +62,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.InvoiceEvents
   alias PhoenixKitBilling.NumberSequence
   alias PhoenixKitBilling.Order
+  alias PhoenixKitBilling.OrderEvents
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
   alias PhoenixKitBilling.Transaction
@@ -244,6 +245,12 @@ defmodule PhoenixKitBilling do
   # templates and purges every class they use out of the host's build.
   @impl PhoenixKit.Module
   def css_sources, do: [:phoenix_kit_billing]
+
+  # Every billing worker runs here. Declared, not left to the install notes: Oban
+  # never runs a queue the node does not list, so renewals, dunning and the
+  # durable events would wait forever without a word.
+  @impl PhoenixKit.Module
+  def oban_queues, do: [billing: 10]
 
   # The four financial emails, with sample variables, for core's email
   # preview (`/admin/settings/email-sending/preview`).
@@ -2555,6 +2562,9 @@ defmodule PhoenixKitBilling do
 
   Returns `{:ok, order}`, `{:error, :order_not_payable}` when the stored status
   is not `"confirmed"`, or `{:error, changeset}`.
+
+  Enqueues the durable `:paid` event (`PhoenixKitBilling.OrderEvents`) in the same
+  transaction.
   """
   def mark_order_paid(%Order{} = order, opts \\ []) do
     case pay_order(order, opts) do
@@ -2578,12 +2588,21 @@ defmodule PhoenixKitBilling do
             pm -> Ecto.Changeset.put_change(changeset, :payment_method, pm)
           end
 
-        repo().update(changeset)
+        changeset |> repo().update() |> enqueue_order_event(:paid)
       else
         {:error, :order_not_payable}
       end
     end)
   end
+
+  # Inside the transition's transaction, so the event commits with the status or
+  # not at all (see `OrderEvents`). A failed update enqueues nothing.
+  defp enqueue_order_event({:ok, order} = result, event) do
+    OrderEvents.enqueue(event, order)
+    result
+  end
+
+  defp enqueue_order_event(error, _event), do: error
 
   @doc """
   Marks an order as refunded.
@@ -2594,6 +2613,9 @@ defmodule PhoenixKitBilling do
 
   Returns `{:ok, order}`, `{:error, :order_not_refundable}` when the stored
   status is not `"paid"`, or `{:error, changeset}`.
+
+  Enqueues the durable `:refunded` event (`PhoenixKitBilling.OrderEvents`) in the
+  same transaction.
   """
   def mark_order_refunded(%Order{} = order) do
     case refund_order(order) do
@@ -2614,6 +2636,7 @@ defmodule PhoenixKitBilling do
         current
         |> Order.status_changeset("refunded")
         |> repo().update()
+        |> enqueue_order_event(:refunded)
       else
         {:error, :order_not_refundable}
       end
@@ -2642,6 +2665,9 @@ defmodule PhoenixKitBilling do
 
   Returns `{:ok, order}`, `{:error, :order_not_cancellable}` when the stored
   status is not `"draft"`, `"pending"` or `"confirmed"`, or `{:error, changeset}`.
+
+  Enqueues the durable `:cancelled` event (`PhoenixKitBilling.OrderEvents`) in the
+  same transaction.
   """
   def cancel_order(%Order{} = order, reason \\ nil, opts \\ []) do
     result =
@@ -2651,6 +2677,7 @@ defmodule PhoenixKitBilling do
           |> Order.cancel_changeset(opts[:actor_uuid])
           |> put_cancel_note(current.internal_notes, normalize_reason(reason))
           |> repo().update()
+          |> enqueue_order_event(:cancelled)
         else
           {:error, :order_not_cancellable}
         end
