@@ -29,8 +29,13 @@ defmodule PhoenixKitBilling.CorePinConformanceTest do
   with core's preview through `email_templates/0` — all first shipped in core
   2.44.0. An older core ignores the `markdown` part, so a billing email's HTML
   would be its plain text. Any earlier floor's reasons above still hold below
-  it. Keep the compound form: patch-precise at the bottom, open through every
-  later 2.x minor at the top.
+  it.
+
+  The floor is `>= 2.65.0 and < 4.0.0` now: 2.65.0 is the first core with the
+  `file_references/0` and `expected_schema/0` callbacks, which carry
+  `@impl PhoenixKit.Module`, and core 3.x is admitted because this module's own
+  chain builds its tables once core stops creating them. Keep the compound form:
+  patch-precise at the bottom, open through every later minor at the top.
   """
 
   @must_admit ["2.65.0", "2.65.1", "2.99.4", "3.0.0", "3.9.9"]
@@ -46,7 +51,7 @@ defmodule PhoenixKitBilling.CorePinConformanceTest do
       assert Version.match?(version, requirement),
              "`:phoenix_kit` requirement #{inspect(requirement)} rejects core #{version}. " <>
                "A pin that excludes a core minor breaks `mix deps.get` for every host " <>
-               "running this module alongside that core. Keep the floor patch-precise and the ceiling open (`>= 2.44.0 and < 3.0.0`)."
+               "running this module alongside that core. Keep the floor patch-precise and the ceiling open (`>= 2.65.0 and < 4.0.0`)."
     end
 
     for version <- @must_reject do

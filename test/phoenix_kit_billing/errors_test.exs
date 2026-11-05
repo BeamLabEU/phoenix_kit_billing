@@ -120,6 +120,13 @@ defmodule PhoenixKitBilling.ErrorsTest do
             "This invoice cannot be voided in its current state."
         )
 
+    test ":invoice_out_of_date",
+      do:
+        assert(
+          Errors.message(:invoice_out_of_date) ==
+            "This invoice no longer matches its order. Void it and start the payment again."
+        )
+
     test ":is_default",
       do: assert(Errors.message(:is_default) == "The default item cannot be removed.")
 

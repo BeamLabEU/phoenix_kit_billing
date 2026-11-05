@@ -32,3 +32,11 @@ Validation:
 
 The documented renewal/provider-call transaction limitation remains a separate
 follow-up, with its reason recorded in the review.
+
+## Claude — 2026-11-05
+
+- **BUG - MEDIUM: blank number on update raised `not_null_violation` — fixed.**
+  `require_stored_number/1` in both changesets returns "can't be blank" for `nil`,
+  `""` and whitespace on a stored row. Regressions in `number_sequences_test.exs`
+  fail without the fix.
+- The renewal/provider-call limitation stays open, as recorded above.

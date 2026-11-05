@@ -83,11 +83,15 @@ defmodule PhoenixKitBilling.MigrationsUpGuardTest do
     end
   end
 
-  test "an older target still builds on an empty schema" do
-    run_up(prefix: @prefix, version: 4)
-    assert version() == 4
+  # A host's migration files pin whatever target was current when each was
+  # written, so every one of them has to build where core created nothing.
+  for target <- 1..Migrations.current_version() do
+    test "target #{target} builds on an empty schema, and the chain carries on from it" do
+      run_up(prefix: @prefix, version: unquote(target))
+      assert version() == unquote(target)
 
-    run_up(prefix: @prefix)
-    assert version() == Migrations.current_version()
+      run_up(prefix: @prefix)
+      assert version() == Migrations.current_version()
+    end
   end
 end

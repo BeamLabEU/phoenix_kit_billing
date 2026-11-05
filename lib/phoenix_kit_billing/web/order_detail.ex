@@ -216,10 +216,8 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
             actor_role: Activity.actor_role(socket),
             resource_type: "order",
             resource_uuid: order.uuid,
-            # The operator's own reason, typed for the audit trail (not customer data).
-            metadata:
-              %{"order_number" => order.order_number, "status" => order.status}
-              |> put_reason(params["reason"])
+            # Not the reason: it is free text, and it is kept in the order's internal notes.
+            metadata: %{"order_number" => order.order_number, "status" => order.status}
           )
 
           {:noreply,
@@ -390,12 +388,5 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
       end)
     end)
     |> Enum.map_join("; ", fn {k, v} -> "#{k}: #{Enum.join(v, ", ")}" end)
-  end
-
-  defp put_reason(metadata, reason) do
-    case Billing.normalize_reason(reason) do
-      nil -> metadata
-      reason -> Map.put(metadata, "reason", reason)
-    end
   end
 end

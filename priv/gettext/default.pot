@@ -4789,6 +4789,11 @@ msgstr ""
 msgid "This invoice is in the trash. Restore it to change it."
 msgstr ""
 
+#: lib/phoenix_kit_billing/errors.ex:166
+#, elixir-autogen, elixir-format
+msgid "This invoice no longer matches its order. Void it and start the payment again."
+msgstr ""
+
 #: lib/phoenix_kit_billing/errors.ex:193
 #, elixir-autogen, elixir-format
 msgid "This order has an invoice that is neither void nor in the trash."

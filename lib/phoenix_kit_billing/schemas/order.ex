@@ -243,6 +243,7 @@ defmodule PhoenixKitBilling.Order do
     ])
     |> restrict_status_change()
     |> validate_required([:total, :currency])
+    |> require_stored_number()
     |> validate_guest_order_billing()
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_payment_method()
@@ -292,6 +293,14 @@ defmodule PhoenixKitBilling.Order do
   end
 
   defp restrict_status_change(changeset), do: changeset
+
+  # A new order gets its number from the context. A stored one must keep one:
+  # the column is NOT NULL, so a blank number would raise in the database and
+  # doom the caller's transaction instead of coming back as an error.
+  defp require_stored_number(%Ecto.Changeset{data: %{__meta__: %{state: :loaded}}} = changeset),
+    do: validate_required(changeset, [:order_number])
+
+  defp require_stored_number(changeset), do: changeset
 
   # Guest orders must have billing_snapshot with email when no billing_profile_uuid
   defp validate_guest_order_billing(changeset) do

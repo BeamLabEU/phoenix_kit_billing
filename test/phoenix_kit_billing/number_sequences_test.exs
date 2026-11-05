@@ -262,6 +262,50 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert new_order(user).order_number == number("ORD", 11)
     end
 
+    test "a blank number on update_order is an error on the field, not a database crash", %{
+      user: user
+    } do
+      order = new_order(user)
+
+      for blank <- [nil, "", "   "] do
+        assert {:error, %Ecto.Changeset{} = changeset} =
+                 Billing.update_order(order, %{"order_number" => blank})
+
+        assert %{order_number: ["can't be blank"]} = errors_on(changeset)
+      end
+
+      assert Billing.get_order!(order.uuid).order_number == order.order_number
+    end
+
+    test "a blank number on update_invoice is an error on the field, not a database crash", %{
+      user: user
+    } do
+      {:ok, invoice} =
+        Billing.create_invoice(user, %{total: Decimal.new("10.00"), currency: "EUR"})
+
+      for blank <- [nil, "", "   "] do
+        assert {:error, %Ecto.Changeset{} = changeset} =
+                 Billing.update_invoice(invoice, %{invoice_number: blank})
+
+        assert %{invoice_number: ["can't be blank"]} = errors_on(changeset)
+      end
+
+      assert Billing.get_invoice!(invoice.uuid).invoice_number == invoice.invoice_number
+    end
+
+    test "a blank number leaves the caller's transaction usable", %{user: user} do
+      order = new_order(user)
+
+      assert {:ok, :carried_on} =
+               Repo.transaction(fn ->
+                 {:error, %Ecto.Changeset{}} =
+                   Billing.update_order(order, %{"order_number" => ""})
+
+                 Repo.query!("SELECT 1")
+                 :carried_on
+               end)
+    end
+
     test "a number changed by update_order that fails validation takes nothing", %{user: user} do
       order = new_order(user)
 

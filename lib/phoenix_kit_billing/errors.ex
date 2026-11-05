@@ -58,6 +58,7 @@ defmodule PhoenixKitBilling.Errors do
           | :invoice_not_trashable
           | :invoice_not_void
           | :invoice_not_voidable
+          | :invoice_out_of_date
           | :invoice_trashed
           | :is_default
           | :max_retries_exceeded
@@ -160,6 +161,9 @@ defmodule PhoenixKitBilling.Errors do
 
   def message(:invoice_not_voidable),
     do: gettext("This invoice cannot be voided in its current state.")
+
+  def message(:invoice_out_of_date),
+    do: gettext("This invoice no longer matches its order. Void it and start the payment again.")
 
   def message(:invoice_trashed),
     do: gettext("This invoice is in the trash. Restore it to change it.")

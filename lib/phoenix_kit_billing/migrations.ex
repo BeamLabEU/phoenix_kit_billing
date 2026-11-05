@@ -305,8 +305,9 @@ defmodule PhoenixKitBilling.Migrations do
     The `CREATE INDEX` statements are plain (not `CONCURRENTLY`) and block writes
     to their table while they build; on a large table run V8 in a quiet moment.
 
-  Nothing is rewritten: every existing row reads as "not trashed". The code
-  that writes the columns needs them, so run V8 before it.
+  Nothing is rewritten: every existing row reads as "not trashed". The schemas
+  select these columns on every read of an order or invoice, so run V8 before
+  deploying the code: without them every such query fails.
 
   `down/1` below V8 drops the three indexes and the four columns - never either
   table. Rows that were in the trash are not deleted; they simply read as not

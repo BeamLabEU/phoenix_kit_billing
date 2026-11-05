@@ -177,6 +177,10 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     order = order!(stripe)
     {:ok, first} = Billing.start_order_payment(order, @urls)
 
+    # Both move, so the invoice still matches its order: only the recorded
+    # session is left in the old currency.
+    Repo.update_all(from(o in Order, where: o.uuid == ^order.uuid), set: [currency: "USD"])
+
     Repo.update_all(from(i in Invoice, where: i.uuid == ^first.invoice.uuid),
       set: [currency: "USD"]
     )
@@ -364,6 +368,54 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     assert Enum.all?(results, &match?({:ok, %{url: "https://checkout.stripe.test/1"}}, &1))
     assert :counters.get(counter, 1) == 1
     assert length(Billing.list_invoices_for_order(order.uuid)) == 1
+  end
+
+  describe "an order changed after its invoice was opened" do
+    test "is not charged the old total, and paying cannot settle it for less", %{
+      stripe: stripe,
+      counter: counter
+    } do
+      order = order!(stripe)
+      assert {:ok, %{invoice: stale}} = Billing.start_order_payment(order, @urls)
+      assert :counters.get(counter, 1) == 1
+
+      {:ok, edited} = Billing.update_order(order, %{"total" => Decimal.new("100.00")})
+
+      assert {:error, :invoice_out_of_date} = Billing.start_order_payment(edited, @urls)
+
+      # Nothing was opened at the provider for the old amount.
+      assert :counters.get(counter, 1) == 1
+      assert Billing.get_invoice!(stale.uuid).status == "sent"
+      assert Billing.get_order!(order.uuid).status == "pending"
+    end
+
+    test "starts again on a new invoice once the old one is void", %{stripe: stripe} do
+      order = order!(stripe)
+      {:ok, %{invoice: stale}} = Billing.start_order_payment(order, @urls)
+      {:ok, edited} = Billing.update_order(order, %{"total" => Decimal.new("100.00")})
+      {:ok, _} = Billing.void_invoice(stale)
+
+      assert {:ok, %{invoice: fresh}} = Billing.start_order_payment(edited, @urls)
+      refute fresh.uuid == stale.uuid
+      assert Decimal.eq?(fresh.total, "100.00")
+    end
+
+    test "is not charged in the old currency", %{stripe: stripe} do
+      order = order!(stripe)
+      {:ok, %{invoice: _stale}} = Billing.start_order_payment(order, @urls)
+      {:ok, edited} = Billing.update_order(order, %{"currency" => "USD"})
+
+      assert {:error, :invoice_out_of_date} = Billing.start_order_payment(edited, @urls)
+    end
+
+    test "the same total at another scale is the same total", %{stripe: stripe} do
+      order = order!(stripe)
+      {:ok, %{invoice: invoice}} = Billing.start_order_payment(order, @urls)
+      {:ok, edited} = Billing.update_order(order, %{"total" => Decimal.new("25.0")})
+
+      assert {:ok, %{invoice: same}} = Billing.start_order_payment(edited, @urls)
+      assert same.uuid == invoice.uuid
+    end
   end
 
   test "an existing draft invoice is sent and reused, and an overdue one is reused", %{

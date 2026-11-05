@@ -163,6 +163,7 @@ defmodule PhoenixKitBilling.Invoice do
     |> keep_void_trail()
     |> keep_status()
     |> validate_required([:total, :currency])
+    |> require_stored_number()
     |> validate_payer()
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_length(:currency, is: 3)
@@ -208,6 +209,14 @@ defmodule PhoenixKitBilling.Invoice do
   end
 
   defp keep_status(changeset), do: changeset
+
+  # A new invoice gets its number from the context. A stored one must keep one:
+  # the column is NOT NULL, so a blank number would raise in the database and
+  # doom the caller's transaction instead of coming back as an error.
+  defp require_stored_number(%Ecto.Changeset{data: %{__meta__: %{state: :loaded}}} = changeset),
+    do: validate_required(changeset, [:invoice_number])
+
+  defp require_stored_number(changeset), do: changeset
 
   # A payer is EITHER a registered user OR someone reachable by email —
   # a guest paying for a booking has no account, and inventing one for

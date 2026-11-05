@@ -285,7 +285,7 @@ language for a guest payer or an account without a preference. Billing explicitl
 installs that language for its own copy, including when the sender has set a
 Gettext backend locale. Dates use core's translated month names and locale-aware
 ordering, in both sends and previews. This works from the supported core floor
-of 2.44.0.
+of 2.65.0.
 
 Each email's built-in copy (`PhoenixKitBilling.EmailDefaults`) has three parts:
 

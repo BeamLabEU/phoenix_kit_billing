@@ -12,3 +12,12 @@ the installed core's migration floor and was left intact.
 - `mix precommit`: clean, including Dialyzer (only the three existing ignored warnings).
 - `git diff --check`: clean.
 
+
+## Claude — 2026-11-05
+
+- **BUG - HIGH: order paid for a stale total — fixed.** New refusal
+  `:invoice_out_of_date`, with an `Errors` message translated into et, ru and uk.
+  **Open:** the admin payment path still has the gap; see the review.
+- **BUG - MEDIUM: checkout context could wipe the void trail — fixed.** The write now
+  runs on the locked row. The race test fails with the lock removed.
+- **NITPICK: unmapped refusal atoms — not fixed**, because no page shows them.

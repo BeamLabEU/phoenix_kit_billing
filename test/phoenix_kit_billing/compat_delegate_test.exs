@@ -99,4 +99,31 @@ defmodule PhoenixKitBilling.CompatDelegateTest do
              "delegate them — core resolves these with function_exported?/3, so a host " <>
              "registering PhoenixKit.Modules.Billing loses them with no error"
   end
+
+  test "PhoenixKit.Modules.Billing carries the trash and void API at every arity" do
+    Code.ensure_loaded!(PhoenixKit.Modules.Billing)
+
+    expected = [
+      trash_order: 1,
+      trash_order: 2,
+      restore_order: 1,
+      restore_order: 2,
+      trash_invoice: 1,
+      trash_invoice: 2,
+      restore_invoice: 1,
+      restore_invoice: 2,
+      record_payment_after_void: 2,
+      list_invoices_for_order: 1,
+      list_invoices_for_order: 2,
+      mark_invoice_paid: 1,
+      mark_invoice_paid: 2
+    ]
+
+    missing =
+      Enum.reject(expected, fn {name, arity} ->
+        function_exported?(PhoenixKit.Modules.Billing, name, arity)
+      end)
+
+    assert missing == []
+  end
 end

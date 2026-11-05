@@ -18,7 +18,10 @@ defmodule PhoenixKitBilling.OrderPayment do
     1. The order must be unpaid and carry an online payment option whose
        provider is configured.
     2. The order's open invoice (`draft`, `sent` or `overdue`, newest first)
-       is reused, or one is created from the order. Steps 2 to 4 run under a
+       is reused, or one is created from the order. An open invoice for another
+       total or currency than the order's is refused, not charged: the order
+       can be edited after its invoice was opened, and a paid invoice marks its
+       order paid whatever the amounts. Steps 2 to 4 run under a
        per-order advisory lock (held on one connection, outside any
        transaction, so billing's invoice events still follow their commits),
        so two clicks cannot create two invoices or two live sessions. The lock
@@ -45,8 +48,10 @@ defmodule PhoenixKitBilling.OrderPayment do
   the reason is one of `:order_not_found`, `:order_not_payable` (cancelled,
   refunded, no online payment option), `:order_trashed` (the order is in the
   trash; an invoice of it in the trash is skipped, and a new one made),
-  `:already_paid`, `:provider_not_available`, `:lock_timeout` (another start
-  for the same order held the lock for too long), `:in_transaction` (see below), or whatever
+  `:already_paid`, `:invoice_out_of_date` (the open invoice no longer matches
+  the order: void it, and the next start makes a new one),
+  `:provider_not_available`, `:lock_timeout` (another start for the same order
+  held the lock for too long), `:in_transaction` (see below), or whatever
   billing's own functions return.
 
   ## The order lock
@@ -226,9 +231,18 @@ defmodule PhoenixKitBilling.OrderPayment do
 
     case repo().one(open) do
       %Invoice{status: "paid"} -> {:error, :already_paid}
-      %Invoice{} = invoice -> {:ok, invoice}
+      %Invoice{} = invoice -> ensure_matches_order(invoice, order)
       nil -> Billing.create_invoice_from_order(order)
     end
+  end
+
+  # `update_order/2` can change an order that already has an open invoice, and
+  # paying an invoice marks its order paid without comparing the two: charging
+  # the old invoice would settle the order for the wrong money.
+  defp ensure_matches_order(%Invoice{} = invoice, %Order{} = order) do
+    if invoice.currency == order.currency and Decimal.eq?(invoice.total, order.total),
+      do: {:ok, invoice},
+      else: {:error, :invoice_out_of_date}
   end
 
   defp make_payable(%Invoice{status: "draft"} = invoice, opts) do
@@ -270,20 +284,26 @@ defmodule PhoenixKitBilling.OrderPayment do
   # Only the record of the session just opened (its URL) is touched. Best
   # effort, like billing's own record: without it the session is simply not
   # reused.
-  defp record_checkout_context(%Invoice{uuid: uuid} = invoice, url, opts) do
-    with %Invoice{metadata: %{"checkout" => %{"url" => ^url} = checkout} = metadata} = stored <-
-           repo().get(Invoice, uuid),
-         {:ok, _} <-
-           stored
-           |> Ecto.Changeset.change(%{
-             metadata:
-               Map.put(metadata, "checkout", Map.merge(checkout, checkout_context(invoice, opts)))
-           })
-           |> repo().update() do
-      :ok
-    else
-      _ -> :ok
-    end
+  #
+  # On the locked row: the whole `metadata` is written back, and a void
+  # committed between an unlocked read and this write would lose its trail,
+  # with the charges in it that are still to be refunded.
+  @doc false
+  # Public for the tests only: the race needs this step on its own.
+  def record_checkout_context(%Invoice{uuid: uuid} = invoice, url, opts) do
+    repo().transaction(fn ->
+      with %Invoice{metadata: %{"checkout" => %{"url" => ^url} = checkout} = metadata} = stored <-
+             Invoice |> where([i], i.uuid == ^uuid) |> lock("FOR UPDATE") |> repo().one() do
+        stored
+        |> Ecto.Changeset.change(%{
+          metadata:
+            Map.put(metadata, "checkout", Map.merge(checkout, checkout_context(invoice, opts)))
+        })
+        |> repo().update()
+      end
+    end)
+
+    :ok
   end
 
   # A session is reused only for the amount it was opened for: a part payment

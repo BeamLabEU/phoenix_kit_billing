@@ -24,12 +24,9 @@ defmodule PhoenixKitBilling.Web.Components.SettingsTabs do
   Paths are passed raw — `nav_tabs` runs them through the core route helper,
   which is what applies the install's URL prefix and locale segment.
 
-  The key is `:path`, not the newer `:navigate`. This module pins core
-  `~> 2.0` and a conformance test enforces that wide pin, so it has to work
-  against every 2.x. Tab link keys live in a runtime map, which no `attr`
-  declaration can validate, so a `:navigate` here would not fail to compile
-  against an older core — it would fall through to the button branch and
-  render a strip of dead tabs. `:path` has existed since 1.7.82.
+  The key is `:path`, core's legacy spelling, because these paths are unprefixed:
+  `nav_tabs` applies the route helper to `:path` only. `:navigate` and `:patch`
+  pass through verbatim, so swapping the key alone would under-prefix every link.
   """
   attr(:active_tab, :string,
     required: true,

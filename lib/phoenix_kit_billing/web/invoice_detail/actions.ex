@@ -352,10 +352,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           actor_role: actor_role(socket),
           resource_type: "invoice",
           resource_uuid: invoice.uuid,
-          # The operator's own reason, typed for the audit trail (not customer data).
-          metadata:
-            %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
-            |> put_reason(invoice.metadata["void"]["reason"])
+          # Not the reason: it is free text, and it is kept on the invoice's void trail.
+          metadata: %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
         )
 
         {:noreply,
@@ -462,9 +460,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
   end
 
   # Private helpers
-
-  defp put_reason(metadata, nil), do: metadata
-  defp put_reason(metadata, reason), do: Map.put(metadata, "reason", reason)
 
   defp actor_uuid(socket), do: Activity.actor_uuid(socket)
   defp actor_role(socket), do: Activity.actor_role(socket)

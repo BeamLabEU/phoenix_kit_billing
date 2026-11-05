@@ -77,11 +77,15 @@ defmodule PhoenixKitBilling.Web.VoidCancelModalsTest do
       assert stored.metadata["void"]["reason"] == "Booking cancelled"
       assert stored.metadata["void"]["by_uuid"] == user.uuid
 
-      assert_activity_logged("billing.invoice_voided",
-        resource_uuid: invoice.uuid,
-        actor_uuid: user.uuid,
-        metadata_has: %{"status" => "void", "reason" => "Booking cancelled"}
-      )
+      # The reason is free text: it stays on the invoice, out of the activity log.
+      row =
+        assert_activity_logged("billing.invoice_voided",
+          resource_uuid: invoice.uuid,
+          actor_uuid: user.uuid,
+          metadata_has: %{"status" => "void"}
+        )
+
+      refute Map.has_key?(row.metadata, "reason")
     end
 
     test "the reason is optional", %{conn: conn, user: user} do
@@ -207,11 +211,15 @@ defmodule PhoenixKitBilling.Web.VoidCancelModalsTest do
       assert stored.internal_notes =~
                ~r/\ACalled the customer\n\nCancelled .* UTC: Changed mind\z/
 
-      assert_activity_logged("billing.order_cancelled",
-        resource_uuid: order.uuid,
-        actor_uuid: user.uuid,
-        metadata_has: %{"status" => "cancelled", "reason" => "Changed mind"}
-      )
+      # The reason is free text: it stays in the internal notes, out of the activity log.
+      row =
+        assert_activity_logged("billing.order_cancelled",
+          resource_uuid: order.uuid,
+          actor_uuid: user.uuid,
+          metadata_has: %{"status" => "cancelled"}
+        )
+
+      refute Map.has_key?(row.metadata, "reason")
     end
 
     test "the reason is optional, and closing the modal cancels nothing", %{
