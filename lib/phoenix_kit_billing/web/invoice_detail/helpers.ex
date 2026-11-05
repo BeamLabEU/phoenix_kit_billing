@@ -186,18 +186,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Helpers do
   end
 
   @doc """
-  Checks if invoice is fully refunded.
+  Checks if invoice is fully refunded: refunds took what was paid back to zero, the
+  rule that voids it. Part of the total may never have been paid, so the total does
+  not come into it.
   """
   def fully_refunded?(invoice, transactions) do
-    total_refunded =
-      transactions
-      |> Enum.filter(&Decimal.negative?(&1.amount))
-      |> Enum.map(& &1.amount)
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-      |> Decimal.abs()
-
-    Decimal.gt?(total_refunded, Decimal.new(0)) &&
-      Decimal.gte?(total_refunded, invoice.total)
+    Enum.any?(transactions, &Decimal.negative?(&1.amount)) and
+      not Decimal.positive?(invoice.paid_amount)
   end
 
   @doc """

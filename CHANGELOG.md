@@ -1,3 +1,9 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
 ## 0.25.0 - 2026-11-05
 
 Durable order events (issue #68), one call to start an order's payment (PR #64),
@@ -148,12 +154,6 @@ Other changes:
 - Four subscription tests no longer `@tag :skip`: `subscription_type_uuid`
   exists on a from-scratch build, so the documented "core chain gap" is gone.
   The matching AGENTS.md landmine and TODO are removed.
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## 0.23.0 - 2026-10-24
 

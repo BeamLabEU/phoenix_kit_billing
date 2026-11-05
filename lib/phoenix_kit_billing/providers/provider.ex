@@ -149,6 +149,8 @@ defmodule PhoenixKitBilling.Providers.Provider do
       (`KeyError`) rather than defaulting it (§7.1)
     - `:description` - Description for the charge
     - `:invoice_uuid` - Associated invoice UUID
+    - `:idempotency_key` - Repeats a charge instead of making a second one, where the
+      provider supports it (Stripe). Others ignore it
     - `:metadata` - Additional metadata
 
   ## Returns

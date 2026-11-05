@@ -40,3 +40,13 @@ follow-up, with its reason recorded in the review.
   `""` and whitespace on a stored row. Regressions in `number_sequences_test.exs`
   fail without the fix.
 - The renewal/provider-call limitation stays open, as recorded above.
+
+### Update — 2026-11-05
+
+- **The renewal/provider-call limitation is closed.** The invoice is created and
+  committed before the charge (`Workers.SubscriptionCharge`), so no counter waits on a
+  provider. Ownership is the subscription's and the invoice's row locks, and a
+  period's invoice is found again by `metadata["period_end"]`, which is what stops a
+  retry billing twice. Real-connection tests cover a second worker, a void and a pause
+  during a charge. Only Stripe has an idempotency key, so with the other providers a
+  crash past the charge can still charge twice, as it could before.

@@ -9,9 +9,15 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
 
   1. Initial payment fails → subscription status = `past_due`
   2. Grace period starts (configurable, default 3 days)
-  3. This worker retries payment at intervals
+  3. This worker retries payment at intervals, on the invoice of the period
+     (see `SubscriptionCharge`), so the money reaches the ledger
   4. If payment succeeds → status = `active`
-  5. If max attempts reached or grace period ends → status = `cancelled`
+  5. If max attempts reached or grace period ends → status = `cancelled`, and the
+     invoice is voided: nothing is owed for a period that was not given
+
+  A declined retry is a handled outcome, not a failed job. Returned as an error, Oban
+  would retry it within seconds: each try counts, so one decline would use up every
+  attempt and cancel the subscription in about a minute.
 
   ## Retry Schedule
 
@@ -46,7 +52,8 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
   alias PhoenixKit.RepoHelper
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Date, as: UtilsDate
-  alias PhoenixKitBilling.{PaymentMethod, Providers, Subscription, SubscriptionType}
+  alias PhoenixKitBilling.{PaymentMethod, Subscription}
+  alias PhoenixKitBilling.Workers.SubscriptionCharge
 
   require Logger
 
@@ -113,53 +120,48 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
         "Attempting payment retry ##{subscription.renewal_attempts + 1} for subscription #{subscription.uuid}"
       )
 
-      case charge_subscription(subscription) do
-        {:ok, _result} ->
-          Logger.info("Dunning payment successful for subscription #{subscription.uuid}")
-          reactivate_subscription(subscription)
-
-        {:error, reason} ->
-          Logger.warning(
-            "Dunning payment failed for subscription #{subscription.uuid}: #{inspect(reason)}"
-          )
-
-          update_retry_count(subscription)
-          schedule_next_retry(subscription)
-          {:error, reason}
-      end
+      retry_charge(subscription)
     else
       Logger.warning(
         "Payment method not usable for subscription #{subscription.uuid}: #{inspect(pm.status)}"
       )
 
       schedule_next_retry(subscription)
-      {:error, :payment_method_not_usable}
+      {:ok, :payment_method_not_usable}
     end
   end
 
-  defp charge_subscription(%Subscription{} = subscription) do
-    plan = subscription.subscription_type
-    pm = subscription.payment_method
+  defp retry_charge(%Subscription{} = subscription) do
+    result =
+      SubscriptionCharge.run(subscription,
+        description: "Subscription renewal (dunning retry)",
+        due?: &Subscription.past_due?/1,
+        declined: &handle_decline/2
+      )
 
-    # Providers.charge_payment_method expects the payment_method map with :provider key
-    Providers.charge_payment_method(pm, plan.price,
-      currency: plan.currency,
-      description: "Subscription renewal (dunning retry)",
-      metadata: %{
-        subscription_uuid: subscription.uuid,
-        retry_attempt: subscription.renewal_attempts + 1
-      }
-    )
+    case result do
+      {:ok, %Subscription{status: "active"}} = paid ->
+        Logger.info("Dunning payment successful for subscription #{subscription.uuid}")
+        paid
+
+      # The money was taken: nothing more is scheduled, and the job is not failed, or
+      # either would charge it again.
+      {:error, {:charged_not_recorded, _reason} = outcome} ->
+        {:ok, outcome}
+
+      other ->
+        other
+    end
   end
 
-  defp reactivate_subscription(%Subscription{} = subscription) do
-    plan = subscription.subscription_type
-    new_period_start = subscription.current_period_end
-    new_period_end = SubscriptionType.next_billing_date(plan, DateTime.to_date(new_period_start))
+  defp handle_decline(%Subscription{} = subscription, reason) do
+    Logger.warning(
+      "Dunning payment failed for subscription #{subscription.uuid}: #{inspect(reason)}"
+    )
 
-    subscription
-    |> Subscription.activate_changeset(datetime_from_date(new_period_end))
-    |> RepoHelper.repo().update()
+    update_retry_count(subscription)
+    schedule_next_retry(subscription)
+    {:ok, {:declined, reason}}
   end
 
   defp update_retry_count(%Subscription{} = subscription) do
@@ -173,23 +175,16 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
 
   defp cancel_subscription(%Subscription{} = subscription, reason) do
     Logger.info("Cancelling subscription #{subscription.uuid}: #{reason}")
-
-    subscription
-    |> Subscription.cancel_changeset(true)
-    |> RepoHelper.repo().update()
+    SubscriptionCharge.end_subscription(subscription, reason)
   end
 
+  # Unconditional: `process_dunning/1` decides at the next run whether that is another
+  # try or the end. Stopping here on the last attempt left the subscription past due
+  # for good, and `active?/1` counts that as in service.
   defp schedule_next_retry(%Subscription{} = subscription) do
-    max_attempts = get_max_attempts()
-
-    # The current attempt has already been counted in update_retry_count/1
-    # by the caller. Only schedule another run if a future attempt is
-    # still permitted by max_attempts.
-    if subscription.renewal_attempts + 1 < max_attempts do
-      %{subscription_uuid: subscription.uuid}
-      |> __MODULE__.new(schedule_in: 86_400)
-      |> Oban.insert()
-    end
+    %{subscription_uuid: subscription.uuid}
+    |> __MODULE__.new(schedule_in: 86_400)
+    |> Oban.insert()
   end
 
   # ============================================
@@ -209,9 +204,5 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
   defp get_max_attempts do
     Settings.get_setting("billing_dunning_max_attempts", "3")
     |> String.to_integer()
-  end
-
-  defp datetime_from_date(date) do
-    DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
   end
 end

@@ -227,7 +227,7 @@ defmodule PhoenixKitBilling.Providers.Stripe do
           |> maybe_merge_invoice_metadata(opts)
       }
 
-      case stripe_request(:post, "/payment_intents", params, config) do
+      case stripe_request(:post, "/payment_intents", params, config, idempotency_headers(opts)) do
         {:ok, %{"id" => id, "status" => "succeeded", "latest_charge" => charge_id}} ->
           {:ok,
            %ChargeResult{
@@ -532,14 +532,22 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     end
   end
 
-  defp stripe_request(method, path, body, config) do
+  defp idempotency_headers(opts) do
+    case Keyword.get(opts, :idempotency_key) do
+      nil -> []
+      key -> [{"Idempotency-Key", key}]
+    end
+  end
+
+  defp stripe_request(method, path, body, config, extra_headers \\ []) do
     url = "https://api.stripe.com/v1#{path}"
 
-    headers = [
-      {"Authorization", "Bearer #{config[:api_key]}"},
-      {"Content-Type", "application/x-www-form-urlencoded"},
-      {"Stripe-Version", @stripe_api_version}
-    ]
+    headers =
+      [
+        {"Authorization", "Bearer #{config[:api_key]}"},
+        {"Content-Type", "application/x-www-form-urlencoded"},
+        {"Stripe-Version", @stripe_api_version}
+      ] ++ extra_headers
 
     body_encoded = if body, do: encode_body(body), else: ""
 

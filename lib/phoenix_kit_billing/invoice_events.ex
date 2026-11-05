@@ -35,8 +35,10 @@ defmodule PhoenixKitBilling.InvoiceEvents do
     the invoice: it is committed with the payment or not at all.
   - **One Oban job per (event, handler)**: a failing handler retries alone
     and never holds up another module.
-  - **At-least-once.** A handler must be idempotent; the job carries an
-    `event_uuid` to key that on.
+  - **At-least-once.** A handler must be idempotent. The job's `event_uuid` only
+    keeps it from being inserted twice and is not handed to the handler, so decide
+    from the invoice itself: `:paid` and `:voided` happen once per invoice, while
+    `:refunded` can fire many times, so read `paid_amount` rather than count events.
   - The handler receives the invoice **as it is now** — re-read when the
     job runs — not a snapshot from when it was enqueued.
   - A job may only call a handler that is registered *when it runs*: job

@@ -5428,3 +5428,35 @@ msgstr "История ваших заказов, счета и платежи"
 #, elixir-autogen, elixir-format
 msgid "Your orders will appear here once you place one"
 msgstr "Ваши заказы появятся здесь, когда вы оформите первый"
+
+#, elixir-autogen, elixir-format
+msgid "This invoice has payments on it. Refund them before voiding it."
+msgstr "По этому счёту есть платежи. Сначала верните их, а затем аннулируйте счёт."
+
+#, elixir-autogen, elixir-format
+msgid "The total and currency of this order cannot change while it has an open invoice. Void the invoice or move it to the trash first."
+msgstr "Сумму и валюту этого заказа нельзя изменить, пока у него есть открытый счёт. Сначала аннулируйте счёт или переместите его в корзину."
+
+#, elixir-autogen, elixir-format
+msgid "Order not found."
+msgstr "Заказ не найден."
+
+#, elixir-autogen, elixir-format
+msgid "Only an active or trialing subscription can be paused."
+msgstr "Приостановить можно только активную или пробную подписку."
+
+#, elixir-autogen, elixir-format
+msgid "Only a paused subscription or a pending cancellation can be resumed."
+msgstr "Возобновить можно только приостановленную подписку или подписку с запланированной отменой."
+
+#, elixir-autogen, elixir-format
+msgid "A payment for this order is already being started. Try again in a moment."
+msgstr "Оплата этого заказа уже начата. Повторите попытку чуть позже."
+
+#, elixir-autogen, elixir-format
+msgid "A payment cannot be started inside a database transaction."
+msgstr "Оплату нельзя начать внутри транзакции базы данных."
+
+#, elixir-autogen, elixir-format
+msgid "There is nothing left to pay."
+msgstr "Оплачивать больше нечего."

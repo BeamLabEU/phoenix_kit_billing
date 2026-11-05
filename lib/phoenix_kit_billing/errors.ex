@@ -43,6 +43,7 @@ defmodule PhoenixKitBilling.Errors do
           | :exceeds_remaining
           | :has_active_subscriptions
           | :has_subscriptions
+          | :in_transaction
           | :invalid_amount
           | :invalid_format
           | :invalid_json
@@ -58,9 +59,11 @@ defmodule PhoenixKitBilling.Errors do
           | :invoice_not_trashable
           | :invoice_not_void
           | :invoice_not_voidable
+          | :invoice_has_payments
           | :invoice_out_of_date
           | :invoice_trashed
           | :is_default
+          | :lock_timeout
           | :max_retries_exceeded
           | :missing_reference
           | :no_charge_id
@@ -79,9 +82,12 @@ defmodule PhoenixKitBilling.Errors do
           | :not_refundable
           | :not_supported
           | :not_trashed
+          | :nothing_to_pay
           | :order_has_invoices
           | :order_cancelled
+          | :order_amount_invoiced
           | :order_has_open_invoices
+          | :order_not_found
           | :order_not_cancellable
           | :order_not_editable
           | :order_not_payable
@@ -99,6 +105,8 @@ defmodule PhoenixKitBilling.Errors do
           | :request_failed
           | :requires_action
           | :signature_mismatch
+          | :subscription_not_pausable
+          | :subscription_not_resumable
           | :subscription_type_not_found
           | :timestamp_too_old
           | :transaction_not_found
@@ -131,6 +139,9 @@ defmodule PhoenixKitBilling.Errors do
   def message(:has_subscriptions),
     do: gettext("Cannot proceed while there are existing subscriptions.")
 
+  def message(:in_transaction),
+    do: gettext("A payment cannot be started inside a database transaction.")
+
   def message(:invalid_amount), do: gettext("The amount is invalid.")
   def message(:invalid_format), do: gettext("The format is invalid.")
   def message(:invalid_json), do: gettext("The response was not valid JSON.")
@@ -162,6 +173,9 @@ defmodule PhoenixKitBilling.Errors do
   def message(:invoice_not_voidable),
     do: gettext("This invoice cannot be voided in its current state.")
 
+  def message(:invoice_has_payments),
+    do: gettext("This invoice has payments on it. Refund them before voiding it.")
+
   def message(:invoice_out_of_date),
     do: gettext("This invoice no longer matches its order. Void it and start the payment again.")
 
@@ -169,6 +183,9 @@ defmodule PhoenixKitBilling.Errors do
     do: gettext("This invoice is in the trash. Restore it to change it.")
 
   def message(:is_default), do: gettext("The default item cannot be removed.")
+
+  def message(:lock_timeout),
+    do: gettext("A payment for this order is already being started. Try again in a moment.")
 
   def message(:max_retries_exceeded),
     do: gettext("This event exceeded the maximum number of retries.")
@@ -190,12 +207,19 @@ defmodule PhoenixKitBilling.Errors do
   def message(:not_refundable), do: gettext("This record cannot be refunded.")
   def message(:not_supported), do: gettext("This operation is not supported.")
   def message(:not_trashed), do: gettext("This record is not in the trash.")
+  def message(:nothing_to_pay), do: gettext("There is nothing left to pay.")
 
   def message(:order_has_invoices),
     do: gettext("This order has invoices and cannot be deleted.")
 
   def message(:order_cancelled),
     do: gettext("This order is cancelled and cannot take this invoice.")
+
+  def message(:order_amount_invoiced),
+    do:
+      gettext(
+        "The total and currency of this order cannot change while it has an open invoice. Void the invoice or move it to the trash first."
+      )
 
   def message(:order_has_open_invoices),
     do: gettext("This order has an invoice that is neither void nor in the trash.")
@@ -204,6 +228,7 @@ defmodule PhoenixKitBilling.Errors do
     do: gettext("This order cannot be cancelled in its current state.")
 
   def message(:order_not_editable), do: gettext("This order can no longer be edited.")
+  def message(:order_not_found), do: gettext("Order not found.")
   def message(:order_not_payable), do: gettext("This order cannot be paid in its current state.")
   def message(:order_not_refundable), do: gettext("This order cannot be refunded.")
 
@@ -229,6 +254,13 @@ defmodule PhoenixKitBilling.Errors do
     do: gettext("Additional action is required to complete the payment.")
 
   def message(:signature_mismatch), do: gettext("The webhook signature does not match.")
+
+  def message(:subscription_not_pausable),
+    do: gettext("Only an active or trialing subscription can be paused.")
+
+  def message(:subscription_not_resumable),
+    do: gettext("Only a paused subscription or a pending cancellation can be resumed.")
+
   def message(:subscription_type_not_found), do: gettext("Subscription type not found.")
   def message(:timestamp_too_old), do: gettext("The webhook timestamp is too old.")
   def message(:transaction_not_found), do: gettext("Transaction not found.")

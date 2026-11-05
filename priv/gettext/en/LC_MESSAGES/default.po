@@ -5413,3 +5413,35 @@ msgstr "Your order history, invoices, and payments"
 #, elixir-autogen, elixir-format
 msgid "Your orders will appear here once you place one"
 msgstr "Your orders will appear here once you place one"
+
+#, elixir-autogen, elixir-format
+msgid "This invoice has payments on it. Refund them before voiding it."
+msgstr "This invoice has payments on it. Refund them before voiding it."
+
+#, elixir-autogen, elixir-format
+msgid "The total and currency of this order cannot change while it has an open invoice. Void the invoice or move it to the trash first."
+msgstr "The total and currency of this order cannot change while it has an open invoice. Void the invoice or move it to the trash first."
+
+#, elixir-autogen, elixir-format
+msgid "Order not found."
+msgstr "Order not found."
+
+#, elixir-autogen, elixir-format
+msgid "Only an active or trialing subscription can be paused."
+msgstr "Only an active or trialing subscription can be paused."
+
+#, elixir-autogen, elixir-format
+msgid "Only a paused subscription or a pending cancellation can be resumed."
+msgstr "Only a paused subscription or a pending cancellation can be resumed."
+
+#, elixir-autogen, elixir-format
+msgid "A payment for this order is already being started. Try again in a moment."
+msgstr "A payment for this order is already being started. Try again in a moment."
+
+#, elixir-autogen, elixir-format
+msgid "A payment cannot be started inside a database transaction."
+msgstr "A payment cannot be started inside a database transaction."
+
+#, elixir-autogen, elixir-format
+msgid "There is nothing left to pay."
+msgstr "There is nothing left to pay."

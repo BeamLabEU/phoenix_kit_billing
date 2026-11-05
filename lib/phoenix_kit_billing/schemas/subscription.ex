@@ -45,6 +45,8 @@ defmodule PhoenixKitBilling.Subscription do
   alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKitBilling.{BillingProfile, PaymentMethod, SubscriptionType}
 
+  @type t :: %__MODULE__{}
+
   @statuses ~w(trialing active past_due paused cancelled)
 
   @primary_key {:uuid, UUIDv7, autogenerate: true}
@@ -158,12 +160,14 @@ defmodule PhoenixKitBilling.Subscription do
   end
 
   @doc """
-  Changeset for activating a subscription after successful payment.
+  Changeset for activating a subscription after successful payment. The new period
+  starts where the old one ended.
   """
   def activate_changeset(subscription, period_end) do
     subscription
     |> change(%{
       status: "active",
+      current_period_start: subscription.current_period_end,
       current_period_end: period_end,
       renewal_attempts: 0,
       grace_period_end: nil
@@ -192,11 +196,15 @@ defmodule PhoenixKitBilling.Subscription do
   end
 
   @doc """
-  Changeset for resuming a paused subscription.
+  Changeset for resuming a subscription: a paused one becomes active, and a pending
+  cancellation is taken back. A trial stays a trial.
   """
+  def resume_changeset(%__MODULE__{status: "paused"} = subscription) do
+    change(subscription, %{status: "active", cancel_at_period_end: false})
+  end
+
   def resume_changeset(subscription) do
-    subscription
-    |> change(%{status: "active"})
+    change(subscription, %{cancel_at_period_end: false})
   end
 
   @doc """
@@ -265,6 +273,24 @@ defmodule PhoenixKitBilling.Subscription do
   """
   def paused?(%__MODULE__{status: "paused"}), do: true
   def paused?(_), do: false
+
+  @doc """
+  Returns true if the subscription can be paused: it is running and in good standing.
+  A past due one is left to dunning, which a pause would switch off.
+  """
+  def pausable?(%__MODULE__{status: status}), do: status in ["active", "trialing"]
+
+  @doc """
+  Returns true if there is something to resume: a pause, or a pending cancellation.
+  A cancelled subscription never comes back without a payment.
+  """
+  def resumable?(%__MODULE__{status: "paused"}), do: true
+
+  def resumable?(%__MODULE__{status: status, cancel_at_period_end: true})
+      when status in ["active", "trialing"],
+      do: true
+
+  def resumable?(_), do: false
 
   @doc """
   Returns true if the subscription will be cancelled at period end.

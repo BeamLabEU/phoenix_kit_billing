@@ -26,13 +26,14 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
 
   ## Process Flow
 
-  1. Query subscriptions where `current_period_end` is within 24 hours
+  1. Query subscriptions where `current_period_end` is within 24 hours, and those set
+     to cancel at the period end whose period is over
   2. For each subscription:
-     a. Skip if cancel_at_period_end is true
-     b. Create renewal invoice
-     c. Charge saved payment method
+     a. End it if it is set to cancel and its period is over
+     b. Find or create the invoice of the period
+     c. Charge saved payment method (see `SubscriptionCharge`)
      d. On success: extend period_end, update invoice as paid
-     e. On failure: set past_due, schedule dunning
+     e. On failure: set past_due, schedule dunning, leave the invoice open for it
 
   ## Manual Trigger
 
@@ -55,17 +56,8 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   alias PhoenixKit.RepoHelper
   alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Date, as: UtilsDate
-  alias PhoenixKitBilling, as: Billing
-
-  alias PhoenixKitBilling.{
-    Notifications,
-    PaymentMethod,
-    Providers,
-    Subscription,
-    SubscriptionType
-  }
-
-  alias PhoenixKitBilling.Workers.SubscriptionDunningWorker
+  alias PhoenixKitBilling.Subscription
+  alias PhoenixKitBilling.Workers.{SubscriptionCharge, SubscriptionDunningWorker}
 
   require Logger
 
@@ -114,203 +106,80 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   # ============================================
 
   defp process_subscription_renewal(%Subscription{cancel_at_period_end: true} = subscription) do
-    # Subscription marked for cancellation - don't renew, cancel now
-    Logger.info("Subscription #{subscription.uuid} marked for cancellation, cancelling now")
-
-    subscription
-    |> Subscription.cancel_changeset(true)
-    |> RepoHelper.repo().update()
+    end_cancelled_subscription(subscription)
   end
 
-  defp process_subscription_renewal(%Subscription{uuid: uuid}) do
-    repo = RepoHelper.repo()
+  defp process_subscription_renewal(%Subscription{} = subscription) do
+    # Read before any lock, so a second worker that got here first shows as a period
+    # that moved on.
+    period_end = subscription.current_period_end
 
-    # Take a row lock on the subscription so a concurrent webhook
-    # (`payment.succeeded` for the renewal invoice) or another worker
-    # instance cannot double-extend the period or double-charge.
-    repo.transaction(fn ->
-      case lock_and_load(uuid, repo) do
-        nil ->
-          Logger.warning("Subscription #{uuid} not found inside renewal transaction")
-          :ok
+    due? = fn locked ->
+      locked.status in ["active", "trialing"] and not locked.cancel_at_period_end and
+        DateTime.compare(locked.current_period_end, period_end) == :eq
+    end
 
-        %Subscription{cancel_at_period_end: true} = subscription ->
-          subscription
-          |> Subscription.cancel_changeset(true)
-          |> repo.update!()
+    result =
+      SubscriptionCharge.run(subscription,
+        description: "Subscription renewal",
+        due?: due?,
+        declined: &handle_payment_failure/2
+      )
 
-        %Subscription{} = locked ->
-          period_end_at_dispatch = locked.current_period_end
-          do_renew(locked, period_end_at_dispatch, repo)
-      end
-    end)
-    |> unwrap_transaction()
+    case result do
+      # Past due, so no renewal charges it again, and no dunning for the same reason.
+      {:error, {:charged_not_recorded, _reason}} ->
+        mark_past_due(subscription)
+
+      other ->
+        other
+    end
   end
 
-  defp lock_and_load(uuid, repo) do
-    from(s in Subscription,
-      where: s.uuid == ^uuid,
-      lock: "FOR UPDATE",
-      preload: [:subscription_type, :payment_method]
+  # The job may have been queued before the flag was set, with the period still
+  # running: the customer has paid for it.
+  defp end_cancelled_subscription(%Subscription{} = subscription) do
+    if Subscription.renewal_due?(subscription) do
+      Logger.info("Subscription #{subscription.uuid} marked for cancellation, cancelling now")
+      SubscriptionCharge.end_subscription(subscription, "Cancelled at the end of its period")
+    else
+      {:ok, :period_not_over}
+    end
+  end
+
+  defp handle_payment_failure(%Subscription{} = subscription, reason) do
+    {:ok, past_due, grace_period_end} = mark_past_due_with_grace(subscription)
+
+    Logger.warning(
+      "Subscription #{subscription.uuid} renewal failed: #{failure_message(reason)}. " <>
+        "Grace period until #{grace_period_end}"
     )
-    |> repo.one()
+
+    schedule_dunning(subscription.uuid)
+
+    {:ok, past_due}
   end
 
-  defp unwrap_transaction({:ok, result}), do: {:ok, result}
-  defp unwrap_transaction({:error, reason}), do: {:error, reason}
+  defp failure_message(:no_payment_method), do: "No payment method configured"
+  defp failure_message(reason), do: inspect(reason)
 
-  defp do_renew(%Subscription{} = subscription, period_end_at_dispatch, repo) do
-    cond do
-      subscription.status == "cancelled" ->
-        Logger.info("Subscription #{subscription.uuid} already cancelled — skipping renewal")
-        {:ok, :cancelled}
-
-      DateTime.compare(subscription.current_period_end, period_end_at_dispatch) != :eq ->
-        # Another process (likely a webhook for the same renewal) already
-        # advanced the period. Idempotent skip.
-        Logger.info(
-          "Subscription #{subscription.uuid} already renewed by another path — skipping"
-        )
-
-        {:ok, :already_renewed}
-
-      true ->
-        attempt_renewal(subscription, repo)
-    end
+  defp mark_past_due(%Subscription{} = subscription) do
+    {:ok, past_due, _grace_period_end} = mark_past_due_with_grace(subscription)
+    {:ok, past_due}
   end
 
-  defp attempt_renewal(%Subscription{} = subscription, repo) do
-    with {:ok, invoice} <- create_renewal_invoice(subscription),
-         {:ok, _txn} <- charge_payment_method(subscription, invoice) do
-      plan = subscription.subscription_type
-
-      new_period_end =
-        SubscriptionType.next_billing_date(
-          plan,
-          DateTime.to_date(subscription.current_period_end)
-        )
-
-      subscription
-      |> Subscription.activate_changeset(datetime_from_date(new_period_end))
-      |> repo.update()
-    else
-      {:error, :no_payment_method} ->
-        Logger.warning("Subscription #{subscription.uuid} has no payment method")
-        handle_payment_failure(subscription, "No payment method configured")
-
-      {:error, reason} ->
-        handle_payment_failure(subscription, inspect(reason))
-    end
-  end
-
-  defp create_renewal_invoice(%Subscription{subscription_type: nil}) do
-    {:error, :no_plan}
-  end
-
-  defp create_renewal_invoice(%Subscription{} = subscription) do
-    plan = subscription.subscription_type
-
-    line_items = [
-      %{
-        "name" => "#{plan.name} subscription",
-        "description" => "#{SubscriptionType.interval_description(plan)}",
-        "quantity" => 1,
-        "unit_price" => plan.price,
-        "total" => plan.price
-      }
-    ]
-
-    invoice_attrs = %{
-      billing_profile_uuid: subscription.billing_profile_uuid,
-      currency: plan.currency,
-      status: "sent",
-      due_date: Date.utc_today(),
-      notes: "Subscription renewal: #{plan.name}",
-      line_items: line_items,
-      subtotal: plan.price,
-      total: plan.price
-    }
-
-    case Billing.create_invoice(subscription.user_uuid, invoice_attrs) do
-      {:ok, invoice} -> {:ok, invoice}
-      error -> error
-    end
-  end
-
-  defp charge_payment_method(%Subscription{payment_method: nil}, _invoice) do
-    {:error, :no_payment_method}
-  end
-
-  # No void handling: the invoice is created in the transaction that charges, so nobody can void it first.
-  defp charge_payment_method(%Subscription{payment_method: pm} = subscription, invoice) do
-    if PaymentMethod.usable?(pm) do
-      # Providers.charge_payment_method expects the payment_method map with :provider key
-      case Providers.charge_payment_method(pm, invoice.total,
-             currency: invoice.currency,
-             description: "Subscription renewal",
-             metadata: %{
-               invoice_uuid: invoice.uuid,
-               subscription_uuid: subscription.uuid
-             }
-           ) do
-        {:ok, charge_result} ->
-          # Record payment on invoice. `charge_result` is a `%ChargeResult{}`
-          # struct and `provider_data` is a `:map` column - the context
-          # sanitizes it, because a struct survives Ecto's cast and dump and
-          # only blows up in the JSON encoder, i.e. after the card is charged.
-          payment_attrs = %{
-            amount: invoice.total,
-            payment_method: pm.provider,
-            description: "Subscription renewal payment",
-            provider_transaction_id: charge_result.provider_transaction_id,
-            provider_data: charge_result
-          }
-
-          case Billing.record_payment(invoice, payment_attrs, nil) do
-            {:ok, txn} ->
-              _ = Notifications.payment_received(invoice, invoice.total)
-              {:ok, txn}
-
-            {:error, reason} ->
-              # The money LEFT the customer's account and we could not write
-              # the ledger row: an operator has to reconcile this by hand.
-              Logger.error(
-                "Charged #{invoice.total} #{invoice.currency} for invoice " <>
-                  "#{invoice.invoice_number} but failed to record it: #{inspect(reason)}"
-              )
-
-              _ = Notifications.payment_failed(invoice, reason)
-              {:error, reason}
-          end
-
-        {:error, reason} ->
-          _ = Notifications.payment_failed(invoice, reason)
-          {:error, reason}
-      end
-    else
-      {:error, :payment_method_not_usable}
-    end
-  end
-
-  defp handle_payment_failure(%Subscription{} = subscription, error_message) do
+  defp mark_past_due_with_grace(%Subscription{} = subscription) do
     grace_days =
       Settings.get_setting("billing_subscription_grace_days", "3") |> String.to_integer()
 
     grace_period_end = DateTime.add(UtilsDate.utc_now(), grace_days, :day)
 
-    Logger.warning(
-      "Subscription #{subscription.uuid} renewal failed: #{error_message}. Grace period until #{grace_period_end}"
-    )
-
-    result =
+    {:ok, past_due} =
       subscription
       |> Subscription.past_due_changeset(grace_period_end)
       |> RepoHelper.repo().update()
 
-    # Schedule dunning job
-    schedule_dunning(subscription.uuid)
-
-    result
+    {:ok, past_due, grace_period_end}
   end
 
   defp schedule_dunning(subscription_uuid) do
@@ -325,27 +194,24 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   # ============================================
 
   defp find_subscriptions_due_for_renewal do
-    import Ecto.Query
+    now = UtilsDate.utc_now()
+    cutoff = DateTime.add(now, 24, :hour)
 
     # Find subscriptions where:
-    # - Status is active or trialing
-    # - Period end is within next 24 hours
-    # - Not already marked for cancellation
-    cutoff = DateTime.add(UtilsDate.utc_now(), 24, :hour)
-
+    # - Status is active or trialing, and the period ends within the next 24 hours
+    # - Or it is set to cancel and the period is over: nothing else ends those, and
+    #   `active?/1` would say they are in service for good
     from(s in Subscription,
-      where: s.status in ["active", "trialing"],
-      where: s.current_period_end <= ^cutoff,
-      where: s.cancel_at_period_end == false
+      where:
+        (s.cancel_at_period_end == false and s.status in ["active", "trialing"] and
+           s.current_period_end <= ^cutoff) or
+          (s.cancel_at_period_end == true and s.status != "cancelled" and
+             s.current_period_end <= ^now)
     )
     |> RepoHelper.repo().all()
   end
 
   defp get_subscription(uuid) when is_binary(uuid) do
     RepoHelper.repo().get_by(Subscription, uuid: uuid)
-  end
-
-  defp datetime_from_date(date) do
-    DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
   end
 end

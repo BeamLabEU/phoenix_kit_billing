@@ -371,6 +371,13 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
   end
 
   describe "an order changed after its invoice was opened" do
+    # `update_order/2` refuses this now, so such a row is one from before that rule,
+    # or from a direct write. The check here stays for those.
+    defp changed_under_its_invoice(order, changes) do
+      Repo.update_all(from(o in Order, where: o.uuid == ^order.uuid), set: changes)
+      Billing.get_order!(order.uuid)
+    end
+
     test "is not charged the old total, and paying cannot settle it for less", %{
       stripe: stripe,
       counter: counter
@@ -379,7 +386,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
       assert {:ok, %{invoice: stale}} = Billing.start_order_payment(order, @urls)
       assert :counters.get(counter, 1) == 1
 
-      {:ok, edited} = Billing.update_order(order, %{"total" => Decimal.new("100.00")})
+      edited = changed_under_its_invoice(order, total: Decimal.new("100.00"))
 
       assert {:error, :invoice_out_of_date} = Billing.start_order_payment(edited, @urls)
 
@@ -392,7 +399,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     test "starts again on a new invoice once the old one is void", %{stripe: stripe} do
       order = order!(stripe)
       {:ok, %{invoice: stale}} = Billing.start_order_payment(order, @urls)
-      {:ok, edited} = Billing.update_order(order, %{"total" => Decimal.new("100.00")})
+      edited = changed_under_its_invoice(order, total: Decimal.new("100.00"))
       {:ok, _} = Billing.void_invoice(stale)
 
       assert {:ok, %{invoice: fresh}} = Billing.start_order_payment(edited, @urls)
@@ -403,7 +410,7 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     test "is not charged in the old currency", %{stripe: stripe} do
       order = order!(stripe)
       {:ok, %{invoice: _stale}} = Billing.start_order_payment(order, @urls)
-      {:ok, edited} = Billing.update_order(order, %{"currency" => "USD"})
+      edited = changed_under_its_invoice(order, currency: "USD")
 
       assert {:error, :invoice_out_of_date} = Billing.start_order_payment(edited, @urls)
     end

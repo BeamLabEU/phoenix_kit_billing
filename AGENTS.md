@@ -209,7 +209,7 @@ lib/phoenix_kit_billing/
 ├── providers/                           # Provider behaviour (10 callbacks, `detach_payment_method/1` optional), registry, 4 impls, types
 ├── schemas/                             # 11 Ecto schemas
 ├── utils/                               # IBAN data, webhook_processor.ex
-├── workers/                             # Oban: subscription renewal, dunning, invoice and order events
+├── workers/                             # Oban: subscription renewal, dunning, invoice and order events; subscription_charge.ex is what the two subscription workers share
 └── web/
     ├── routes.ex                        # generate/1 (webhooks) + admin_routes/0 + admin_locale_routes/0
     ├── webhook_controller.ex            # stripe / paypal / razorpay / everypay actions
@@ -238,7 +238,9 @@ lib/phoenix_kit_billing/
 | `NumberSequence` | `phoenix_kit_billing_number_sequences` | Counter behind order, invoice, receipt and transaction numbers, one row per (scope, year); created by V7 |
 
 Invoice status workflow: `draft → sent → paid`, with `sent → overdue → paid` and
-`→ void` as the exits.
+`→ void` as the exits. An invoice holding money is not voided
+(`:invoice_has_payments`): it is refunded, and the refund that takes it to zero
+voids it.
 
 **The trash.** `Order` and `Invoice` carry `trashed_at` / `trashed_by_uuid` (V8),
 billing's own: `changeset/2` cannot set or clear them, only `trash_order/2`,
@@ -260,7 +262,11 @@ with another invoice that is neither void nor in the trash
 (`:order_has_open_invoices`); creating an invoice for a cancelled order is as it
 was before the trash. The checks lock the order row against `trash_order/2`. A stored order is edited only while its stored status is `draft`
 or `pending`: `update_order/2` re-checks that, and any status change, on the
-locked row, so a stale struct cannot undo a cancellation. Trashing and restoring do not
+locked row, so a stale struct cannot undo a cancellation. Its total and currency
+cannot change while it has an invoice that is neither void nor in the trash
+(`:order_amount_invoiced`): a settled invoice settles its order, so the order would
+be paid for an amount nobody billed. `:invoice_out_of_date` stays for rows older than
+that rule. Trashing and restoring do not
 touch `updated_at`. A void invoice of an order in the trash stays in the invoice
 lists: it is an issued document, and only a draft can be trashed.
 `OrderPayment.start_order_payment/2` refuses an order in the trash (`:order_trashed`)
@@ -275,6 +281,13 @@ and skips an invoice of it that is in the trash, making a new one.
   availability checks, routing to the right implementation.
 - **`Utils.WebhookProcessor`** — normalizes provider webhooks into transactions
   and status updates.
+- **`Workers.SubscriptionCharge`** — what the renewal and dunning workers share. A
+  period has one invoice, found by `subscription_uuid` and
+  `metadata["period_end"]`, committed before the provider call so no counter waits on
+  a charge and a retry finds it. A period paid some other way is not charged again. A
+  decline is a handled outcome, never `{:error, _}` from `perform/1`: Oban would
+  retry it within seconds and use up the dunning attempts. A charge the ledger refused
+  (`:charged_not_recorded`) is not retried at all.
 - **`InvoiceEvents` and `OrderEvents`** — durable hooks for other modules: one Oban
   job per (event, handler), enqueued in the transaction that changed the record,
   delivered at least once with the record re-read. A handler is found through

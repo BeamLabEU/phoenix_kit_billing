@@ -21,3 +21,12 @@ the installed core's migration floor and was left intact.
 - **BUG - MEDIUM: checkout context could wipe the void trail — fixed.** The write now
   runs on the locked row. The race test fails with the lock removed.
 - **NITPICK: unmapped refusal atoms — not fixed**, because no page shows them.
+
+### Update — 2026-11-05
+
+- **The open admin path is closed.** `update_order/2` refuses a new total or currency
+  while the order has an invoice that is neither void nor in the trash
+  (`:order_amount_invoiced`), on a row taken `FOR UPDATE` so it waits for an invoice
+  being inserted. `:invoice_out_of_date` stays for rows from before that rule.
+- **`mark_invoice_paid/2`** moves the linked order in its own transaction now.
+- **NITPICK: unmapped refusal atoms — fixed**, with translations.

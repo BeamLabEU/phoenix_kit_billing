@@ -239,7 +239,21 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     end
   end
 
+  # A worker recording this very charge holds the invoice's lock: the event read the
+  # invoice as unpaid, waited, and found nothing left to pay. The same answer as for an
+  # event arriving just after, not a payment gone wrong.
+  defp payment_not_recorded(invoice, invoice_uuid, :exceeds_remaining) do
+    case Billing.get_invoice(invoice.uuid) do
+      %Invoice{status: "paid"} -> {:ok, :already_paid}
+      _ -> report_payment_not_recorded(invoice, invoice_uuid, :exceeds_remaining)
+    end
+  end
+
   defp payment_not_recorded(invoice, invoice_uuid, reason) do
+    report_payment_not_recorded(invoice, invoice_uuid, reason)
+  end
+
+  defp report_payment_not_recorded(invoice, invoice_uuid, reason) do
     Logger.error("Failed to record payment for invoice #{invoice_uuid}: #{inspect(reason)}")
     _ = Notifications.payment_failed(invoice, reason)
     {:error, reason}
@@ -403,7 +417,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   # A running total is cut down to what the ledger lacks (`unrecorded_refund/4`),
   # so a duplicate never reaches `record_refund/3`: exceeding what the invoice
-  # has been paid means the ledger and Stripe disagree (a refund booked against
+  # has been paid means the ledger and the provider disagree (a refund booked against
   # another payment, an amount edited by hand). Fail the event so a redelivery
   # can reconcile it once the ledger is corrected.
   #
@@ -413,13 +427,12 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   defp refund_exceeds_paid_amount(invoice, %{amount_refunded_total: total} = data)
        when is_integer(total) do
     Logger.error(
-      "Refund webhook cannot be applied to invoice #{invoice.invoice_number}: Stripe reports " <>
-        "#{total} (minor units) refunded on charge #{inspect(data[:charge_id])} " <>
-        "(payment intent #{inspect(data[:payment_intent_id])}), more than the " <>
-        "#{Decimal.to_string(invoice.paid_amount)} #{invoice.currency} the invoice still " <>
-        "holds after the refunds already in the ledger. The ledger and Stripe disagree; " <>
-        "the event is failed so Stripe " <>
-        "redelivers it."
+      "Refund webhook cannot be applied to invoice #{invoice.invoice_number}: " <>
+        "#{data[:provider]} reports #{total} (minor units) refunded on charge " <>
+        "#{inspect(data[:charge_id])} (payment intent #{inspect(data[:payment_intent_id])}), " <>
+        "more than the #{Decimal.to_string(invoice.paid_amount)} #{invoice.currency} the " <>
+        "invoice still holds after the refunds already in the ledger. The ledger and the " <>
+        "provider disagree; the event is failed so the provider can redeliver it."
     )
 
     {:error, :refund_exceeds_paid_amount}
@@ -574,7 +587,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
           "Refund webhook for charge #{inspect(data[:charge_id])} (payment intent " <>
             "#{inspect(data[:payment_intent_id])}) reports #{total} in " <>
             "#{inspect(data[:currency])}, which this shop's currency table cannot convert; " <>
-            "nothing was recorded and the event is failed so Stripe redelivers it."
+            "nothing was recorded and the event is failed so the provider can redeliver it."
         )
 
         {:error, :refund_total_indeterminate}

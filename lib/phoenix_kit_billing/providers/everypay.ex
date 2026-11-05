@@ -241,7 +241,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
         {:ok,
          %WebhookEventData{
            type: normalized.type,
-           event_id: "#{reference}:#{state}",
+           event_id: event_id(reference, state, normalized.data),
            data: normalized.data,
            provider: :everypay,
            raw_payload: payment
@@ -500,6 +500,7 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
          charge_id: payment["payment_reference"],
          refund_id: payment["payment_reference"],
          amount: amount_cents(refunded_amount(payment), payment["currency"]),
+         amount_refunded_total: amount_cents(listed_refunds(payment), payment["currency"]),
          currency: payment["currency"]
        }
      }}
@@ -532,6 +533,22 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
       {:error, _reason} -> nil
     end
   end
+
+  # A callback says only that a payment changed, and the payment is re-fetched, so one
+  # state covers every partial refund. Its total tells them apart, or the second would
+  # read as a redelivery of the first and be dropped. The total repeats on a real
+  # redelivery, which is what makes that a duplicate.
+  defp event_id(reference, state, %{amount_refunded_total: total}) when is_integer(total) do
+    "#{reference}:#{state}:#{total}"
+  end
+
+  defp event_id(reference, state, _data), do: "#{reference}:#{state}"
+
+  # The sum of a refund list is every refund so far, whatever one entry means, so the
+  # processor records what it adds to the ledger. `nil` without a list: there is no
+  # telling what a bare amount covers, and it stays the amount of this refund.
+  defp listed_refunds(%{"refunds" => [_ | _]} = payment), do: refunded_amount(payment)
+  defp listed_refunds(_payment), do: nil
 
   defp refunded_amount(payment) do
     case payment["refunds"] do

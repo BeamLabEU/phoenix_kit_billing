@@ -5414,3 +5414,35 @@ msgstr "Teie tellimuste ajalugu, arved ja maksed"
 #, elixir-autogen, elixir-format
 msgid "Your orders will appear here once you place one"
 msgstr "Teie tellimused ilmuvad siia pärast esimese tellimuse esitamist"
+
+#, elixir-autogen, elixir-format
+msgid "This invoice has payments on it. Refund them before voiding it."
+msgstr "Sellel arvel on makseid. Tagastage need enne arve tühistamist."
+
+#, elixir-autogen, elixir-format
+msgid "The total and currency of this order cannot change while it has an open invoice. Void the invoice or move it to the trash first."
+msgstr "Selle tellimuse summat ja valuutat ei saa muuta, kuni sellel on avatud arve. Tühistage arve või teisaldage see esmalt prügikasti."
+
+#, elixir-autogen, elixir-format
+msgid "Order not found."
+msgstr "Tellimust ei leitud."
+
+#, elixir-autogen, elixir-format
+msgid "Only an active or trialing subscription can be paused."
+msgstr "Peatada saab ainult aktiivset või prooviperioodil olevat püsitellimust."
+
+#, elixir-autogen, elixir-format
+msgid "Only a paused subscription or a pending cancellation can be resumed."
+msgstr "Jätkata saab ainult peatatud püsitellimust või püsitellimust, mille tühistamine on ootel."
+
+#, elixir-autogen, elixir-format
+msgid "A payment for this order is already being started. Try again in a moment."
+msgstr "Selle tellimuse makset juba alustatakse. Proovige veidi aja pärast uuesti."
+
+#, elixir-autogen, elixir-format
+msgid "A payment cannot be started inside a database transaction."
+msgstr "Makset ei saa alustada andmebaasi tehingu sees."
+
+#, elixir-autogen, elixir-format
+msgid "There is nothing left to pay."
+msgstr "Tasuda pole enam midagi."

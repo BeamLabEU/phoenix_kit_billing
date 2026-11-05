@@ -58,7 +58,7 @@ defmodule PhoenixKitBilling.Migrations do
       currency is held only by the transaction in
       `set_default_currency/1`, not by the database: two
       `is_default = true` rows raise `Ecto.MultipleResultsError` out of
-      `get_default_currency/0` (`Ecto.Repo.one/2`). This index is also a
+      `get_default_currency/0` (`c:Ecto.Repo.one/2`). This index is also a
       prerequisite for a `LIMIT`-less `WHERE is_default` backfill a future
       chain runs against this table, so it must exist before that
       backfill runs, not merely by the time it finishes.
@@ -90,7 +90,7 @@ defmodule PhoenixKitBilling.Migrations do
   identical three columns with the identical types) had not shipped to
   Hex when the schema change did. Any host resolving the currently
   published core got an `Order` struct whose SELECT lists columns the
-  database does not have, and `Ecto.Repo.all/2`/`get/2`/`one/2` on
+  database does not have, and `c:Ecto.Repo.all/2`/`get/2`/`one/2` on
   `Order` — hit by `list_orders/1`, `get_order/1`, the user dashboard's
   orders LiveView, `delete_order/1` — all raised
   `Postgrex.Error (undefined_column)` instead of returning data.
@@ -277,11 +277,9 @@ defmodule PhoenixKitBilling.Migrations do
   for `ORD-2026-0090`) lifts the counter for good: the counter never goes back
   down, so the numbers in between are skipped for the rest of the year.
 
-  The subscription renewal worker creates its invoice inside the transaction
-  that also charges the payment method, so it holds the invoice counter across
-  the provider call: other invoice creates wait for the charge to finish. Known
-  and left for a follow-up: create the invoice in a short transaction of its
-  own before the charge.
+  The subscription workers create an invoice in a short transaction of its own,
+  before the charge, so no counter is held across a provider call (see
+  `PhoenixKitBilling.Workers.SubscriptionCharge`).
 
   ## V8 - a trash for orders and invoices
 
@@ -325,9 +323,11 @@ defmodule PhoenixKitBilling.Migrations do
   Taking locks in this order, everywhere:
 
     1. An order row taken `FOR UPDATE`: `trash_order/2`, `restore_order/2`,
-       `delete_order/1`, and an `update_order/2` that changes the number (the
-       unique index makes that write a `FOR UPDATE` anyway, so it is taken up
-       front). **Never take an order `FOR UPDATE` while holding a counter** -
+       `delete_order/1`, an `update_order/2` that names the number (the unique
+       index makes that write a `FOR UPDATE` anyway, so it is taken up front), and
+       one that names the total or the currency (so that it waits for an invoice
+       being inserted, which it could not see yet).
+       **Never take an order `FOR UPDATE` while holding a counter** -
        the invoice counter or any other - **or another document's lock.** These
        paths take their row first and then, if at all, a counter.
     2. The order counter (`create_order/2`, and `update_order/2` after its row).
@@ -343,6 +343,11 @@ defmodule PhoenixKitBilling.Migrations do
     6. The transaction counter, then the receipt counter.
     7. The order row `FOR NO KEY UPDATE` (status transitions, `put_order_sync/2`,
        and every other `update_order/2`, which decides on the stored row).
+
+  A subscription row comes before all of these: the renewal and dunning workers take
+  it `FOR UPDATE`, and only then create or lock the invoice of the period. A charge
+  holds that row and the invoice's across the provider call, and no counter until the
+  payment is recorded.
 
   The exception: paying or refunding an invoice (`mark_invoice_paid/2`,
   `record_payment/3`, and `record_refund/3`, which reaches the order through

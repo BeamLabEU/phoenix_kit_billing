@@ -277,7 +277,7 @@ defmodule PhoenixKitBilling.EmailDefaults do
 
   @doc """
   The four emails as `PhoenixKit.Email.Catalog` entries, for core's email
-  preview — returned by `PhoenixKitBilling.email_templates/0`.
+  preview, which is what the module's `email_templates/0` callback returns.
 
   `defaults` is the function a send passes when it has a link to the document,
   and the sample variables are built by the same line-items functions a send

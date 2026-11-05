@@ -331,6 +331,58 @@ defmodule PhoenixKitBilling.ErrorsTest do
         )
   end
 
+  describe "message/1 for an order's payment and invoice" do
+    test ":in_transaction",
+      do:
+        assert(
+          Errors.message(:in_transaction) ==
+            "A payment cannot be started inside a database transaction."
+        )
+
+    test ":invoice_has_payments",
+      do:
+        assert(
+          Errors.message(:invoice_has_payments) ==
+            "This invoice has payments on it. Refund them before voiding it."
+        )
+
+    test ":lock_timeout",
+      do:
+        assert(
+          Errors.message(:lock_timeout) ==
+            "A payment for this order is already being started. Try again in a moment."
+        )
+
+    test ":nothing_to_pay",
+      do: assert(Errors.message(:nothing_to_pay) == "There is nothing left to pay.")
+
+    test ":order_amount_invoiced",
+      do:
+        assert(
+          Errors.message(:order_amount_invoiced) ==
+            "The total and currency of this order cannot change while it has an open invoice. " <>
+              "Void the invoice or move it to the trash first."
+        )
+
+    test ":order_not_found", do: assert(Errors.message(:order_not_found) == "Order not found.")
+  end
+
+  describe "message/1 for a subscription" do
+    test ":subscription_not_pausable",
+      do:
+        assert(
+          Errors.message(:subscription_not_pausable) ==
+            "Only an active or trialing subscription can be paused."
+        )
+
+    test ":subscription_not_resumable",
+      do:
+        assert(
+          Errors.message(:subscription_not_resumable) ==
+            "Only a paused subscription or a pending cancellation can be resumed."
+        )
+  end
+
   describe "message/1 fallbacks" do
     test "passes strings through unchanged" do
       assert Errors.message("custom provider message") == "custom provider message"

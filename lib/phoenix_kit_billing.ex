@@ -235,7 +235,7 @@ defmodule PhoenixKitBilling do
 
   @doc """
   The manifest of this module's tables, for `mix phoenix_kit.repair` and
-  `mix phoenix_kit.doctor`; see `PhoenixKitBilling.ExpectedSchema`.
+  `mix phoenix_kit.doctor`; the manifest is the generated module this returns.
   """
   @impl PhoenixKit.Module
   def expected_schema, do: PhoenixKitBilling.ExpectedSchema
@@ -2445,10 +2445,14 @@ defmodule PhoenixKitBilling do
   move forward from the stored status (see `Order.changeset/2`). The attrs are
   applied to the stored row.
 
+  The total and the currency cannot change while the order has an invoice that is
+  neither void nor in the trash: a settled invoice settles its order, so the order
+  would end up paid for an amount nobody billed. Void or trash the invoice first.
+
   Returns `{:ok, order}`, `{:error, :order_not_editable}`,
-  `{:error, :order_trashed}` for an order in the trash (checked on the stored
-  row too), `{:error, :not_found}` when the order is gone, or
-  `{:error, changeset}`. Refusals are returned, not rolled back, so a
+  `{:error, :order_amount_invoiced}`, `{:error, :order_trashed}` for an order in
+  the trash (checked on the stored row too), `{:error, :not_found}` when the order
+  is gone, or `{:error, changeset}`. Refusals are returned, not rolled back, so a
   transaction of the caller's stays usable.
   """
   def update_order(%Order{trashed_at: %DateTime{}}, _attrs), do: {:error, :order_trashed}
@@ -2481,26 +2485,39 @@ defmodule PhoenixKitBilling do
     if Order.editable?(locked) do
       # Update billing_snapshot if billing_profile_uuid changed
       attrs = maybe_update_billing_snapshot(locked, attrs)
+      changeset = Order.changeset(locked, attrs)
 
-      locked
-      |> Order.changeset(attrs)
-      |> update_numbered_locked(order_number: "order")
+      with :ok <- ensure_amount_not_invoiced(changeset) do
+        update_numbered_locked(changeset, order_number: "order")
+      end
     else
       {:error, :order_not_editable}
     end
   end
 
+  # Before any counter is touched. The same total written another way (25 for 25.00)
+  # is no change, so saving the form with the amount untouched is not refused.
+  defp ensure_amount_not_invoiced(%Ecto.Changeset{changes: changes, data: order}) do
+    amount_changed? = Map.has_key?(changes, :total) or Map.has_key?(changes, :currency)
+
+    if amount_changed? and open_invoices?(order.uuid),
+      do: {:error, :order_amount_invoiced},
+      else: :ok
+  end
+
   # The stored order, locked, with the associations the caller's struct had
-  # loaded. `nil` for a vanished order. An edit that names an `order_number`
-  # takes the row `FOR UPDATE` straight away - that is what the write would take
-  # anyway, as the number has a unique index - and any other edit `FOR NO KEY
-  # UPDATE`, like `lock_order_row/1`. Either way before the number counter is
+  # loaded. `nil` for a vanished order. An edit that names an `order_number` takes
+  # the row `FOR UPDATE` straight away - that is what the write would take anyway,
+  # as the number has a unique index. So does one that names the amount: that lock
+  # conflicts with the `FOR KEY SHARE` of an invoice insert, whose invoice the check
+  # for open invoices could not see until it commits. Any other edit takes `FOR NO
+  # KEY UPDATE`, like `lock_order_row/1`. Either way before the number counter is
   # touched.
   defp lock_order(%Order{uuid: uuid} = order, attrs) do
     query = where(Order, [o], o.uuid == ^uuid)
 
     stored =
-      if Map.has_key?(attrs, "order_number") or Map.has_key?(attrs, :order_number),
+      if names_any?(attrs, [:order_number, :total, :currency]),
         do: query |> lock("FOR UPDATE") |> repo().one(),
         else: query |> lock("FOR NO KEY UPDATE") |> repo().one()
 
@@ -2511,6 +2528,10 @@ defmodule PhoenixKitBilling do
       locked ->
         Enum.reduce(Order.__schema__(:associations), locked, &carry_association(&1, &2, order))
     end
+  end
+
+  defp names_any?(attrs, keys) do
+    Enum.any?(keys, &(Map.has_key?(attrs, &1) or Map.has_key?(attrs, Atom.to_string(&1))))
   end
 
   defp carry_association(name, locked, caller) do
@@ -4517,7 +4538,8 @@ defmodule PhoenixKitBilling do
   Marks an invoice as paid (generates receipt).
 
   Takes the invoice row lock, then a transaction number (for the settlement
-  row) and a receipt number. #{@payment_note}
+  row) and a receipt number. A linked order is moved in the same transaction, so
+  the invoice and the order are paid together or not at all. #{@payment_note}
   """
   def mark_invoice_paid(invoice, admin_user \\ nil)
 
@@ -4575,22 +4597,20 @@ defmodule PhoenixKitBilling do
 
               # Committed with the payment or not at all — see InvoiceEvents.
               InvoiceEvents.enqueue(:paid, paid)
-              paid
+
+              # Here, as in record_payment/3: after the commit, a crash left a paid
+              # invoice on an unpaid order, and no order event to say so.
+              {paid, maybe_mark_linked_order_paid(paid)}
           end
         end)
 
-      # Also mark the order as paid if linked
       case result do
         {:ok, {:exhausted, changeset}} ->
           {:error, changeset}
 
-        {:ok, paid_invoice} ->
+        {:ok, {paid_invoice, order_broadcasts}} ->
           Events.broadcast_invoice_paid(paid_invoice)
-
-          Enum.each(maybe_mark_linked_order_paid(paid_invoice), fn {fun, arg} ->
-            apply(Events, fun, [arg])
-          end)
-
+          Enum.each(order_broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
           {:ok, paid_invoice}
 
         error ->
@@ -4637,10 +4657,15 @@ defmodule PhoenixKitBilling do
   committed since the struct was read is not overwritten. Call it inside your
   own transaction only if holding that lock until commit is fine.
 
+  An invoice that holds money is refused: refund it first, and a refund that takes
+  the invoice to zero voids it. Voided with the money on it, the payment would be on
+  a document nobody owes anything on, and a new invoice would bill the customer in
+  full.
+
   Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
   does; the `{:invoice_voided, invoice}` event carries the same),
-  `{:error, :invoice_not_voidable}`, `{:error, :invoice_trashed}` for an invoice
-  in the trash, `{:error, :invoice_not_found}` when the invoice is gone, or
+  `{:error, :invoice_not_voidable}`, `{:error, :invoice_has_payments}`,
+  `{:error, :invoice_trashed}` for an invoice in the trash, `{:error, :invoice_not_found}` when the invoice is gone, or
   `{:error, changeset}`. Refusals are returned, not rolled
   back, so a transaction of the caller's stays usable.
   """
@@ -4671,28 +4696,32 @@ defmodule PhoenixKitBilling do
         {:error, :invoice_trashed}
 
       locked ->
-        if Invoice.voidable?(locked) do
-          trail = %{
-            "reason" => normalize_reason(reason),
-            "by_uuid" => opts[:actor_uuid],
-            "at" => now_iso()
-          }
-
-          locked
-          |> Invoice.status_changeset("void")
-          |> Ecto.Changeset.put_change(:metadata, Map.put(locked.metadata || %{}, "void", trail))
-          |> repo().update()
-          |> case do
-            {:ok, voided} ->
-              InvoiceEvents.enqueue(:voided, voided)
-              {:ok, voided}
-
-            error ->
-              error
-          end
-        else
-          {:error, :invoice_not_voidable}
+        cond do
+          not Invoice.voidable?(locked) -> {:error, :invoice_not_voidable}
+          Decimal.positive?(locked.paid_amount) -> {:error, :invoice_has_payments}
+          true -> void_locked(locked, reason, opts)
         end
+    end
+  end
+
+  defp void_locked(%Invoice{} = locked, reason, opts) do
+    trail = %{
+      "reason" => normalize_reason(reason),
+      "by_uuid" => opts[:actor_uuid],
+      "at" => now_iso()
+    }
+
+    locked
+    |> Invoice.status_changeset("void")
+    |> Ecto.Changeset.put_change(:metadata, Map.put(locked.metadata || %{}, "void", trail))
+    |> repo().update()
+    |> case do
+      {:ok, voided} ->
+        InvoiceEvents.enqueue(:voided, voided)
+        {:ok, voided}
+
+      error ->
+        error
     end
   end
 
@@ -6272,21 +6301,57 @@ defmodule PhoenixKitBilling do
   @doc """
   Pauses a subscription.
 
-  Paused subscriptions don't renew until resumed.
+  Paused subscriptions don't renew until resumed. Only an active or trialing
+  subscription can be paused: a past due one is left to dunning.
+
+  Decides on the stored row, under its lock. Returns `{:ok, subscription}`,
+  `{:error, :subscription_not_pausable}` or `{:error, :not_found}`.
   """
   def pause_subscription(%Subscription{} = subscription) do
-    subscription
-    |> Subscription.pause_changeset()
-    |> repo().update()
+    transition_subscription(
+      subscription,
+      &Subscription.pausable?/1,
+      :subscription_not_pausable,
+      &Subscription.pause_changeset/1
+    )
   end
 
   @doc """
-  Resumes a paused subscription.
+  Resumes a paused subscription, or takes back a pending cancellation. A trial stays a
+  trial. A cancelled subscription does not come back.
+
+  Decides on the stored row, under its lock. Returns `{:ok, subscription}`,
+  `{:error, :subscription_not_resumable}` or `{:error, :not_found}`.
   """
   def resume_subscription(%Subscription{} = subscription) do
-    subscription
-    |> Subscription.resume_changeset()
-    |> repo().update()
+    transition_subscription(
+      subscription,
+      &Subscription.resumable?/1,
+      :subscription_not_resumable,
+      &Subscription.resume_changeset/1
+    )
+  end
+
+  # The struct may be from before a cancellation. The lock also waits out a renewal
+  # that is charging this subscription.
+  defp transition_subscription(%Subscription{uuid: uuid} = subscription, allowed?, refusal, build) do
+    unwrap_transaction(fn ->
+      stored = Subscription |> where([s], s.uuid == ^uuid) |> lock("FOR UPDATE") |> repo().one()
+
+      cond do
+        is_nil(stored) ->
+          {:error, :not_found}
+
+        allowed?.(stored) ->
+          Subscription.__schema__(:associations)
+          |> Enum.reduce(stored, &carry_association(&1, &2, subscription))
+          |> build.()
+          |> repo().update()
+
+        true ->
+          {:error, refusal}
+      end
+    end)
   end
 
   # Fields the generic `update_subscription/2` is allowed to touch.

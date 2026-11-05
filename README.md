@@ -416,6 +416,7 @@ lib/
     ├── workers/
     │   ├── invoice_event_worker.ex          # Oban: durable invoice events
     │   ├── order_event_worker.ex            # Oban: durable order events
+    │   ├── subscription_charge.ex           # What renewal and dunning share: one invoice per period
     │   ├── subscription_renewal_worker.ex   # Oban: subscription renewals
     │   └── subscription_dunning_worker.ex   # Oban: failed payment retries
     └── web/                          # Admin LiveViews, controllers, components
