@@ -280,6 +280,29 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     assert {:error, :order_not_payable} = Billing.start_order_payment(cancelled, @urls)
   end
 
+  test "an order in the trash is refused and opens no invoice", %{stripe: stripe} do
+    order = order!(stripe, %{"status" => "draft"})
+    {:ok, _} = Billing.trash_order(order)
+
+    assert {:error, :order_trashed} = Billing.start_order_payment(order, @urls)
+    assert Repo.all(from(i in Invoice, where: i.order_uuid == ^order.uuid)) == []
+  end
+
+  test "an invoice of the order in the trash is skipped and a new one is made", %{
+    stripe: stripe
+  } do
+    order = order!(stripe, %{"status" => "draft"})
+    {:ok, trashed} = Billing.create_invoice_from_order(order)
+    {:ok, _} = Billing.trash_invoice(trashed)
+
+    assert {:ok, %{invoice: invoice, url: "https://checkout.stripe.test/1"}} =
+             Billing.start_order_payment(order, @urls)
+
+    assert invoice.uuid != trashed.uuid
+    assert invoice.status == "sent"
+    assert Invoice.trashed?(Billing.get_invoice!(trashed.uuid))
+  end
+
   test "a provider that is not configured", %{stripe: stripe} do
     Settings.update_setting("billing_stripe_enabled", "false")
 

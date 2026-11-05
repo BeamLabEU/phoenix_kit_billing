@@ -1128,6 +1128,33 @@ defmodule PhoenixKitBilling.ExpectedSchema do
         backfill: nil
       },
       %{
+        id: "column:phoenix_kit_invoices.trashed_at",
+        owner: :phoenix_kit_billing,
+        check: {:catalog, %{table: "phoenix_kit_invoices", column: "trashed_at", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_invoices ADD COLUMN IF NOT EXISTS \"trashed_at\" timestamp with time zone",
+        since: 1,
+        class: :column,
+        revisions: [
+          {1, %{default: nil, type: "timestamp with time zone", pos: 28, not_null: false}}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_invoices.trashed_by_uuid",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog, %{table: "phoenix_kit_invoices", column: "trashed_by_uuid", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_invoices ADD COLUMN IF NOT EXISTS \"trashed_by_uuid\" uuid",
+        since: 1,
+        class: :column,
+        revisions: [{1, %{default: nil, type: "uuid", pos: 29, not_null: false}}],
+        presence: :required,
+        backfill: nil
+      },
+      %{
         id: "column:phoenix_kit_invoices.updated_at",
         owner: :phoenix_kit_billing,
         check: {:catalog, %{table: "phoenix_kit_invoices", column: "updated_at", kind: :column}},
@@ -1539,6 +1566,33 @@ defmodule PhoenixKitBilling.ExpectedSchema do
         since: 1,
         class: :column,
         revisions: [{1, %{default: nil, type: "numeric(15,2)", pos: 10, not_null: true}}],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_orders.trashed_at",
+        owner: :phoenix_kit_billing,
+        check: {:catalog, %{table: "phoenix_kit_orders", column: "trashed_at", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_orders ADD COLUMN IF NOT EXISTS \"trashed_at\" timestamp with time zone",
+        since: 1,
+        class: :column,
+        revisions: [
+          {1, %{default: nil, type: "timestamp with time zone", pos: 31, not_null: false}}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "column:phoenix_kit_orders.trashed_by_uuid",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog, %{table: "phoenix_kit_orders", column: "trashed_by_uuid", kind: :column}},
+        create:
+          "ALTER TABLE __SCHEMA__.phoenix_kit_orders ADD COLUMN IF NOT EXISTS \"trashed_by_uuid\" uuid",
+        since: 1,
+        class: :column,
+        revisions: [{1, %{default: nil, type: "uuid", pos: 32, not_null: false}}],
         presence: :required,
         backfill: nil
       },
@@ -3474,6 +3528,37 @@ defmodule PhoenixKitBilling.ExpectedSchema do
         backfill: nil
       },
       %{
+        id: "index:phoenix_kit_invoices_not_trashed_idx",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{
+             name: "phoenix_kit_invoices_not_trashed_idx",
+             table: "phoenix_kit_invoices",
+             kind: :index
+           }},
+        create:
+          "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_not_trashed_idx ON __SCHEMA__.phoenix_kit_invoices USING btree (inserted_at) WHERE (trashed_at IS NULL)",
+        since: 1,
+        class: :index,
+        revisions: [
+          {1,
+           %{
+             table: "phoenix_kit_invoices",
+             keys: ["inserted_at"],
+             unique: false,
+             method: "btree",
+             definition:
+               "CREATE INDEX phoenix_kit_invoices_not_trashed_idx ON __SCHEMA__.phoenix_kit_invoices USING btree (inserted_at) WHERE (trashed_at IS NULL)",
+             predicate: "(trashed_at IS NULL)",
+             opclasses: ["timestamptz_ops"],
+             name_template: nil
+           }}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
         id: "index:phoenix_kit_invoices_order_uuid_idx",
         owner: :phoenix_kit_billing,
         check:
@@ -3556,6 +3641,37 @@ defmodule PhoenixKitBilling.ExpectedSchema do
                "CREATE INDEX phoenix_kit_invoices_subscription_uuid_idx ON __SCHEMA__.phoenix_kit_invoices USING btree (subscription_uuid)",
              predicate: nil,
              opclasses: ["uuid_ops"],
+             name_template: nil
+           }}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "index:phoenix_kit_invoices_trashed_idx",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{
+             name: "phoenix_kit_invoices_trashed_idx",
+             table: "phoenix_kit_invoices",
+             kind: :index
+           }},
+        create:
+          "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_trashed_idx ON __SCHEMA__.phoenix_kit_invoices USING btree (trashed_at) WHERE (trashed_at IS NOT NULL)",
+        since: 1,
+        class: :index,
+        revisions: [
+          {1,
+           %{
+             table: "phoenix_kit_invoices",
+             keys: ["trashed_at"],
+             unique: false,
+             method: "btree",
+             definition:
+               "CREATE INDEX phoenix_kit_invoices_trashed_idx ON __SCHEMA__.phoenix_kit_invoices USING btree (trashed_at) WHERE (trashed_at IS NOT NULL)",
+             predicate: "(trashed_at IS NOT NULL)",
+             opclasses: ["timestamptz_ops"],
              name_template: nil
            }}
         ],
@@ -3765,6 +3881,33 @@ defmodule PhoenixKitBilling.ExpectedSchema do
                "CREATE INDEX phoenix_kit_orders_status_idx ON __SCHEMA__.phoenix_kit_orders USING btree (status)",
              predicate: nil,
              opclasses: ["text_ops"],
+             name_template: nil
+           }}
+        ],
+        presence: :required,
+        backfill: nil
+      },
+      %{
+        id: "index:phoenix_kit_orders_trashed_idx",
+        owner: :phoenix_kit_billing,
+        check:
+          {:catalog,
+           %{name: "phoenix_kit_orders_trashed_idx", table: "phoenix_kit_orders", kind: :index}},
+        create:
+          "CREATE INDEX IF NOT EXISTS phoenix_kit_orders_trashed_idx ON __SCHEMA__.phoenix_kit_orders USING btree (trashed_at) WHERE (trashed_at IS NOT NULL)",
+        since: 1,
+        class: :index,
+        revisions: [
+          {1,
+           %{
+             table: "phoenix_kit_orders",
+             keys: ["trashed_at"],
+             unique: false,
+             method: "btree",
+             definition:
+               "CREATE INDEX phoenix_kit_orders_trashed_idx ON __SCHEMA__.phoenix_kit_orders USING btree (trashed_at) WHERE (trashed_at IS NOT NULL)",
+             predicate: "(trashed_at IS NOT NULL)",
+             opclasses: ["timestamptz_ops"],
              name_template: nil
            }}
         ],

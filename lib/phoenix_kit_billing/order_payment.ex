@@ -43,9 +43,10 @@ defmodule PhoenixKitBilling.OrderPayment do
 
   Returns `{:ok, %{invoice: invoice, url: url}}` or `{:error, reason}`, where
   the reason is one of `:order_not_found`, `:order_not_payable` (cancelled,
-  refunded, no online payment option), `:already_paid`,
-  `:provider_not_available`, `:lock_timeout` (another start for the same
-  order held the lock for too long), `:in_transaction` (see below), or whatever
+  refunded, no online payment option), `:order_trashed` (the order is in the
+  trash; an invoice of it in the trash is skipped, and a new one made),
+  `:already_paid`, `:provider_not_available`, `:lock_timeout` (another start
+  for the same order held the lock for too long), `:in_transaction` (see below), or whatever
   billing's own functions return.
 
   ## The order lock
@@ -129,6 +130,8 @@ defmodule PhoenixKitBilling.OrderPayment do
       order -> {:ok, repo().preload(order, :payment_option)}
     end
   end
+
+  defp ensure_payable(%Order{trashed_at: %DateTime{}}), do: {:error, :order_trashed}
 
   defp ensure_payable(%Order{status: "paid"}), do: {:error, :already_paid}
 
@@ -214,7 +217,9 @@ defmodule PhoenixKitBilling.OrderPayment do
   defp find_or_create_invoice(order) do
     open =
       from(i in Invoice,
-        where: i.order_uuid == ^order.uuid and i.status in ~w(draft sent overdue paid),
+        where:
+          i.order_uuid == ^order.uuid and i.status in ~w(draft sent overdue paid) and
+            is_nil(i.trashed_at),
         order_by: [desc: i.inserted_at, desc: i.uuid],
         limit: 1
       )

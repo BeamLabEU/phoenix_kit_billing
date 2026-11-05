@@ -234,6 +234,32 @@ lib/phoenix_kit_billing/
 Invoice status workflow: `draft → sent → paid`, with `sent → overdue → paid` and
 `→ void` as the exits.
 
+**The trash.** `Order` and `Invoice` carry `trashed_at` / `trashed_by_uuid` (V8),
+billing's own: `changeset/2` cannot set or clear them, only `trash_order/2`,
+`restore_order/2`, `trash_invoice/2` and `restore_invoice/2` do. Trash is the only
+"delete" the admin UI has; nothing purges it. Only a `draft` or `cancelled` order
+without an open invoice (neither void nor in the trash) can be trashed, and only
+a `draft` invoice that was never sent - an issued invoice is voided. The status
+does not change, no email goes out, and the number stays used. A trashed order or
+invoice refuses every change with `:order_trashed` / `:invoice_trashed`
+(`get_order/2`, `get_invoice/2` and the lookups by number still find it);
+`put_order_sync/2` still takes an external system's mark. Every listing, count and
+the dashboard leave the trash out by default (`trashed: :only | :include`
+brings it back), and so do a customer's orders, the invoices preloaded on them
+and `get_order_by_uuid/2`. An invoice cannot be created for, moved onto or
+restored onto an order in the trash (`:order_trashed`). A restore is also refused
+for a cancelled order (`:order_cancelled`; it stays cancelled, so an invoice
+trashed from it stays in the trash and its number stays used) and for an order
+with another invoice that is neither void nor in the trash
+(`:order_has_open_invoices`); creating an invoice for a cancelled order is as it
+was before the trash. The checks lock the order row against `trash_order/2`. A stored order is edited only while its stored status is `draft`
+or `pending`: `update_order/2` re-checks that, and any status change, on the
+locked row, so a stale struct cannot undo a cancellation. Trashing and restoring do not
+touch `updated_at`. A void invoice of an order in the trash stays in the invoice
+lists: it is an issued document, and only a draft can be trashed.
+`OrderPayment.start_order_payment/2` refuses an order in the trash (`:order_trashed`)
+and skips an invoice of it that is in the trash, making a new one.
+
 ### Contexts and services
 
 - **`PhoenixKitBilling`** — system config, and CRUD plus lifecycle for orders,
@@ -277,6 +303,12 @@ observe a stale entry.
 `phoenix_kit:billing:orders`, `:invoices`, `:profiles`, `:transactions`,
 `:credit_notes`, `:subscriptions`, `:currencies`. Every topic also supports a
 per-user form with a `:user:<user_uuid>` suffix.
+
+Trashing announces `{:order_trashed, order}` / `{:order_restored, order}` and
+`{:invoice_trashed, invoice}` / `{:invoice_restored, invoice}` on the order and
+invoice topics - and nothing else with them: not `:order_updated`, `:order_cancelled`
+or `:invoice_voided`, and no durable `InvoiceEvents` event. A subscriber with a
+strict `handle_info/2` needs a catch-all clause for these.
 
 ### Permissions
 
@@ -372,7 +404,7 @@ in `README.md`.
 
 Owns a versioned chain: `PhoenixKitBilling.Migrations` via `migration_module/0`,
 marker `pkb_schema:<N>` as a `COMMENT ON TABLE
-phoenix_kit_payment_provider_configs`, currently **V7**. A marker-less table reads
+phoenix_kit_payment_provider_configs`, currently **V8**. A marker-less table reads
 as version 0 (the core-baseline shape). `mix phoenix_kit.update` applies the chain
 in hosts; the test suite applies it by executing
 `Migrations.up_statements/2` as data (see Testing).
@@ -423,9 +455,17 @@ in hosts; the test suite applies it by executing
   `count(rows of the year) + 1` handed out a taken number once a row was
   deleted. A generated number that a row already has is skipped (a savepoint,
   after lifting the counter to the highest number there; up to 20 tries). `down/1` below V7 drops the table. A create holds its counter row
-  until its transaction ends; the lock order and the rules for calling a create
-  inside your own transaction are in the V7 section of the `Migrations`
+  until its transaction ends; the lock order (counters, invoice rows and the order
+  rows the trash and the invoice guards take) and the rules for calling a create
+  inside your own transaction are in the "Lock order" section of the `Migrations`
   moduledoc and the `@doc`s.
+- **V8 adds the trash**: `trashed_at` and `trashed_by_uuid` (no foreign key) on
+  `phoenix_kit_orders` and `phoenix_kit_invoices`, plus a partial index per table
+  over the rows that are in the trash and, on invoices only, one over the rows
+  that are not (orders already have `phoenix_kit_orders_inserted_at_idx` on
+  `inserted_at`, so a partial twin would only add write cost). `down/1` below V8
+  drops the four columns and the indexes - never a table - so what was in the
+  trash reads as not trashed again.
 - **V5 lets a payer be a billing email instead of an account**:
   `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`
   drop `NOT NULL`, and `phoenix_kit_invoices_payer_check` requires a user or a
@@ -436,7 +476,8 @@ in hosts; the test suite applies it by executing
 - **`down/1` never drops a core-created table.** It unstamps the marker and reverses the
   objects a version added (V3's columns, V2's index and columns). The tables are
   core-created; only core's own baseline rollback may drop them (V7's counter table,
-  which this chain created, is the one `down/1` drops).
+  which this chain created, is the one `down/1` drops; V8's columns and indexes on
+  core's orders and invoices tables are dropped, the tables never).
 - A version that changes the shape of a core-created table can put core's
   `ExpectedSchema` manifest out of date — coordinate before adding one, do not
   assume silence means agreement. Core's own chain no longer touches module

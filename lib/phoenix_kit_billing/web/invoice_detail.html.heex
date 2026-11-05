@@ -6,116 +6,152 @@
           {@invoice.invoice_number}
         </h1>
         <.invoice_status_badge status={@invoice.status} size={:md} />
+        <.trash_badge :if={Invoice.trashed?(@invoice)} id="invoice-trashed-badge" size={:md} />
       </div>
       <p class="text-sm text-base-content/60 mt-0.5">
         {gettext("Created")} <.time_ago datetime={@invoice.inserted_at} />
       </p>
       <:actions>
-        <%!-- Send/Resend Invoice - available for all except void --%>
-        <%= if @invoice.status != "void" do %>
-          <button phx-click="open_send_modal" class="btn btn-info btn-sm">
-            <.icon name="hero-paper-airplane" class="w-4 h-4" />
-            {if @invoice.status == "draft", do: gettext("Send Invoice"), else: gettext("Resend Invoice")}
+        <%= if Invoice.trashed?(@invoice) do %>
+          <button
+            :if={@can_manage_invoices}
+            id="restore-invoice-button"
+            phx-click="open_restore_modal"
+            class="btn btn-warning btn-sm"
+          >
+            <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {gettext("Restore")}
           </button>
-        <% end %>
+          <.link
+            navigate={
+              PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}/print")
+            }
+            class="btn btn-outline btn-sm"
+            target="_blank"
+          >
+            <.icon name="hero-printer" class="w-4 h-4" /> {gettext("Print / PDF")}
+          </.link>
+        <% else %>
+          <%!-- Send/Resend Invoice - available for all except void --%>
+          <%= if @invoice.status != "void" do %>
+            <button phx-click="open_send_modal" class="btn btn-info btn-sm">
+              <.icon name="hero-paper-airplane" class="w-4 h-4" />
+              {if @invoice.status == "draft", do: gettext("Send Invoice"), else: gettext("Resend Invoice")}
+            </button>
+          <% end %>
 
-        <%!-- Mark as Paid - available for sent/overdue --%>
-        <%= if @invoice.status in ["sent", "overdue"] do %>
-          <button phx-click="open_payment_modal" class="btn btn-success btn-sm">
-            <.icon name="hero-banknotes" class="w-4 h-4" /> {gettext("Record Payment")}
-          </button>
-        <% end %>
+          <%!-- Mark as Paid - available for sent/overdue --%>
+          <%= if @invoice.status in ["sent", "overdue"] do %>
+            <button phx-click="open_payment_modal" class="btn btn-success btn-sm">
+              <.icon name="hero-banknotes" class="w-4 h-4" /> {gettext("Record Payment")}
+            </button>
+          <% end %>
 
-        <%!-- Online Payment Providers - available for sent/overdue with remaining balance --%>
-        <%= if @invoice.status in ["sent", "overdue"] && Decimal.positive?(PhoenixKitBilling.Invoice.remaining_amount(@invoice)) do %>
-          <%= for provider <- @available_providers do %>
-            <button
-              phx-click="pay_with_provider"
-              phx-value-provider={provider}
-              class={[
-                "btn btn-sm",
-                provider == :stripe && "btn-primary",
-                provider == :paypal && "btn-info",
-                provider == :razorpay && "btn-secondary"
-              ]}
-              disabled={@checkout_loading != nil}
-            >
-              <%= if @checkout_loading == provider do %>
-                <span class="loading loading-spinner loading-xs"></span>
-              <% else %>
-                <%= case provider do %>
-                  <% :stripe -> %>
-                    <.icon name="hero-credit-card" class="w-4 h-4" />
-                  <% :paypal -> %>
-                    <.icon name="hero-currency-dollar" class="w-4 h-4" />
-                  <% :razorpay -> %>
-                    <.icon name="hero-banknotes" class="w-4 h-4" />
-                  <% _ -> %>
-                    <.icon name="hero-credit-card" class="w-4 h-4" />
+          <%!-- Online Payment Providers - available for sent/overdue with remaining balance --%>
+          <%= if @invoice.status in ["sent", "overdue"] && Decimal.positive?(PhoenixKitBilling.Invoice.remaining_amount(@invoice)) do %>
+            <%= for provider <- @available_providers do %>
+              <button
+                phx-click="pay_with_provider"
+                phx-value-provider={provider}
+                class={[
+                  "btn btn-sm",
+                  provider == :stripe && "btn-primary",
+                  provider == :paypal && "btn-info",
+                  provider == :razorpay && "btn-secondary"
+                ]}
+                disabled={@checkout_loading != nil}
+              >
+                <%= if @checkout_loading == provider do %>
+                  <span class="loading loading-spinner loading-xs"></span>
+                <% else %>
+                  <%= case provider do %>
+                    <% :stripe -> %>
+                      <.icon name="hero-credit-card" class="w-4 h-4" />
+                    <% :paypal -> %>
+                      <.icon name="hero-currency-dollar" class="w-4 h-4" />
+                    <% :razorpay -> %>
+                      <.icon name="hero-banknotes" class="w-4 h-4" />
+                    <% _ -> %>
+                      <.icon name="hero-credit-card" class="w-4 h-4" />
+                  <% end %>
                 <% end %>
+                {gettext("Pay with %{provider}", provider: provider |> Atom.to_string() |> String.capitalize())}
+              </button>
+            <% end %>
+          <% end %>
+
+          <%!-- Issue Refund - available if has payments --%>
+          <%= if PhoenixKitBilling.Invoice.has_payments?(@invoice) do %>
+            <button phx-click="open_refund_modal" class="btn btn-warning btn-sm">
+              <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {gettext("Issue Refund")}
+            </button>
+          <% end %>
+
+          <%!-- Generate Receipt - available when paid_amount > 0 and no receipt yet --%>
+          <%= if is_nil(@invoice.receipt_number) && @invoice.paid_amount && Decimal.gt?(@invoice.paid_amount, Decimal.new(0)) do %>
+            <button phx-click="generate_receipt" class="btn btn-outline btn-sm">
+              <.icon name="hero-document-check" class="w-4 h-4" />
+              <%= if @invoice.status == "paid" do %>
+                {gettext("Generate Receipt")}
+              <% else %>
+                {gettext("Generate Partial Receipt")}
               <% end %>
-              {gettext("Pay with %{provider}", provider: provider |> Atom.to_string() |> String.capitalize())}
+            </button>
+          <% end %>
+
+          <%!-- Void - available for draft/sent/overdue --%>
+          <%= if @invoice.status in ["draft", "sent", "overdue"] do %>
+            <button
+              id="void-invoice-button"
+              phx-click="open_void_modal"
+              class="btn btn-error btn-outline btn-sm"
+            >
+              <.icon name="hero-x-mark" class="w-4 h-4" /> {gettext("Void")}
+            </button>
+          <% end %>
+
+          <.link
+            navigate={
+              PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}/print")
+            }
+            class="btn btn-outline btn-sm"
+            target="_blank"
+          >
+            <.icon name="hero-printer" class="w-4 h-4" /> {gettext("Print / PDF")}
+          </.link>
+
+          <%!-- View Receipt - available when receipt is generated --%>
+          <%= if @invoice.receipt_number do %>
+            <.link
+              navigate={
+                PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}/receipt")
+              }
+              class="btn btn-success btn-sm"
+              target="_blank"
+            >
+              <.icon name="hero-document-check" class="w-4 h-4" /> {gettext("View Receipt")}
+            </.link>
+            <button phx-click="open_send_receipt_modal" class="btn btn-success btn-outline btn-sm">
+              <.icon name="hero-paper-airplane" class="w-4 h-4" /> {gettext("Send Receipt")}
+            </button>
+          <% end %>
+
+          <%!-- Move to trash - a draft that was never sent; an issued invoice is voided --%>
+          <%= if @can_manage_invoices and Invoice.trashable?(@invoice) do %>
+            <button id="trash-invoice-button" phx-click="open_trash_modal" class="btn btn-outline btn-sm">
+              <.icon name="hero-trash" class="w-4 h-4" /> {gettext("Move to trash")}
             </button>
           <% end %>
         <% end %>
-
-        <%!-- Issue Refund - available if has payments --%>
-        <%= if PhoenixKitBilling.Invoice.has_payments?(@invoice) do %>
-          <button phx-click="open_refund_modal" class="btn btn-warning btn-sm">
-            <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {gettext("Issue Refund")}
-          </button>
-        <% end %>
-
-        <%!-- Generate Receipt - available when paid_amount > 0 and no receipt yet --%>
-        <%= if is_nil(@invoice.receipt_number) && @invoice.paid_amount && Decimal.gt?(@invoice.paid_amount, Decimal.new(0)) do %>
-          <button phx-click="generate_receipt" class="btn btn-outline btn-sm">
-            <.icon name="hero-document-check" class="w-4 h-4" />
-            <%= if @invoice.status == "paid" do %>
-              {gettext("Generate Receipt")}
-            <% else %>
-              {gettext("Generate Partial Receipt")}
-            <% end %>
-          </button>
-        <% end %>
-
-        <%!-- Void - available for draft/sent/overdue --%>
-        <%= if @invoice.status in ["draft", "sent", "overdue"] do %>
-          <button
-            id="void-invoice-button"
-            phx-click="open_void_modal"
-            class="btn btn-error btn-outline btn-sm"
-          >
-            <.icon name="hero-x-mark" class="w-4 h-4" /> {gettext("Void")}
-          </button>
-        <% end %>
-
-        <.link
-          navigate={
-            PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}/print")
-          }
-          class="btn btn-outline btn-sm"
-          target="_blank"
-        >
-          <.icon name="hero-printer" class="w-4 h-4" /> {gettext("Print / PDF")}
-        </.link>
-
-        <%!-- View Receipt - available when receipt is generated --%>
-        <%= if @invoice.receipt_number do %>
-          <.link
-            navigate={
-              PhoenixKit.Utils.Routes.path("/admin/billing/invoices/#{@invoice.uuid}/receipt")
-            }
-            class="btn btn-success btn-sm"
-            target="_blank"
-          >
-            <.icon name="hero-document-check" class="w-4 h-4" /> {gettext("View Receipt")}
-          </.link>
-          <button phx-click="open_send_receipt_modal" class="btn btn-success btn-outline btn-sm">
-            <.icon name="hero-paper-airplane" class="w-4 h-4" /> {gettext("Send Receipt")}
-          </button>
-        <% end %>
       </:actions>
     </.admin_page_header>
+
+    <%!-- An invoice in the trash says so, since when and by whom. --%>
+    <.trash_notice
+      :if={Invoice.trashed?(@invoice)}
+      id="invoice-trashed-mark"
+      trashed_at={@invoice.trashed_at}
+      by={@trashed_by}
+    />
 
     <%!-- A void invoice says so loudly; the reason is the trail void_invoice/3 left. --%>
     <%= if @invoice.status == "void" do %>
@@ -1072,3 +1108,56 @@
     </div>
   <% end %>
 
+
+  <%!-- Move to Trash Modal --%>
+  <%= if @show_trash_modal do %>
+    <div id="trash-invoice-modal" class="modal modal-open">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">{gettext("Move to trash")}</h3>
+        <p class="py-2 text-base-content/60">
+          {gettext("Move invoice %{number} to the trash?", number: @invoice.invoice_number)}
+        </p>
+        <p class="text-sm text-base-content/60">
+          {gettext(
+            "Nothing is deleted. The invoice number stays used and is never given to another invoice. Only a draft that was never sent can be moved to the trash; to cancel an issued invoice, void it instead."
+          )}
+        </p>
+
+        <form id="trash-invoice-form" phx-submit="trash_invoice">
+          <div class="modal-action">
+            <button type="button" phx-click="close_trash_modal" class="btn">
+              {gettext("Back")}
+            </button>
+            <button type="submit" class="btn btn-warning">
+              <.icon name="hero-trash" class="w-4 h-4" /> {gettext("Move to trash")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-backdrop" phx-click="close_trash_modal"></div>
+    </div>
+  <% end %>
+
+  <%!-- Restore Modal --%>
+  <%= if @show_restore_modal do %>
+    <div id="restore-invoice-modal" class="modal modal-open">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">{gettext("Restore")}</h3>
+        <p class="py-2 text-base-content/60">
+          {gettext("Restore invoice %{number} from the trash?", number: @invoice.invoice_number)}
+        </p>
+
+        <form id="restore-invoice-form" phx-submit="restore_invoice">
+          <div class="modal-action">
+            <button type="button" phx-click="close_restore_modal" class="btn">
+              {gettext("Back")}
+            </button>
+            <button type="submit" class="btn btn-warning">
+              <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {gettext("Restore")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-backdrop" phx-click="close_restore_modal"></div>
+    </div>
+  <% end %>

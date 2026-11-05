@@ -265,30 +265,7 @@ defmodule PhoenixKitBilling.Migrations do
   `down/1` below V7 drops it. A later `up/1` then reseeds from the rows that
   survive, so the numbers of deleted top rows can come back.
 
-  Locks. A create holds its counter row until its transaction ends, so the
-  rule is: **a path takes the row locks it needs before its counters, and does
-  not wait for a row lock while holding a counter** - with one exception, below.
-  `update_order` (on every call, to decide on the stored row) and
-  `update_invoice` (when it changes a number) lock their own row
-  (`FOR NO KEY UPDATE`, `FOR UPDATE`) before lifting a counter, which is why a
-  transaction that holds that row and then creates a document cannot deadlock
-  with them. So a host transaction that has created an order or invoice and
-  then calls `update_order/2` waits for that row lock while holding the
-  counter: only call it before the create, or outside the transaction. The exception: paying an invoice (`mark_invoice_paid`,
-  `record_payment`) takes the invoice row, then the transaction and receipt
-  counters, and only then the linked order's row (`FOR NO KEY UPDATE`). So a
-  host transaction must not hold an order row and then wait for a transaction
-  or receipt counter.
-
-  Between kinds, take the locks in this order, everywhere: order counter,
-  invoice counter, invoice row, transaction counter, receipt counter, order row.
-  This list is for creates and payments. An update that changes a number is
-  the other way round for its own document: `update_order/2` takes the order
-  row first and then the order counter, `update_invoice/2` the invoice row and
-  then the invoice (or receipt) counter. A host must not copy the create order
-  for those and take the counter before the row. A host that wraps several
-  creates in one transaction must keep that order, or two of them can deadlock
-  (Postgres aborts one).
+  Locks: see "Lock order" below.
 
   A typo in a number typed by hand in the series' own shape (`ORD-2026-9000`
   for `ORD-2026-0090`) lifts the counter for good: the counter never goes back
@@ -299,11 +276,100 @@ defmodule PhoenixKitBilling.Migrations do
   the provider call: other invoice creates wait for the charge to finish. Known
   and left for a follow-up: create the invoice in a short transaction of its
   own before the charge.
+
+  ## V8 - a trash for orders and invoices
+
+  Orders and draft invoices can be moved to a trash and restored, instead of
+  being deleted. `phoenix_kit_orders` and `phoenix_kit_invoices` (both
+  core-created, adopted by V4) each get:
+
+    * `trashed_at timestamp with time zone` - `NULL` for a row that is not in
+      the trash, the moment it was moved there otherwise;
+    * `trashed_by_uuid uuid` - the user who did it, `NULL` when nobody is named.
+      No foreign key, like the other actor references this chain keeps: a user
+      who is removed later must not block or rewrite the trash's history;
+    * a partial index `..._trashed_idx` on `(trashed_at) WHERE trashed_at IS NOT
+      NULL`, which the trash listing reads and which stays as small as the
+      trash;
+    * on invoices only, `phoenix_kit_invoices_not_trashed_idx` on `(inserted_at)
+      WHERE trashed_at IS NULL`, which the default listing reads. Orders already
+      have `phoenix_kit_orders_inserted_at_idx` on `(inserted_at)` (V6) for that,
+      so a partial twin of it would only add write cost.
+
+    The `CREATE INDEX` statements are plain (not `CONCURRENTLY`) and block writes
+    to their table while they build; on a large table run V8 in a quiet moment.
+
+  Nothing is rewritten: every existing row reads as "not trashed". The code
+  that writes the columns needs them, so run V8 before it.
+
+  `down/1` below V8 drops the three indexes and the four columns - never either
+  table. Rows that were in the trash are not deleted; they simply read as not
+  trashed again, so they reappear in the lists.
+
+  ## Lock order - read before wrapping creates in your own transaction
+
+  A create holds its counter row until its transaction ends, and the trash and
+  the invoice guards lock order rows, so the order in which a transaction takes
+  locks matters as soon as it does more than one thing. Postgres aborts one of
+  two transactions that wait on each other; these rules keep the library's own
+  paths from doing it, and a host that wraps several calls in one transaction
+  must keep them too.
+
+  Taking locks in this order, everywhere:
+
+    1. An order row taken `FOR UPDATE`: `trash_order/2`, `restore_order/2`,
+       `delete_order/1`, and an `update_order/2` that changes the number (the
+       unique index makes that write a `FOR UPDATE` anyway, so it is taken up
+       front). **Never take an order `FOR UPDATE` while holding a counter** -
+       the invoice counter or any other - **or another document's lock.** These
+       paths take their row first and then, if at all, a counter.
+    2. The order counter (`create_order/2`, and `update_order/2` after its row).
+    3. For an invoice created for an order, or moved onto one (`update_invoice/2`
+       with a new `order_uuid`): the order row `FOR KEY SHARE`, before the invoice
+       counter. This is the guard that refuses an order in the trash.
+       `restore_invoice/2` applies the same guard (and also refuses a cancelled
+       order), but takes the invoice row first, then the order row `FOR KEY SHARE`.
+    4. The invoice counter.
+    5. The invoice row. (An `update_invoice` that changes a number locks the
+       invoice row first, then lifts the counters - no other path waits on that
+       row while holding a counter it needs.)
+    6. The transaction counter, then the receipt counter.
+    7. The order row `FOR NO KEY UPDATE` (status transitions, `put_order_sync/2`,
+       and every other `update_order/2`, which decides on the stored row).
+
+  The exception: paying or refunding an invoice (`mark_invoice_paid/2`,
+  `record_payment/3`, and `record_refund/3`, which reaches the order through
+  `refund_order`) takes the invoice row, then the transaction and receipt
+  counters, and only then the linked order's row (`FOR NO KEY UPDATE`, step 7).
+  So a host transaction must not hold an order row and then wait for a
+  transaction or receipt counter.
+
+  Likewise, **a transaction holding an order row must not then wait for one of
+  that order's invoice rows**: `restore_invoice/2` and an `update_invoice/2` that
+  re-links take the invoice row and then the order row (`FOR KEY SHARE`), and
+  paying or refunding take the invoice row and, last, the order row. Take the
+  invoice first.
+
+  Because the invoice insert takes the order row before the invoice counter, an
+  invoice create and a `trash_order/2` or `delete_order/1` of the same order meet
+  on the row alone, with no counter held on either side, and cannot deadlock.
+
+  `update_order/2` locks the order row on every call, so a host transaction that
+  has created an order or an invoice (and so holds a counter) and then calls
+  `update_order/2` waits for a row lock while holding a counter. Call it before
+  the create, or outside the transaction.
+
+  What a host must still avoid: creating an invoice for order A and then
+  trashing, restoring or deleting order B in the same transaction. The second step
+  waits for B's `FOR UPDATE` while the transaction holds the invoice counter; if
+  another session is creating an invoice for B (holding B's `FOR KEY SHARE` and
+  waiting for the invoice counter) the two wait on each other. Do the trash or
+  delete first, or in its own transaction.
   """
 
   use Ecto.Migration
 
-  @current_version 7
+  @current_version 8
   @marker_prefix "pkb_schema:"
   @version_table "phoenix_kit_payment_provider_configs"
 
@@ -386,7 +452,8 @@ defmodule PhoenixKitBilling.Migrations do
   `rounding_rule`, `rate_updated_at`); `3` additionally adds
   `phoenix_kit_orders`' frozen-currency columns; `4` additionally adopts
   the remaining ten core-baseline tables (see the moduledoc); `7`
-  additionally creates the number sequences table.
+  additionally creates the number sequences table; `8` additionally adds the
+  trash columns and partial indexes to orders and invoices.
   """
   @spec up_statements(String.t(), non_neg_integer()) :: [String.t()]
   def up_statements(prefix \\ "public", target \\ @current_version)
@@ -497,12 +564,15 @@ defmodule PhoenixKitBilling.Migrations do
 
       v7 = if target >= 7, do: v7_statements(p), else: []
 
+      v8 = if target >= 8, do: v8_statements(p), else: []
+
       v1 ++
         v6 ++
         v2 ++
         v3 ++
         v4 ++
-        v5 ++ v7 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
+        v5 ++
+        v7 ++ v8 ++ ["COMMENT ON TABLE #{p}#{@version_table} IS '#{@marker_prefix}#{target}'"]
     end
   end
 
@@ -561,6 +631,35 @@ defmodule PhoenixKitBilling.Migrations do
       )
       """
     ]
+  end
+
+  # V8 - the trash columns and their partial indexes on the two tables that have
+  # a trash (see the moduledoc). Every statement is `IF NOT EXISTS`, so a replay
+  # changes nothing and never touches a row.
+  defp v8_statements(p) do
+    tables = ~w(phoenix_kit_orders phoenix_kit_invoices)
+
+    columns =
+      for table <- tables,
+          stmt <- [
+            "ALTER TABLE #{p}#{table} ADD COLUMN IF NOT EXISTS trashed_at timestamp with time zone",
+            "ALTER TABLE #{p}#{table} ADD COLUMN IF NOT EXISTS trashed_by_uuid uuid"
+          ],
+          do: stmt
+
+    # Orders already have `phoenix_kit_orders_inserted_at_idx` on `(inserted_at)`
+    # (V6), which serves the default listing; a partial twin of it would only add
+    # write cost on the busiest table. Invoices have no such index.
+    indexes = [
+      "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_not_trashed_idx ON #{p}phoenix_kit_invoices USING btree (inserted_at) WHERE trashed_at IS NULL"
+      | for(
+          table <- tables,
+          do:
+            "CREATE INDEX IF NOT EXISTS #{table}_trashed_idx ON #{p}#{table} USING btree (trashed_at) WHERE trashed_at IS NOT NULL"
+        )
+    ]
+
+    columns ++ indexes
   end
 
   # V5 — a payer need not have an account (see the moduledoc). Each step is
@@ -1293,7 +1392,9 @@ defmodule PhoenixKitBilling.Migrations do
   `phoenix_kit_payment_provider_configs` table itself. V4 changes no
   shape of its own (pure adoption, like V1), so there is nothing below V4
   to drop beyond the marker. Below V7 the V7 counter table is dropped — the
-  only table here that this chain, not core, created.
+  only table here that this chain, not core, created. Below V8 the trash
+  columns and partial indexes of orders and invoices are dropped, never the
+  tables.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ "public", target \\ 0)
@@ -1363,7 +1464,24 @@ defmodule PhoenixKitBilling.Migrations do
         []
       end
 
-    drop_v7 ++ drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
+    # The trash's columns and indexes, on two core-created tables: dropped, the
+    # tables and their rows stay. (`IF EXISTS` on every name, so a database that
+    # took an earlier shape of V8 is cleaned up too.)
+    drop_v8 =
+      if target < 8 do
+        for table <- ~w(phoenix_kit_orders phoenix_kit_invoices),
+            stmt <- [
+              "DROP INDEX IF EXISTS #{p}#{table}_not_trashed_idx",
+              "DROP INDEX IF EXISTS #{p}#{table}_trashed_idx",
+              "ALTER TABLE #{p}#{table} DROP COLUMN IF EXISTS trashed_at",
+              "ALTER TABLE #{p}#{table} DROP COLUMN IF EXISTS trashed_by_uuid"
+            ],
+            do: stmt
+      else
+        []
+      end
+
+    drop_v8 ++ drop_v7 ++ drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
   end
 
   defp parse_version(n) do

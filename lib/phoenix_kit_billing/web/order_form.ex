@@ -109,6 +109,11 @@ defmodule PhoenixKitBilling.Web.OrderForm do
         |> put_flash(:error, gettext("Order not found"))
         |> push_navigate(to: Routes.path("/admin/billing/orders"))
 
+      %Order{trashed_at: %DateTime{}} = order ->
+        socket
+        |> put_flash(:error, Errors.message(:order_trashed))
+        |> push_navigate(to: Paths.order_detail(order.uuid))
+
       order ->
         changeset = Billing.change_order(order)
         line_items = parse_line_items(order.line_items)
@@ -334,18 +339,20 @@ defmodule PhoenixKitBilling.Web.OrderForm do
          |> put_flash(:info, gettext("Order saved successfully"))
          |> push_navigate(to: Routes.path("/admin/billing/orders/#{order.uuid}"))}
 
-      # The order went away or was closed (cancelled, trashed) while the form was open.
+      # The order went away while the form was open.
       {:error, :not_found} ->
         {:noreply,
          socket
          |> put_flash(:error, Errors.message(:not_found))
          |> push_navigate(to: Routes.path("/admin/billing/orders"))}
 
-      {:error, reason} when is_atom(reason) ->
-        {:noreply, put_flash(socket, :error, Errors.message(reason))}
-
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
+
+      # A refusal that is not about a field: an order in the trash, or one that
+      # can no longer be edited.
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, Errors.message(reason))}
     end
   rescue
     e ->

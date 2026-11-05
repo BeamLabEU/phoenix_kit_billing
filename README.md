@@ -199,6 +199,48 @@ def handle_info({:order_created, order}, socket) do
 end
 ```
 
+### Trash
+
+Orders and draft invoices are not deleted from the admin: they go to a trash
+(Orders and Invoices lists have a *Trash* tab) and come back with *Restore*.
+Nothing empties it.
+
+```elixir
+{:ok, order} = PhoenixKitBilling.trash_order(order, actor_uuid: admin.uuid)
+{:ok, order} = PhoenixKitBilling.restore_order(order)
+
+{:ok, invoice} = PhoenixKitBilling.trash_invoice(invoice, actor_uuid: admin.uuid)
+{:ok, invoice} = PhoenixKitBilling.restore_invoice(invoice)
+
+PhoenixKitBilling.list_orders(%{trashed: :only})    # :include for both
+```
+
+- A `draft` or `cancelled` order without an open invoice (neither void nor in
+  the trash) can be trashed; its status does not change. An invoice can be
+  trashed only while it is a `draft` that was never sent - an issued invoice is
+  voided - and its number stays used.
+- A document in the trash refuses every change with `{:error, :order_trashed}` /
+  `{:error, :invoice_trashed}` until it is restored, and no email goes out.
+- An invoice cannot be created for, moved onto or restored onto an order in the
+  trash (`:order_trashed`). A restore is also refused for a cancelled order
+  (`:order_cancelled`; it stays cancelled, so an invoice trashed from it stays in
+  the trash and its number stays used) and for an order that has another invoice
+  neither void nor in the trash (`:order_has_open_invoices`), so a restore never
+  adds a second open invoice. Creating an invoice for a cancelled order is as it
+  was before the trash.
+- Trashing and restoring leave `updated_at` as it was.
+- Restoring a trashed draft invoice puts back its old figures. If the order's
+  lines changed meanwhile, the invoice no longer matches them: check it before
+  sending.
+- A void invoice of a trashed order stays in the invoice lists (it is an issued
+  document; only a draft invoice goes to the trash).
+- Listings, counts and the dashboard leave the trash out unless asked
+  (`trashed: :only | :include`). `get_order/2` and `get_invoice/2` still find it.
+- Subscribers of the orders and invoices topics also receive
+  `{:order_trashed, order}`, `{:order_restored, order}`, `{:invoice_trashed, invoice}`
+  and `{:invoice_restored, invoice}` - and no other event with them.
+- Needs migration V8 (`mix phoenix_kit.update`).
+
 ### Settings
 
 | Key | Type | Default | Description |
