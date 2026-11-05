@@ -247,10 +247,12 @@ invoice refuses every change with `:order_trashed` / `:invoice_trashed`
 the dashboard leave the trash out by default (`trashed: :only | :include`
 brings it back), and so do a customer's orders, the invoices preloaded on them
 and `get_order_by_uuid/2`. An invoice cannot be created for, moved onto or
-restored onto an order in the trash or a cancelled one (`:order_trashed`,
-`:order_cancelled`); a cancelled order stays cancelled, so an invoice trashed from
-it stays in the trash (its number stays used). The checks lock the order row against
-`trash_order/2`. A stored order is edited only while its stored status is `draft`
+restored onto an order in the trash (`:order_trashed`). A restore is also refused
+for a cancelled order (`:order_cancelled`; it stays cancelled, so an invoice
+trashed from it stays in the trash and its number stays used) and for an order
+with another invoice that is neither void nor in the trash
+(`:order_has_open_invoices`); creating an invoice for a cancelled order is as it
+was before the trash. The checks lock the order row against `trash_order/2`. A stored order is edited only while its stored status is `draft`
 or `pending`: `update_order/2` re-checks that, and any status change, on the
 locked row, so a stale struct cannot undo a cancellation. Trashing and restoring do not
 touch `updated_at`. A void invoice of an order in the trash stays in the invoice
@@ -459,8 +461,10 @@ in hosts; the test suite applies it by executing
   moduledoc and the `@doc`s.
 - **V8 adds the trash**: `trashed_at` and `trashed_by_uuid` (no foreign key) on
   `phoenix_kit_orders` and `phoenix_kit_invoices`, plus a partial index per table
-  over the rows not in the trash and one over the rows that are. `down/1` below V8
-  drops the four columns and four indexes - never a table - so what was in the
+  over the rows that are in the trash and, on invoices only, one over the rows
+  that are not (orders already have `phoenix_kit_orders_inserted_at_idx` on
+  `inserted_at`, so a partial twin would only add write cost). `down/1` below V8
+  drops the four columns and the indexes - never a table - so what was in the
   trash reads as not trashed again.
 - **V5 lets a payer be a billing email instead of an account**:
   `phoenix_kit_invoices.user_uuid` and `phoenix_kit_transactions.user_uuid`

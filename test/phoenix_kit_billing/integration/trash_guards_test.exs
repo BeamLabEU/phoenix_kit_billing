@@ -1,7 +1,8 @@
 defmodule PhoenixKitBilling.Integration.TrashGuardsTest do
   @moduledoc """
-  An order in the trash or cancelled takes no new invoice - created for it or
-  moved onto it - a refused renumbering does not move the counter, and trashing
+  An order in the trash takes no new invoice - created for it or moved onto
+  it - and an invoice is not restored onto a cancelled order or next to another
+  open invoice of its order. A refused renumbering does not move the counter, and trashing
   or restoring leaves `updated_at` alone.
   """
 
@@ -43,36 +44,34 @@ defmodule PhoenixKitBilling.Integration.TrashGuardsTest do
   end
 
   describe "an invoice for a cancelled order" do
+    # Allowed before the trash existed (a cancellation fee, a late settlement),
+    # and the trash leaves it so. Only a restore is held to "not cancelled".
     setup %{user: user} do
       {:ok, cancelled} = Billing.cancel_order(order(user))
       {:ok, cancelled: cancelled}
     end
 
-    test "create_invoice_from_order/2 is refused", %{cancelled: cancelled} do
-      assert {:error, :order_cancelled} = Billing.create_invoice_from_order(cancelled)
-
-      # Also from a struct read before the cancel.
-      stale = %{cancelled | status: "draft"}
-      assert {:error, :order_cancelled} = Billing.create_invoice_from_order(stale)
-      assert Billing.list_invoices_for_order(cancelled.uuid, trashed: :include) == []
+    test "create_invoice_from_order/2 still creates it", %{cancelled: cancelled} do
+      assert {:ok, invoice} = Billing.create_invoice_from_order(cancelled)
+      assert invoice.order_uuid == cancelled.uuid
     end
 
-    test "create_invoice/2 with its uuid is refused", %{user: user, cancelled: cancelled} do
-      assert {:error, :order_cancelled} =
+    test "create_invoice/2 with its uuid still creates it", %{user: user, cancelled: cancelled} do
+      assert {:ok, invoice} =
                Billing.create_invoice(user, %{
                  total: Decimal.new("1.00"),
                  currency: "EUR",
                  order_uuid: cancelled.uuid
                })
+
+      assert invoice.order_uuid == cancelled.uuid
     end
 
-    test "update_invoice/2 cannot move an invoice onto it", %{user: user, cancelled: cancelled} do
+    test "update_invoice/2 still moves an invoice onto it", %{user: user, cancelled: cancelled} do
       invoice = standalone(user)
 
-      assert {:error, :order_cancelled} =
-               Billing.update_invoice(invoice, %{order_uuid: cancelled.uuid})
-
-      assert Billing.get_invoice!(invoice.uuid).order_uuid == nil
+      assert {:ok, _} = Billing.update_invoice(invoice, %{order_uuid: cancelled.uuid})
+      assert Billing.get_invoice!(invoice.uuid).order_uuid == cancelled.uuid
     end
 
     test "an invoice it had before the cancel is untouched", %{user: user} do
@@ -211,6 +210,18 @@ defmodule PhoenixKitBilling.Integration.TrashGuardsTest do
       assert Enum.map(loaded.invoices, & &1.uuid) == [shown.uuid]
     end
 
+    test "a preload function of the caller is passed through as it is", %{user: user} do
+      order = order(user)
+      {:ok, shown} = Billing.create_invoice_from_order(order)
+
+      loader = fn order_uuids ->
+        Invoice |> Ecto.Query.where([i], i.order_uuid in ^order_uuids) |> Repo.all()
+      end
+
+      loaded = Billing.get_order_by_uuid(order.uuid, preload: [invoices: loader])
+      assert Enum.map(loaded.invoices, & &1.uuid) == [shown.uuid]
+    end
+
     test "a void invoice of an order in the trash stays in the invoice lists", %{user: user} do
       order = order(user)
       {:ok, invoice} = Billing.create_invoice_from_order(order)
@@ -330,6 +341,38 @@ defmodule PhoenixKitBilling.Integration.TrashGuardsTest do
         assert {:ok, restored} = Billing.restore_invoice(trashed)
         refute Invoice.trashed?(restored)
       end
+    end
+
+    test "that already has another open invoice is refused", %{user: user} do
+      order = order(user)
+      trashed = trashed_invoice_of(order)
+      {:ok, second} = Billing.create_invoice_from_order(order)
+      {:ok, sent} = second |> Invoice.status_changeset("sent") |> Repo.update()
+      {:ok, _} = sent |> Invoice.status_changeset("paid") |> Repo.update()
+
+      assert {:error, :order_has_open_invoices} = Billing.restore_invoice(trashed)
+      assert Invoice.trashed?(Billing.get_invoice!(trashed.uuid))
+    end
+
+    test "that has another draft invoice is refused too", %{user: user} do
+      order = order(user)
+      trashed = trashed_invoice_of(order)
+      {:ok, _} = Billing.create_invoice_from_order(order)
+
+      assert {:error, :order_has_open_invoices} = Billing.restore_invoice(trashed)
+    end
+
+    test "whose other invoices are void or in the trash is allowed", %{user: user} do
+      order = order(user)
+      trashed = trashed_invoice_of(order)
+      {:ok, other} = Billing.create_invoice_from_order(order)
+      {:ok, _} = Billing.trash_invoice(other)
+      {:ok, third} = Billing.create_invoice_from_order(order)
+      {:ok, third} = third |> Invoice.status_changeset("sent") |> Repo.update()
+      {:ok, _} = Billing.void_invoice(third)
+
+      assert {:ok, restored} = Billing.restore_invoice(trashed)
+      refute Invoice.trashed?(restored)
     end
 
     test "a refusal leaves a caller's transaction usable", %{user: user} do

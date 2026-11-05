@@ -3051,6 +3051,7 @@ defmodule PhoenixKitBilling do
       :invoices -> {:invoices, not_trashed(Invoice)}
       {:invoices, %Ecto.Query{}} = preload -> preload
       {:invoices, {%Ecto.Query{}, _nested}} = preload -> preload
+      {:invoices, fun} = preload when is_function(fun) -> preload
       {:invoices, nested} -> {:invoices, {not_trashed(Invoice), nested}}
       other -> other
     end)
@@ -3369,9 +3370,8 @@ defmodule PhoenixKitBilling do
   @doc """
   Creates an invoice from an order.
 
-  Returns `{:error, :order_trashed}` for an order in the trash and
-  `{:error, :order_cancelled}` for a cancelled one (checked on the stored row,
-  and returned as values: your transaction stays usable).
+  Returns `{:error, :order_trashed}` for an order in the trash (checked on the
+  stored row, and returned as a value: your transaction stays usable).
 
   #{@create_note}
   """
@@ -3406,9 +3406,8 @@ defmodule PhoenixKitBilling do
   # has ended - the commit, unless the caller's own transaction encloses this
   # call.
   #
-  # An invoice of an order that is in the trash or cancelled is refused
-  # (`:order_trashed`, `:order_cancelled`), checked in the insert's transaction
-  # with the order row locked (see `ensure_order_takes_invoice/1`).
+  # An invoice of an order that is in the trash is refused (`:order_trashed`),
+  # checked in the insert's transaction with the order row locked (see `ensure_order_takes_invoice/1`).
   defp insert_invoice(build, config, source, order_uuid) do
     guard = fn -> ensure_order_takes_invoice(order_uuid) end
 
@@ -3429,8 +3428,7 @@ defmodule PhoenixKitBilling do
   Creates a standalone invoice (without order).
 
   With an `order_uuid` it is held to the same rule as `create_invoice_from_order/2`:
-  `{:error, :order_trashed}` or `{:error, :order_cancelled}` when the order cannot
-  take an invoice.
+  `{:error, :order_trashed}` when the order is in the trash.
 
   #{@create_note}
   """
@@ -3454,19 +3452,22 @@ defmodule PhoenixKitBilling do
     insert_invoice(build, config, source, order_uuid)
   end
 
-  # The order an invoice is created for, moved onto or restored onto must be able
-  # to take it:
-  # not in the trash, not cancelled. Checked in the transaction that writes the
+  # The order an invoice is created for, moved onto or restored onto must not be
+  # in the trash (and a restore also not cancelled, below). Checked in the transaction that writes the
   # invoice, with the order row locked `FOR KEY SHARE` - what the invoice's
   # foreign key takes on the order anyway. That conflicts with the `FOR UPDATE`
   # of `trash_order/2`, so an order is trashed before this looks (and the invoice
   # is refused) or after the invoice is in (and the trash is refused), never in
   # between. The lock is taken BEFORE the invoice counter; see "Lock order" in
   # the `PhoenixKitBilling.Migrations` moduledoc.
-  defp ensure_order_takes_invoice(order_uuid) do
+  #
+  # A cancelled order is refused only for a restore (`refuse_cancelled?`): an
+  # invoice for a cancelled order could be created before the trash existed, and
+  # the trash does not change that.
+  defp ensure_order_takes_invoice(order_uuid, refuse_cancelled? \\ false) do
     case lock_order_state(order_uuid) do
       %{trashed_at: %DateTime{}} -> {:error, :order_trashed}
-      %{status: "cancelled"} -> {:error, :order_cancelled}
+      %{status: "cancelled"} when refuse_cancelled? -> {:error, :order_cancelled}
       _ -> :ok
     end
   end
@@ -3518,8 +3519,7 @@ defmodule PhoenixKitBilling do
 
   Returns `{:ok, invoice}`, `{:error, :invoice_not_editable}`,
   `{:error, :invoice_trashed}` for an invoice in the trash,
-  `{:error, :order_trashed}` / `{:error, :order_cancelled}` when the edit moves
-  it onto an order that cannot take an invoice,
+  `{:error, :order_trashed}` when the edit moves it onto an order in the trash,
   `{:error, :invoice_not_found}` or `{:error, changeset}`. Refusals are
   returned, not rolled back, so a transaction of the caller's stays usable.
   """
@@ -3623,16 +3623,19 @@ defmodule PhoenixKitBilling do
   Takes an invoice out of the trash. Nothing else about it changes.
 
   Takes a row lock on the invoice, and then on its order, and decides on the
-  stored rows. A restored invoice is open again, so its order is held to the rule
-  for a new invoice: an order in the trash has no open invoice, and a cancelled
-  one takes none. A cancelled order stays cancelled, so an invoice trashed from it
-  stays in the trash (its number stays used).
+  stored rows. A restored invoice is open again, so its order must be able to
+  carry it: an order in the trash has no open invoice, a cancelled one takes none
+  (it stays cancelled, so an invoice trashed from it stays in the trash and its
+  number stays used), and an order that has another invoice which is neither void
+  nor in the trash - paid, sent or draft - would get a second open invoice, so
+  that is refused too.
 
   Returns `{:ok, invoice}` (without the preloads of the struct passed in),
   `{:error, :not_trashed}`, `{:error, :order_trashed}` when its order is in the
-  trash, `{:error, :order_cancelled}` when it is cancelled or
-  `{:error, :invoice_not_found}`. Refusals are returned, not rolled
-  back. On success an `:invoice_restored` event is broadcast. The options are
+  trash, `{:error, :order_cancelled}` when it is cancelled,
+  `{:error, :order_has_open_invoices}` when the order has another invoice that is
+  neither void nor in the trash, or `{:error, :invoice_not_found}`. Refusals are
+  returned, not rolled back. On success an `:invoice_restored` event is broadcast. The options are
   accepted for symmetry with `trash_invoice/2` and not used.
   """
   def restore_invoice(%Invoice{} = invoice, _opts \\ []) do
@@ -3644,7 +3647,8 @@ defmodule PhoenixKitBilling do
 
           locked ->
             with true <- Invoice.trashed?(locked) || {:error, :not_trashed},
-                 :ok <- ensure_order_takes_invoice(locked.order_uuid) do
+                 :ok <- ensure_order_takes_invoice(locked.order_uuid, true),
+                 :ok <- ensure_no_other_open_invoice(locked) do
               locked |> Invoice.restore_changeset() |> repo().update()
             end
         end
@@ -3658,6 +3662,23 @@ defmodule PhoenixKitBilling do
       error ->
         error
     end
+  end
+
+  # Under the order row lock `ensure_order_takes_invoice/2` took. An invoice
+  # created for the order at the same moment is not seen: creating a second
+  # invoice for an order is allowed, this only keeps a restore from adding one.
+  defp ensure_no_other_open_invoice(%Invoice{order_uuid: nil}), do: :ok
+
+  defp ensure_no_other_open_invoice(%Invoice{uuid: uuid, order_uuid: order_uuid}) do
+    if repo().exists?(
+         from(i in Invoice,
+           where:
+             i.order_uuid == ^order_uuid and i.uuid != ^uuid and i.status != "void" and
+               is_nil(i.trashed_at)
+         )
+       ),
+       do: {:error, :order_has_open_invoices},
+       else: :ok
   end
 
   @doc """
@@ -6752,7 +6773,8 @@ defmodule PhoenixKitBilling do
             paid_broadcasts = order_paid_broadcasts(confirmed, payment_method)
             [{:broadcast_order_confirmed, confirmed} | paid_broadcasts]
 
-          _ ->
+          error ->
+            warn_order_untouched(order_uuid, error)
             []
         end
 
@@ -6763,10 +6785,25 @@ defmodule PhoenixKitBilling do
 
   defp order_paid_broadcasts(order, payment_method) do
     case pay_order(order, payment_method: payment_method) do
-      {:ok, paid} -> [{:broadcast_order_paid, paid}]
-      _ -> []
+      {:ok, paid} ->
+        [{:broadcast_order_paid, paid}]
+
+      error ->
+        warn_order_untouched(order.uuid, error)
+        []
     end
   end
+
+  # A paid invoice whose order refuses the move: the payment stands, the order
+  # is left as it is, and this is the only trace. An order in the trash with an
+  # open invoice should not exist; if one does (old rows, direct SQL) say so.
+  defp warn_order_untouched(order_uuid, {:error, reason}) do
+    Logger.warning(
+      "Order #{order_uuid} not moved after the payment of its invoice: #{inspect(reason)}"
+    )
+  end
+
+  defp warn_order_untouched(_order_uuid, _other), do: :ok
 
   # Returns the broadcasts to send once the surrounding transaction commits.
   defp maybe_mark_linked_order_refunded(%{order_uuid: nil}), do: []
