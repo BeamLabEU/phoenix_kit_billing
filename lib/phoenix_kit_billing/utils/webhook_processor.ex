@@ -253,6 +253,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     charge = %{
       provider: data[:provider] || "stripe",
       charge_id: data[:charge_id] || data[:payment_intent_id],
+      payment_intent_id: data[:payment_intent_id],
       amount: amount,
       # The operator refunds by this number: say when the event did not carry it.
       amount_inferred: source == :inferred,

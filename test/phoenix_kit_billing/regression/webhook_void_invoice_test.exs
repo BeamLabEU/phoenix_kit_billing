@@ -200,6 +200,28 @@ defmodule PhoenixKitBilling.Regression.WebhookVoidInvoiceTest do
     assert Billing.get_invoice!(invoice.uuid).metadata["void"] in [nil, %{}]
   end
 
+  test "payment booked under its intent, refunded, then an event carrying the charge too: no alert",
+       %{admin: admin, invoice: invoice} do
+    {:ok, _} =
+      Billing.record_payment(
+        invoice,
+        %{amount: "100.00", payment_method: "stripe", provider_transaction_id: "pi_void_1"},
+        nil
+      )
+
+    {:ok, _} = Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+    event = payment_event(invoice, "evt_charge_too")
+    event = put_in(event, [:data, :charge_id], "ch_void_1")
+
+    capture_log(fn ->
+      assert {:ok, :invoice_void} = WebhookProcessor.process(event)
+    end)
+
+    assert texts(admin) == []
+    assert Billing.get_invoice!(invoice.uuid).metadata["void"] in [nil, %{}]
+  end
+
   test "the admins' notification leads to the invoice itself", %{admin: admin, invoice: invoice} do
     {:ok, _voided} = Billing.void_invoice(invoice)
     capture_log(fn -> WebhookProcessor.process(payment_event(invoice, "evt_void_link")) end)

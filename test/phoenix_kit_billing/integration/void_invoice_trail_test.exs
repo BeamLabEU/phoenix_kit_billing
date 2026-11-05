@@ -226,6 +226,87 @@ defmodule PhoenixKitBilling.Integration.VoidInvoiceTrailTest do
       assert Invoice.payments_after_void(Billing.get_invoice!(invoice.uuid)) == []
     end
 
+    test "a payment booked under its payment intent is not a payment after void when the charge id arrives",
+         %{user: user} do
+      invoice = sent_invoice(user)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{amount: "100.00", payment_method: "stripe", provider_transaction_id: "pi_X"},
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+      voided = Billing.get_invoice!(invoice.uuid)
+
+      mixed = %{@charge | charge_id: "ch_Y"} |> Map.put(:payment_intent_id, "pi_X")
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, mixed)
+      assert Invoice.payments_after_void(Billing.get_invoice!(invoice.uuid)) == []
+    end
+
+    test "a ledger row booked from a webhook matches by the ids in its payload", %{user: user} do
+      invoice = sent_invoice(user)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{
+            amount: "100.00",
+            payment_method: "stripe",
+            provider_transaction_id: "ch_Y",
+            provider_data: %{"charge_id" => "ch_Y", "payment_intent_id" => "pi_X"}
+          },
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+      voided = Billing.get_invoice!(invoice.uuid)
+
+      assert {:ok, :already_recorded} =
+               Billing.record_payment_after_void(voided, %{@charge | charge_id: "pi_X"})
+    end
+
+    test "two events for one payment, under a payment intent and under its charge, make one entry",
+         %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      first = %{@charge | charge_id: "pi_X", event_id: "evt_1"}
+
+      second =
+        %{@charge | charge_id: "ch_Y", event_id: "evt_2"} |> Map.put(:payment_intent_id, "pi_X")
+
+      assert {:ok, %Invoice{}} = Billing.record_payment_after_void(voided, first)
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, second)
+
+      assert [%{"charge_id" => "pi_X"} = entry] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+
+      refute Map.has_key?(entry, "payment_intent_id")
+    end
+
+    test "a charge reported with its payment intent keeps both ids, and either one matches later",
+         %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      both = %{@charge | charge_id: "ch_Y"} |> Map.put(:payment_intent_id, "pi_X")
+      assert {:ok, %Invoice{}} = Billing.record_payment_after_void(voided, both)
+
+      assert {:ok, :already_recorded} =
+               Billing.record_payment_after_void(voided, %{
+                 @charge
+                 | charge_id: "pi_X",
+                   event_id: "evt_2"
+               })
+
+      assert [%{"charge_id" => "ch_Y", "payment_intent_id" => "pi_X"}] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+    end
+
     test "works on an invoice voided before the trail existed", %{user: user} do
       invoice = sent_invoice(user)
       {:ok, old} = invoice |> Invoice.status_changeset("void") |> Repo.update()

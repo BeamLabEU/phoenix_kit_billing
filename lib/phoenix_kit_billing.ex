@@ -4266,11 +4266,13 @@ defmodule PhoenixKitBilling do
   `metadata["void"]["payments_after_void"]` as `"provider"`, `"charge_id"`,
   `"amount"`, `"currency"`, `"event_id"` and `"at"` - ids and amounts only - so
   that the operator can find the charge and refund it at the provider. An
-  event or charge id already on the list is not added again, nor is a charge id
+  event or charge id already on the list is not added again, nor is a charge
   that is on the invoice's ledger (it was booked, and refunded).
 
   `charge` is a map with the keys `:provider`, `:charge_id`, `:amount`,
-  `:currency` and `:event_id`, and `:amount_inferred` (true when the amount is
+  `:currency` and `:event_id`, and optionally `:payment_intent_id` (a second
+  id for the same payment: either id matches an earlier entry or ledger row,
+  and the entry keeps it as `"payment_intent_id"`), and `:amount_inferred` (true when the amount is
   not what the provider reported; the entry then carries `"amount_inferred" =>
   true`). Takes the invoice row lock.
 
@@ -4310,6 +4312,8 @@ defmodule PhoenixKitBilling do
       entry =
         if charge[:amount_inferred], do: Map.put(entry, "amount_inferred", true), else: entry
 
+      entry = maybe_put_payment_intent_id(entry, charge)
+
       trail = Map.put(trail, "payments_after_void", entries ++ [entry])
 
       locked
@@ -4318,30 +4322,54 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  # The same event, or the same charge reported by another event.
+  # The same event, or the same charge reported by another event. A payment is
+  # known by its charge id and its payment-intent id; either one matches.
   defp charge_recorded?(entries, charge) do
     event_id = charge[:event_id]
-    charge_id = charge[:charge_id] && to_string(charge[:charge_id])
+    ids = charge_ids(charge)
 
     Enum.any?(entries, fn entry ->
       (event_id != nil and entry["event_id"] == event_id) or
-        (charge_id != nil and entry["charge_id"] == charge_id)
+        Enum.any?([entry["charge_id"], entry["payment_intent_id"]], &(&1 != nil and &1 in ids))
     end)
   end
 
   # A charge that was booked on the invoice (and then refunded in full, which
-  # voids it) is not "money received after the void".
+  # voids it) is not "money received after the void". The ledger row carries
+  # the id it was booked under, and the webhook payload it came from.
   defp charge_in_ledger?(%Invoice{uuid: uuid}, charge) do
-    case charge[:charge_id] do
-      nil ->
+    case charge_ids(charge) do
+      [] ->
         false
 
-      charge_id ->
+      ids ->
         repo().exists?(
           from(t in Transaction,
-            where: t.invoice_uuid == ^uuid and t.provider_transaction_id == ^to_string(charge_id)
+            where:
+              t.invoice_uuid == ^uuid and
+                (t.provider_transaction_id in ^ids or
+                   fragment("?->>'payment_intent_id'", t.provider_data) in ^ids or
+                   fragment("?->>'charge_id'", t.provider_data) in ^ids)
           )
         )
+    end
+  end
+
+  defp charge_ids(charge) do
+    [charge[:charge_id], charge[:payment_intent_id]]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&to_string/1)
+    |> Enum.uniq()
+  end
+
+  # Kept on the trail only when it is a second id for the same payment.
+  defp maybe_put_payment_intent_id(entry, charge) do
+    intent_id = charge[:payment_intent_id]
+
+    if intent_id == nil or to_string(intent_id) == entry["charge_id"] do
+      entry
+    else
+      Map.put(entry, "payment_intent_id", to_string(intent_id))
     end
   end
 
