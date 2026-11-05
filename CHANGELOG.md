@@ -4,6 +4,91 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.26.0 - 2026-11-05
+
+Subscriptions are charged through one invoice per period, so dunning reaches the
+ledger and a retry cannot bill a period twice. EveryPay's partial refunds reach the
+ledger. An order's amount and an invoice holding money can no longer be changed in
+a way that strands the payment.
+
+**Upgrading.** No migration. Read "Changes that can break a caller" below. A
+subscription already past due has an invoice with no `subscription_uuid`, so dunning
+makes a new invoice for the period, and the old one has to be voided by hand.
+
+### Added
+
+- **`Workers.SubscriptionCharge`**, what the renewal and dunning workers share. A
+  period has one invoice, found by `subscription_uuid` and `metadata["period_end"]`
+  and committed before the provider call. A retry finds it, and a period paid some
+  other way is not charged again.
+- **`:idempotency_key` on `charge_payment_method/3`.** Stripe honours it; the other
+  providers ignore it. A retry after a crash repeats the key, and a decline moves it
+  on, or Stripe would replay the decline.
+- `Errors` messages for `:in_transaction`, `:lock_timeout`, `:nothing_to_pay` and
+  `:order_not_found`, the refusals of `start_order_payment/2` that read as
+  "Unexpected error".
+
+### Changed
+
+Changes that can break a caller:
+
+- `update_order/2` refuses a new total or currency while the order has an invoice
+  that is neither void nor in the trash (`:order_amount_invoiced`). A settled invoice
+  settles its order, so the order would be paid for an amount nobody billed. Void or
+  trash the invoice first. `start_order_payment/2` still refuses such a row left over
+  from before (`:invoice_out_of_date`).
+- `void_invoice/3` refuses an invoice that holds money (`:invoice_has_payments`).
+  Refund it first: the refund that takes it to zero voids it.
+- `pause_subscription/1` takes only an active or trialing subscription
+  (`:subscription_not_pausable`), so a pause cannot switch dunning off.
+- `resume_subscription/1` takes only a paused subscription or a pending cancellation
+  (`:subscription_not_resumable`), so a cancelled subscription does not come back
+  without a payment. Both functions decide on the locked row, and return `:not_found`
+  for a subscription that is gone.
+
+Other changes:
+
+- `mark_invoice_paid/2` moves the linked order in its own transaction, as
+  `record_payment/3` does. After the commit, a crash left a paid invoice on an unpaid
+  order with no order event.
+- A subscription that ends unpaid has its open invoice voided: nothing is owed for a
+  period that was not given. An invoice with money on it is left for an operator.
+- The next period starts where the last one ended; `current_period_start` used to
+  stay at the first period.
+- The renewal and dunning workers name the invoice to the provider as `:invoice_uuid`.
+  It went under `metadata:`, where Stripe does not read it, so `payment_intent.succeeded`
+  could not find a renewal's invoice, and EveryPay used the payment method as the
+  `order_reference`.
+
+### Fixed
+
+- **Dunning took money with no record.** A retry charged the plan price with no
+  invoice and no ledger row, and left the renewal's invoice open. It now pays that
+  invoice.
+- **One decline could cancel a subscription.** A declined dunning retry failed its
+  job, so Oban retried it within seconds and each try used up an attempt. A decline
+  now waits for the next day.
+- **A subscription stayed `past_due` for good** after its last attempt, as nothing
+  was scheduled to end it, and `active?/1` counts that as in service.
+- **`cancel_at_period_end` never ended a subscription.** The daily query excluded
+  those rows, so the cancellation in the worker was never reached.
+- **A charge the ledger refused was charged again.** The refusal aborted the
+  renewal's transaction, the job crashed and Oban retried it. Such a charge is now
+  logged, reported to the admins and not retried.
+- **The invoice counter was held across the provider call**, so every invoice create
+  waited for a renewal's charge to finish. (PR #59)
+- **EveryPay lost partial refunds.** The event id was `reference:state`, so a second
+  partial refund was dropped as a duplicate. The id now carries the running total,
+  and the sum of the refund list is reconciled like Stripe's.
+- The "Resume" button that takes back a pending cancellation did nothing, and would
+  have turned a trial into `active`.
+- A payment event that waits out the recording of its own charge is answered as
+  already paid, not reported to the admins as a failed payment.
+- The invoice page's Fully Refunded mark compared refunds to the total, not to what
+  was paid.
+- The `InvoiceEvents` docs said a handler could key on `event_uuid`, which it is not
+  handed.
+
 ## 0.25.0 - 2026-11-05
 
 Durable order events (issue #68), one call to start an order's payment (PR #64),
