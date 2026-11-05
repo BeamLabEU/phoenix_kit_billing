@@ -38,4 +38,38 @@ defmodule PhoenixKitBilling.Web.OrderFormErrorsTest do
     assert has_element?(view, "label.select-error")
     assert Billing.list_user_orders(user.uuid) == []
   end
+
+  describe "an order that changed while the form was open" do
+    setup %{user: user} do
+      {:ok, order} =
+        Billing.create_order(user, %{
+          "total" => Decimal.new("10.00"),
+          "currency" => "EUR",
+          "billing_snapshot" => %{"email" => "g@example.com"},
+          "line_items" => [%{"name" => "Item", "total" => "10.00"}]
+        })
+
+      %{order: order}
+    end
+
+    test "a cancelled order is reported, not a crash", %{conn: conn, order: order} do
+      {:ok, view, _html} = live(conn, "/en/admin/billing/orders/#{order.uuid}/edit")
+      {:ok, _} = Billing.cancel_order(Billing.get_order!(order.uuid), "changed my mind")
+
+      html = render_hook(view, "save", %{"order" => %{"notes" => "late edit"}})
+
+      assert html =~ "This order can no longer be edited."
+      refute html =~ "Something went wrong"
+      assert Billing.get_order!(order.uuid).status == "cancelled"
+    end
+
+    test "a deleted order sends the admin back to the list", %{conn: conn, order: order} do
+      {:ok, view, _html} = live(conn, "/en/admin/billing/orders/#{order.uuid}/edit")
+      {:ok, _} = Billing.delete_order(Billing.get_order!(order.uuid))
+
+      render_hook(view, "save", %{"order" => %{"notes" => "late edit"}})
+
+      assert_redirect(view, "/admin/billing/orders")
+    end
+  end
 end
