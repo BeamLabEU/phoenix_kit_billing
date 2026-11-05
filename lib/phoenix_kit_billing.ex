@@ -3533,21 +3533,22 @@ defmodule PhoenixKitBilling do
           {:error, :invoice_trashed}
 
         locked ->
-          if Invoice.editable?(locked) do
-            changeset = Invoice.changeset(locked, attrs)
-
-            # Before the counter is touched: a refusal has written nothing.
-            with :ok <- ensure_relinked_order_takes_invoice(changeset) do
-              update_numbered_locked(changeset,
-                invoice_number: "invoice",
-                receipt_number: "receipt"
-              )
-            end
-          else
-            {:error, :invoice_not_editable}
-          end
+          update_locked_invoice(locked, attrs)
       end
     end)
+  end
+
+  defp update_locked_invoice(locked, attrs) do
+    if Invoice.editable?(locked) do
+      changeset = Invoice.changeset(locked, attrs)
+
+      # Before the counter is touched: a refusal has written nothing.
+      with :ok <- ensure_relinked_order_takes_invoice(changeset) do
+        update_numbered_locked(changeset, invoice_number: "invoice", receipt_number: "receipt")
+      end
+    else
+      {:error, :invoice_not_editable}
+    end
   end
 
   # An edit that moves the invoice onto another order is held to the rule for a

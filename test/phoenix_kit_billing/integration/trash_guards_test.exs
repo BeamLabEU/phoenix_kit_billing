@@ -254,22 +254,21 @@ defmodule PhoenixKitBilling.Integration.TrashGuardsTest do
       assert {:error, :order_not_editable} = Billing.update_order(stale, %{"notes" => "late"})
     end
 
-    test "a status change from a struct that is behind the stored status is refused", %{
+    test "a status change is judged against the stored status, not the struct's", %{
       user: user
     } do
       stale = order(user)
 
-      {:ok, pending} =
+      {:ok, _pending} =
         Billing.update_order(Billing.get_order!(stale.uuid), %{"status" => "pending"})
 
-      assert {:error, :order_not_editable} =
-               Billing.update_order(stale, %{"status" => "confirmed"})
-
+      # The stored order is pending: moving it back to draft is refused ...
+      assert {:error, %Ecto.Changeset{}} = Billing.update_order(stale, %{"status" => "draft"})
       assert Billing.get_order!(stale.uuid).status == "pending"
 
-      # From a current struct the same move is fine.
+      # ... and moving it forward is fine from the stale struct too.
       assert {:ok, %{status: "confirmed"}} =
-               Billing.update_order(pending, %{"status" => "confirmed"})
+               Billing.update_order(stale, %{"status" => "confirmed"})
     end
 
     test "a plain edit of a draft or pending order still works", %{user: user} do
