@@ -256,6 +256,21 @@ defmodule PhoenixKitBilling.Web.VoidCancelModalsTest do
       assert has_element?(view, "#invoice-payments-after-void", "100.00 EUR")
     end
 
+    test "says when the amount of the charge is the invoice balance, not reported", %{
+      conn: conn,
+      user: user
+    } do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      {:ok, _} =
+        Billing.record_payment_after_void(voided, Map.put(charge(), :amount_inferred, true))
+
+      {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{voided.uuid}")
+
+      assert has_element?(view, "#invoice-payments-after-void", "not reported by the provider")
+      assert has_element?(view, "#invoice-payments-after-void", "100.00 EUR")
+    end
+
     test "has no warning without one", %{conn: conn, user: user} do
       {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
 

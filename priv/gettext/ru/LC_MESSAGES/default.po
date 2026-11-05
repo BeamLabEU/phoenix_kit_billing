@@ -4782,6 +4782,11 @@ msgstr "У заказа есть счета, его нельзя удалить.
 msgid "Payment received after void - refund it at the payment provider"
 msgstr "Платёж получен после аннулирования — верните его через платёжного провайдера"
 
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:150
+#, elixir-autogen, elixir-format
+msgid "amount not reported by the provider - check the charge (invoice balance: %{amount} %{currency})"
+msgstr "сумма не указана провайдером — проверьте списание (остаток по счёту: %{amount} %{currency})"
+
 #: lib/phoenix_kit_billing/errors.ex:141
 #, elixir-autogen, elixir-format
 msgid "This invoice has not been voided."

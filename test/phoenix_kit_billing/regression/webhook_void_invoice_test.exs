@@ -128,6 +128,31 @@ defmodule PhoenixKitBilling.Regression.WebhookVoidInvoiceTest do
     assert Decimal.equal?(Decimal.new(amount), 100)
   end
 
+  test "an amount the event does not carry is marked as inferred on the trail", %{
+    invoice: invoice
+  } do
+    {:ok, _voided} = Billing.void_invoice(invoice)
+
+    event = %{
+      payment_event(invoice, "evt_void_noamount")
+      | data: %{mode: "payment", invoice_uuid: invoice.uuid, payment_intent_id: "pi_noamount"}
+    }
+
+    capture_log(fn -> assert {:ok, :invoice_void} = WebhookProcessor.process(event) end)
+
+    assert [entry] = Billing.get_invoice!(invoice.uuid).metadata["void"]["payments_after_void"]
+    assert entry["amount_inferred"] == true
+    assert Decimal.equal?(Decimal.new(entry["amount"]), 100)
+  end
+
+  test "an amount the event carries is not marked as inferred", %{invoice: invoice} do
+    {:ok, _voided} = Billing.void_invoice(invoice)
+    capture_log(fn -> WebhookProcessor.process(payment_event(invoice, "evt_void_amount")) end)
+
+    assert [entry] = Billing.get_invoice!(invoice.uuid).metadata["void"]["payments_after_void"]
+    refute Map.has_key?(entry, "amount_inferred")
+  end
+
   test "the charge keeps the currency the webhook reports", %{invoice: invoice} do
     {:ok, _voided} = Billing.void_invoice(invoice)
 

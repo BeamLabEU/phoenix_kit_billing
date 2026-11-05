@@ -145,7 +145,15 @@
             <ul class="text-sm">
               <%= for payment <- PhoenixKitBilling.Invoice.payments_after_void(@invoice) do %>
                 <li>
-                  {payment["provider"]} {payment["charge_id"]} - {payment["amount"]} {payment["currency"]}
+                  {payment["provider"]} {payment["charge_id"]} -
+                  <%= if payment["amount_inferred"] do %>
+                    {gettext("amount not reported by the provider - check the charge (invoice balance: %{amount} %{currency})",
+                      amount: payment["amount"],
+                      currency: payment["currency"]
+                    )}
+                  <% else %>
+                    {payment["amount"]} {payment["currency"]}
+                  <% end %>
                 </li>
               <% end %>
             </ul>

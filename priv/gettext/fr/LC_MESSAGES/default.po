@@ -4626,6 +4626,11 @@ msgstr ""
 msgid "Payment received after void - refund it at the payment provider"
 msgstr ""
 
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:150
+#, elixir-autogen, elixir-format
+msgid "amount not reported by the provider - check the charge (invoice balance: %{amount} %{currency})"
+msgstr ""
+
 #: lib/phoenix_kit_billing/errors.ex:141
 #, elixir-autogen, elixir-format
 msgid "This invoice has not been voided."

@@ -4268,7 +4268,9 @@ defmodule PhoenixKitBilling do
   that is on the invoice's ledger (it was booked, and refunded).
 
   `charge` is a map with the keys `:provider`, `:charge_id`, `:amount`,
-  `:currency` and `:event_id`. Takes the invoice row lock.
+  `:currency` and `:event_id`, and `:amount_inferred` (true when the amount is
+  not what the provider reported; the entry then carries `"amount_inferred" =>
+  true`). Takes the invoice row lock.
 
   Returns `{:ok, invoice}` for a charge that was added,
   `{:ok, :already_recorded}` for one that was not (see above),
@@ -4301,6 +4303,10 @@ defmodule PhoenixKitBilling do
         "event_id" => charge[:event_id],
         "at" => now_iso()
       }
+
+      # Only when the amount is the invoice's balance, not what the provider reported.
+      entry =
+        if charge[:amount_inferred], do: Map.put(entry, "amount_inferred", true), else: entry
 
       trail = Map.put(trail, "payments_after_void", entries ++ [entry])
 

@@ -206,7 +206,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
         {:error, :not_payable} ->
           case Billing.get_invoice(invoice.uuid) do
             %Invoice{status: "void"} = voided ->
-              payment_on_void_invoice(voided, data, amount, event_id)
+              payment_on_void_invoice(voided, data, event_id)
 
             _ ->
               payment_not_recorded(invoice, invoice_uuid, :not_payable)
@@ -232,7 +232,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
       # operators get the one thing only they can act on - the charge needs
       # refunding at the provider.
       {:error, {:invoice_void, invoice}} ->
-        payment_on_void_invoice(invoice, data, calculate_payment_amount(invoice, data), event_id)
+        payment_on_void_invoice(invoice, data, event_id)
 
       {:error, reason} ->
         {:error, reason}
@@ -247,11 +247,15 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   # Ids only in the log and on the trail: the provider payload can carry the
   # customer's email.
-  defp payment_on_void_invoice(invoice, data, amount, event_id) do
+  defp payment_on_void_invoice(invoice, data, event_id) do
+    {amount, source} = payment_amount(invoice, data)
+
     charge = %{
       provider: data[:provider] || "stripe",
       charge_id: data[:charge_id] || data[:payment_intent_id],
       amount: amount,
+      # The operator refunds by this number: say when the event did not carry it.
+      amount_inferred: source == :inferred,
       # The webhook's own currency when it names one: it is what was charged.
       currency: data[:currency] || invoice.currency,
       event_id: event_id
@@ -781,12 +785,22 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   end
 
   defp calculate_payment_amount(invoice, data) do
+    {amount, _source} = payment_amount(invoice, data)
+    amount
+  end
+
+  # `{amount, :reported}` when the event carries the amount, `{amount, :inferred}`
+  # when it does not.
+  defp payment_amount(invoice, data) do
     case webhook_amount(data, :amount_total, :amount) do
-      {:ok, amount} -> amount
+      {:ok, amount} ->
+        {amount, :reported}
+
       # Same "explicit, documented, already-existing path" as
       # refund_amount/4 above — see its comment for why this is not a
       # guess. Use the remaining balance on the invoice instead.
-      :indeterminate -> Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
+      :indeterminate ->
+        {Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0)), :inferred}
     end
   end
 

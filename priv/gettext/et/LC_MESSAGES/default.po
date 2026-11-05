@@ -4768,6 +4768,11 @@ msgstr "This order has invoices and cannot be deleted."
 msgid "Payment received after void - refund it at the payment provider"
 msgstr "Payment received after void - refund it at the payment provider"
 
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:150
+#, elixir-autogen, elixir-format
+msgid "amount not reported by the provider - check the charge (invoice balance: %{amount} %{currency})"
+msgstr "summa pole pakkuja poolt esitatud – kontrollige tasumist (arve jääk: %{amount} %{currency})"
+
 #: lib/phoenix_kit_billing/errors.ex:141
 #, elixir-autogen, elixir-format
 msgid "This invoice has not been voided."
