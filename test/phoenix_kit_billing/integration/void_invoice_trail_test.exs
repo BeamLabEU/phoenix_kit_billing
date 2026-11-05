@@ -25,6 +25,20 @@ defmodule PhoenixKitBilling.Integration.VoidInvoiceTrailTest do
   end
 
   describe "void_invoice/3" do
+    test "returns and broadcasts the invoice with its order and user loaded", %{user: user} do
+      PhoenixKitBilling.Events.subscribe_invoices()
+      invoice = sent_invoice(user)
+
+      assert {:ok, voided} = Billing.void_invoice(invoice)
+      assert Ecto.assoc_loaded?(voided.user)
+      assert Ecto.assoc_loaded?(voided.order)
+      assert voided.user.uuid == user.uuid
+
+      assert_receive {:invoice_voided, broadcast}
+      assert Ecto.assoc_loaded?(broadcast.user)
+      assert Ecto.assoc_loaded?(broadcast.order)
+    end
+
     test "keeps the notes and records the reason, the actor and the time in metadata", %{
       user: user
     } do
@@ -113,16 +127,6 @@ defmodule PhoenixKitBilling.Integration.VoidInvoiceTrailTest do
 
       assert {:error, :invoice_not_voidable} = Billing.void_invoice(invoice, "Second")
       assert Billing.get_invoice!(invoice.uuid).metadata["void"]["reason"] == "First"
-    end
-  end
-
-  describe "Invoice.open?/1" do
-    test "is every status but void" do
-      for status <- ~w(draft sent paid overdue) do
-        assert Invoice.open?(%Invoice{status: status})
-      end
-
-      refute Invoice.open?(%Invoice{status: "void"})
     end
   end
 

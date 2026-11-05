@@ -445,12 +445,6 @@ defmodule PhoenixKitBilling.Invoice do
   def voidable?(_), do: false
 
   @doc """
-  Checks if an invoice still counts against its order: it has not been voided.
-  """
-  def open?(%__MODULE__{status: "void"}), do: false
-  def open?(%__MODULE__{}), do: true
-
-  @doc """
   The reason a void invoice was voided with, from `metadata["void"]`, or `nil`
   (no reason was given, or the invoice was voided before the trail existed).
   """

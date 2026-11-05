@@ -4204,7 +4204,8 @@ defmodule PhoenixKitBilling do
   committed since the struct was read is not overwritten. Call it inside your
   own transaction only if holding that lock until commit is fine.
 
-  Returns `{:ok, invoice}` (without the preloads of the struct passed in),
+  Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
+  does; the `{:invoice_voided, invoice}` event carries the same),
   `{:error, :invoice_not_voidable}`, `{:error, :invoice_not_found}` when the
   invoice is gone, or `{:error, changeset}`. Refusals are returned, not rolled
   back, so a transaction of the caller's stays usable.
@@ -4215,6 +4216,7 @@ defmodule PhoenixKitBilling do
 
     case result do
       {:ok, voided_invoice} ->
+        voided_invoice = ensure_preloaded(voided_invoice, [:order, :user])
         Events.broadcast_invoice_voided(voided_invoice)
         {:ok, voided_invoice}
 
