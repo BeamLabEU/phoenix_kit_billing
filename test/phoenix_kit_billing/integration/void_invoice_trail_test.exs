@@ -1,0 +1,331 @@
+defmodule PhoenixKitBilling.Integration.VoidInvoiceTrailTest do
+  @moduledoc """
+  `void_invoice/3` leaves a trail in the invoice's `metadata` and never touches
+  `notes`, which are customer-visible and printed on the invoice.
+  """
+
+  use PhoenixKitBilling.DataCase, async: true
+
+  alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Invoice
+
+  setup do
+    {:ok, user: fixture_user()}
+  end
+
+  defp sent_invoice(user, attrs \\ %{}) do
+    {:ok, invoice} =
+      Billing.create_invoice(
+        user.uuid,
+        Map.merge(%{total: Decimal.new("100.00"), currency: "EUR"}, attrs)
+      )
+
+    {:ok, sent} = invoice |> Invoice.status_changeset("sent") |> Repo.update()
+    sent
+  end
+
+  describe "void_invoice/3" do
+    test "returns and broadcasts the invoice with its order and user loaded", %{user: user} do
+      PhoenixKitBilling.Events.subscribe_invoices()
+      invoice = sent_invoice(user)
+
+      assert {:ok, voided} = Billing.void_invoice(invoice)
+      assert Ecto.assoc_loaded?(voided.user)
+      assert Ecto.assoc_loaded?(voided.order)
+      assert voided.user.uuid == user.uuid
+
+      assert_receive {:invoice_voided, broadcast}
+      assert Ecto.assoc_loaded?(broadcast.user)
+      assert Ecto.assoc_loaded?(broadcast.order)
+    end
+
+    test "keeps the notes and records the reason, the actor and the time in metadata", %{
+      user: user
+    } do
+      invoice = sent_invoice(user, %{notes: "Thanks for your order"})
+      actor = fixture_user()
+
+      assert {:ok, voided} =
+               Billing.void_invoice(invoice, "  Booking cancelled  ", actor_uuid: actor.uuid)
+
+      assert voided.status == "void"
+      assert voided.notes == "Thanks for your order"
+
+      assert %{"reason" => "Booking cancelled", "by_uuid" => by, "at" => at} =
+               voided.metadata["void"]
+
+      assert by == actor.uuid
+      assert {:ok, %DateTime{}, 0} = DateTime.from_iso8601(at)
+
+      stored = Billing.get_invoice!(invoice.uuid)
+      assert stored.notes == "Thanks for your order"
+      assert stored.metadata["void"] == voided.metadata["void"]
+      assert stored.voided_at
+    end
+
+    test "keeps the other metadata keys, taken from the stored row", %{user: user} do
+      invoice = sent_invoice(user, %{metadata: %{"source" => "shop"}})
+
+      # Written after the caller read the struct.
+      invoice
+      |> Ecto.Changeset.change(metadata: %{"source" => "shop", "ref" => "42"})
+      |> Repo.update!()
+
+      assert {:ok, voided} = Billing.void_invoice(invoice, "Duplicate")
+      assert voided.metadata["source"] == "shop"
+      assert voided.metadata["ref"] == "42"
+      assert voided.metadata["void"]["reason"] == "Duplicate"
+    end
+
+    test "without a reason or an actor the trail still has the time", %{user: user} do
+      invoice = sent_invoice(user)
+
+      assert {:ok, voided} = Billing.void_invoice(invoice)
+      assert voided.metadata["void"]["reason"] == nil
+      assert voided.metadata["void"]["by_uuid"] == nil
+      assert is_binary(voided.metadata["void"]["at"])
+      assert voided.notes == invoice.notes
+    end
+
+    test "a blank reason is stored as nil", %{user: user} do
+      invoice = sent_invoice(user)
+
+      assert {:ok, voided} = Billing.void_invoice(invoice, "   ")
+      assert voided.metadata["void"]["reason"] == nil
+    end
+
+    test "a reason longer than the form allows is cut", %{user: user} do
+      invoice = sent_invoice(user)
+      max = Billing.reason_max_length()
+
+      assert {:ok, voided} = Billing.void_invoice(invoice, String.duplicate("é", max + 100))
+      assert String.length(voided.metadata["void"]["reason"]) == max
+    end
+
+    test "a paid invoice is not voidable", %{user: user} do
+      invoice = sent_invoice(user)
+      {:ok, paid} = Billing.mark_invoice_paid(invoice)
+
+      assert {:error, :invoice_not_voidable} = Billing.void_invoice(paid, "Oops")
+      assert Billing.get_invoice!(invoice.uuid).status == "paid"
+    end
+
+    test "a stale struct cannot void an invoice that was paid meanwhile", %{user: user} do
+      stale = sent_invoice(user)
+      {:ok, _paid} = Billing.mark_invoice_paid(Billing.get_invoice!(stale.uuid))
+
+      assert {:error, :invoice_not_voidable} = Billing.void_invoice(stale, "Too late")
+
+      stored = Billing.get_invoice!(stale.uuid)
+      assert stored.status == "paid"
+      refute Map.has_key?(stored.metadata, "void")
+    end
+
+    test "voiding twice is refused and keeps the first trail", %{user: user} do
+      invoice = sent_invoice(user)
+      {:ok, _} = Billing.void_invoice(invoice, "First")
+
+      assert {:error, :invoice_not_voidable} = Billing.void_invoice(invoice, "Second")
+      assert Billing.get_invoice!(invoice.uuid).metadata["void"]["reason"] == "First"
+    end
+  end
+
+  describe "Invoice.void_reason/1" do
+    test "reads the reason from the trail" do
+      assert Invoice.void_reason(%Invoice{metadata: %{"void" => %{"reason" => "Duplicate"}}}) ==
+               "Duplicate"
+    end
+
+    test "is nil without a reason, a trail or metadata" do
+      assert Invoice.void_reason(%Invoice{metadata: %{"void" => %{"reason" => nil}}}) == nil
+      assert Invoice.void_reason(%Invoice{metadata: %{"void" => %{"reason" => ""}}}) == nil
+      assert Invoice.void_reason(%Invoice{metadata: %{}}) == nil
+      assert Invoice.void_reason(%Invoice{metadata: nil}) == nil
+    end
+  end
+
+  describe "record_payment_after_void/2" do
+    @charge %{
+      provider: :stripe,
+      charge_id: "ch_1",
+      amount: Decimal.new("100.00"),
+      currency: "EUR",
+      event_id: "evt_1"
+    }
+
+    test "appends the charge to the void trail, keeping the rest of it", %{user: user} do
+      invoice = sent_invoice(user)
+      {:ok, voided} = Billing.void_invoice(invoice, "Duplicate")
+
+      assert {:ok, updated} = Billing.record_payment_after_void(voided, @charge)
+
+      assert %{"reason" => "Duplicate", "payments_after_void" => [entry]} =
+               updated.metadata["void"]
+
+      assert %{
+               "provider" => "stripe",
+               "charge_id" => "ch_1",
+               "amount" => "100.00",
+               "currency" => "EUR",
+               "event_id" => "evt_1",
+               "at" => at
+             } = entry
+
+      assert {:ok, %DateTime{}, 0} = DateTime.from_iso8601(at)
+      assert map_size(entry) == 6
+      assert Invoice.payments_after_void(Billing.get_invoice!(invoice.uuid)) == [entry]
+    end
+
+    test "appends to the stored trail and counts an event once", %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      {:ok, _} = Billing.record_payment_after_void(voided, @charge)
+
+      {:ok, _} =
+        Billing.record_payment_after_void(voided, %{
+          @charge
+          | charge_id: "ch_2",
+            event_id: "evt_2"
+        })
+
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, @charge)
+
+      assert [%{"charge_id" => "ch_1"}, %{"charge_id" => "ch_2"}] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+    end
+
+    test "counts a charge once even when another event reports it", %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      {:ok, _} = Billing.record_payment_after_void(voided, @charge)
+
+      assert {:ok, :already_recorded} =
+               Billing.record_payment_after_void(voided, %{@charge | event_id: "evt_other"})
+
+      assert [%{"charge_id" => "ch_1", "event_id" => "evt_1"}] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+    end
+
+    test "a charge that is already on the ledger is not a payment after void", %{user: user} do
+      invoice = sent_invoice(user)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{amount: "100.00", payment_method: "stripe", provider_transaction_id: "ch_1"},
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+      voided = Billing.get_invoice!(invoice.uuid)
+      assert voided.status == "void"
+
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, @charge)
+      assert Invoice.payments_after_void(Billing.get_invoice!(invoice.uuid)) == []
+    end
+
+    test "a payment booked under its payment intent is not a payment after void when the charge id arrives",
+         %{user: user} do
+      invoice = sent_invoice(user)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{amount: "100.00", payment_method: "stripe", provider_transaction_id: "pi_X"},
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+      voided = Billing.get_invoice!(invoice.uuid)
+
+      mixed = %{@charge | charge_id: "ch_Y"} |> Map.put(:payment_intent_id, "pi_X")
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, mixed)
+      assert Invoice.payments_after_void(Billing.get_invoice!(invoice.uuid)) == []
+    end
+
+    test "a ledger row booked from a webhook matches by the ids in its payload", %{user: user} do
+      invoice = sent_invoice(user)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{
+            amount: "100.00",
+            payment_method: "stripe",
+            provider_transaction_id: "ch_Y",
+            provider_data: %{"charge_id" => "ch_Y", "payment_intent_id" => "pi_X"}
+          },
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+
+      voided = Billing.get_invoice!(invoice.uuid)
+
+      assert {:ok, :already_recorded} =
+               Billing.record_payment_after_void(voided, %{@charge | charge_id: "pi_X"})
+    end
+
+    test "two events for one payment, under a payment intent and under its charge, make one entry",
+         %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      first = %{@charge | charge_id: "pi_X", event_id: "evt_1"}
+
+      second =
+        %{@charge | charge_id: "ch_Y", event_id: "evt_2"} |> Map.put(:payment_intent_id, "pi_X")
+
+      assert {:ok, %Invoice{}} = Billing.record_payment_after_void(voided, first)
+      assert {:ok, :already_recorded} = Billing.record_payment_after_void(voided, second)
+
+      assert [%{"charge_id" => "pi_X"} = entry] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+
+      refute Map.has_key?(entry, "payment_intent_id")
+    end
+
+    test "a charge reported with its payment intent keeps both ids, and either one matches later",
+         %{user: user} do
+      {:ok, voided} = Billing.void_invoice(sent_invoice(user), "Duplicate")
+
+      both = %{@charge | charge_id: "ch_Y"} |> Map.put(:payment_intent_id, "pi_X")
+      assert {:ok, %Invoice{}} = Billing.record_payment_after_void(voided, both)
+
+      assert {:ok, :already_recorded} =
+               Billing.record_payment_after_void(voided, %{
+                 @charge
+                 | charge_id: "pi_X",
+                   event_id: "evt_2"
+               })
+
+      assert [%{"charge_id" => "ch_Y", "payment_intent_id" => "pi_X"}] =
+               Billing.get_invoice!(voided.uuid).metadata["void"]["payments_after_void"]
+    end
+
+    test "works on an invoice voided before the trail existed", %{user: user} do
+      invoice = sent_invoice(user)
+      {:ok, old} = invoice |> Invoice.status_changeset("void") |> Repo.update()
+
+      assert {:ok, updated} = Billing.record_payment_after_void(old, @charge)
+      assert [_] = updated.metadata["void"]["payments_after_void"]
+      assert Invoice.void_reason(updated) == nil
+    end
+
+    test "refuses an invoice that is not void", %{user: user} do
+      assert {:error, :invoice_not_void} =
+               Billing.record_payment_after_void(sent_invoice(user), @charge)
+    end
+  end
+
+  describe "Invoice.payments_after_void/1" do
+    test "is empty without a trail" do
+      assert Invoice.payments_after_void(%Invoice{metadata: %{}}) == []
+      assert Invoice.payments_after_void(%Invoice{metadata: %{"void" => %{}}}) == []
+    end
+  end
+end

@@ -2410,29 +2410,73 @@ defmodule PhoenixKitBilling do
 
   A new `order_number` of this year's shape with the configured prefix
   (`PREFIX-YYYY-NNNN`) lifts the year's counter to at least its NNNN, so the
-  counter never reaches it. The update opens a transaction, and locks the order
-  row first, only then.
+  counter never reaches it.
+
+  Takes a row lock on the order and decides on the stored row, not the struct's:
+  the order must still be a `draft` or `pending` one, and the status may only
+  move forward from the stored status (see `Order.changeset/2`). The attrs are
+  applied to the stored row.
+
+  Returns `{:ok, order}`, `{:error, :order_not_editable}`,
+  `{:error, :not_found}` when the order is gone, or `{:error, changeset}`.
+  Refusals are returned, not rolled back, so a transaction of the caller's stays
+  usable.
   """
   def update_order(%Order{} = order, attrs) do
-    if Order.editable?(order) do
+    # Decided on the stored row, under its lock: the struct may be from before
+    # another admin cancelled, confirmed or paid the order, and neither the
+    # editable check nor the forward-only status rule may run on that.
+    result =
+      unwrap_transaction(fn ->
+        case lock_order(order) do
+          nil -> {:error, :not_found}
+          locked -> update_locked_order(locked, attrs)
+        end
+      end)
+
+    case result do
+      {:ok, updated_order} ->
+        Events.broadcast_order_updated(updated_order)
+        {:ok, updated_order}
+
+      error ->
+        error
+    end
+  end
+
+  defp update_locked_order(locked, attrs) do
+    if Order.editable?(locked) do
       # Update billing_snapshot if billing_profile_uuid changed
-      attrs = maybe_update_billing_snapshot(order, attrs)
+      attrs = maybe_update_billing_snapshot(locked, attrs)
 
-      result =
-        order
-        |> Order.changeset(attrs)
-        |> update_numbered([order_number: "order"], fn -> lock_order_status(order) end)
-
-      case result do
-        {:ok, updated_order} ->
-          Events.broadcast_order_updated(updated_order)
-          {:ok, updated_order}
-
-        error ->
-          error
-      end
+      locked
+      |> Order.changeset(attrs)
+      |> update_numbered_locked(order_number: "order")
     else
       {:error, :order_not_editable}
+    end
+  end
+
+  # The stored order, locked `FOR NO KEY UPDATE` like `lock_order_row/1`, with
+  # the associations the caller's struct had loaded. `nil` for a vanished order.
+  defp lock_order(%Order{uuid: uuid} = order) do
+    Order
+    |> where([o], o.uuid == ^uuid)
+    |> lock("FOR NO KEY UPDATE")
+    |> repo().one()
+    |> case do
+      nil ->
+        nil
+
+      locked ->
+        Enum.reduce(Order.__schema__(:associations), locked, &carry_association(&1, &2, order))
+    end
+  end
+
+  defp carry_association(name, locked, caller) do
+    case Map.get(caller, name) do
+      %Ecto.Association.NotLoaded{} -> locked
+      loaded -> Map.put(locked, name, loaded)
     end
   end
 
@@ -2546,29 +2590,34 @@ defmodule PhoenixKitBilling do
   @doc """
   Cancels an order.
 
+  A `reason` is appended to `internal_notes` as a line
+  `"Cancelled <YYYY-MM-DD HH:MM UTC>: <reason>"`, after a blank line when there
+  are notes already. `metadata["cancelled_from"]` always records the status the
+  order had before the cancel, so an integration can tell an order cancelled
+  straight from `"draft"` (never sent anywhere) from one cancelled after
+  confirmation.
+
+  ## Options
+
+  - `:actor_uuid` - the user who cancels the order, kept in
+    `metadata["cancelled_by_uuid"]`
+
   Takes a row lock on the order for the duration of the call and checks the
   transition against the order's stored status, not the struct's, so call it
   inside your own transaction only if holding that lock until commit is fine.
+  The notes and metadata it appends to are the stored ones too.
 
   Returns `{:ok, order}`, `{:error, :order_not_cancellable}` when the stored
   status is not `"draft"`, `"pending"` or `"confirmed"`, or `{:error, changeset}`.
   """
-  def cancel_order(%Order{} = order, reason \\ nil) do
+  def cancel_order(%Order{} = order, reason \\ nil, opts \\ []) do
     result =
       transition_order(order, fn current ->
         if Order.cancellable?(current) do
-          changeset =
-            current
-            |> Order.status_changeset("cancelled")
-
-          changeset =
-            if reason do
-              Ecto.Changeset.put_change(changeset, :internal_notes, reason)
-            else
-              changeset
-            end
-
-          repo().update(changeset)
+          current
+          |> Order.cancel_changeset(opts[:actor_uuid])
+          |> put_cancel_note(current.internal_notes, normalize_reason(reason))
+          |> repo().update()
         else
           {:error, :order_not_cancellable}
         end
@@ -2584,6 +2633,20 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  defp put_cancel_note(changeset, _notes, nil), do: changeset
+
+  defp put_cancel_note(changeset, notes, reason) do
+    line = "Cancelled #{Calendar.strftime(UtilsDate.utc_now(), "%Y-%m-%d %H:%M UTC")}: #{reason}"
+
+    note =
+      case notes do
+        blank when blank in [nil, ""] -> line
+        existing -> existing <> "\n\n" <> line
+      end
+
+    Ecto.Changeset.put_change(changeset, :internal_notes, note)
+  end
+
   # Runs a status transition against the order's CURRENT status. The guards
   # (`Order.payable?/1`, `Order.cancellable?/1`) and `Order.status_changeset/2`
   # read `status` off the struct they are handed, and the UPDATE filters on
@@ -2592,40 +2655,75 @@ defmodule PhoenixKitBilling do
   # cancellation both succeeding, the order ending `cancelled` with `paid_at`
   # set). The row is locked and its status re-read inside the transaction, and
   # `fun` gets the caller's struct with that status, so check and write are
-  # one step. Same pattern as `lock_invoice_for_update/1`.
+  # one step. Same pattern as `lock_invoice_for_update/1`. The `internal_notes`
+  # and `metadata` it hands over are the stored ones as well: a transition that
+  # appends to them (`cancel_order/3`) must not append to what the caller read
+  # minutes ago and so drop what was written since.
   #
   # Refusals are RETURNED, not rolled back: this runs inside the invoice-paid
   # transaction too (`maybe_mark_linked_order_paid/1`), where a rollback would
   # abort the whole settlement.
   defp transition_order(%Order{} = order, fun) when is_function(fun, 1) do
-    case repo().transaction(fn -> fun.(%{order | status: lock_order_status(order)}) end) do
+    case repo().transaction(fn -> fun.(Map.merge(order, lock_order_row(order))) end) do
       {:ok, result} -> result
       {:error, reason} -> {:error, reason}
     end
   end
 
-  # SELECT status ... FOR NO KEY UPDATE. That lock queues transitions behind
-  # each other (it conflicts with itself and with the UPDATE that follows) but
-  # not with the FOR KEY SHARE an invoice insert takes on the order through
-  # its foreign key. A row that has vanished keeps the caller's status, so the
-  # UPDATE that follows fails the way it always did.
-  defp lock_order_status(%Order{uuid: uuid, status: status}) do
+  # SELECT status, internal_notes, metadata ... FOR NO KEY UPDATE. That lock
+  # queues transitions behind each other (it conflicts with itself and with
+  # the UPDATE that follows) but not with the FOR KEY SHARE an invoice insert
+  # takes on the order through its foreign key. A row that has vanished keeps
+  # the caller's values, so the UPDATE that follows fails the way it always
+  # did.
+  defp lock_order_row(%Order{uuid: uuid}) do
     Order
     |> where([o], o.uuid == ^uuid)
     |> lock("FOR NO KEY UPDATE")
-    |> select([o], o.status)
+    |> select([o], map(o, [:status, :internal_notes, :metadata]))
     |> repo().one()
-    |> Kernel.||(status)
+    |> Kernel.||(%{})
   end
 
   @doc """
-  Deletes an order (only drafts).
+  Deletes an order (only drafts that have no invoice).
+
+  The foreign key from an invoice to its order is `ON DELETE SET NULL`, so
+  deleting the order would silently detach any invoice - even a void one -
+  and lose what ties it to the order. An order with an invoice is refused.
+
+  Takes a row lock on the order and checks the status against the stored row,
+  not the struct's.
+
+  Returns `{:ok, order}`, `{:error, :can_only_delete_drafts}`,
+  `{:error, :order_has_invoices}`, `{:error, :not_found}` when the order is
+  gone, or `{:error, changeset}`. Refusals are returned, not rolled back, so a
+  transaction of the caller's stays usable.
   """
-  def delete_order(%Order{status: "draft"} = order) do
-    repo().delete(order)
+  def delete_order(%Order{status: "draft", uuid: uuid} = order) do
+    unwrap_transaction(fn ->
+      # FOR UPDATE conflicts with the FOR KEY SHARE an invoice insert takes on
+      # the order, so an invoice created while this runs either is seen below
+      # or waits and then fails its foreign key - it is never detached. The
+      # status is the stored one: the struct may be from before a confirmation.
+      case Order |> where([o], o.uuid == ^uuid) |> lock("FOR UPDATE") |> repo().one() do
+        nil -> {:error, :not_found}
+        %Order{status: "draft"} -> delete_draft_without_invoices(order)
+        %Order{} -> {:error, :can_only_delete_drafts}
+      end
+    end)
   end
 
   def delete_order(_order), do: {:error, :can_only_delete_drafts}
+
+  # Inside delete_order/1's transaction, with the order row locked.
+  defp delete_draft_without_invoices(%Order{uuid: uuid} = order) do
+    if repo().exists?(from(i in Invoice, where: i.order_uuid == ^uuid)) do
+      {:error, :order_has_invoices}
+    else
+      repo().delete(order)
+    end
+  end
 
   @order_sync_types %{
     state: :string,
@@ -2702,7 +2800,7 @@ defmodule PhoenixKitBilling do
   end
 
   defp write_order_sync(uuid, params) do
-    # NO KEY UPDATE, like `lock_order_status/1`: it queues behind every other
+    # NO KEY UPDATE, like `lock_order_row/1`: it queues behind every other
     # writer of the row but not behind the FOR KEY SHARE an invoice insert
     # takes on it through its foreign key.
     order = Order |> where([o], o.uuid == ^uuid) |> lock("FOR NO KEY UPDATE") |> repo().one()
@@ -3152,22 +3250,46 @@ defmodule PhoenixKitBilling do
   defp blank_number?(_number), do: false
 
   @doc """
-  Updates an invoice.
+  Updates a draft invoice.
+
+  Takes a row lock on the invoice and checks that it is still a draft on the
+  stored row, not the struct's. The status is not editable here (see
+  `Invoice.changeset/2`).
 
   A new `invoice_number` or `receipt_number` of this year's shape with the
   configured prefix (`PREFIX-YYYY-NNNN`) lifts the year's counter for it to at
-  least its NNNN, so the counter never reaches it. The update opens a
-  transaction, and locks the invoice row, only then.
+  least its NNNN, so the counter never reaches it (invoice row first, then the
+  counter).
+
+  Returns `{:ok, invoice}`, `{:error, :invoice_not_editable}`,
+  `{:error, :invoice_not_found}` or `{:error, changeset}`. Refusals are
+  returned, not rolled back, so a transaction of the caller's stays usable.
   """
   def update_invoice(%Invoice{} = invoice, attrs) do
-    if Invoice.editable?(invoice) do
-      invoice
-      |> Invoice.changeset(attrs)
-      |> update_numbered([invoice_number: "invoice", receipt_number: "receipt"], fn ->
-        lock_invoice_for_update(invoice)
-      end)
-    else
-      {:error, :invoice_not_editable}
+    unwrap_transaction(fn ->
+      case fetch_locked_invoice(invoice) do
+        nil ->
+          {:error, :invoice_not_found}
+
+        locked ->
+          if Invoice.editable?(locked) do
+            locked
+            |> Invoice.changeset(attrs)
+            |> update_numbered_locked(invoice_number: "invoice", receipt_number: "receipt")
+          else
+            {:error, :invoice_not_editable}
+          end
+      end
+    end)
+  end
+
+  # Runs `fun` in a transaction and returns what it returned. For functions
+  # that report a refusal as a value: nothing has been written when they do,
+  # and a rollback would doom a transaction the caller may be holding.
+  defp unwrap_transaction(fun) do
+    case repo().transaction(fun) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -3186,21 +3308,14 @@ defmodule PhoenixKitBilling do
   just whether the invoice record itself updated.
   """
   def send_invoice(%Invoice{} = invoice, opts \\ []) do
-    cond do
-      Invoice.sendable?(invoice) ->
-        # First send - change status to "sent"
-        do_send_invoice(invoice, opts, change_status: true)
-
-      Invoice.resendable?(invoice) ->
-        # Resend - don't change status, just send email and record in history
-        do_send_invoice(invoice, opts, change_status: false)
-
-      true ->
-        {:error, :invoice_not_sendable}
+    if Invoice.sendable?(invoice) or Invoice.resendable?(invoice) do
+      do_send_invoice(invoice, opts)
+    else
+      {:error, :invoice_not_sendable}
     end
   end
 
-  defp do_send_invoice(invoice, opts, change_status: change_status) do
+  defp do_send_invoice(invoice, opts) do
     send_email? = Keyword.get(opts, :send_email, true)
     to_email = Keyword.get(opts, :to_email)
 
@@ -3213,31 +3328,10 @@ defmodule PhoenixKitBilling do
     if is_nil(recipient_email) do
       {:error, :no_recipient_email}
     else
-      # Build send history entry
-      send_entry = %{
-        "sent_at" => UtilsDate.utc_now() |> DateTime.to_iso8601(),
-        "email" => recipient_email
-      }
-
-      # Get current send history from metadata
-      current_metadata = invoice.metadata || %{}
-      send_history = Map.get(current_metadata, "send_history", [])
-      updated_send_history = send_history ++ [send_entry]
-      updated_metadata = Map.put(current_metadata, "send_history", updated_send_history)
-
-      # Build changeset
-      changeset =
-        if change_status do
-          invoice
-          |> Invoice.status_changeset("sent")
-          |> Ecto.Changeset.put_change(:metadata, updated_metadata)
-        else
-          invoice
-          |> Ecto.Changeset.change(%{metadata: updated_metadata})
-        end
-
-      case repo().update(changeset) do
+      case record_invoice_sent(invoice, recipient_email) do
         {:ok, updated_invoice} ->
+          updated_invoice = ensure_preloaded(updated_invoice, [:order, :user])
+
           # Broadcast invoice sent event
           Events.broadcast_invoice_sent(updated_invoice)
 
@@ -3266,6 +3360,46 @@ defmodule PhoenixKitBilling do
         error ->
           error
       end
+    end
+  end
+
+  # The status change and the history entry, written on the LOCKED row. The
+  # caller's struct may be minutes old: a void committed since must not be
+  # undone by a send built from it ("sent" over "void", the void trail gone),
+  # and the history is appended to what is stored, not to what was read. The
+  # email goes out only after this has committed, so a refused send mails
+  # nobody.
+  defp record_invoice_sent(invoice, recipient_email) do
+    unwrap_transaction(fn ->
+      case fetch_locked_invoice(invoice) do
+        nil ->
+          {:error, :invoice_not_found}
+
+        locked ->
+          with {:ok, changeset} <- send_changeset(locked) do
+            send_entry = %{
+              "sent_at" => UtilsDate.utc_now() |> DateTime.to_iso8601(),
+              "email" => recipient_email
+            }
+
+            metadata = locked.metadata || %{}
+            history = Map.get(metadata, "send_history", []) ++ [send_entry]
+
+            changeset
+            |> Ecto.Changeset.put_change(:metadata, Map.put(metadata, "send_history", history))
+            |> repo().update()
+          end
+      end
+    end)
+  end
+
+  defp send_changeset(locked) do
+    cond do
+      # First send - change status to "sent"
+      Invoice.sendable?(locked) -> {:ok, Invoice.status_changeset(locked, "sent")}
+      # Resend - don't change status, just record in history
+      Invoice.resendable?(locked) -> {:ok, Ecto.Changeset.change(locked)}
+      true -> {:error, :invoice_not_sendable}
     end
   end
 
@@ -3971,6 +4105,11 @@ defmodule PhoenixKitBilling do
           # overpayment the balance check exists to prevent.
           locked = lock_invoice_for_update(invoice)
 
+          # The payable? check above ran on the caller's struct, before the
+          # lock. A void committed in between would otherwise get its status
+          # overwritten by "paid" (and the transition validation raises).
+          unless Invoice.payable?(locked), do: repo().rollback(:invoice_not_payable)
+
           # A settlement needs a LEDGER ROW, not just a status and a number.
           # Without one the invoice reads paid while its transactions sum to
           # zero, and a later refund recalculates paid_amount from those
@@ -4051,43 +4190,209 @@ defmodule PhoenixKitBilling do
 
   @doc """
   Voids an invoice.
+
+  The trail goes into the invoice's `metadata["void"]` as `"reason"` (trimmed,
+  `nil` when blank), `"by_uuid"` and `"at"`. `notes` is never touched: it is
+  customer-visible and printed on the invoice.
+
+  ## Options
+
+  - `:actor_uuid` - the user who voids the invoice
+
+  Takes a row lock on the invoice for the duration of the call and checks
+  `Invoice.voidable?/1` against the stored row, not the struct's, so a payment
+  committed since the struct was read is not overwritten. Call it inside your
+  own transaction only if holding that lock until commit is fine.
+
+  Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
+  does; the `{:invoice_voided, invoice}` event carries the same),
+  `{:error, :invoice_not_voidable}`, `{:error, :invoice_not_found}` when the
+  invoice is gone, or `{:error, changeset}`. Refusals are returned, not rolled
+  back, so a transaction of the caller's stays usable.
   """
-  def void_invoice(%Invoice{} = invoice, reason \\ nil) do
-    if Invoice.voidable?(invoice) do
-      changeset = Invoice.status_changeset(invoice, "void")
+  def void_invoice(%Invoice{} = invoice, reason \\ nil, opts \\ []) do
+    # A transaction so the durable event commits with the void.
+    result = unwrap_transaction(fn -> void_locked_invoice(invoice, reason, opts) end)
 
-      changeset =
-        if reason do
-          Ecto.Changeset.put_change(changeset, :notes, reason)
-        else
-          changeset
-        end
+    case result do
+      {:ok, voided_invoice} ->
+        voided_invoice = ensure_preloaded(voided_invoice, [:order, :user])
+        Events.broadcast_invoice_voided(voided_invoice)
+        {:ok, voided_invoice}
 
-      # A transaction so the durable event commits with the void.
-      result =
-        repo().transaction(fn ->
-          case repo().update(changeset) do
-            {:ok, voided} ->
-              InvoiceEvents.enqueue(:voided, voided)
-              voided
-
-            {:error, cs} ->
-              repo().rollback(cs)
-          end
-        end)
-
-      case result do
-        {:ok, voided_invoice} ->
-          Events.broadcast_invoice_voided(voided_invoice)
-          {:ok, voided_invoice}
-
-        error ->
-          error
-      end
-    else
-      {:error, :invoice_not_voidable}
+      error ->
+        error
     end
   end
+
+  defp void_locked_invoice(invoice, reason, opts) do
+    # The caller's struct may be minutes old: a payment recorded since would
+    # otherwise be overwritten by the void (status "paid" -> "void" with the
+    # money still in the ledger).
+    case fetch_locked_invoice(invoice) do
+      nil ->
+        {:error, :invoice_not_found}
+
+      locked ->
+        if Invoice.voidable?(locked) do
+          trail = %{
+            "reason" => normalize_reason(reason),
+            "by_uuid" => opts[:actor_uuid],
+            "at" => now_iso()
+          }
+
+          locked
+          |> Invoice.status_changeset("void")
+          |> Ecto.Changeset.put_change(:metadata, Map.put(locked.metadata || %{}, "void", trail))
+          |> repo().update()
+          |> case do
+            {:ok, voided} ->
+              InvoiceEvents.enqueue(:voided, voided)
+              {:ok, voided}
+
+            error ->
+              error
+          end
+        else
+          {:error, :invoice_not_voidable}
+        end
+    end
+  end
+
+  @doc """
+  Keeps, on a void invoice, a provider charge that arrived after the void.
+
+  The money is NOT booked on the invoice. It is appended to
+  `metadata["void"]["payments_after_void"]` as `"provider"`, `"charge_id"`,
+  `"amount"`, `"currency"`, `"event_id"` and `"at"` - ids and amounts only - so
+  that the operator can find the charge and refund it at the provider. An
+  event or charge id already on the list is not added again, nor is a charge
+  that is on the invoice's ledger (it was booked, and refunded).
+
+  `charge` is a map with the keys `:provider`, `:charge_id`, `:amount`,
+  `:currency` and `:event_id`, and optionally `:payment_intent_id` (a second
+  id for the same payment: either id matches an earlier entry or ledger row,
+  and the entry keeps it as `"payment_intent_id"`), and `:amount_inferred` (true when the amount is
+  not what the provider reported; the entry then carries `"amount_inferred" =>
+  true`). Takes the invoice row lock.
+
+  Returns `{:ok, invoice}` for a charge that was added,
+  `{:ok, :already_recorded}` for one that was not (see above),
+  `{:error, :invoice_not_void}` when the stored invoice is not void, or
+  `{:error, :invoice_not_found}`. Refusals are returned, not rolled back.
+  """
+  def record_payment_after_void(%Invoice{} = invoice, charge) when is_map(charge) do
+    unwrap_transaction(fn ->
+      case fetch_locked_invoice(invoice) do
+        nil -> {:error, :invoice_not_found}
+        %Invoice{status: "void"} = locked -> append_charge_after_void(locked, charge)
+        %Invoice{} -> {:error, :invoice_not_void}
+      end
+    end)
+  end
+
+  defp append_charge_after_void(locked, charge) do
+    metadata = locked.metadata || %{}
+    trail = if is_map(metadata["void"]), do: metadata["void"], else: %{}
+    entries = Map.get(trail, "payments_after_void", [])
+
+    if charge_recorded?(entries, charge) or charge_in_ledger?(locked, charge) do
+      {:ok, :already_recorded}
+    else
+      entry = %{
+        "provider" => charge[:provider] && to_string(charge[:provider]),
+        "charge_id" => charge[:charge_id] && to_string(charge[:charge_id]),
+        "amount" => charge_amount(charge[:amount]),
+        "currency" => charge[:currency],
+        "event_id" => charge[:event_id],
+        "at" => now_iso()
+      }
+
+      # Only when the amount is the invoice's balance, not what the provider reported.
+      entry =
+        if charge[:amount_inferred], do: Map.put(entry, "amount_inferred", true), else: entry
+
+      entry = maybe_put_payment_intent_id(entry, charge)
+
+      trail = Map.put(trail, "payments_after_void", entries ++ [entry])
+
+      locked
+      |> Ecto.Changeset.change(metadata: Map.put(metadata, "void", trail))
+      |> repo().update()
+    end
+  end
+
+  # The same event, or the same charge reported by another event. A payment is
+  # known by its charge id and its payment-intent id; either one matches.
+  defp charge_recorded?(entries, charge) do
+    event_id = charge[:event_id]
+    ids = charge_ids(charge)
+
+    Enum.any?(entries, fn entry ->
+      (event_id != nil and entry["event_id"] == event_id) or
+        Enum.any?([entry["charge_id"], entry["payment_intent_id"]], &(&1 != nil and &1 in ids))
+    end)
+  end
+
+  # A charge that was booked on the invoice (and then refunded in full, which
+  # voids it) is not "money received after the void". The ledger row carries
+  # the id it was booked under, and the webhook payload it came from.
+  defp charge_in_ledger?(%Invoice{uuid: uuid}, charge) do
+    case charge_ids(charge) do
+      [] ->
+        false
+
+      ids ->
+        repo().exists?(
+          from(t in Transaction,
+            where:
+              t.invoice_uuid == ^uuid and
+                (t.provider_transaction_id in ^ids or
+                   fragment("?->>'payment_intent_id'", t.provider_data) in ^ids or
+                   fragment("?->>'charge_id'", t.provider_data) in ^ids)
+          )
+        )
+    end
+  end
+
+  defp charge_ids(charge) do
+    [charge[:charge_id], charge[:payment_intent_id]]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&to_string/1)
+    |> Enum.uniq()
+  end
+
+  # Kept on the trail only when it is a second id for the same payment.
+  defp maybe_put_payment_intent_id(entry, charge) do
+    intent_id = charge[:payment_intent_id]
+
+    if intent_id == nil or to_string(intent_id) == entry["charge_id"] do
+      entry
+    else
+      Map.put(entry, "payment_intent_id", to_string(intent_id))
+    end
+  end
+
+  defp charge_amount(%Decimal{} = amount), do: Decimal.to_string(amount, :normal)
+  defp charge_amount(nil), do: nil
+  defp charge_amount(amount), do: to_string(amount)
+
+  @reason_max_length 500
+
+  @doc "The longest reason `void_invoice/3` and `cancel_order/3` keep; longer ones are cut."
+  def reason_max_length, do: @reason_max_length
+
+  @doc false
+  # A free-text reason as typed in a form: surrounding whitespace is noise, a
+  # blank one means no reason was given, and a runaway one is cut.
+  def normalize_reason(reason) when is_binary(reason) do
+    case String.trim(reason) do
+      "" -> nil
+      trimmed -> String.slice(trimmed, 0, @reason_max_length)
+    end
+  end
+
+  def normalize_reason(_), do: nil
 
   @doc """
   Generates a receipt for an invoice.
@@ -4452,38 +4757,50 @@ defmodule PhoenixKitBilling do
     end)
   end
 
-  # An update that changes a number (`numbers`: field -> scope) lifts the
-  # counter past it in the same transaction, after `lock` has taken the row; any
-  # other update is a plain one.
-  defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers, lock) do
+  # In a transaction that already holds the row: an update that changes a number
+  # (`numbers`: field -> scope) lifts the counter past it, then updates; any other
+  # update is a plain one. Both run in a savepoint, and the result is returned as
+  # a value, so a failed update gives the counter back and does not doom the
+  # caller's transaction.
+  defp update_numbered_locked(%Ecto.Changeset{valid?: true} = changeset, numbers) do
     year = current_year()
 
-    floors =
-      for {field, scope} <- numbers,
-          number = Map.get(changeset.changes, field),
-          is_binary(number),
-          do: {scope, number}
-
-    if floors == [] do
-      repo().update(changeset)
-    else
-      repo().transaction(fn ->
-        lock.()
-
-        Enum.each(floors, fn {scope, number} ->
-          raise_sequence_floor(scope, number_prefix(scope), year, number)
-        end)
-
-        case repo().update(changeset) do
-          {:ok, record} -> record
-          {:error, changeset} -> repo().rollback(changeset)
-        end
+    in_savepoint(fn ->
+      Enum.each(number_floors(changeset, numbers), fn {scope, number} ->
+        raise_sequence_floor(scope, number_prefix(scope), year, number)
       end)
+
+      repo().update(changeset)
+    end)
+  end
+
+  defp update_numbered_locked(%Ecto.Changeset{} = changeset, _numbers),
+    do: repo().update(changeset)
+
+  # Runs `fun` (which returns `{:ok, _}` or `{:error, _}`) inside a savepoint:
+  # on `{:error, _}` everything it wrote - the lifted counter too - is undone,
+  # and the error is returned as a value, so the caller's transaction carries on.
+  defp in_savepoint(fun) do
+    repo().query!("SAVEPOINT pkb_in_savepoint")
+
+    case fun.() do
+      {:ok, _} = ok ->
+        repo().query!("RELEASE SAVEPOINT pkb_in_savepoint")
+        ok
+
+      {:error, _} = error ->
+        repo().query!("ROLLBACK TO SAVEPOINT pkb_in_savepoint")
+        repo().query!("RELEASE SAVEPOINT pkb_in_savepoint")
+        error
     end
   end
 
-  defp update_numbered(%Ecto.Changeset{} = changeset, _numbers, _lock),
-    do: repo().update(changeset)
+  defp number_floors(changeset, numbers) do
+    for {field, scope} <- numbers,
+        number = Map.get(changeset.changes, field),
+        is_binary(number),
+        do: {scope, number}
+  end
 
   defp number_prefix("order"), do: Settings.get_setting_cached("billing_order_prefix", "ORD")
   defp number_prefix("invoice"), do: Settings.get_setting_cached("billing_invoice_prefix", "INV")
@@ -4914,15 +5231,17 @@ defmodule PhoenixKitBilling do
   # readable.
   # SELECT ... FOR UPDATE on the invoice row: serializes concurrent payment
   # recording for the SAME invoice so the balance check cannot be raced.
-  defp lock_invoice_for_update(%Invoice{uuid: uuid} = invoice) do
+  defp lock_invoice_for_update(%Invoice{} = invoice) do
+    fetch_locked_invoice(invoice) || invoice
+  end
+
+  # The same lock, but `nil` for a row that has vanished: for the callers that
+  # would otherwise go on to UPDATE it and raise.
+  defp fetch_locked_invoice(%Invoice{uuid: uuid}) do
     Invoice
     |> where([i], i.uuid == ^uuid)
     |> lock("FOR UPDATE")
     |> repo().one()
-    |> case do
-      nil -> invoice
-      locked -> locked
-    end
   end
 
   # Takes a transaction number and inserts the row, inside the caller's
@@ -5083,17 +5402,8 @@ defmodule PhoenixKitBilling do
         amount = transaction_amount(amount_or_fun, locked)
         transaction_attrs = build_transaction_attrs(locked, amount, attrs, admin_user)
 
-        cond do
-          Decimal.positive?(amount) and
-              Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt ->
-            repo().rollback(:exceeds_remaining)
-
-          Decimal.negative?(amount) and
-              Decimal.compare(Decimal.negate(amount), locked.paid_amount) == :gt ->
-            repo().rollback(:exceeds_paid_amount)
-
-          true ->
-            :ok
+        with {:error, reason} <- check_transaction_fits(locked, amount) do
+          repo().rollback(reason)
         end
 
         insert_ledger_row(locked, amount, transaction_attrs)
@@ -5145,6 +5455,31 @@ defmodule PhoenixKitBilling do
 
       {:error, changeset} ->
         repo().rollback(changeset)
+    end
+  end
+
+  # What the LOCKED invoice allows: see the comments in do_record_transaction/4.
+  defp check_transaction_fits(locked, amount) do
+    cond do
+      Decimal.positive?(amount) and
+          Decimal.compare(amount, Invoice.remaining_amount(locked)) == :gt ->
+        {:error, :exceeds_remaining}
+
+      # `record_payment/3` checked this on the caller's struct. A void
+      # committed since would let money land on a void invoice. After the
+      # balance check so that the second of two payments that each cover the
+      # balance still reads `:exceeds_remaining`, not `:not_payable` (the
+      # first one made the invoice "paid"). Refunds (negative amounts) are
+      # bounded by what was paid instead.
+      Decimal.positive?(amount) and not Invoice.payable?(locked) ->
+        {:error, :not_payable}
+
+      Decimal.negative?(amount) and
+          Decimal.compare(Decimal.negate(amount), locked.paid_amount) == :gt ->
+        {:error, :exceeds_paid_amount}
+
+      true ->
+        :ok
     end
   end
 
@@ -5836,37 +6171,84 @@ defmodule PhoenixKitBilling do
     success_url = Keyword.fetch!(opts, :success_url)
     provider_opts = Keyword.put_new(opts, :cancel_url, success_url)
 
-    case Providers.create_checkout_session(provider, invoice, provider_opts) do
-      {:ok, session} ->
-        # Record checkout session info on the invoice. The invoice schema
-        # has no dedicated checkout columns, so it is stashed under
-        # metadata["checkout"]. Best-effort: a failed update must not lose
-        # the live session URL we already owe the caller.
-        updated_metadata =
-          Map.put(invoice.metadata || %{}, "checkout", %{
-            "provider_session_id" => session.id,
-            "url" => session.url,
-            "provider" => to_string(provider),
-            "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
-          })
+    # A session for an invoice that is void (or paid) would send the customer
+    # to pay for it. Checked on the stored row, before the provider call - not
+    # under a lock, which must not be held across a network call.
+    if stored_payable?(invoice) do
+      case Providers.create_checkout_session(provider, invoice, provider_opts) do
+        {:ok, session} -> persist_checkout_session(invoice, provider, session)
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :invoice_not_payable}
+    end
+  end
 
-        case invoice
-             |> Ecto.Changeset.change(%{metadata: updated_metadata})
-             |> repo().update() do
-          {:ok, _invoice} ->
-            :ok
+  defp stored_payable?(%Invoice{uuid: uuid}) do
+    case repo().get(Invoice, uuid) do
+      nil -> false
+      stored -> Invoice.payable?(stored)
+    end
+  end
 
-          {:error, changeset} ->
-            Logger.warning(
-              "Checkout session created but failed to persist to invoice " <>
-                "#{invoice.invoice_number}: #{inspect(changeset.errors)}"
-            )
-        end
-
+  # Record checkout session info on the invoice. The invoice schema has no
+  # dedicated checkout columns, so it is stashed under metadata["checkout"],
+  # merged into the LOCKED row. The invoice may have been voided while the
+  # provider call was in flight: then nothing is written and the customer is
+  # not sent to a session for a void invoice (the provider's session just
+  # expires). A failed update is only logged: it must not lose the live
+  # session URL we already owe the caller.
+  defp persist_checkout_session(invoice, provider, session) do
+    case record_checkout_session(invoice, provider, session) do
+      :ok ->
         {:ok, session.url}
 
+      {:error, :invoice_not_payable} ->
+        {:error, :invoice_not_payable}
+
       {:error, reason} ->
-        {:error, reason}
+        Logger.warning(
+          "Checkout session created but failed to persist to invoice " <>
+            "#{invoice.invoice_number}: #{inspect(reason)}"
+        )
+
+        {:ok, session.url}
+    end
+  end
+
+  @doc false
+  # Public for the tests only: the persistence half of create_checkout_session/3.
+  def record_checkout_session(%Invoice{} = invoice, provider, session) do
+    result =
+      unwrap_transaction(fn ->
+        case fetch_locked_invoice(invoice) do
+          nil ->
+            {:error, :invoice_not_found}
+
+          locked ->
+            if Invoice.payable?(locked) do
+              checkout = %{
+                "provider_session_id" => session.id,
+                "url" => session.url,
+                "provider" => to_string(provider),
+                "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
+              }
+
+              locked
+              |> Ecto.Changeset.change(%{
+                metadata: Map.put(locked.metadata || %{}, "checkout", checkout)
+              })
+              |> repo().update()
+            else
+              {:error, :invoice_not_payable}
+            end
+        end
+      end)
+
+    case result do
+      {:ok, _invoice} -> :ok
+      {:error, %Ecto.Changeset{errors: errors}} -> {:error, errors}
+      {:error, reason} -> {:error, reason}
     end
   end
 

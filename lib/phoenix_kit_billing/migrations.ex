@@ -268,10 +268,13 @@ defmodule PhoenixKitBilling.Migrations do
   Locks. A create holds its counter row until its transaction ends, so the
   rule is: **a path takes the row locks it needs before its counters, and does
   not wait for a row lock while holding a counter** - with one exception, below.
-  `update_order` and `update_invoice` that change a number lock their own row
+  `update_order` (on every call, to decide on the stored row) and
+  `update_invoice` (when it changes a number) lock their own row
   (`FOR NO KEY UPDATE`, `FOR UPDATE`) before lifting a counter, which is why a
   transaction that holds that row and then creates a document cannot deadlock
-  with them. The exception: paying an invoice (`mark_invoice_paid`,
+  with them. So a host transaction that has created an order or invoice and
+  then calls `update_order/2` waits for that row lock while holding the
+  counter: only call it before the create, or outside the transaction. The exception: paying an invoice (`mark_invoice_paid`,
   `record_payment`) takes the invoice row, then the transaction and receipt
   counters, and only then the linked order's row (`FOR NO KEY UPDATE`). So a
   host transaction must not hold an order row and then wait for a transaction

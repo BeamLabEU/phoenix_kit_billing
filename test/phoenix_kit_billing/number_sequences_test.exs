@@ -355,6 +355,42 @@ defmodule PhoenixKitBilling.NumberSequencesTest do
       assert new_invoice(order).invoice_number == number("INV", 11)
     end
 
+    test "an update_invoice that fails gives the lifted counter back", %{order: order} do
+      invoice = new_invoice(order)
+      other = new_invoice(order)
+      assert last_value("invoice") == 2
+
+      # The number is taken by `other`, so the update fails on the unique index
+      # after the counter was lifted to it.
+      taken = other.invoice_number
+
+      assert {:error, %Ecto.Changeset{}} =
+               Billing.update_invoice(invoice, %{
+                 "invoice_number" => taken,
+                 "receipt_number" => number("RCP", 40)
+               })
+
+      assert last_value("invoice") == 2
+      assert last_value("receipt") == nil
+    end
+
+    test "a refused update_invoice inside a transaction leaves it usable and the counter alone",
+         %{order: order} do
+      invoice = new_invoice(order)
+      other = new_invoice(order)
+
+      Repo.transaction(fn ->
+        assert {:error, %Ecto.Changeset{}} =
+                 Billing.update_invoice(invoice, %{"invoice_number" => other.invoice_number})
+
+        # the caller's transaction still works
+        assert {:ok, _} =
+                 Billing.update_invoice(invoice, %{"invoice_number" => number("INV", 50)})
+      end)
+
+      assert last_value("invoice") == 50
+    end
+
     test "a failed insert announces nothing", %{order: order} do
       Events.subscribe_invoices()
       {:ok, _} = Billing.create_invoice_from_order(order, invoice_number: "OWN-1")

@@ -90,13 +90,13 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # Event Handlers
   # ===========================================
 
-  defp process_event(%{type: "checkout.completed", provider: provider, data: data}) do
+  defp process_event(%{type: "checkout.completed", provider: provider, data: data} = event) do
     Logger.info("Processing checkout.completed: #{inspect(data)}")
 
     case data do
       %{mode: "payment", invoice_uuid: invoice_uuid} when not is_nil(invoice_uuid) ->
         # One-time payment for invoice
-        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider))
+        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider), event.event_id)
 
       %{mode: "setup", user_uuid: user_uuid} when not is_nil(user_uuid) ->
         # Setup session - card saved
@@ -114,13 +114,13 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     {:ok, :expired}
   end
 
-  defp process_event(%{type: "payment.succeeded", provider: provider, data: data}) do
+  defp process_event(%{type: "payment.succeeded", provider: provider, data: data} = event) do
     Logger.info("Processing payment.succeeded: #{inspect(data)}")
 
     case data do
       %{invoice_uuid: invoice_uuid} when not is_nil(invoice_uuid) ->
         # Payment for invoice (e.g., subscription renewal)
-        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider))
+        process_invoice_payment(invoice_uuid, Map.put(data, :provider, provider), event.event_id)
 
       _ ->
         Logger.warning("Payment succeeded without invoice_uuid: #{inspect(data)}")
@@ -162,7 +162,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # Business Logic
   # ===========================================
 
-  defp process_invoice_payment(invoice_uuid, data) do
+  defp process_invoice_payment(invoice_uuid, data, event_id) do
     invoice_uuid = parse_id(invoice_uuid)
 
     with {:ok, invoice} <- get_invoice(invoice_uuid),
@@ -201,10 +201,19 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
           {:ok, updated_invoice}
 
+        # A void committed between the status check above and the lock
+        # `record_payment/3` takes: the same case as a void seen up front.
+        {:error, :not_payable} ->
+          case Billing.get_invoice(invoice.uuid) do
+            %Invoice{status: "void"} = voided ->
+              payment_on_void_invoice(voided, data, event_id)
+
+            _ ->
+              payment_not_recorded(invoice, invoice_uuid, :not_payable)
+          end
+
         {:error, reason} ->
-          Logger.error("Failed to record payment for invoice #{invoice_uuid}: #{inspect(reason)}")
-          _ = Notifications.payment_failed(invoice, reason)
-          {:error, reason}
+          payment_not_recorded(invoice, invoice_uuid, reason)
       end
     else
       {:error, :invoice_not_found} ->
@@ -215,7 +224,65 @@ defmodule PhoenixKitBilling.WebhookProcessor do
         Logger.debug("Invoice #{invoice_uuid} already paid")
         {:ok, :already_paid}
 
+      # The customer was charged for an invoice that was voided meanwhile.
+      # Recording it would put money on a void document, and failing the event
+      # would have the provider retry it to the limit with the charge visible
+      # only in a log line. So: nothing is booked, the charge is kept on the
+      # invoice's void trail, the event is answered as handled, and the
+      # operators get the one thing only they can act on - the charge needs
+      # refunding at the provider.
+      {:error, {:invoice_void, invoice}} ->
+        payment_on_void_invoice(invoice, data, event_id)
+
       {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp payment_not_recorded(invoice, invoice_uuid, reason) do
+    Logger.error("Failed to record payment for invoice #{invoice_uuid}: #{inspect(reason)}")
+    _ = Notifications.payment_failed(invoice, reason)
+    {:error, reason}
+  end
+
+  # Ids only in the log and on the trail: the provider payload can carry the
+  # customer's email.
+  defp payment_on_void_invoice(invoice, data, event_id) do
+    {amount, source} = payment_amount(invoice, data)
+
+    charge = %{
+      provider: data[:provider] || "stripe",
+      charge_id: data[:charge_id] || data[:payment_intent_id],
+      payment_intent_id: data[:payment_intent_id],
+      amount: amount,
+      # The operator refunds by this number: say when the event did not carry it.
+      amount_inferred: source == :inferred,
+      # The webhook's own currency when it names one: it is what was charged.
+      currency: data[:currency] || invoice.currency,
+      event_id: event_id
+    }
+
+    case Billing.record_payment_after_void(invoice, charge) do
+      # Nothing new to tell: the same charge is already on the trail or the ledger.
+      {:ok, :already_recorded} ->
+        {:ok, :invoice_void}
+
+      {:ok, _invoice} ->
+        Logger.error(
+          "Payment received for void invoice #{invoice.invoice_number} (#{invoice.uuid}); " <>
+            "not recorded - refund it at the provider: charge #{inspect(charge.charge_id)}, " <>
+            "event #{inspect(event_id)}"
+        )
+
+        _ = Notifications.payment_failed(invoice, :invoice_void)
+        {:ok, :invoice_void}
+
+      {:error, reason} ->
+        # Not marked handled: the retry gets another go at keeping the trace.
+        Logger.error(
+          "Could not keep the charge on void invoice #{invoice.uuid}: #{inspect(reason)}"
+        )
+
         {:error, reason}
     end
   end
@@ -699,6 +766,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     {:error, :already_paid}
   end
 
+  defp validate_invoice_status(%Invoice{status: "void"} = invoice) do
+    {:error, {:invoice_void, invoice}}
+  end
+
   # Delegates to `Invoice.payable?/1` rather than repeating the status list.
   # The two drifted: this gate admitted "draft", which `record_payment/3` now
   # rejects as `:not_payable` - so a draft invoice passed here only to have
@@ -715,12 +786,22 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   end
 
   defp calculate_payment_amount(invoice, data) do
+    {amount, _source} = payment_amount(invoice, data)
+    amount
+  end
+
+  # `{amount, :reported}` when the event carries the amount, `{amount, :inferred}`
+  # when it does not.
+  defp payment_amount(invoice, data) do
     case webhook_amount(data, :amount_total, :amount) do
-      {:ok, amount} -> amount
+      {:ok, amount} ->
+        {amount, :reported}
+
       # Same "explicit, documented, already-existing path" as
       # refund_amount/4 above — see its comment for why this is not a
       # guess. Use the remaining balance on the invoice instead.
-      :indeterminate -> Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0))
+      :indeterminate ->
+        {Decimal.sub(invoice.total, invoice.paid_amount || Decimal.new(0)), :inferred}
     end
   end
 

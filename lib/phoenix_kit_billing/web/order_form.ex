@@ -20,6 +20,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Activity
+  alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.Order
   alias PhoenixKitBilling.Paths
   alias PhoenixKitBilling.Web.Trail
@@ -289,6 +290,20 @@ defmodule PhoenixKitBilling.Web.OrderForm do
     end)
   end
 
+  # The statuses the form can set from the current one (see `Order.changeset/2`):
+  # the order's own and the ones ahead of it, never one behind.
+  defp status_options(%{status: "pending"}) do
+    [{gettext("Pending"), "pending"}, {gettext("Confirmed"), "confirmed"}]
+  end
+
+  defp status_options(_order) do
+    [
+      {gettext("Draft"), "draft"},
+      {gettext("Pending"), "pending"},
+      {gettext("Confirmed"), "confirmed"}
+    ]
+  end
+
   defp save_order(socket, params) do
     result =
       if socket.assigns.order do
@@ -318,6 +333,16 @@ defmodule PhoenixKitBilling.Web.OrderForm do
          socket
          |> put_flash(:info, gettext("Order saved successfully"))
          |> push_navigate(to: Routes.path("/admin/billing/orders/#{order.uuid}"))}
+
+      # The order went away or was closed (cancelled, trashed) while the form was open.
+      {:error, :not_found} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, Errors.message(:not_found))
+         |> push_navigate(to: Routes.path("/admin/billing/orders"))}
+
+      {:error, reason} when is_atom(reason) ->
+        {:noreply, put_flash(socket, :error, Errors.message(reason))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
