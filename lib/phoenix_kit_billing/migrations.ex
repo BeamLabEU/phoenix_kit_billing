@@ -288,15 +288,21 @@ defmodule PhoenixKitBilling.Migrations do
     * `trashed_by_uuid uuid` - the user who did it, `NULL` when nobody is named.
       No foreign key, like the other actor references this chain keeps: a user
       who is removed later must not block or rewrite the trash's history;
-    * two partial indexes per table: `..._not_trashed_idx` on `(inserted_at)
-      WHERE trashed_at IS NULL`, which the default listing reads, and
-      `..._trashed_idx` on `(trashed_at) WHERE trashed_at IS NOT NULL`, which
-      the trash listing reads and which stays as small as the trash.
+    * a partial index `..._trashed_idx` on `(trashed_at) WHERE trashed_at IS NOT
+      NULL`, which the trash listing reads and which stays as small as the
+      trash;
+    * on invoices only, `phoenix_kit_invoices_not_trashed_idx` on `(inserted_at)
+      WHERE trashed_at IS NULL`, which the default listing reads. Orders already
+      have `phoenix_kit_orders_inserted_at_idx` on `(inserted_at)` (V6) for that,
+      so a partial twin of it would only add write cost.
+
+    The `CREATE INDEX` statements are plain (not `CONCURRENTLY`) and block writes
+    to their table while they build; on a large table run V8 in a quiet moment.
 
   Nothing is rewritten: every existing row reads as "not trashed". The code
   that writes the columns needs them, so run V8 before it.
 
-  `down/1` below V8 drops the four indexes and the four columns - never either
+  `down/1` below V8 drops the three indexes and the four columns - never either
   table. Rows that were in the trash are not deleted; they simply read as not
   trashed again, so they reappear in the lists.
 
@@ -320,9 +326,9 @@ defmodule PhoenixKitBilling.Migrations do
     2. The order counter (`create_order/2`, and `update_order/2` after its row).
     3. For an invoice created for an order, or moved onto one (`update_invoice/2`
        with a new `order_uuid`): the order row `FOR KEY SHARE`, before the invoice
-       counter. This is the guard that refuses an order in the trash or
-       cancelled. `restore_invoice/2` applies the same guard, but takes the
-       invoice row first, then the order row `FOR KEY SHARE`.
+       counter. This is the guard that refuses an order in the trash.
+       `restore_invoice/2` applies the same guard (and also refuses a cancelled
+       order), but takes the invoice row first, then the order row `FOR KEY SHARE`.
     4. The invoice counter.
     5. The invoice row. (An `update_invoice` that changes a number locks the
        invoice row first, then lifts the counters - no other path waits on that
@@ -641,13 +647,17 @@ defmodule PhoenixKitBilling.Migrations do
           ],
           do: stmt
 
-    indexes =
-      for table <- tables,
-          stmt <- [
-            "CREATE INDEX IF NOT EXISTS #{table}_not_trashed_idx ON #{p}#{table} USING btree (inserted_at) WHERE trashed_at IS NULL",
+    # Orders already have `phoenix_kit_orders_inserted_at_idx` on `(inserted_at)`
+    # (V6), which serves the default listing; a partial twin of it would only add
+    # write cost on the busiest table. Invoices have no such index.
+    indexes = [
+      "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_not_trashed_idx ON #{p}phoenix_kit_invoices USING btree (inserted_at) WHERE trashed_at IS NULL"
+      | for(
+          table <- tables,
+          do:
             "CREATE INDEX IF NOT EXISTS #{table}_trashed_idx ON #{p}#{table} USING btree (trashed_at) WHERE trashed_at IS NOT NULL"
-          ],
-          do: stmt
+        )
+    ]
 
     columns ++ indexes
   end
@@ -1455,7 +1465,8 @@ defmodule PhoenixKitBilling.Migrations do
       end
 
     # The trash's columns and indexes, on two core-created tables: dropped, the
-    # tables and their rows stay.
+    # tables and their rows stay. (`IF EXISTS` on every name, so a database that
+    # took an earlier shape of V8 is cleaned up too.)
     drop_v8 =
       if target < 8 do
         for table <- ~w(phoenix_kit_orders phoenix_kit_invoices),

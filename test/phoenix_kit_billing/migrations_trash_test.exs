@@ -1,6 +1,6 @@
 defmodule PhoenixKitBilling.MigrationsTrashTest do
   @moduledoc """
-  V8 adds `trashed_at` / `trashed_by_uuid` and two partial indexes to the
+  V8 adds `trashed_at` / `trashed_by_uuid` and partial indexes to the
   core-created `phoenix_kit_orders` and `phoenix_kit_invoices`. Built in a
   scratch schema on the test database, the same way the V7 tests do. The way
   down drops the columns and indexes and never a table.
@@ -71,19 +71,35 @@ defmodule PhoenixKitBilling.MigrationsTrashTest do
              ] = columns(unquote(table))
     end
 
-    test "up builds the partial indexes on #{table}" do
+    test "up builds the trash index on #{table}" do
       run(Migrations.up_statements(@schema))
 
-      assert [[not_trashed, not_trashed_def], [trashed, trashed_def]] = indexes(unquote(table))
-
-      assert not_trashed == "#{unquote(table)}_not_trashed_idx"
-      assert not_trashed_def =~ "(inserted_at)"
-      assert not_trashed_def =~ "WHERE (trashed_at IS NULL)"
+      assert [trashed, trashed_def] =
+               Enum.find(indexes(unquote(table)), &(hd(&1) == "#{unquote(table)}_trashed_idx"))
 
       assert trashed == "#{unquote(table)}_trashed_idx"
       assert trashed_def =~ "(trashed_at)"
       assert trashed_def =~ "WHERE (trashed_at IS NOT NULL)"
     end
+  end
+
+  test "invoices get the not-trashed listing index, orders rely on their inserted_at index" do
+    run(Migrations.up_statements(@schema))
+
+    assert [["phoenix_kit_invoices_not_trashed_idx", definition], _trashed] =
+             indexes("phoenix_kit_invoices")
+
+    assert definition =~ "(inserted_at)"
+    assert definition =~ "WHERE (trashed_at IS NULL)"
+
+    # No partial twin of `phoenix_kit_orders_inserted_at_idx`.
+    assert [["phoenix_kit_orders_trashed_idx", _]] = indexes("phoenix_kit_orders")
+
+    assert [["phoenix_kit_orders_inserted_at_idx"]] =
+             Repo.query!(
+               "SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = 'phoenix_kit_orders_inserted_at_idx'",
+               [@schema]
+             ).rows
   end
 
   test "a second run neither fails nor touches the trash state of a row" do

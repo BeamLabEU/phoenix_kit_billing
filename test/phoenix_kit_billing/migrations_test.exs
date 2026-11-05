@@ -202,9 +202,8 @@ defmodule PhoenixKitBilling.MigrationsTest do
                "ALTER TABLE public.phoenix_kit_orders ADD COLUMN IF NOT EXISTS trashed_by_uuid uuid",
                "ALTER TABLE public.phoenix_kit_invoices ADD COLUMN IF NOT EXISTS trashed_at timestamp with time zone",
                "ALTER TABLE public.phoenix_kit_invoices ADD COLUMN IF NOT EXISTS trashed_by_uuid uuid",
-               "CREATE INDEX IF NOT EXISTS phoenix_kit_orders_not_trashed_idx ON public.phoenix_kit_orders USING btree (inserted_at) WHERE trashed_at IS NULL",
-               "CREATE INDEX IF NOT EXISTS phoenix_kit_orders_trashed_idx ON public.phoenix_kit_orders USING btree (trashed_at) WHERE trashed_at IS NOT NULL",
                "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_not_trashed_idx ON public.phoenix_kit_invoices USING btree (inserted_at) WHERE trashed_at IS NULL",
+               "CREATE INDEX IF NOT EXISTS phoenix_kit_orders_trashed_idx ON public.phoenix_kit_orders USING btree (trashed_at) WHERE trashed_at IS NOT NULL",
                "CREATE INDEX IF NOT EXISTS phoenix_kit_invoices_trashed_idx ON public.phoenix_kit_invoices USING btree (trashed_at) WHERE trashed_at IS NOT NULL",
                "COMMENT ON TABLE public.phoenix_kit_payment_provider_configs IS 'pkb_schema:8'"
              ]

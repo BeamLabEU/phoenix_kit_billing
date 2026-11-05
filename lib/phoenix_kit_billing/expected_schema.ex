@@ -3799,37 +3799,6 @@ defmodule PhoenixKitBilling.ExpectedSchema do
         backfill: nil
       },
       %{
-        id: "index:phoenix_kit_orders_not_trashed_idx",
-        owner: :phoenix_kit_billing,
-        check:
-          {:catalog,
-           %{
-             name: "phoenix_kit_orders_not_trashed_idx",
-             table: "phoenix_kit_orders",
-             kind: :index
-           }},
-        create:
-          "CREATE INDEX IF NOT EXISTS phoenix_kit_orders_not_trashed_idx ON __SCHEMA__.phoenix_kit_orders USING btree (inserted_at) WHERE (trashed_at IS NULL)",
-        since: 1,
-        class: :index,
-        revisions: [
-          {1,
-           %{
-             table: "phoenix_kit_orders",
-             keys: ["inserted_at"],
-             unique: false,
-             method: "btree",
-             definition:
-               "CREATE INDEX phoenix_kit_orders_not_trashed_idx ON __SCHEMA__.phoenix_kit_orders USING btree (inserted_at) WHERE (trashed_at IS NULL)",
-             predicate: "(trashed_at IS NULL)",
-             opclasses: ["timestamptz_ops"],
-             name_template: nil
-           }}
-        ],
-        presence: :required,
-        backfill: nil
-      },
-      %{
         id: "index:phoenix_kit_orders_order_number_uidx",
         owner: :phoenix_kit_billing,
         check:
