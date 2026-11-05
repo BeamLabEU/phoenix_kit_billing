@@ -269,6 +269,9 @@ defmodule PhoenixKitBilling.Order do
       to when to in ~w(pending confirmed) ->
         validate_status_transition(changeset, changeset.data.status, to)
 
+      "draft" ->
+        add_error(changeset, :status, "an order cannot be moved back to draft")
+
       to ->
         add_error(changeset, :status, "an order is moved to #{to} by its own action")
     end

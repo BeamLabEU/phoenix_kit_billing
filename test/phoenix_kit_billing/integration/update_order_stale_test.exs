@@ -44,21 +44,31 @@ defmodule PhoenixKitBilling.Integration.UpdateOrderStaleTest do
   end
 
   test "the status rule is applied to the stored status", %{order: stale} do
-    # The stale struct says draft, the stored order is pending: draft -> confirmed
-    # would be allowed from the struct, pending -> pending is a plain edit.
     {:ok, _} = Billing.update_order(stale, %{"status" => "pending"})
-    draft_struct = %{stale | status: "draft"}
 
-    assert {:ok, updated} = Billing.update_order(draft_struct, %{"status" => "confirmed"})
+    # The stale struct says draft, the stored order is pending. Decided on the
+    # struct, "draft" is no change and passes; on the stored row, pending -> draft
+    # is a step back and is refused.
+    assert %Ecto.Changeset{valid?: false} =
+             changeset_error(
+               Billing.update_order(%{stale | status: "draft"}, %{"status" => "draft"})
+             )
+
+    assert Billing.get_order!(stale.uuid).status == "pending"
+
+    # Decided on the struct (draft), "confirmed" would be a forward move all the
+    # same; the stored row (pending) allows it too, and that is what is used.
+    assert {:ok, updated} =
+             Billing.update_order(%{stale | status: "draft"}, %{"status" => "confirmed"})
+
     assert updated.status == "confirmed"
 
-    stale_again = %{stale | status: "pending"}
-
+    # A stored confirmed order is not editable, whatever the struct says.
     assert {:error, :order_not_editable} =
-             Billing.update_order(stale_again, %{"status" => "pending"})
+             Billing.update_order(%{stale | status: "pending"}, %{"status" => "pending"})
   end
 
-  test "a vanished order is reported, not raised", %{order: order} do
+  test "a vanished order is reported, not raised" do
     {:ok, draft} =
       Billing.create_order(fixture_user(), %{
         "total" => Decimal.new("5.00"),
@@ -69,7 +79,6 @@ defmodule PhoenixKitBilling.Integration.UpdateOrderStaleTest do
     {:ok, _} = Billing.delete_order(draft)
 
     assert {:error, :not_found} = Billing.update_order(draft, %{"notes" => "x"})
-    assert order.uuid
   end
 
   test "an edit keeps the associations the caller loaded", %{order: order} do
@@ -78,4 +87,6 @@ defmodule PhoenixKitBilling.Integration.UpdateOrderStaleTest do
     assert updated.notes == "hello"
     assert %PhoenixKit.Users.Auth.User{} = updated.user
   end
+
+  defp changeset_error({:error, %Ecto.Changeset{} = changeset}), do: changeset
 end
