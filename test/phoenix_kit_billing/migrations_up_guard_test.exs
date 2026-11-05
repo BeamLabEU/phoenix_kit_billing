@@ -24,6 +24,20 @@ defmodule PhoenixKitBilling.MigrationsUpGuardTest do
     def up, do: Migrations.up(Process.get(:pkb_up_opts))
   end
 
+  # One migration that brings billing current and then runs an older billing
+  # target, as a host file holding two chain calls would. The first call's
+  # statements are queued until the migration flushes them.
+  defmodule CurrentThenOld do
+    @moduledoc false
+    use Ecto.Migration
+
+    def up do
+      prefix = Process.get(:pkb_up_opts) |> Keyword.fetch!(:prefix)
+      Migrations.up(prefix: prefix)
+      Migrations.up(prefix: prefix, version: 4)
+    end
+  end
+
   defp run_up(opts) do
     Process.put(:pkb_up_opts, opts)
     Runner.run(Repo, Repo.config(), 1, Up, :forward, :up, :up, log: false)
@@ -52,6 +66,21 @@ defmodule PhoenixKitBilling.MigrationsUpGuardTest do
     run_up(prefix: @prefix, version: 5)
 
     assert version() == Migrations.current_version()
+  end
+
+  test "an older target in the same migration as a newer one does not lower the marker" do
+    Process.put(:pkb_up_opts, prefix: @prefix)
+    Runner.run(Repo, Repo.config(), 1, CurrentThenOld, :forward, :up, :up, log: false)
+
+    assert version() == Migrations.current_version()
+  end
+
+  test "a target this code has no step for is refused even on a newer database" do
+    run_up(prefix: @prefix)
+
+    assert_raise ArgumentError, fn ->
+      run_up(prefix: @prefix, version: Migrations.current_version() + 1)
+    end
   end
 
   test "an older target still builds on an empty schema" do

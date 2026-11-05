@@ -633,8 +633,11 @@ defmodule PhoenixKitBilling.MigrationsTest do
     test "each direction executes its own builder" do
       source = File.read!(@source)
 
-      assert source =~ ~r/up_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,
-             "up/1 no longer pipes up_statements/2 into execute/1 — whatever it " <>
+      # up/1 builds the list before its marker guard (so a bad target is
+      # refused even on a database already past it), then executes that list.
+      assert source =~ ~r/statements = up_statements\(prefix, target\)/ and
+               source =~ ~r/Enum\.each\(statements, &execute\/1\)/,
+             "up/1 no longer executes the list up_statements/2 builds — whatever it " <>
                "runs instead is not what the up_statements-based tests above check"
 
       assert source =~ ~r/down_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,

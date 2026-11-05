@@ -367,10 +367,16 @@ defmodule PhoenixKitBilling.Migrations do
     prefix = validated_prefix(opts)
     target = target_version(opts, @current_version)
 
+    # Built before the guard, so a target this code has no step for is
+    # refused even on a database already past it.
+    statements = up_statements(prefix, target)
+
+    # A chain run earlier in this same migration has only queued its
+    # statements; apply them so the marker read below sees them.
+    flush()
+
     if migrated_version(prefix: prefix) <= target do
-      prefix
-      |> up_statements(target)
-      |> Enum.each(&execute/1)
+      Enum.each(statements, &execute/1)
     end
 
     :ok
