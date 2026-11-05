@@ -175,9 +175,15 @@ defmodule PhoenixKitBilling.Migrations do
   and nothing was adopted. V6 emits the base `CREATE TABLE IF NOT EXISTS` of
   those two tables (the same text V4 uses — shared, not copied) **between V1
   and V2**, ahead of the first statement that touches them. The version is
-  still the next number; shipped versions' own statements are not edited, and
-  a target below 6 builds the chain as it was. On every existing install the
-  tables are there and V6 does nothing.
+  still the next number and shipped versions' own statements are not edited,
+  but V6's tables are not gated on `target >= 6`: each comes with the first
+  version that needs it (`phoenix_kit_currencies` from target 2,
+  `phoenix_kit_orders` from 3, `phoenix_kit_payment_options` from 4). A host's
+  migration file written before V6 shipped still asks for an older target, and
+  on a core 3.x database (no core-created billing tables) that file's V2 would
+  fail on the missing `phoenix_kit_currencies`. On every existing install the
+  tables are there and these statements do nothing, so an older target's
+  effect there is unchanged.
 
   Core's V135 also seeds rows into `phoenix_kit_currencies` (EUR default, GBP,
   USD) and `phoenix_kit_payment_options` (bank_transfer, cod, paypal, stripe).
@@ -321,19 +327,8 @@ defmodule PhoenixKitBilling.Migrations do
   def migrated_version_runtime(opts \\ []) do
     prefix = validated_prefix(opts)
 
-    # classoid anchors the description join to pg_class (the projects/
-    # legal chains' convention).
-    query = """
-    SELECT d.description
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    LEFT JOIN pg_description d
-      ON d.objoid = c.oid AND d.objsubid = 0 AND d.classoid = 'pg_class'::regclass
-    WHERE n.nspname = $1 AND c.relname = '#{@version_table}' AND c.relkind = 'r'
-    """
-
-    case PhoenixKit.RepoHelper.repo().query(query, [prefix]) do
-      {:ok, %{rows: [[@marker_prefix <> n]]}} -> parse_version(n)
+    case PhoenixKit.RepoHelper.repo().query(marker_query(), [prefix]) do
+      {:ok, %{rows: rows}} -> marker_to_version(rows)
       _ -> 0
     end
   rescue
@@ -348,14 +343,37 @@ defmodule PhoenixKitBilling.Migrations do
       0
   end
 
-  @doc "Applies every chain version up to `target` (`:version` in `opts`, default `current_version/0`); idempotent."
+  @doc """
+  The chain version read from INSIDE a migration (the migration's repo), the
+  same marker `migrated_version_runtime/1` reads.
+  """
+  def migrated_version(opts \\ []) do
+    prefix = validated_prefix(opts)
+    %{rows: rows} = repo().query!(marker_query(), [prefix])
+    marker_to_version(rows)
+  end
+
+  @doc """
+  Applies every chain version up to `target` (`:version` in `opts`, default
+  `current_version/0`); idempotent.
+
+  A database already past `target` is left exactly as it is: nothing is re-run
+  and the marker is not lowered. Modules whose tables reference billing's
+  (ecommerce) run this chain before their own, so on a fresh install it can run
+  ahead of the host's older billing migration files, and those must not rewind
+  it.
+  """
   def up(opts \\ []) do
     prefix = validated_prefix(opts)
     target = target_version(opts, @current_version)
 
-    prefix
-    |> up_statements(target)
-    |> Enum.each(&execute/1)
+    if migrated_version(prefix: prefix) <= target do
+      prefix
+      |> up_statements(target)
+      |> Enum.each(&execute/1)
+    end
+
+    :ok
   end
 
   @doc "Rolls back to `target` (`:version` in `opts`). Never drops a core-created table — see the moduledoc."
@@ -441,7 +459,13 @@ defmodule PhoenixKitBilling.Migrations do
       ]
 
       # V6: the tables V2 and V3 alter, created before them (see the moduledoc).
-      v6 = if target >= 6, do: v6_statements(p), else: []
+      # V6 is not gated on `target >= 6`: each of its tables comes with the
+      # first version that needs it (currencies for V2, orders for V3,
+      # payment options for V4). On an install where core created them these
+      # are no-ops; where it did not (core 3.x), a host migration file
+      # written before V6 existed still pins an older target, and without
+      # them its V2 fails on the missing `phoenix_kit_currencies`.
+      v6 = v6_statements(p, target)
 
       v2 =
         if target >= 2 do
@@ -510,7 +534,17 @@ defmodule PhoenixKitBilling.Migrations do
   # chain creates the table — never over a host's own currencies or payment
   # options, which it would otherwise restore after they were deleted (or
   # collide with, as a second default currency).
-  defp v6_statements(p) do
+  defp v6_statements(p, target) do
+    [currencies, orders, payment_options] = v6_tables(p)
+
+    Enum.concat([
+      if(target >= 2, do: [currencies], else: []),
+      if(target >= 3, do: [orders], else: []),
+      if(target >= 4, do: [payment_options], else: [])
+    ])
+  end
+
+  defp v6_tables(p) do
     [
       """
       DO $$
@@ -1362,6 +1396,22 @@ defmodule PhoenixKitBilling.Migrations do
 
     drop_v7 ++ drop_v5 ++ drop_v3 ++ drop_v2 ++ [marker]
   end
+
+  # classoid anchors the description join to pg_class (the projects/
+  # legal chains' convention).
+  defp marker_query do
+    """
+    SELECT d.description
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    LEFT JOIN pg_description d
+      ON d.objoid = c.oid AND d.objsubid = 0 AND d.classoid = 'pg_class'::regclass
+    WHERE n.nspname = $1 AND c.relname = '#{@version_table}' AND c.relkind = 'r'
+    """
+  end
+
+  defp marker_to_version([[@marker_prefix <> n]]), do: parse_version(n)
+  defp marker_to_version(_rows), do: 0
 
   defp parse_version(n) do
     case Integer.parse(n) do

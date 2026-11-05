@@ -39,10 +39,20 @@ defmodule PhoenixKitBilling.MigrationsAdoptionTest do
       assert create_orders < v3
     end
 
-    test "a target below 6 builds the chain as it was" do
-      for target <- 1..5 do
+    # A host's migration file written before V6 shipped still asks for its
+    # old target, and on a core 3.x database V2 would otherwise hit a missing
+    # `phoenix_kit_currencies`.
+    test "every target creates the base tables before the first statement that touches them" do
+      for target <- 2..Migrations.current_version() do
         statements = Migrations.up_statements("public", target)
-        refute Enum.any?(statements, &(&1 =~ "to_regclass")), "target #{target}"
+        index = fn fun -> Enum.find_index(statements, fun) end
+
+        create_currencies =
+          index.(&(&1 =~ ~r/CREATE TABLE IF NOT EXISTS public\.phoenix_kit_currencies \(/))
+
+        v2 = index.(&(&1 =~ "UPDATE public.phoenix_kit_currencies SET is_default = false"))
+
+        assert create_currencies && create_currencies < v2, "target #{target}"
       end
     end
 
@@ -88,6 +98,36 @@ defmodule PhoenixKitBilling.MigrationsAdoptionTest do
                Repo.query!(
                  "SELECT count(*), max(code) FROM #{@schema}.phoenix_kit_currencies WHERE is_default"
                ).rows
+    end
+
+    # Each target on its own empty schema, as the first billing file of a
+    # host's history would meet it on a fresh core 3.x database.
+    test "every target builds on an empty schema" do
+      for target <- 1..Migrations.current_version() do
+        Repo.query!("DROP SCHEMA IF EXISTS #{@schema} CASCADE")
+        Repo.query!("CREATE SCHEMA #{@schema}")
+        Repo.query!("CREATE TABLE #{@schema}.phoenix_kit_users (uuid uuid PRIMARY KEY)")
+
+        Repo.query!(
+          "CREATE FUNCTION #{@schema}.uuid_generate_v7() RETURNS uuid LANGUAGE sql AS 'SELECT public.uuid_generate_v7()'"
+        )
+
+        Enum.each(Migrations.up_statements(@schema, target), &Repo.query!/1)
+
+        expected_keys = if target >= 4, do: 1, else: 0
+
+        assert [[^expected_keys]] =
+                 Repo.query!(
+                   """
+                   SELECT count(*) FROM pg_constraint c
+                   JOIN pg_class t ON t.oid = c.conrelid
+                   JOIN pg_namespace n ON n.oid = t.relnamespace
+                   WHERE n.nspname = $1 AND c.conname = 'phoenix_kit_payment_options_pkey'
+                   """,
+                   [@schema]
+                 ).rows,
+               "target #{target}"
+      end
     end
 
     test "a second run restores nothing a host deleted" do
