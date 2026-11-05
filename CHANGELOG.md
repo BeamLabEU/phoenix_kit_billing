@@ -1,3 +1,125 @@
+## 0.25.0 - 2026-11-05
+
+Durable order events (issue #68), one call to start an order's payment (PR #64),
+a trash for orders and draft invoices (PR #66), a void and cancel trail with
+changes decided on the locked row (PR #65), Stripe Checkout refunds and amounts
+(PRs #62 and #64), a `require_phone` option (PR #63) and the migration chain on
+a fresh core 3.x database (PR #67).
+
+**Upgrading.** Run `mix phoenix_kit.update` and apply migration V8 before the new
+code takes traffic: every read of an order or invoice needs its columns. The same
+task adds the `billing` queue to a host that does not list it, and
+`mix phoenix_kit.doctor` confirms it. `ecto_sql` is now `~> 3.13`. Read "Changes
+that can break a caller" below.
+
+### Added
+
+- **Durable order events.** `PhoenixKitBilling.OrderEvents` delivers `:paid`,
+  `:refunded` and `:cancelled` to other modules, mirroring `InvoiceEvents`, so an
+  order paid without an invoice no longer reaches them only by a PubSub broadcast.
+  One Oban job per event and handler is enqueued in the transaction that changes
+  the status and delivered at least once, with the order re-read. A handler
+  implements `handle_order_event/2`, returning `:ok` or `{:error, term()}`, and is
+  found through `billing_order_event_handlers/0` on a module or the
+  `:order_event_handlers` config. It is not handed an event id: key idempotency on
+  the order's uuid and the event, as an order reaches each status once. An order
+  paid through its invoice fires both `:paid` events, and a partial refund fires
+  no order event. (#68)
+- **`oban_queues/0` declares the `billing` queue** (`billing: 10`). It was only a
+  manual install step, and Oban never runs a queue the node does not list, so
+  renewals, dunning and the durable events could wait forever with no error. (#68)
+- **`PhoenixKitBilling.start_order_payment/2`** opens an order's invoice and
+  checkout session in one call under a per-order lock, so a double click cannot
+  create two invoices, and returns `{:ok, %{invoice: invoice, url: url}}`. It
+  reuses a recent session for the same provider and amount, must be called outside
+  a transaction, and needs session pooling (no PgBouncer transaction mode). An open
+  invoice that no longer matches its order is refused with `:invoice_out_of_date`:
+  void it, and the next start makes a new one. (PR #64)
+- **A trash for orders and draft invoices** (migration V8): `trash_order/2`,
+  `restore_order/2`, `trash_invoice/2` and `restore_invoice/2`, with a Trash tab on
+  the lists and Move to trash and Restore on the detail pages. Only a `draft` or
+  `cancelled` order without an open invoice, or a `draft` invoice that was never
+  sent, can be trashed. The status does not change, the number stays used, and
+  nothing purges the trash. A trashed record refuses every change with
+  `:order_trashed` or `:invoice_trashed`. (PR #66)
+- **A void and cancel trail.** `void_invoice/3` stores reason, actor and time under
+  `metadata["void"]`, and `cancel_order/3` records `metadata["cancelled_from"]` and
+  `metadata["cancelled_by_uuid"]`. Void and Cancel open a modal for an optional reason, and a
+  void invoice shows a VOID mark, on the printout without the reason. (PR #65)
+- **`require_phone`** on `BillingProfile.fields_changeset/3` and
+  `billing_profile_fields/1`, default `false`, next to `require_email` and
+  `require_address`. (PR #63)
+
+### Changed
+
+Changes that can break a caller:
+
+- `Order.changeset/2` no longer cancels an order and moves a stored order forward
+  only. Only `cancel_order/3` writes the cancellation trail. (PR #65)
+- `update_order/2` decides on the stored row under its lock, so a stale struct
+  cannot undo a cancellation: `:order_not_editable`, or `:not_found` for an order
+  that is gone. (PR #65)
+- `update_invoice/2` and `Invoice.changeset/2` no longer change the status of a
+  stored invoice. (PR #65)
+- `delete_order/1` refuses an order that has an invoice (`:order_has_invoices`), and
+  returns `:not_found` for an order that is gone. (PR #65)
+- `void_invoice/3` leaves `notes` alone, so the reason no longer prints on the
+  invoice and is capped at 500 characters, as is a cancel reason. It returns and
+  broadcasts the invoice with `:order` and `:user` loaded. (PR #65)
+- `cancel_order/3` appends its reason to `internal_notes` as a dated line instead of
+  replacing them. (PR #65)
+- `record_payment/3` and `mark_invoice_paid/2` re-check that the invoice is payable
+  under its lock, returning `:not_payable` and `:invoice_not_payable`. (PR #65)
+- Refusals found on the locked row are returned as values, not rolled back, so a
+  transaction the caller holds stays usable. `:invoice_not_found` replaces a raise
+  for a deleted invoice. (PR #65)
+- Listings, counts, the dashboard, a customer's orders and `get_order_by_uuid/2`
+  leave the trash out; `trashed: :only | :include` brings it back on the listings.
+  (PR #66)
+- The order and invoice topics carry `{:order_trashed, order}`,
+  `{:order_restored, order}`, `{:invoice_trashed, invoice}` and
+  `{:invoice_restored, invoice}`: a subscriber with a strict `handle_info/2` needs a
+  catch-all clause. (PR #66)
+- `ecto_sql` raised to `~> 3.13`.
+
+Other changes:
+
+- A host that records its own Stripe refund should pass `payment_method: "stripe"`
+  to `record_refund/3`. The webhook that follows counts only refunds of the
+  payment's own method, so one left on the default `"bank"` is recorded twice.
+  (PR #62)
+- Free-text void and cancel reasons no longer reach the activity log, as its PII
+  rule requires; they stay on the invoice and the order.
+
+### Fixed
+
+- **Stripe Checkout refunds.** A refund made in the Stripe dashboard was
+  acknowledged and never applied, because the payment is recorded under its
+  PaymentIntent id while `charge.refunded` names the charge. It is now found by
+  either id, and rows already stored match without a data migration. A second
+  refund on one charge is no longer recorded as the running total, a refund without
+  an id no longer borrows the charge id, and `Stripe.create_refund/3` sends a `pi_…`
+  id as `payment_intent`. A refund that matches no payment is logged and noted on
+  the webhook event. (PR #62)
+- **Stripe Checkout charged the wrong amount** for an invoice with tax, a discount
+  or a part payment, as the session was built from the line items alone. A session
+  that does not match the amount due is now a single line for that amount. (PR #64)
+- **A webhook payment for a void invoice** was retried to the limit and visible only
+  in a log line. Nothing is booked now: the charge is kept on the invoice's void
+  trail, the admins are told, and the retries stop. (PR #65)
+- `send_invoice/2`, `update_invoice/2`, `delete_order/1`, `void_invoice/3` and
+  `create_checkout_session/3` decide on the locked row, so a void committed in
+  between is no longer overwritten. (PR #65)
+- The chain no longer fails on a fresh core 3.x database for a host migration file
+  pinned below V6, and `Migrations.up/1` never lowers the marker. (PR #67)
+- A blank number on `update_order/2` or `update_invoice/2` returns a changeset
+  instead of raising `not_null_violation`.
+- The legacy `PhoenixKit.Modules.Billing` namespace has delegates for the trash and
+  void functions.
+- 87 strings that rendered in English in every locale, mostly the `Errors` catalogue
+  and invoice flashes, are in the `.pot` and translated into `et`, `ru` and `uk`. The
+  trial badge on the subscription types page uses the right plural form.
+
 ## 0.24.0 - 2026-10-27
 
 ### Added
