@@ -255,6 +255,8 @@ or `pending`: `update_order/2` re-checks that, and any status change, on the
 locked row, so a stale struct cannot undo a cancellation. Trashing and restoring do not
 touch `updated_at`. A void invoice of an order in the trash stays in the invoice
 lists: it is an issued document, and only a draft can be trashed.
+`OrderPayment.start_order_payment/2` refuses an order in the trash (`:order_trashed`)
+and skips an invoice of it that is in the trash, making a new one.
 
 ### Contexts and services
 
