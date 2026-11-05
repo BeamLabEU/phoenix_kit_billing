@@ -4686,15 +4686,35 @@ defmodule PhoenixKitBilling do
   defp update_numbered_locked(%Ecto.Changeset{valid?: true} = changeset, numbers) do
     year = current_year()
 
-    Enum.each(number_floors(changeset, numbers), fn {scope, number} ->
-      raise_sequence_floor(scope, number_prefix(scope), year, number)
-    end)
+    in_savepoint(fn ->
+      Enum.each(number_floors(changeset, numbers), fn {scope, number} ->
+        raise_sequence_floor(scope, number_prefix(scope), year, number)
+      end)
 
-    repo().update(changeset, mode: :savepoint)
+      repo().update(changeset)
+    end)
   end
 
   defp update_numbered_locked(%Ecto.Changeset{} = changeset, _numbers),
-    do: repo().update(changeset, mode: :savepoint)
+    do: repo().update(changeset)
+
+  # Runs `fun` (which returns `{:ok, _}` or `{:error, _}`) inside a savepoint:
+  # on `{:error, _}` everything it wrote - the lifted counter too - is undone,
+  # and the error is returned as a value, so the caller's transaction carries on.
+  defp in_savepoint(fun) do
+    repo().query!("SAVEPOINT pkb_in_savepoint")
+
+    case fun.() do
+      {:ok, _} = ok ->
+        repo().query!("RELEASE SAVEPOINT pkb_in_savepoint")
+        ok
+
+      {:error, _} = error ->
+        repo().query!("ROLLBACK TO SAVEPOINT pkb_in_savepoint")
+        repo().query!("RELEASE SAVEPOINT pkb_in_savepoint")
+        error
+    end
+  end
 
   defp number_floors(changeset, numbers) do
     for {field, scope} <- numbers,
