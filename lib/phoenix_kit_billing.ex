@@ -4264,14 +4264,16 @@ defmodule PhoenixKitBilling do
   `metadata["void"]["payments_after_void"]` as `"provider"`, `"charge_id"`,
   `"amount"`, `"currency"`, `"event_id"` and `"at"` - ids and amounts only - so
   that the operator can find the charge and refund it at the provider. An
-  event or charge id already on the list is not added again.
+  event or charge id already on the list is not added again, nor is a charge id
+  that is on the invoice's ledger (it was booked, and refunded).
 
   `charge` is a map with the keys `:provider`, `:charge_id`, `:amount`,
   `:currency` and `:event_id`. Takes the invoice row lock.
 
-  Returns `{:ok, invoice}`, `{:error, :invoice_not_void}` when the stored
-  invoice is not void, or `{:error, :invoice_not_found}`. Refusals are
-  returned, not rolled back.
+  Returns `{:ok, invoice}` for a charge that was added,
+  `{:ok, :already_recorded}` for one that was not (see above),
+  `{:error, :invoice_not_void}` when the stored invoice is not void, or
+  `{:error, :invoice_not_found}`. Refusals are returned, not rolled back.
   """
   def record_payment_after_void(%Invoice{} = invoice, charge) when is_map(charge) do
     unwrap_transaction(fn ->
@@ -4288,8 +4290,8 @@ defmodule PhoenixKitBilling do
     trail = if is_map(metadata["void"]), do: metadata["void"], else: %{}
     entries = Map.get(trail, "payments_after_void", [])
 
-    if charge_recorded?(entries, charge) do
-      {:ok, locked}
+    if charge_recorded?(entries, charge) or charge_in_ledger?(locked, charge) do
+      {:ok, :already_recorded}
     else
       entry = %{
         "provider" => charge[:provider] && to_string(charge[:provider]),
@@ -4317,6 +4319,22 @@ defmodule PhoenixKitBilling do
       (event_id != nil and entry["event_id"] == event_id) or
         (charge_id != nil and entry["charge_id"] == charge_id)
     end)
+  end
+
+  # A charge that was booked on the invoice (and then refunded in full, which
+  # voids it) is not "money received after the void".
+  defp charge_in_ledger?(%Invoice{uuid: uuid}, charge) do
+    case charge[:charge_id] do
+      nil ->
+        false
+
+      charge_id ->
+        repo().exists?(
+          from(t in Transaction,
+            where: t.invoice_uuid == ^uuid and t.provider_transaction_id == ^to_string(charge_id)
+          )
+        )
+    end
   end
 
   defp charge_amount(%Decimal{} = amount), do: Decimal.to_string(amount, :normal)

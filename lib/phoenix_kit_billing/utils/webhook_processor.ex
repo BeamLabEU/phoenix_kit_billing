@@ -257,14 +257,18 @@ defmodule PhoenixKitBilling.WebhookProcessor do
       event_id: event_id
     }
 
-    Logger.error(
-      "Payment received for void invoice #{invoice.invoice_number} (#{invoice.uuid}); " <>
-        "not recorded - refund it at the provider: charge #{inspect(charge.charge_id)}, " <>
-        "event #{inspect(event_id)}"
-    )
-
     case Billing.record_payment_after_void(invoice, charge) do
+      # Nothing new to tell: the same charge is already on the trail or the ledger.
+      {:ok, :already_recorded} ->
+        {:ok, :invoice_void}
+
       {:ok, _invoice} ->
+        Logger.error(
+          "Payment received for void invoice #{invoice.invoice_number} (#{invoice.uuid}); " <>
+            "not recorded - refund it at the provider: charge #{inspect(charge.charge_id)}, " <>
+            "event #{inspect(event_id)}"
+        )
+
         _ = Notifications.payment_failed(invoice, :invoice_void)
         {:ok, :invoice_void}
 

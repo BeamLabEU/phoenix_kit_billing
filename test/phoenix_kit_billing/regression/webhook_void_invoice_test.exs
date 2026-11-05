@@ -138,6 +138,43 @@ defmodule PhoenixKitBilling.Regression.WebhookVoidInvoiceTest do
              Billing.get_invoice!(invoice.uuid).metadata["void"]["payments_after_void"]
   end
 
+  test "a second event for a charge already on the trail does not notify again", %{
+    admin: admin,
+    invoice: invoice
+  } do
+    {:ok, _voided} = Billing.void_invoice(invoice)
+
+    capture_log(fn ->
+      assert {:ok, :invoice_void} = WebhookProcessor.process(payment_event(invoice, "evt_one"))
+      assert {:ok, :invoice_void} = WebhookProcessor.process(payment_event(invoice, "evt_two"))
+    end)
+
+    assert [_one] = texts(admin)
+    assert [_entry] = Billing.get_invoice!(invoice.uuid).metadata["void"]["payments_after_void"]
+  end
+
+  test "payment, full refund, then another event for the same charge: no refund alert", %{
+    admin: admin,
+    invoice: invoice
+  } do
+    {:ok, _} =
+      Billing.record_payment(
+        invoice,
+        %{amount: "100.00", payment_method: "stripe", provider_transaction_id: "pi_void_1"},
+        nil
+      )
+
+    {:ok, _} = Billing.record_refund(Billing.get_invoice!(invoice.uuid), %{amount: "100.00"}, nil)
+    assert Billing.get_invoice!(invoice.uuid).status == "void"
+
+    capture_log(fn ->
+      assert {:ok, :invoice_void} = WebhookProcessor.process(payment_event(invoice, "evt_late"))
+    end)
+
+    assert texts(admin) == []
+    assert Billing.get_invoice!(invoice.uuid).metadata["void"] in [nil, %{}]
+  end
+
   test "the admins' notification leads to the invoice itself", %{admin: admin, invoice: invoice} do
     {:ok, _voided} = Billing.void_invoice(invoice)
     capture_log(fn -> WebhookProcessor.process(payment_event(invoice, "evt_void_link")) end)
