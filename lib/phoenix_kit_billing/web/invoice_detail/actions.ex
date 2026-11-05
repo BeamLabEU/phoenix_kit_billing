@@ -63,7 +63,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         {:noreply,
          socket
          |> Phoenix.Component.assign(:show_payment_modal, false)
-         |> put_flash(:info, "Payment recorded successfully")}
+         |> put_flash(:info, gettext("Payment recorded successfully"))}
 
       {:error, :not_payable} ->
         {:noreply, put_flash(socket, :error, "Invoice cannot receive payments in current status")}
@@ -109,13 +109,19 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         {:noreply,
          socket
          |> Phoenix.Component.assign(:checkout_loading, nil)
-         |> put_flash(:error, "Payment provider #{provider} is not available")}
+         |> put_flash(
+           :error,
+           gettext("Payment provider %{provider} is not available", provider: provider)
+         )}
 
       {:error, reason} ->
         {:noreply,
          socket
          |> Phoenix.Component.assign(:checkout_loading, nil)
-         |> put_flash(:error, "Failed to create checkout session: #{inspect(reason)}")}
+         |> put_flash(
+           :error,
+           gettext("Failed to create checkout session: %{reason}", reason: inspect(reason))
+         )}
     end
   end
 
@@ -157,7 +163,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           {:noreply,
            socket
            |> Phoenix.Component.assign(:show_refund_modal, false)
-           |> put_flash(:info, "Refund recorded successfully")}
+           |> put_flash(:info, gettext("Refund recorded successfully"))}
 
         {:error, :not_refundable} ->
           {:noreply, put_flash(socket, :error, "Invoice has no payments to refund")}
@@ -360,7 +366,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          socket
          |> reload_invoice()
          |> Phoenix.Component.assign(:show_void_modal, false)
-         |> put_flash(:info, "Invoice voided")}
+         |> put_flash(:info, gettext("Invoice voided"))}
 
       {:error, reason} ->
         # The page may be showing a status the invoice has since left (a
@@ -369,7 +375,10 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          socket
          |> reload_invoice()
          |> Phoenix.Component.assign(:show_void_modal, false)
-         |> put_flash(:error, "Failed to void invoice: #{Errors.message(reason)}")}
+         |> put_flash(
+           :error,
+           gettext("Failed to void invoice: %{reason}", reason: Errors.message(reason))
+         )}
     end
   end
 
@@ -390,7 +399,10 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         {:noreply,
          socket
          |> Phoenix.Component.assign(:invoice, invoice)
-         |> put_flash(:info, "Receipt generated: #{invoice.receipt_number}")}
+         |> put_flash(
+           :info,
+           gettext("Receipt generated: %{number}", number: invoice.receipt_number)
+         )}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed to generate receipt: #{reason}")}

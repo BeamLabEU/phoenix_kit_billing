@@ -89,7 +89,7 @@
 
               <%= if type.trial_days && type.trial_days > 0 do %>
                 <div class="badge badge-info badge-outline mt-2">
-                  {gettext("%{count} day trial", count: type.trial_days)}
+                  {ngettext("%{count} day trial", "%{count} day trial", type.trial_days)}
                 </div>
               <% end %>
 

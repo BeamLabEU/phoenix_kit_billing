@@ -138,7 +138,7 @@ defmodule PhoenixKitBilling.MixProject do
       {:phoenix, "~> 1.7"},
 
       # Ecto for database queries and schemas.
-      {:ecto_sql, "~> 3.12"},
+      {:ecto_sql, "~> 3.13"},
 
       # Background job processing (subscription renewals, dunning).
       {:oban, "~> 2.20"},

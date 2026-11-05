@@ -1,12 +1,14 @@
 defmodule PhoenixKitBilling.PotDriftTest do
   @moduledoc """
-  Catches drift between registered tab labels and the gettext catalogues.
+  Catches drift between the source and the gettext catalogues.
 
   Tab labels live as plain strings inside `Tab.new!(label: ...)` calls and
   are NOT picked up by `mix gettext.extract`, so `priv/gettext/default.pot`
   is maintained manually (see the file's own header). Without a guard, a
   newly-added tab will render in raw English under `ru`/`et` because no
-  `msgid` exists for its label.
+  `msgid` exists for its label. The same goes for a `gettext/1` call nobody
+  added to the `.pot`: nothing fails, the string just stays in English in
+  every locale, which is how the whole `Errors` catalogue went untranslated.
 
   These tests run unconditionally — they parse files and read struct
   fields preserved on every `phoenix_kit` release, so they don't depend
@@ -46,6 +48,33 @@ defmodule PhoenixKitBilling.PotDriftTest do
         do: {id, IO.iodata_to_binary(msgstr)}
   end
 
+  # A function, not an attribute: a compiled regex cannot be stored in one on
+  # OTP 28. `ngettext`, `pgettext` and `Gettext.gettext/2` do not match, and neither
+  # does a heredoc msgid, which the email defaults use.
+  defp gettext_call, do: ~r/(?<![\w.])gettext\(\s*"((?:[^"\\]|\\.)*)"/
+
+  defp source_msgids do
+    for path <- Path.wildcard("lib/**/*.{ex,heex}"),
+        [_call, literal] <- Regex.scan(gettext_call(), File.read!(path)),
+        literal != "",
+        into: MapSet.new(),
+        do: Macro.unescape_string(literal)
+  end
+
+  describe "default.pot covers every gettext call in lib/" do
+    # `mix gettext.extract --check-up-to-date` cannot stand in: on a hand-kept
+    # `.pot` it also fails on stale reference lines.
+    test "no gettext/1 msgid is missing" do
+      msgids = pot_msgids(@pot_path)
+
+      missing = source_msgids() |> Enum.reject(&MapSet.member?(msgids, &1)) |> Enum.sort()
+
+      assert missing == [],
+             "gettext/1 calls missing from #{@pot_path}: #{inspect(missing)}. Add them to " <>
+               "the .pot template and run `mix gettext.merge priv/gettext --no-fuzzy`."
+    end
+  end
+
   describe "default.pot covers every registered tab label" do
     test "no tab label is missing a msgid" do
       msgids = pot_msgids(@pot_path)
@@ -54,7 +83,7 @@ defmodule PhoenixKitBilling.PotDriftTest do
 
       assert missing == [],
              "Tab labels missing from #{@pot_path}: #{inspect(missing)}. " <>
-               "Add them to the .pot template and run `mix gettext.merge priv/gettext`."
+               "Add them to the .pot template and run `mix gettext.merge priv/gettext --no-fuzzy`."
     end
   end
 

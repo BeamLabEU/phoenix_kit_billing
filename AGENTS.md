@@ -13,7 +13,7 @@ endpoints, and Oban workers for renewals and dunning.
 
 - **Depends on:** `phoenix_kit` `>= 2.65.0 and < 4.0.0` (Hex). No sibling `phoenix_kit_*` deps.
   Runtime libraries: `phoenix_live_view ~> 1.1`, `phoenix ~> 1.7`,
-  `ecto_sql ~> 3.12`, `oban ~> 2.20`, `uuidv7 ~> 1.0`, `stripity_stripe ~> 3.2`,
+  `ecto_sql ~> 3.13`, `oban ~> 2.20`, `uuidv7 ~> 1.0`, `stripity_stripe ~> 3.2`,
   `req ~> 0.5`, `jason ~> 1.4`, `gettext ~> 1.0`.
 - **Consumed by:** `phoenix_kit_ecommerce` (hard dependency). `phoenix_kit_projects`
   picks up the "Customer billing" project extension by duck-typing
@@ -101,7 +101,10 @@ alone.
   `gettext_domain: "default"` into every `Tab.new!/1` call, so tab labels
   localize. `priv/gettext/default.pot` is **maintained by hand** — tab labels are
   plain strings inside `Tab.new!(label: ...)` and `mix gettext.extract` cannot
-  see them. Add the msgid to the `.pot`, then `mix gettext.merge priv/gettext`.
+  see them. Add the msgid to the `.pot`, then `mix gettext.merge priv/gettext
+  --no-fuzzy`, for a new tab label and for a new `gettext/1` call alike
+  (`pot_drift_test.exs` fails on either). Without `--no-fuzzy`, the merge fills a
+  new msgid with the translation of a similar one and marks it fuzzy.
 - **JS hooks: none.** If one is ever needed, prefer a core hook; ship your own
   only through a prebuilt bundle declared by `js_sources/0` under a namespaced
   global. Never register a hook from an inline `<script>` — morphdom does not

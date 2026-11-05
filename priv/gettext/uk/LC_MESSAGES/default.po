@@ -4850,3 +4850,438 @@ msgstr "Хто перемістив"
 #, elixir-autogen, elixir-format
 msgid "This order is cancelled and cannot take this invoice."
 msgstr "Замовлення скасовано, цей рахунок до нього не повернути."
+
+#: lib/phoenix_kit_billing/errors.ex:220
+#, elixir-autogen, elixir-format
+msgid "A receipt has already been generated."
+msgstr "Квитанцію вже створено."
+
+#: lib/phoenix_kit_billing/errors.ex:176
+#, elixir-autogen, elixir-format
+msgid "A required reference is missing."
+msgstr "Відсутнє обов'язкове посилання."
+
+#: lib/phoenix_kit_billing/errors.ex:229
+#, elixir-autogen, elixir-format
+msgid "Additional action is required to complete the payment."
+msgstr "Для завершення оплати потрібна додаткова дія."
+
+#: lib/phoenix_kit_billing/errors.ex:217
+#, elixir-autogen, elixir-format
+msgid "An error occurred while processing the payment."
+msgstr "Під час обробки платежу сталася помилка."
+
+#: lib/phoenix_kit_billing/errors.ex:118
+#, elixir-autogen, elixir-format
+msgid "Authentication with the payment provider failed."
+msgstr "Не вдалося пройти автентифікацію в платіжній системі."
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:375
+#, elixir-autogen, elixir-format
+msgid "Cannot extend a subscription that has no current billing period."
+msgstr "Не можна продовжити підписку без поточного розрахункового періоду."
+
+#: lib/phoenix_kit_billing/errors.ex:129
+#, elixir-autogen, elixir-format
+msgid "Cannot proceed while there are active subscriptions."
+msgstr "Неможливо продовжити, поки є активні підписки."
+
+#: lib/phoenix_kit_billing/errors.ex:132
+#, elixir-autogen, elixir-format
+msgid "Cannot proceed while there are existing subscriptions."
+msgstr "Неможливо продовжити, поки існують підписки."
+
+#: lib/phoenix_kit_billing.ex:275
+#, elixir-autogen, elixir-format
+msgid "Create, edit and cancel orders and their transactions"
+msgstr "Створення, редагування та скасування замовлень і їхніх транзакцій"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:123
+#, elixir-autogen, elixir-format
+msgid "Failed to create checkout session: %{reason}"
+msgstr "Не вдалося створити сесію оплати: %{reason}"
+
+#: lib/phoenix_kit_billing/errors.ex:124
+#, elixir-autogen, elixir-format
+msgid "Failed to record the billing event."
+msgstr "Не вдалося записати подію білінгу."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:380
+#, elixir-autogen, elixir-format
+msgid "Failed to void invoice: %{reason}"
+msgstr "Не вдалося анулювати рахунок: %{reason}"
+
+#: lib/phoenix_kit_billing/errors.ex:145
+#, elixir-autogen, elixir-format
+msgid "Invoice not found."
+msgstr "Рахунок не знайдено."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:369
+#, elixir-autogen, elixir-format
+msgid "Invoice voided"
+msgstr "Рахунок анульовано"
+
+#: lib/phoenix_kit_billing.ex:280
+#, elixir-autogen, elixir-format
+msgid "Issue, edit and void invoices and credit notes"
+msgstr "Виставлення, редагування та анулювання рахунків і кредит-нот"
+
+#: lib/phoenix_kit_billing.ex:289
+#, elixir-autogen, elixir-format
+msgid "Manage billing settings"
+msgstr "Керування налаштуваннями білінгу"
+
+#: lib/phoenix_kit_billing.ex:279
+#, elixir-autogen, elixir-format
+msgid "Manage invoices"
+msgstr "Керування рахунками"
+
+#: lib/phoenix_kit_billing.ex:274
+#, elixir-autogen, elixir-format
+msgid "Manage orders"
+msgstr "Керування замовленнями"
+
+#: lib/phoenix_kit_billing.ex:284
+#, elixir-autogen, elixir-format
+msgid "Manage subscriptions"
+msgstr "Керування підписками"
+
+#: lib/phoenix_kit_billing/errors.ex:177
+#, elixir-autogen, elixir-format
+msgid "No charge identifier is available."
+msgstr "Ідентифікатор платежу недоступний."
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:37
+#, elixir-autogen, elixir-format
+msgid "No invoices yet for this order"
+msgstr "Для цього замовлення ще немає рахунків"
+
+#: lib/phoenix_kit_billing/errors.ex:178
+#, elixir-autogen, elixir-format
+msgid "No payment method is available."
+msgstr "Немає доступного способу оплати."
+
+#: lib/phoenix_kit_billing/errors.ex:180
+#, elixir-autogen, elixir-format
+msgid "No plan is associated with this record."
+msgstr "З цим записом не пов'язано тариф."
+
+#: lib/phoenix_kit_billing/errors.ex:221
+#, elixir-autogen, elixir-format
+msgid "No receipt has been generated yet."
+msgstr "Квитанцію ще не створено."
+
+#: lib/phoenix_kit_billing/errors.ex:182
+#, elixir-autogen, elixir-format
+msgid "No recipient email address is available."
+msgstr "Email одержувача недоступний."
+
+#: lib/phoenix_kit_billing/errors.ex:184
+#, elixir-autogen, elixir-format
+msgid "No user is associated with this record."
+msgstr "З цим записом не пов'язано користувача."
+
+#: lib/phoenix_kit_billing/errors.ex:120
+#, elixir-autogen, elixir-format
+msgid "Only draft records can be deleted."
+msgstr "Видаляти можна лише чернетки."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:114
+#, elixir-autogen, elixir-format
+msgid "Payment provider %{provider} is not available"
+msgstr "Платіжна система %{provider} недоступна"
+
+#: lib/phoenix_kit_billing.ex:291
+#, elixir-autogen, elixir-format
+msgid "Payment providers and their credentials, currencies and tax settings"
+msgstr "Платіжні системи та їхні облікові дані, валюти й податкові налаштування"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:66
+#, elixir-autogen, elixir-format
+msgid "Payment recorded successfully"
+msgstr "Платіж успішно записано"
+
+#: lib/phoenix_kit_billing/web/user_orders.ex:39
+#, elixir-autogen, elixir-format
+msgid "Please log in to view your orders"
+msgstr "Увійдіть, щоб переглянути свої замовлення"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:404
+#, elixir-autogen, elixir-format
+msgid "Receipt generated: %{number}"
+msgstr "Квитанцію створено: %{number}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:166
+#, elixir-autogen, elixir-format
+msgid "Refund recorded successfully"
+msgstr "Повернення коштів успішно записано"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:253
+#, elixir-autogen, elixir-format
+msgid "Selected payment method is not available"
+msgstr "Вибраний спосіб оплати недоступний"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:394
+#, elixir-autogen, elixir-format
+msgid "Subscription extended by %{days} days"
+msgstr "Підписку продовжено на %{days} дн."
+
+#: lib/phoenix_kit_billing/errors.ex:232
+#, elixir-autogen, elixir-format
+msgid "Subscription type not found."
+msgstr "Тип підписки не знайдено."
+
+#: lib/phoenix_kit_billing.ex:285
+#, elixir-autogen, elixir-format
+msgid "Subscriptions and subscription types"
+msgstr "Підписки та типи підписок"
+
+#: lib/phoenix_kit_billing/web/settings.ex:262
+#, elixir-autogen, elixir-format
+msgid "Tax rate must be between 0 and 100"
+msgstr "Ставка податку має бути від 0 до 100"
+
+#: lib/phoenix_kit_billing/errors.ex:125
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds the amount paid."
+msgstr "Сума перевищує сплачену суму."
+
+#: lib/phoenix_kit_billing/errors.ex:126
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds the remaining balance."
+msgstr "Сума перевищує залишок до сплати."
+
+#: lib/phoenix_kit_billing/errors.ex:134
+#, elixir-autogen, elixir-format
+msgid "The amount is invalid."
+msgstr "Неприпустима сума."
+
+#: lib/phoenix_kit_billing/errors.ex:121
+#, elixir-autogen, elixir-format
+msgid "The card was declined."
+msgstr "Картку відхилено."
+
+#: lib/phoenix_kit_billing/errors.ex:171
+#, elixir-autogen, elixir-format
+msgid "The default item cannot be removed."
+msgstr "Елемент за замовчуванням не можна видалити."
+
+#: lib/phoenix_kit_billing/errors.ex:135
+#, elixir-autogen, elixir-format
+msgid "The format is invalid."
+msgstr "Неприпустимий формат."
+
+#: lib/phoenix_kit_billing/errors.ex:215
+#, elixir-autogen, elixir-format
+msgid "The payment method has expired."
+msgstr "Термін дії способу оплати минув."
+
+#: lib/phoenix_kit_billing/errors.ex:218
+#, elixir-autogen, elixir-format
+msgid "The payment provider is not available."
+msgstr "Платіжна система недоступна."
+
+#: lib/phoenix_kit_billing/errors.ex:187
+#, elixir-autogen, elixir-format
+msgid "The payment provider is not configured."
+msgstr "Платіжну систему не налаштовано."
+
+#: lib/phoenix_kit_billing/errors.ex:140
+#, elixir-autogen, elixir-format
+msgid "The payment provider returned an invalid response."
+msgstr "Платіжна система повернула неприпустиму відповідь."
+
+#: lib/phoenix_kit_billing/errors.ex:219
+#, elixir-autogen, elixir-format
+msgid "The payment provider was not found."
+msgstr "Платіжну систему не знайдено."
+
+#: lib/phoenix_kit_billing/errors.ex:226
+#, elixir-autogen, elixir-format
+msgid "The request to the payment provider failed."
+msgstr "Запит до платіжної системи не виконано."
+
+#: lib/phoenix_kit_billing/errors.ex:188
+#, elixir-autogen, elixir-format
+msgid "The requested record was not found."
+msgstr "Запитаний запис не знайдено."
+
+#: lib/phoenix_kit_billing/errors.ex:136
+#, elixir-autogen, elixir-format
+msgid "The response was not valid JSON."
+msgstr "Відповідь не є коректним JSON."
+
+#: lib/phoenix_kit_billing/errors.ex:235
+#, elixir-autogen, elixir-format
+msgid "The webhook event type is not recognized."
+msgstr "Тип події вебхука не розпізнано."
+
+#: lib/phoenix_kit_billing/errors.ex:137
+#, elixir-autogen, elixir-format
+msgid "The webhook payload is invalid."
+msgstr "Неприпустимий вміст вебхука."
+
+#: lib/phoenix_kit_billing/errors.ex:181
+#, elixir-autogen, elixir-format
+msgid "The webhook request body is missing."
+msgstr "Відсутнє тіло запиту вебхука."
+
+#: lib/phoenix_kit_billing/errors.ex:231
+#, elixir-autogen, elixir-format
+msgid "The webhook signature does not match."
+msgstr "Підпис вебхука не збігається."
+
+#: lib/phoenix_kit_billing/errors.ex:183
+#, elixir-autogen, elixir-format
+msgid "The webhook signature header is missing."
+msgstr "Відсутній заголовок підпису вебхука."
+
+#: lib/phoenix_kit_billing/errors.ex:142
+#, elixir-autogen, elixir-format
+msgid "The webhook signature is invalid."
+msgstr "Неприпустимий підпис вебхука."
+
+#: lib/phoenix_kit_billing/errors.ex:143
+#, elixir-autogen, elixir-format
+msgid "The webhook timestamp is invalid."
+msgstr "Неприпустима позначка часу вебхука."
+
+#: lib/phoenix_kit_billing/errors.ex:233
+#, elixir-autogen, elixir-format
+msgid "The webhook timestamp is too old."
+msgstr "Позначка часу вебхука застаріла."
+
+#: lib/phoenix_kit_billing/errors.ex:179
+#, elixir-autogen, elixir-format
+msgid "There are no payments to process."
+msgstr "Немає платежів для обробки."
+
+#: lib/phoenix_kit_billing/errors.ex:122
+#, elixir-autogen, elixir-format
+msgid "This currency is in use and cannot be removed."
+msgstr "Ця валюта використовується, її не можна видалити."
+
+#: lib/phoenix_kit_billing/errors.ex:174
+#, elixir-autogen, elixir-format
+msgid "This event exceeded the maximum number of retries."
+msgstr "Для цієї події перевищено максимальну кількість повторних спроб."
+
+#: lib/phoenix_kit_billing/errors.ex:123
+#, elixir-autogen, elixir-format
+msgid "This event has already been processed."
+msgstr "Цю подію вже оброблено."
+
+#: lib/phoenix_kit_billing/errors.ex:112
+#, elixir-autogen, elixir-format
+msgid "This has already been paid."
+msgstr "Це вже сплачено."
+
+#: lib/phoenix_kit_billing/errors.ex:144
+#, elixir-autogen, elixir-format
+msgid "This invoice can no longer be edited."
+msgstr "Цей рахунок більше не можна редагувати."
+
+#: lib/phoenix_kit_billing/errors.ex:149
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be paid in its current state."
+msgstr "Цей рахунок не можна сплатити в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:152
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be sent in its current state."
+msgstr "Цей рахунок не можна надіслати в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:163
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be voided in its current state."
+msgstr "Цей рахунок не можна анулювати в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:146
+#, elixir-autogen, elixir-format
+msgid "This invoice has not been paid."
+msgstr "Цей рахунок не сплачено."
+
+#: lib/phoenix_kit_billing/errors.ex:191
+#, elixir-autogen, elixir-format
+msgid "This operation is not supported."
+msgstr "Ця операція не підтримується."
+
+#: lib/phoenix_kit_billing/errors.ex:206
+#, elixir-autogen, elixir-format
+msgid "This order can no longer be edited."
+msgstr "Це замовлення більше не можна редагувати."
+
+#: lib/phoenix_kit_billing/errors.ex:204
+#, elixir-autogen, elixir-format
+msgid "This order cannot be cancelled in its current state."
+msgstr "Це замовлення не можна скасувати в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:207
+#, elixir-autogen, elixir-format
+msgid "This order cannot be paid in its current state."
+msgstr "Це замовлення не можна сплатити в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:208
+#, elixir-autogen, elixir-format
+msgid "This order cannot be refunded."
+msgstr "За цим замовленням не можна повернути кошти."
+
+#: lib/phoenix_kit_billing/errors.ex:113
+#, elixir-autogen, elixir-format
+msgid "This payment has already been refunded."
+msgstr "За цим платежем кошти вже повернуто."
+
+#: lib/phoenix_kit_billing/errors.ex:216
+#, elixir-autogen, elixir-format
+msgid "This payment method cannot be used."
+msgstr "Цей спосіб оплати не можна використати."
+
+#: lib/phoenix_kit_billing/errors.ex:224
+#, elixir-autogen, elixir-format
+msgid "This receipt cannot be sent in its current state."
+msgstr "Цю квитанцію не можна надіслати в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:189
+#, elixir-autogen, elixir-format
+msgid "This record cannot be paid in its current state."
+msgstr "Цей запис не можна сплатити в поточному стані."
+
+#: lib/phoenix_kit_billing/errors.ex:190
+#, elixir-autogen, elixir-format
+msgid "This record cannot be refunded."
+msgstr "За цим записом не можна повернути кошти."
+
+#: lib/phoenix_kit_billing/errors.ex:185
+#, elixir-autogen, elixir-format
+msgid "This transaction is not a payment."
+msgstr "Ця транзакція не є платежем."
+
+#: lib/phoenix_kit_billing/errors.ex:186
+#, elixir-autogen, elixir-format
+msgid "This transaction is not a refund."
+msgstr "Ця транзакція не є поверненням коштів."
+
+#: lib/phoenix_kit_billing/errors.ex:234
+#, elixir-autogen, elixir-format
+msgid "Transaction not found."
+msgstr "Транзакцію не знайдено."
+
+#: lib/phoenix_kit_billing/errors.ex:250
+#, elixir-autogen, elixir-format
+msgid "Unexpected error: %{reason}"
+msgstr "Непередбачена помилка: %{reason}"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:147
+#, elixir-autogen, elixir-format
+msgid "Updated"
+msgstr "Оновлено"
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:6
+#, elixir-autogen, elixir-format
+msgid "Your order history, invoices, and payments"
+msgstr "Історія ваших замовлень, рахунки та платежі"
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:14
+#, elixir-autogen, elixir-format
+msgid "Your orders will appear here once you place one"
+msgstr "Ваші замовлення з'являться тут, коли ви оформите перше"

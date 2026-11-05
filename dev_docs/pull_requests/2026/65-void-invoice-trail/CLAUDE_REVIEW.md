@@ -5,7 +5,7 @@
 **PR:** https://github.com/BeamLabEU/phoenix_kit_billing/pull/65
 **Author:** timujinne
 **Head SHA:** `2dcf28b`
-**Status:** Merged; two findings fixed, pre-existing items noted
+**Status:** Merged; all findings fixed
 
 ## Summary
 
@@ -37,10 +37,11 @@ See #66's review: the same gap across both PRs, fixed once. `ru` and `uk` were
 translated here; `et` was left as copies of the msgid, which an empty-string check
 does not notice.
 
-### NITPICK — Hard-coded English flashes in `invoice_detail/actions.ex` — not fixed
+### NITPICK — Hard-coded English flashes in `invoice_detail/actions.ex` — fixed
 
-"Invoice voided", "Refund recorded successfully" and others bypass gettext. They
-predate this PR (d100cc2), so they are left for a dedicated pass.
+"Invoice voided", "Refund recorded successfully" and five others bypassed gettext. They
+predate this PR (d100cc2). All seven now go through gettext, translated with #66's
+catalogue pass.
 
 ## Checked and cleared
 
@@ -48,10 +49,12 @@ predate this PR (d100cc2), so they are left for a dedicated pass.
 `prepare_changes` would make Ecto nest a transaction whose rollback aborts the outer
 one, so `ROLLBACK TO SAVEPOINT` would raise. It does not: a probe returned a real
 changeset and left the caller's transaction usable, because `Ecto.Repo.Schema` skips
-the wrapper when `adapter.in_transaction?/1` is true. That guard is present in Ecto
-3.13.5 through 3.14.3, the versions available here. **Not verified on 3.12.x**, which
-`ecto_sql ~> 3.12` still admits; core's own `~> 3.10` does not narrow it. The resolved
-version is 3.14.3.
+the wrapper when `adapter.in_transaction?/1` is true. That guard is in every Ecto the
+old `~> 3.12` pin admitted: 3.12.0, 3.12.6, 3.13.0 through 3.13.5 and 3.14.0 through
+3.14.3 were read. An earlier version of this note called 3.12.x unverified, because
+those packages were not at hand; they have since been fetched and checked. The pin is
+now `~> 3.13` at the maintainer's request, which is a choice and not a requirement of
+this code.
 
 ## What Was Done Well
 

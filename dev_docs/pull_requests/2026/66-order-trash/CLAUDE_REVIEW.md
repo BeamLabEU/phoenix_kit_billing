@@ -5,7 +5,7 @@
 **PR:** https://github.com/BeamLabEU/phoenix_kit_billing/pull/66
 **Author:** timujinne
 **Head SHA:** `f942172`
-**Status:** Merged; three findings fixed, one pre-existing item noted
+**Status:** Merged; all findings fixed
 
 ## Summary
 
@@ -47,13 +47,28 @@ It said "the code that writes the columns needs them". The schemas select them, 
 every read of an order or invoice fails without V8, which is the failure hosts would
 actually meet. Reworded. **A release must say to run V8 before deploying.**
 
-### Pre-existing — 80 msgids are in the code but not in the `.pot` — not fixed
+### Pre-existing — 80 msgids were in the code but not in the `.pot` — fixed
 
-A real `mix gettext.extract` shows 80 strings in `lib/` that the hand-kept `.pot`
-lacks, mostly the `Errors` catalogue, so they render in English in every locale.
-`pot_drift_test` guards tab labels, not this. Almost none of it comes from this PR.
-Translating 80 strings into three languages deserves its own change. Only the one
-string this review added went in.
+A real `mix gettext.extract` showed 80 strings in `lib/` that the hand-kept `.pot`
+lacked, mostly the `Errors` catalogue, so they rendered in English in every locale.
+`pot_drift_test` guarded tab labels only. Almost none of it comes from this PR.
+
+All 80, plus the seven flashes from #65's review, are now in the `.pot` and translated
+into `ru`, `uk` and `et` using each catalogue's terms. `de` and `fr` stay partial by
+design. Three things came out of the fix:
+
+- **The guard.** `pot_drift_test.exs` now fails on a `gettext/1` call with no msgid, and
+  `errors_test.exs` checks that real messages change under each locale. The scan was
+  compared with a real extraction; it does not read the 32 heredoc msgids in
+  `email_defaults.ex`, which are all in the `.pot`.
+- **A wrong plural.** `subscription_types.html.heex` called `gettext/2` on a plural
+  msgid, which always takes form 0 and read "Пробный период 5 день". It now uses
+  `ngettext/4`, as the form page does.
+- **A trap in the documented command.** A plain `mix gettext.merge` filled 20 of the new
+  entries with translations of similar msgids and marked them fuzzy. `AGENTS.md` now
+  says `--no-fuzzy`.
+
+**These translations were not written by native speakers either.**
 
 ## What Was Done Well
 

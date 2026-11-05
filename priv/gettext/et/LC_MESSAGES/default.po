@@ -4766,7 +4766,7 @@ msgstr "Sellel tellimusel on arveid ja seda ei saa kustutada."
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:144
 #, elixir-autogen, elixir-format
 msgid "Payment received after void - refund it at the payment provider"
-msgstr "Makse laekus pärast tühistamist - tagastage see makseteenuse pakkuja juures"
+msgstr "Makse laekus pärast tühistamist - tagastage see maksevahendaja juures"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:150
 #, elixir-autogen, elixir-format
@@ -4979,3 +4979,438 @@ msgstr "Teisaldaja"
 #, elixir-autogen, elixir-format
 msgid "This order is cancelled and cannot take this invoice."
 msgstr "See tellimus on tühistatud ja sellele ei saa seda arvet lisada."
+
+#: lib/phoenix_kit_billing/errors.ex:220
+#, elixir-autogen, elixir-format
+msgid "A receipt has already been generated."
+msgstr "Kviitung on juba loodud."
+
+#: lib/phoenix_kit_billing/errors.ex:176
+#, elixir-autogen, elixir-format
+msgid "A required reference is missing."
+msgstr "Kohustuslik viide puudub."
+
+#: lib/phoenix_kit_billing/errors.ex:229
+#, elixir-autogen, elixir-format
+msgid "Additional action is required to complete the payment."
+msgstr "Makse lõpuleviimiseks on vaja lisatoimingut."
+
+#: lib/phoenix_kit_billing/errors.ex:217
+#, elixir-autogen, elixir-format
+msgid "An error occurred while processing the payment."
+msgstr "Makse töötlemisel ilmnes viga."
+
+#: lib/phoenix_kit_billing/errors.ex:118
+#, elixir-autogen, elixir-format
+msgid "Authentication with the payment provider failed."
+msgstr "Autentimine maksevahendaja juures ebaõnnestus."
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:375
+#, elixir-autogen, elixir-format
+msgid "Cannot extend a subscription that has no current billing period."
+msgstr "Püsitellimust, millel pole käimasolevat arveldusperioodi, ei saa pikendada."
+
+#: lib/phoenix_kit_billing/errors.ex:129
+#, elixir-autogen, elixir-format
+msgid "Cannot proceed while there are active subscriptions."
+msgstr "Jätkata ei saa, kuni on aktiivseid püsitellimusi."
+
+#: lib/phoenix_kit_billing/errors.ex:132
+#, elixir-autogen, elixir-format
+msgid "Cannot proceed while there are existing subscriptions."
+msgstr "Jätkata ei saa, kuni on olemasolevaid püsitellimusi."
+
+#: lib/phoenix_kit_billing.ex:275
+#, elixir-autogen, elixir-format
+msgid "Create, edit and cancel orders and their transactions"
+msgstr "Tellimuste ja nende tehingute loomine, muutmine ja tühistamine"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:123
+#, elixir-autogen, elixir-format
+msgid "Failed to create checkout session: %{reason}"
+msgstr "Makseseansi loomine ebaõnnestus: %{reason}"
+
+#: lib/phoenix_kit_billing/errors.ex:124
+#, elixir-autogen, elixir-format
+msgid "Failed to record the billing event."
+msgstr "Arveldussündmuse salvestamine ebaõnnestus."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:380
+#, elixir-autogen, elixir-format
+msgid "Failed to void invoice: %{reason}"
+msgstr "Arve tühistamine ebaõnnestus: %{reason}"
+
+#: lib/phoenix_kit_billing/errors.ex:145
+#, elixir-autogen, elixir-format
+msgid "Invoice not found."
+msgstr "Arvet ei leitud."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:369
+#, elixir-autogen, elixir-format
+msgid "Invoice voided"
+msgstr "Arve tühistatud"
+
+#: lib/phoenix_kit_billing.ex:280
+#, elixir-autogen, elixir-format
+msgid "Issue, edit and void invoices and credit notes"
+msgstr "Arvete ja kreeditarvete väljastamine, muutmine ja tühistamine"
+
+#: lib/phoenix_kit_billing.ex:289
+#, elixir-autogen, elixir-format
+msgid "Manage billing settings"
+msgstr "Arvelduse seadete haldamine"
+
+#: lib/phoenix_kit_billing.ex:279
+#, elixir-autogen, elixir-format
+msgid "Manage invoices"
+msgstr "Arvete haldamine"
+
+#: lib/phoenix_kit_billing.ex:274
+#, elixir-autogen, elixir-format
+msgid "Manage orders"
+msgstr "Tellimuste haldamine"
+
+#: lib/phoenix_kit_billing.ex:284
+#, elixir-autogen, elixir-format
+msgid "Manage subscriptions"
+msgstr "Püsitellimuste haldamine"
+
+#: lib/phoenix_kit_billing/errors.ex:177
+#, elixir-autogen, elixir-format
+msgid "No charge identifier is available."
+msgstr "Makse identifikaator puudub."
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:37
+#, elixir-autogen, elixir-format
+msgid "No invoices yet for this order"
+msgstr "Sellel tellimusel pole veel arveid"
+
+#: lib/phoenix_kit_billing/errors.ex:178
+#, elixir-autogen, elixir-format
+msgid "No payment method is available."
+msgstr "Ühtegi makseviisi pole saadaval."
+
+#: lib/phoenix_kit_billing/errors.ex:180
+#, elixir-autogen, elixir-format
+msgid "No plan is associated with this record."
+msgstr "Selle kirjega pole paketti seotud."
+
+#: lib/phoenix_kit_billing/errors.ex:221
+#, elixir-autogen, elixir-format
+msgid "No receipt has been generated yet."
+msgstr "Kviitungit pole veel loodud."
+
+#: lib/phoenix_kit_billing/errors.ex:182
+#, elixir-autogen, elixir-format
+msgid "No recipient email address is available."
+msgstr "Saaja e-posti aadress puudub."
+
+#: lib/phoenix_kit_billing/errors.ex:184
+#, elixir-autogen, elixir-format
+msgid "No user is associated with this record."
+msgstr "Selle kirjega pole kasutajat seotud."
+
+#: lib/phoenix_kit_billing/errors.ex:120
+#, elixir-autogen, elixir-format
+msgid "Only draft records can be deleted."
+msgstr "Kustutada saab ainult mustandeid."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:114
+#, elixir-autogen, elixir-format
+msgid "Payment provider %{provider} is not available"
+msgstr "Maksevahendaja %{provider} pole saadaval"
+
+#: lib/phoenix_kit_billing.ex:291
+#, elixir-autogen, elixir-format
+msgid "Payment providers and their credentials, currencies and tax settings"
+msgstr "Maksevahendajad ja nende juurdepääsuandmed, valuutad ning maksuseaded"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:66
+#, elixir-autogen, elixir-format
+msgid "Payment recorded successfully"
+msgstr "Makse edukalt salvestatud"
+
+#: lib/phoenix_kit_billing/web/user_orders.ex:39
+#, elixir-autogen, elixir-format
+msgid "Please log in to view your orders"
+msgstr "Tellimuste vaatamiseks logige sisse"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:404
+#, elixir-autogen, elixir-format
+msgid "Receipt generated: %{number}"
+msgstr "Kviitung loodud: %{number}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:166
+#, elixir-autogen, elixir-format
+msgid "Refund recorded successfully"
+msgstr "Tagastamine edukalt salvestatud"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:253
+#, elixir-autogen, elixir-format
+msgid "Selected payment method is not available"
+msgstr "Valitud makseviis pole saadaval"
+
+#: lib/phoenix_kit_billing/web/subscription_form.ex:394
+#, elixir-autogen, elixir-format
+msgid "Subscription extended by %{days} days"
+msgstr "Püsitellimust pikendatud %{days} päeva võrra"
+
+#: lib/phoenix_kit_billing/errors.ex:232
+#, elixir-autogen, elixir-format
+msgid "Subscription type not found."
+msgstr "Tellimuse tüüpi ei leitud."
+
+#: lib/phoenix_kit_billing.ex:285
+#, elixir-autogen, elixir-format
+msgid "Subscriptions and subscription types"
+msgstr "Püsitellimused ja tellimuste tüübid"
+
+#: lib/phoenix_kit_billing/web/settings.ex:262
+#, elixir-autogen, elixir-format
+msgid "Tax rate must be between 0 and 100"
+msgstr "Maksumäär peab olema vahemikus 0 kuni 100"
+
+#: lib/phoenix_kit_billing/errors.ex:125
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds the amount paid."
+msgstr "Summa ületab makstud summat."
+
+#: lib/phoenix_kit_billing/errors.ex:126
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds the remaining balance."
+msgstr "Summa ületab tasumata jääki."
+
+#: lib/phoenix_kit_billing/errors.ex:134
+#, elixir-autogen, elixir-format
+msgid "The amount is invalid."
+msgstr "Summa on vigane."
+
+#: lib/phoenix_kit_billing/errors.ex:121
+#, elixir-autogen, elixir-format
+msgid "The card was declined."
+msgstr "Kaart lükati tagasi."
+
+#: lib/phoenix_kit_billing/errors.ex:171
+#, elixir-autogen, elixir-format
+msgid "The default item cannot be removed."
+msgstr "Vaikimisi üksust ei saa eemaldada."
+
+#: lib/phoenix_kit_billing/errors.ex:135
+#, elixir-autogen, elixir-format
+msgid "The format is invalid."
+msgstr "Vorming on vigane."
+
+#: lib/phoenix_kit_billing/errors.ex:215
+#, elixir-autogen, elixir-format
+msgid "The payment method has expired."
+msgstr "Makseviisi kehtivus on lõppenud."
+
+#: lib/phoenix_kit_billing/errors.ex:218
+#, elixir-autogen, elixir-format
+msgid "The payment provider is not available."
+msgstr "Maksevahendaja pole saadaval."
+
+#: lib/phoenix_kit_billing/errors.ex:187
+#, elixir-autogen, elixir-format
+msgid "The payment provider is not configured."
+msgstr "Maksevahendaja pole seadistatud."
+
+#: lib/phoenix_kit_billing/errors.ex:140
+#, elixir-autogen, elixir-format
+msgid "The payment provider returned an invalid response."
+msgstr "Maksevahendaja tagastas vigase vastuse."
+
+#: lib/phoenix_kit_billing/errors.ex:219
+#, elixir-autogen, elixir-format
+msgid "The payment provider was not found."
+msgstr "Maksevahendajat ei leitud."
+
+#: lib/phoenix_kit_billing/errors.ex:226
+#, elixir-autogen, elixir-format
+msgid "The request to the payment provider failed."
+msgstr "Päring maksevahendajale ebaõnnestus."
+
+#: lib/phoenix_kit_billing/errors.ex:188
+#, elixir-autogen, elixir-format
+msgid "The requested record was not found."
+msgstr "Soovitud kirjet ei leitud."
+
+#: lib/phoenix_kit_billing/errors.ex:136
+#, elixir-autogen, elixir-format
+msgid "The response was not valid JSON."
+msgstr "Vastus ei olnud kehtiv JSON."
+
+#: lib/phoenix_kit_billing/errors.ex:235
+#, elixir-autogen, elixir-format
+msgid "The webhook event type is not recognized."
+msgstr "Veebikonksu sündmuse tüüpi ei tuvastatud."
+
+#: lib/phoenix_kit_billing/errors.ex:137
+#, elixir-autogen, elixir-format
+msgid "The webhook payload is invalid."
+msgstr "Veebikonksu sisu on vigane."
+
+#: lib/phoenix_kit_billing/errors.ex:181
+#, elixir-autogen, elixir-format
+msgid "The webhook request body is missing."
+msgstr "Veebikonksu päringu sisu puudub."
+
+#: lib/phoenix_kit_billing/errors.ex:231
+#, elixir-autogen, elixir-format
+msgid "The webhook signature does not match."
+msgstr "Veebikonksu allkiri ei klapi."
+
+#: lib/phoenix_kit_billing/errors.ex:183
+#, elixir-autogen, elixir-format
+msgid "The webhook signature header is missing."
+msgstr "Veebikonksu allkirja päis puudub."
+
+#: lib/phoenix_kit_billing/errors.ex:142
+#, elixir-autogen, elixir-format
+msgid "The webhook signature is invalid."
+msgstr "Veebikonksu allkiri on vigane."
+
+#: lib/phoenix_kit_billing/errors.ex:143
+#, elixir-autogen, elixir-format
+msgid "The webhook timestamp is invalid."
+msgstr "Veebikonksu ajatempel on vigane."
+
+#: lib/phoenix_kit_billing/errors.ex:233
+#, elixir-autogen, elixir-format
+msgid "The webhook timestamp is too old."
+msgstr "Veebikonksu ajatempel on liiga vana."
+
+#: lib/phoenix_kit_billing/errors.ex:179
+#, elixir-autogen, elixir-format
+msgid "There are no payments to process."
+msgstr "Töödeldavaid makseid pole."
+
+#: lib/phoenix_kit_billing/errors.ex:122
+#, elixir-autogen, elixir-format
+msgid "This currency is in use and cannot be removed."
+msgstr "See valuuta on kasutusel ja seda ei saa eemaldada."
+
+#: lib/phoenix_kit_billing/errors.ex:174
+#, elixir-autogen, elixir-format
+msgid "This event exceeded the maximum number of retries."
+msgstr "See sündmus ületas korduskatsete maksimaalse arvu."
+
+#: lib/phoenix_kit_billing/errors.ex:123
+#, elixir-autogen, elixir-format
+msgid "This event has already been processed."
+msgstr "See sündmus on juba töödeldud."
+
+#: lib/phoenix_kit_billing/errors.ex:112
+#, elixir-autogen, elixir-format
+msgid "This has already been paid."
+msgstr "See on juba makstud."
+
+#: lib/phoenix_kit_billing/errors.ex:144
+#, elixir-autogen, elixir-format
+msgid "This invoice can no longer be edited."
+msgstr "Seda arvet ei saa enam muuta."
+
+#: lib/phoenix_kit_billing/errors.ex:149
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be paid in its current state."
+msgstr "Seda arvet ei saa praeguses olekus maksta."
+
+#: lib/phoenix_kit_billing/errors.ex:152
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be sent in its current state."
+msgstr "Seda arvet ei saa praeguses olekus saata."
+
+#: lib/phoenix_kit_billing/errors.ex:163
+#, elixir-autogen, elixir-format
+msgid "This invoice cannot be voided in its current state."
+msgstr "Seda arvet ei saa praeguses olekus tühistada."
+
+#: lib/phoenix_kit_billing/errors.ex:146
+#, elixir-autogen, elixir-format
+msgid "This invoice has not been paid."
+msgstr "Seda arvet ei ole makstud."
+
+#: lib/phoenix_kit_billing/errors.ex:191
+#, elixir-autogen, elixir-format
+msgid "This operation is not supported."
+msgstr "Seda toimingut ei toetata."
+
+#: lib/phoenix_kit_billing/errors.ex:206
+#, elixir-autogen, elixir-format
+msgid "This order can no longer be edited."
+msgstr "Seda tellimust ei saa enam muuta."
+
+#: lib/phoenix_kit_billing/errors.ex:204
+#, elixir-autogen, elixir-format
+msgid "This order cannot be cancelled in its current state."
+msgstr "Seda tellimust ei saa praeguses olekus tühistada."
+
+#: lib/phoenix_kit_billing/errors.ex:207
+#, elixir-autogen, elixir-format
+msgid "This order cannot be paid in its current state."
+msgstr "Seda tellimust ei saa praeguses olekus maksta."
+
+#: lib/phoenix_kit_billing/errors.ex:208
+#, elixir-autogen, elixir-format
+msgid "This order cannot be refunded."
+msgstr "Selle tellimuse eest ei saa raha tagastada."
+
+#: lib/phoenix_kit_billing/errors.ex:113
+#, elixir-autogen, elixir-format
+msgid "This payment has already been refunded."
+msgstr "See makse on juba tagastatud."
+
+#: lib/phoenix_kit_billing/errors.ex:216
+#, elixir-autogen, elixir-format
+msgid "This payment method cannot be used."
+msgstr "Seda makseviisi ei saa kasutada."
+
+#: lib/phoenix_kit_billing/errors.ex:224
+#, elixir-autogen, elixir-format
+msgid "This receipt cannot be sent in its current state."
+msgstr "Seda kviitungit ei saa praeguses olekus saata."
+
+#: lib/phoenix_kit_billing/errors.ex:189
+#, elixir-autogen, elixir-format
+msgid "This record cannot be paid in its current state."
+msgstr "Seda kirjet ei saa praeguses olekus maksta."
+
+#: lib/phoenix_kit_billing/errors.ex:190
+#, elixir-autogen, elixir-format
+msgid "This record cannot be refunded."
+msgstr "Selle kirje eest ei saa raha tagastada."
+
+#: lib/phoenix_kit_billing/errors.ex:185
+#, elixir-autogen, elixir-format
+msgid "This transaction is not a payment."
+msgstr "See tehing ei ole makse."
+
+#: lib/phoenix_kit_billing/errors.ex:186
+#, elixir-autogen, elixir-format
+msgid "This transaction is not a refund."
+msgstr "See tehing ei ole tagastamine."
+
+#: lib/phoenix_kit_billing/errors.ex:234
+#, elixir-autogen, elixir-format
+msgid "Transaction not found."
+msgstr "Tehingut ei leitud."
+
+#: lib/phoenix_kit_billing/errors.ex:250
+#, elixir-autogen, elixir-format
+msgid "Unexpected error: %{reason}"
+msgstr "Ootamatu viga: %{reason}"
+
+#: lib/phoenix_kit_billing/web/currencies.html.heex:147
+#, elixir-autogen, elixir-format
+msgid "Updated"
+msgstr "Uuendatud"
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:6
+#, elixir-autogen, elixir-format
+msgid "Your order history, invoices, and payments"
+msgstr "Teie tellimuste ajalugu, arved ja maksed"
+
+#: lib/phoenix_kit_billing/web/user_orders.html.heex:14
+#, elixir-autogen, elixir-format
+msgid "Your orders will appear here once you place one"
+msgstr "Teie tellimused ilmuvad siia pärast esimese tellimuse esitamist"

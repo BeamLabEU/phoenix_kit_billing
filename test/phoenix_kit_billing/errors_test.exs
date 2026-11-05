@@ -350,4 +350,21 @@ defmodule PhoenixKitBilling.ErrorsTest do
       assert Errors.message(changeset) == "name: can't be blank"
     end
   end
+
+  describe "message/1 under a supported locale" do
+    # These once had no msgid at all, so every locale rendered them in English.
+    for locale <- ~w(ru uk et),
+        reason <- [:card_declined, :invoice_not_voidable, :order_not_cancellable] do
+      test "#{reason} is translated in #{locale}" do
+        english = Errors.message(unquote(reason))
+
+        translated =
+          Gettext.with_locale(PhoenixKitBilling.Gettext, unquote(locale), fn ->
+            Errors.message(unquote(reason))
+          end)
+
+        refute translated == english
+      end
+    end
+  end
 end
