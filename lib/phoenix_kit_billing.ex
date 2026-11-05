@@ -2410,29 +2410,73 @@ defmodule PhoenixKitBilling do
 
   A new `order_number` of this year's shape with the configured prefix
   (`PREFIX-YYYY-NNNN`) lifts the year's counter to at least its NNNN, so the
-  counter never reaches it. The update opens a transaction, and locks the order
-  row first, only then.
+  counter never reaches it.
+
+  Takes a row lock on the order and decides on the stored row, not the struct's:
+  the order must still be a `draft` or `pending` one, and the status may only
+  move forward from the stored status (see `Order.changeset/2`). The attrs are
+  applied to the stored row.
+
+  Returns `{:ok, order}`, `{:error, :order_not_editable}`,
+  `{:error, :not_found}` when the order is gone, or `{:error, changeset}`.
+  Refusals are returned, not rolled back, so a transaction of the caller's stays
+  usable.
   """
   def update_order(%Order{} = order, attrs) do
-    if Order.editable?(order) do
+    # Decided on the stored row, under its lock: the struct may be from before
+    # another admin cancelled, confirmed or paid the order, and neither the
+    # editable check nor the forward-only status rule may run on that.
+    result =
+      unwrap_transaction(fn ->
+        case lock_order(order) do
+          nil -> {:error, :not_found}
+          locked -> update_locked_order(locked, attrs)
+        end
+      end)
+
+    case result do
+      {:ok, updated_order} ->
+        Events.broadcast_order_updated(updated_order)
+        {:ok, updated_order}
+
+      error ->
+        error
+    end
+  end
+
+  defp update_locked_order(locked, attrs) do
+    if Order.editable?(locked) do
       # Update billing_snapshot if billing_profile_uuid changed
-      attrs = maybe_update_billing_snapshot(order, attrs)
+      attrs = maybe_update_billing_snapshot(locked, attrs)
 
-      result =
-        order
-        |> Order.changeset(attrs)
-        |> update_numbered([order_number: "order"], fn -> lock_order_row(order) end)
-
-      case result do
-        {:ok, updated_order} ->
-          Events.broadcast_order_updated(updated_order)
-          {:ok, updated_order}
-
-        error ->
-          error
-      end
+      locked
+      |> Order.changeset(attrs)
+      |> update_numbered_locked(order_number: "order")
     else
       {:error, :order_not_editable}
+    end
+  end
+
+  # The stored order, locked `FOR NO KEY UPDATE` like `lock_order_row/1`, with
+  # the associations the caller's struct had loaded. `nil` for a vanished order.
+  defp lock_order(%Order{uuid: uuid} = order) do
+    Order
+    |> where([o], o.uuid == ^uuid)
+    |> lock("FOR NO KEY UPDATE")
+    |> repo().one()
+    |> case do
+      nil ->
+        nil
+
+      locked ->
+        Enum.reduce(Order.__schema__(:associations), locked, &carry_association(&1, &2, order))
+    end
+  end
+
+  defp carry_association(name, locked, caller) do
+    case Map.get(caller, name) do
+      %Ecto.Association.NotLoaded{} -> locked
+      loaded -> Map.put(locked, name, loaded)
     end
   end
 
@@ -4659,30 +4703,11 @@ defmodule PhoenixKitBilling do
     end)
   end
 
-  # An update that changes a number (`numbers`: field -> scope) lifts the
-  # counter past it in the same transaction, after `lock` has taken the row; any
-  # other update is a plain one.
-  defp update_numbered(%Ecto.Changeset{valid?: true} = changeset, numbers, lock) do
-    if number_floors(changeset, numbers) == [] do
-      repo().update(changeset)
-    else
-      repo().transaction(fn ->
-        lock.()
-
-        case update_numbered_locked(changeset, numbers) do
-          {:ok, record} -> record
-          {:error, changeset} -> repo().rollback(changeset)
-        end
-      end)
-    end
-  end
-
-  defp update_numbered(%Ecto.Changeset{} = changeset, _numbers, _lock),
-    do: repo().update(changeset)
-
-  # The same inside a transaction that already holds the row: lifts the counter,
-  # then updates in a savepoint, and returns the result as a value so a taken
-  # number does not doom the caller's transaction.
+  # In a transaction that already holds the row: an update that changes a number
+  # (`numbers`: field -> scope) lifts the counter past it, then updates; any other
+  # update is a plain one. Both run in a savepoint, and the result is returned as
+  # a value, so a failed update gives the counter back and does not doom the
+  # caller's transaction.
   defp update_numbered_locked(%Ecto.Changeset{valid?: true} = changeset, numbers) do
     year = current_year()
 
