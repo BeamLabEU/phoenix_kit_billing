@@ -133,6 +133,29 @@ defmodule PhoenixKitBilling.MigrationsTest do
     defp normalised(statements),
       do: Enum.map(statements, &(&1 |> String.replace(~r/\s+/, " ") |> String.trim()))
 
+    # V6's base tables come with the first version that needs them (see the
+    # moduledoc), so they appear in an older target's statements. A published
+    # version's own statements are what is left without them: V6's guarded
+    # currencies and payment-options blocks, and the first copy of the orders
+    # `CREATE TABLE` (V4 emits the same text again).
+    defp published(target) do
+      statements = Migrations.up_statements("public", target)
+
+      v6 =
+        Enum.filter(
+          statements,
+          &(&1 =~ ~r/to_regclass\('public\.phoenix_kit_(currencies|payment_options)'\) IS NULL/)
+        )
+
+      orders =
+        Enum.find(
+          statements,
+          &(&1 =~ ~r/CREATE TABLE IF NOT EXISTS public\.phoenix_kit_orders \(/)
+        )
+
+      statements -- Enum.reject([orders | v6], &is_nil/1)
+    end
+
     test "V1's published statements are frozen" do
       v1 = Migrations.up_statements("public", 1) |> normalised()
 
@@ -147,7 +170,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
     test "V2's published statements are frozen" do
       v2_only =
-        (Migrations.up_statements("public", 2) -- Migrations.up_statements("public", 1))
+        (published(2) -- published(1))
         |> normalised()
 
       assert v2_only == [
@@ -161,7 +184,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
 
     test "V3's published statements are frozen" do
       v3_only =
-        (Migrations.up_statements("public", 3) -- Migrations.up_statements("public", 2))
+        (published(3) -- published(2))
         |> normalised()
 
       assert v3_only == [
@@ -232,7 +255,7 @@ defmodule PhoenixKitBilling.MigrationsTest do
     # literal-list style as V1-V3 above.
     test "V4's statement content is fingerprinted" do
       v4_only =
-        (Migrations.up_statements("public", 4) -- Migrations.up_statements("public", 3))
+        (published(4) -- published(3))
         |> normalised()
 
       assert length(v4_only) == 75
@@ -671,8 +694,11 @@ defmodule PhoenixKitBilling.MigrationsTest do
     test "each direction executes its own builder" do
       source = File.read!(@source)
 
-      assert source =~ ~r/up_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,
-             "up/1 no longer pipes up_statements/2 into execute/1 — whatever it " <>
+      # up/1 builds the list before its marker guard (so a bad target is
+      # refused even on a database already past it), then executes that list.
+      assert source =~ ~r/statements = up_statements\(prefix, target\)/ and
+               source =~ ~r/Enum\.each\(statements, &execute\/1\)/,
+             "up/1 no longer executes the list up_statements/2 builds — whatever it " <>
                "runs instead is not what the up_statements-based tests above check"
 
       assert source =~ ~r/down_statements\(target\)\s*\|>\s*Enum\.each\(&execute\/1\)/,

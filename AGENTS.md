@@ -442,7 +442,10 @@ in hosts; the test suite applies it by executing
   inside the `DO` block that creates the table — so they appear only on a
   database this chain builds and never over a host's own rows (re-seeding with
   `ON CONFLICT DO NOTHING` would restore deleted ones, and EUR as default would
-  collide with V2's unique index). A target below 6 builds the old chain. Core
+  collide with V2's unique index). V6's tables are not gated on `target >= 6`:
+  each comes with the first version that needs it (currencies from 2, orders
+  from 3, payment options from 4), so a host's migration file pinned below 6
+  still builds on a database where core created none of these (core 3.x). Core
   still creates all of these first; since V6 this chain builds them alone
   (`test/phoenix_kit_billing/integration/migrations_build_alone_test.exs`, seeds in
   `migrations_adoption_test.exs`). A shape change is a new version here, never a
