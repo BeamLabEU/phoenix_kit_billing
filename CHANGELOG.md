@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.27.0 - 2026-11-06
+
+Subscriptions pay in advance, at the price they started on, with the tax inside that
+price. Marking an order paid no longer passes over an invoice that can still be paid.
+Core 3.4.0 is now the floor.
+
+**Upgrading.** Needs core 3.4.0: run `mix phoenix_kit.update`, for core's V228 and its
+new `phoenix_kit.js`. Billing itself has no migration. Read "Changes that can break a
+caller" below. A subscriber whose plan got dearer since signing up goes back to the
+stored price at the next renewal: to keep them on the current one, use *Apply price to
+subscribers* once after deploying. Subscriptions already running keep their dates,
+trials included: only a new subscription starts on the new timing.
+
+### Added
+
+- **`apply_plan_price/1`, and *Apply price to subscribers* on the Subscription Types
+  page.** Editing a plan changes what new subscribers pay; this is the deliberate step
+  that moves the running subscriptions of the plan to its current price, name and
+  currency, from their next period. It returns how many changed and sends the
+  subscribers nothing, so tell them first. An invoice already made keeps its amount.
+- `tax_rate_for/1`: the standard VAT rate of a billing profile's country, or the default
+  rate without a profile, and zero while tax is off.
+- `Invoice.split_included_tax/2`: an amount with the tax inside it, as `{net, tax}`.
+- `Workers.SubscriptionCharge.first_charge/1` and `mark_past_due/1`.
+- An `Errors` message for `{:charged_not_recorded, reason}`.
+
+### Changed
+
+Changes that can break a caller:
+
+- **Requires `phoenix_kit >= 3.4.0 and < 4.0.0`** (was `>= 2.65.0`). No API of 3.4.0
+  needs it: it is the core this release is built and tested against. A host on an older
+  core updates core first.
+- **`create_subscription/2` charges a plan with no trial, there and then.** A host that
+  takes the first payment itself and then calls this would charge twice: use
+  `trial_days:` to start a subscription without a charge. It now needs a
+  `:payment_method_uuid` (`:no_payment_method`, nothing created) and refuses to run in a
+  transaction, whose rollback would lose the record of the payment (`:in_transaction`).
+  A declined charge returns the reason: the subscription did not start, and stays
+  cancelled with its invoice void as the record of the attempt. A charge the ledger
+  refuses returns `{:charged_not_recorded, reason}` and leaves it past due, for an
+  operator. `subscription_created` goes out once the subscription is paid.
+- **Renewals bill `subscription.price`, `currency` and `plan_name`, not the plan's.**
+  Editing a plan no longer reprices its subscribers.
+- `change_subscription_type/3` moves the stored price, name and currency along with the
+  plan, from the next period. It refuses a plan that does not exist
+  (`:subscription_type_not_found`), which used to raise or clear the plan.
+- `mark_order_paid/2` refuses an order with a draft, sent or overdue invoice outside the
+  trash (`:order_has_open_invoices`). It records no payment, so the invoice could still
+  be paid and the money would be missing from the ledger. `mark_invoice_paid/2` settles
+  such an order. A paid invoice does not count, and neither does one that is void.
+
+Other changes:
+
+- A plan's price has the tax inside it. With tax on, a subscription's invoice shows the
+  net and the tax and the card is charged the same. A renewal invoice used to show no
+  tax. An order still adds its tax on top.
+- A trial's period is the trial, so it is charged when it ends instead of a whole period
+  later, and the daily run leaves it alone until then instead of charging up to a day
+  early. Other subscriptions are still picked up 24 hours ahead.
+- A subscription's invoice carries the buyer's details from its billing profile, and its
+  notes read "Subscription: <name>", as the first one is no renewal.
+- The subscription list and detail pages show what the subscription pays, not what the
+  plan costs now.
+- The new subscription form says when the card will be charged, and its button disables
+  itself while saving, as a second click would charge again. The plan form says that the
+  price includes tax.
+
+### Fixed
+
+- A subscription could be used for a whole period and cancelled without ever paying: no
+  plan took a first payment, and cancelling takes no final one.
+- `Order.get_country_tax_rate/1`, `calculate_totals_for_country/3` and the order form
+  raised on a VAT rate with a fraction, like Finland's 25.5%. Core's
+  `CountryData.get_standard_vat_rate/1` hands it to `Decimal.new/1`, so billing no longer
+  calls it.
+- A free plan went to the provider for a charge of nothing, which is refused, and ended
+  up past due and cancelled. It now moves to its next period with no invoice.
+
 ## 0.26.0 - 2026-11-05
 
 Subscriptions are charged through one invoice per period, so dunning reaches the
