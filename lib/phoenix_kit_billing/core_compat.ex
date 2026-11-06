@@ -63,7 +63,6 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Utils.CountryData, :eu_member?, 1},
     {PhoenixKit.Utils.CountryData, :get_country_name, 1},
     {PhoenixKit.Utils.CountryData, :get_standard_vat_percent, 1},
-    {PhoenixKit.Utils.CountryData, :get_standard_vat_rate, 1},
     {PhoenixKit.Utils.CountryData, :get_subdivision_label, 1},
     {PhoenixKit.Users.Auth, :get_user, 1},
     {PhoenixKit.Users.Auth, :list_users_paginated, 1},

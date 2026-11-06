@@ -183,6 +183,16 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
            |> assign(:order, order)
            |> put_flash(:info, gettext("Order marked as paid"))}
 
+        {:error, :order_has_open_invoices} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext(
+               "This order has an open invoice. Mark that invoice as paid: it records the payment and settles the order."
+             )
+           )}
+
         {:error, reason} ->
           {:noreply,
            put_flash(

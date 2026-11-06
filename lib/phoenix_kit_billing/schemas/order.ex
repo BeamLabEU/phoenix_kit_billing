@@ -658,8 +658,7 @@ defmodule PhoenixKitBilling.Order do
       "120.00"
   """
   def calculate_totals_for_country(line_items, country_code, discount \\ Decimal.new("0")) do
-    tax_rate = CountryData.get_standard_vat_rate(country_code)
-    calculate_totals(line_items, tax_rate, discount)
+    calculate_totals(line_items, get_country_tax_rate(country_code), discount)
   end
 
   @doc """
@@ -674,7 +673,12 @@ defmodule PhoenixKitBilling.Order do
       #Decimal<0>
   """
   def get_country_tax_rate(country_code) do
-    CountryData.get_standard_vat_rate(country_code)
+    # Not `CountryData.get_standard_vat_rate/1`: it hands the rate to `Decimal.new/1`,
+    # which raises on one with a fraction, like Finland's 25.5.
+    country_code
+    |> CountryData.get_standard_vat_percent()
+    |> to_decimal()
+    |> Decimal.div(100)
   end
 
   defp to_decimal(%Decimal{} = d), do: d

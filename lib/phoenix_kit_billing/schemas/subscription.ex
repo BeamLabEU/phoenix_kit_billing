@@ -20,10 +20,20 @@ defmodule PhoenixKitBilling.Subscription do
   - `paused` - Subscription temporarily paused by user
   - `cancelled` - Subscription ended
 
+  ## Paying
+
+  A subscription pays in advance: a plan with no trial at signup, a trial when it ends
+  (a trial's period is the trial), and then at the end of each period for the next one.
+
+  It pays `price`, in `currency`: a snapshot of the plan, with the tax inside it. An
+  edit of the plan changes neither; see `PhoenixKitBilling.change_subscription_type/3`
+  and `PhoenixKitBilling.apply_plan_price/1`.
+
   ## Renewal Process
 
   Renewals are handled by Oban workers:
-  1. `SubscriptionRenewalWorker` runs daily, checks subscriptions near period end
+  1. `SubscriptionRenewalWorker` runs daily, checks subscriptions near period end, and
+     trials that are over
   2. Creates invoice for the subscription
   3. Charges saved payment method via provider
   4. On success: extends `current_period_end`
@@ -52,7 +62,7 @@ defmodule PhoenixKitBilling.Subscription do
   @primary_key {:uuid, UUIDv7, autogenerate: true}
 
   schema "phoenix_kit_subscriptions" do
-    # Plan snapshot (copied from subscription type at creation)
+    # Plan snapshot: what the subscription pays, whatever the plan costs now
     field(:plan_name, :string)
     field(:price, :decimal)
     field(:currency, :string, default: "EUR")

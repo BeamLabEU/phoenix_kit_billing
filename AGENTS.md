@@ -209,7 +209,7 @@ lib/phoenix_kit_billing/
 ├── providers/                           # Provider behaviour (10 callbacks, `detach_payment_method/1` optional), registry, 4 impls, types
 ├── schemas/                             # 11 Ecto schemas
 ├── utils/                               # IBAN data, webhook_processor.ex
-├── workers/                             # Oban: subscription renewal, dunning, invoice and order events; subscription_charge.ex is what the two subscription workers share
+├── workers/                             # Oban: subscription renewal, dunning, invoice and order events; subscription_charge.ex is what signup and the two subscription workers share
 └── web/
     ├── routes.ex                        # generate/1 (webhooks) + admin_routes/0 + admin_locale_routes/0
     ├── webhook_controller.ex            # stripe / paypal / razorpay / everypay actions
@@ -266,7 +266,10 @@ locked row, so a stale struct cannot undo a cancellation. Its total and currency
 cannot change while it has an invoice that is neither void nor in the trash
 (`:order_amount_invoiced`): a settled invoice settles its order, so the order would
 be paid for an amount nobody billed. `:invoice_out_of_date` stays for rows older than
-that rule. Trashing and restoring do not
+that rule. `mark_order_paid/2` records no payment, so it refuses an order with a
+draft, sent or overdue invoice outside the trash (`:order_has_open_invoices`), which
+could still be paid: `mark_invoice_paid/2` settles such an order. It takes a paid
+invoice, as that is how an order its invoice failed to move is put right. Trashing and restoring do not
 touch `updated_at`. A void invoice of an order in the trash stays in the invoice
 lists: it is an issued document, and only a draft can be trashed.
 `OrderPayment.start_order_payment/2` refuses an order in the trash (`:order_trashed`)
@@ -281,13 +284,28 @@ and skips an invoice of it that is in the trash, making a new one.
   availability checks, routing to the right implementation.
 - **`Utils.WebhookProcessor`** — normalizes provider webhooks into transactions
   and status updates.
-- **`Workers.SubscriptionCharge`** — what the renewal and dunning workers share. A
-  period has one invoice, found by `subscription_uuid` and
+- **`Workers.SubscriptionCharge`** — what signup and the renewal and dunning workers
+  share. A period has one invoice, found by `subscription_uuid` and
   `metadata["period_end"]`, committed before the provider call so no counter waits on
   a charge and a retry finds it. A period paid some other way is not charged again. A
   decline is a handled outcome, never `{:error, _}` from `perform/1`: Oban would
   retry it within seconds and use up the dunning attempts. A charge the ledger refused
   (`:charged_not_recorded`) is not retried at all.
+- **A subscription pays in advance, at the price it stored, with the tax inside it.**
+  `create_subscription/2` charges a plan with no trial on the spot, so it needs a
+  `:payment_method_uuid` and refuses to run in a transaction (`:in_transaction`). It
+  inserts the row `active` with a period of no length, which the payment ends: a crash
+  there leaves it due, and the daily run retries it on the same invoice. A decline
+  cancels the row and voids the invoice, and the reason is returned. A trial's period
+  is the trial, charged once it is over; the daily run leaves trials alone until then,
+  and takes other subscriptions up to 24 hours early. A free plan moves on with no
+  invoice and no provider call. Renewals bill `subscription.price`,
+  `subscription.currency` and `subscription.plan_name`, never the plan's:
+  `change_subscription_type/3` and `apply_plan_price/1` are what move them, and both
+  leave an invoice already made alone. The invoice shows the net and the tax at
+  `tax_rate_for/1`: the standard rate of the billing profile's country, or the default
+  rate without a profile, and none while tax is off. An order adds its tax on top; a
+  plan's is inside the price.
 - **`InvoiceEvents` and `OrderEvents`** — durable hooks for other modules: one Oban
   job per (event, handler), enqueued in the transaction that changed the record,
   delivered at least once with the record re-read. A handler is found through

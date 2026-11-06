@@ -15,6 +15,7 @@ defmodule PhoenixKitBilling.InvoiceOrderGuardsTest do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Order}
   alias PhoenixKitBilling.Web.InvoiceDetail.Helpers
+  alias PhoenixKitBilling.Workers.OrderEventWorker
 
   setup do
     start_supervised!({Oban, repo: Repo, testing: :manual})
@@ -36,6 +37,84 @@ defmodule PhoenixKitBilling.InvoiceOrderGuardsTest do
     invoice
     |> Ecto.Changeset.change(status: status)
     |> Repo.update!()
+  end
+
+  describe "mark_order_paid/2 with an invoice on the order" do
+    defp confirmed(order) do
+      {:ok, confirmed} = Billing.confirm_order(order)
+      confirmed
+    end
+
+    defp order_events, do: all_enqueued(worker: OrderEventWorker)
+
+    for status <- ~w(draft sent overdue) do
+      test "refuses a #{status} invoice: it can still be paid", %{order: order} do
+        confirmed = confirmed(order)
+        invoice!(confirmed, unquote(status))
+
+        assert {:error, :order_has_open_invoices} = Billing.mark_order_paid(confirmed)
+
+        assert Repo.get!(Order, order.uuid).status == "confirmed"
+        assert order_events() == []
+      end
+    end
+
+    test "refuses a part-paid invoice", %{order: order} do
+      confirmed = confirmed(order)
+      invoice = invoice!(confirmed)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{amount: Decimal.new("10.00"), payment_method: "bank"},
+          nil
+        )
+
+      assert {:error, :order_has_open_invoices} = Billing.mark_order_paid(confirmed)
+    end
+
+    test "takes an order whose invoice is void", %{order: order} do
+      confirmed = confirmed(order)
+      {:ok, _} = confirmed |> invoice!() |> Billing.void_invoice("Wrong amount")
+
+      assert {:ok, %Order{status: "paid"}} = Billing.mark_order_paid(confirmed)
+    end
+
+    test "takes an order whose invoice is in the trash", %{order: order} do
+      confirmed = confirmed(order)
+      {:ok, _} = confirmed |> invoice!("draft") |> Billing.trash_invoice(nil)
+
+      assert {:ok, %Order{status: "paid"}} = Billing.mark_order_paid(confirmed)
+    end
+
+    test "takes an order left unpaid by its paid invoice: this is how it is put right", %{
+      order: order
+    } do
+      confirmed = confirmed(order)
+      invoice!(confirmed, "paid")
+
+      assert {:ok, %Order{status: "paid"}} = Billing.mark_order_paid(confirmed)
+    end
+
+    test "takes an order with no invoice", %{order: order} do
+      assert {:ok, %Order{status: "paid"}} = order |> confirmed() |> Billing.mark_order_paid()
+    end
+
+    test "says an order cannot be paid before it says why not", %{order: order} do
+      invoice!(order)
+
+      assert {:error, :order_not_payable} = Billing.mark_order_paid(order)
+    end
+
+    test "does not stop the invoice paying the order, with another invoice open", %{order: order} do
+      confirmed = confirmed(order)
+      invoice = invoice!(confirmed)
+      invoice!(confirmed)
+
+      assert {:ok, %Invoice{status: "paid"}} = Billing.mark_invoice_paid(invoice)
+
+      assert Repo.get!(Order, order.uuid).status == "paid"
+    end
   end
 
   describe "update_order/2 with an invoice on the order" do

@@ -11,7 +11,6 @@ defmodule PhoenixKitBilling.NumberSequencesRenewalTest do
 
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Subscription
-  alias PhoenixKitBilling.SubscriptionType
   alias PhoenixKitBilling.Workers.SubscriptionRenewalWorker
 
   setup do
@@ -31,11 +30,11 @@ defmodule PhoenixKitBilling.NumberSequencesRenewalTest do
       })
 
     {:ok, subscription} =
-      Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
+      Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid, trial_days: 30})
 
-    # A plan whose currency is not a code the invoice accepts, written around
-    # its changeset: the renewal invoice then fails validation.
-    Repo.update_all(from(t in SubscriptionType, where: t.uuid == ^type.uuid),
+    # A stored currency that is not a code the invoice accepts, written around
+    # the changeset: the renewal invoice then fails validation.
+    Repo.update_all(from(s in Subscription, where: s.uuid == ^subscription.uuid),
       set: [currency: "XX"]
     )
 

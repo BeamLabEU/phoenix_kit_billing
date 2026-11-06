@@ -112,7 +112,7 @@ defmodule PhoenixKitBilling.Web.HeaderTrailTest do
       })
 
     {:ok, subscription} =
-      Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
+      Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid, trial_days: 14})
 
     assert %{crumbs: [%{label: "Subscriptions"}], title: "Team"} =
              trail(conn, "/en/admin/billing/subscriptions/#{subscription.uuid}")

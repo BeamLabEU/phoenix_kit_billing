@@ -420,7 +420,7 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
       assert Billing.get_subscription("not-a-uuid") == nil
     end
 
-    test "create_subscription/2 with no trial is active" do
+    test "create_subscription/2 with no trial needs a card to charge" do
       user = fixture_user()
 
       {:ok, type} =
@@ -430,10 +430,8 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
           price: Decimal.new("29.99")
         })
 
-      assert {:ok, sub} =
+      assert {:error, :no_payment_method} =
                Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
-
-      assert sub.status == "active"
     end
 
     test "status transitions: cancel / pause / resume" do
@@ -446,7 +444,12 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
           price: Decimal.new("29.99")
         })
 
-      {:ok, sub} = Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
+      {:ok, sub} =
+        Billing.create_subscription(user.uuid, %{
+          subscription_type_uuid: type.uuid,
+          trial_days: 14
+        })
+
       assert {:ok, paused} = Billing.pause_subscription(sub)
       assert paused.status == "paused"
       assert {:ok, resumed} = Billing.resume_subscription(paused)
@@ -480,7 +483,12 @@ defmodule PhoenixKitBilling.Integration.ContextTest do
           last4: "4242"
         })
 
-      {:ok, sub} = Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
+      {:ok, sub} =
+        Billing.create_subscription(user.uuid, %{
+          subscription_type_uuid: type.uuid,
+          trial_days: 14
+        })
+
       assert is_nil(sub.payment_method_uuid)
 
       assert {:ok, updated} =

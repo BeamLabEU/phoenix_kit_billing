@@ -593,6 +593,19 @@ defmodule PhoenixKitBilling.Invoice do
   end
 
   @doc """
+  Splits an amount that has the tax inside it into `{net, tax}`. The two always add up
+  to the amount: the rounding is settled in the tax.
+
+  `rate` is a fraction (`0.24` for 24%).
+  """
+  @spec split_included_tax(Decimal.t(), Decimal.t()) :: {Decimal.t(), Decimal.t()}
+  def split_included_tax(%Decimal{} = amount, %Decimal{} = rate) do
+    net = amount |> Decimal.div(Decimal.add(1, rate)) |> Decimal.round(2)
+
+    {net, Decimal.sub(amount, net)}
+  end
+
+  @doc """
   Checks if invoice is fully paid (paid_amount >= total).
   """
   def fully_paid?(%__MODULE__{total: total, paid_amount: paid_amount}) do

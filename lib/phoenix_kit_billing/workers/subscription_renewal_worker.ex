@@ -3,7 +3,8 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   Oban worker for processing subscription renewals.
 
   This worker runs daily and handles:
-  - Finding subscriptions due for renewal (within 24 hours of period end)
+  - Finding subscriptions due for renewal (within 24 hours of period end, and a trial
+    once it is over)
   - Creating invoices for the renewal
   - Charging saved payment methods via providers
   - Updating subscription periods on success
@@ -26,8 +27,8 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
 
   ## Process Flow
 
-  1. Query subscriptions where `current_period_end` is within 24 hours, and those set
-     to cancel at the period end whose period is over
+  1. Query subscriptions where `current_period_end` is within 24 hours, trials that are
+     over, and those set to cancel at the period end whose period is over
   2. For each subscription:
      a. End it if it is set to cancel and its period is over
      b. Find or create the invoice of the period
@@ -54,7 +55,6 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   import Ecto.Query
 
   alias PhoenixKit.RepoHelper
-  alias PhoenixKit.Settings
   alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKitBilling.Subscription
   alias PhoenixKitBilling.Workers.{SubscriptionCharge, SubscriptionDunningWorker}
@@ -129,7 +129,7 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
     case result do
       # Past due, so no renewal charges it again, and no dunning for the same reason.
       {:error, {:charged_not_recorded, _reason}} ->
-        mark_past_due(subscription)
+        SubscriptionCharge.mark_past_due(subscription)
 
       other ->
         other
@@ -148,11 +148,11 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   end
 
   defp handle_payment_failure(%Subscription{} = subscription, reason) do
-    {:ok, past_due, grace_period_end} = mark_past_due_with_grace(subscription)
+    {:ok, past_due} = SubscriptionCharge.mark_past_due(subscription)
 
     Logger.warning(
       "Subscription #{subscription.uuid} renewal failed: #{failure_message(reason)}. " <>
-        "Grace period until #{grace_period_end}"
+        "Grace period until #{past_due.grace_period_end}"
     )
 
     schedule_dunning(subscription.uuid)
@@ -162,25 +162,6 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
 
   defp failure_message(:no_payment_method), do: "No payment method configured"
   defp failure_message(reason), do: inspect(reason)
-
-  defp mark_past_due(%Subscription{} = subscription) do
-    {:ok, past_due, _grace_period_end} = mark_past_due_with_grace(subscription)
-    {:ok, past_due}
-  end
-
-  defp mark_past_due_with_grace(%Subscription{} = subscription) do
-    grace_days =
-      Settings.get_setting("billing_subscription_grace_days", "3") |> String.to_integer()
-
-    grace_period_end = DateTime.add(UtilsDate.utc_now(), grace_days, :day)
-
-    {:ok, past_due} =
-      subscription
-      |> Subscription.past_due_changeset(grace_period_end)
-      |> RepoHelper.repo().update()
-
-    {:ok, past_due, grace_period_end}
-  end
 
   defp schedule_dunning(subscription_uuid) do
     # Schedule dunning worker to retry in 24 hours
@@ -198,13 +179,16 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
     cutoff = DateTime.add(now, 24, :hour)
 
     # Find subscriptions where:
-    # - Status is active or trialing, and the period ends within the next 24 hours
+    # - Status is active, and the period ends within the next 24 hours
+    # - Status is trialing, and the trial is over: it was promised up to its last day
     # - Or it is set to cancel and the period is over: nothing else ends those, and
     #   `active?/1` would say they are in service for good
     from(s in Subscription,
       where:
-        (s.cancel_at_period_end == false and s.status in ["active", "trialing"] and
+        (s.cancel_at_period_end == false and s.status == "active" and
            s.current_period_end <= ^cutoff) or
+          (s.cancel_at_period_end == false and s.status == "trialing" and
+             s.current_period_end <= ^now) or
           (s.cancel_at_period_end == true and s.status != "cancelled" and
              s.current_period_end <= ^now)
     )

@@ -109,11 +109,17 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
     {:ok, subscription} =
       Billing.create_subscription(user.uuid, %{
         subscription_type_uuid: type.uuid,
-        payment_method_uuid: method.uuid
+        payment_method_uuid: method.uuid,
+        trial_days: 30
       })
 
     subscription
-    |> Ecto.Changeset.change(Map.merge(%{current_period_end: in_seconds(3600)}, attrs))
+    |> Ecto.Changeset.change(
+      Map.merge(
+        %{status: "active", trial_end: nil, current_period_end: in_seconds(3600)},
+        attrs
+      )
+    )
     |> Repo.update!()
   end
 

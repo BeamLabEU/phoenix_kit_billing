@@ -325,8 +325,8 @@ defmodule PhoenixKitBilling.Migrations do
     1. An order row taken `FOR UPDATE`: `trash_order/2`, `restore_order/2`,
        `delete_order/1`, an `update_order/2` that names the number (the unique
        index makes that write a `FOR UPDATE` anyway, so it is taken up front), and
-       one that names the total or the currency (so that it waits for an invoice
-       being inserted, which it could not see yet).
+       one that names the total or the currency, and `mark_order_paid/2` (both so
+       that they wait for an invoice being inserted, which they could not see yet).
        **Never take an order `FOR UPDATE` while holding a counter** -
        the invoice counter or any other - **or another document's lock.** These
        paths take their row first and then, if at all, a counter.

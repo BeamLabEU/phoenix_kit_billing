@@ -110,6 +110,7 @@ defmodule PhoenixKitBilling.Errors do
           | :subscription_type_not_found
           | :timestamp_too_old
           | :transaction_not_found
+          | {:charged_not_recorded, term()}
           | :unknown_event
 
   @doc """
@@ -265,6 +266,10 @@ defmodule PhoenixKitBilling.Errors do
   def message(:timestamp_too_old), do: gettext("The webhook timestamp is too old.")
   def message(:transaction_not_found), do: gettext("Transaction not found.")
   def message(:unknown_event), do: gettext("The webhook event type is not recognized.")
+
+  def message({:charged_not_recorded, _reason}) do
+    gettext("The payment was taken but could not be recorded. Reconcile it by hand.")
+  end
 
   def message(%Ecto.Changeset{} = changeset) do
     changeset

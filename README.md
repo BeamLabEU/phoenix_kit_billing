@@ -84,14 +84,27 @@ alias PhoenixKitBilling
 # Create a subscription type (plan)
 {:ok, type} = Billing.create_subscription_type(%{
   name: "Pro Monthly",
+  slug: "pro-monthly",
   interval: "month",
   price: Decimal.new("19.99"),
   currency: "EUR"
 })
 
-# Create a subscription for a user
-{:ok, subscription} = Billing.create_subscription(user, type)
+# Create a subscription for a user. This charges the card now, for the first period.
+{:ok, subscription} =
+  Billing.create_subscription(user.uuid, %{
+    subscription_type_uuid: type.uuid,
+    payment_method_uuid: method.uuid
+  })
+
+# A trial takes no card and no money: it is charged when it ends.
+{:ok, subscription} =
+  Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid, trial_days: 14})
 ```
+
+A subscription pays in advance, at the price it started on. Editing a plan changes what new subscribers pay; `Billing.apply_plan_price/1` moves the existing ones, and sends them nothing. A plan's price has the tax inside it: with tax enabled, the invoice splits it into net and tax, and the card is charged the same.
+
+A declined first charge leaves no running subscription: `create_subscription/2` returns the reason, and the row stays cancelled with its invoice void. It charges a card, so it cannot be called inside a transaction (`:in_transaction`).
 
 Subscription renewals and failed-payment retries (dunning) are handled automatically by Oban workers.
 
@@ -416,7 +429,7 @@ lib/
     ├── workers/
     │   ├── invoice_event_worker.ex          # Oban: durable invoice events
     │   ├── order_event_worker.ex            # Oban: durable order events
-    │   ├── subscription_charge.ex           # What renewal and dunning share: one invoice per period
+    │   ├── subscription_charge.ex           # What signup, renewal and dunning share: one invoice per period
     │   ├── subscription_renewal_worker.ex   # Oban: subscription renewals
     │   └── subscription_dunning_worker.ex   # Oban: failed payment retries
     └── web/                          # Admin LiveViews, controllers, components

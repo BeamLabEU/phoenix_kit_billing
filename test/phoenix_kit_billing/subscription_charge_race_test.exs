@@ -67,13 +67,16 @@ defmodule PhoenixKitBilling.SubscriptionChargeRaceTest do
     {:ok, subscription} =
       Billing.create_subscription(user.uuid, %{
         subscription_type_uuid: type.uuid,
-        payment_method_uuid: method.uuid
+        payment_method_uuid: method.uuid,
+        trial_days: 30
       })
 
     ends = DateTime.utc_now() |> DateTime.add(3600, :second) |> DateTime.truncate(:second)
 
     subscription =
-      subscription |> Ecto.Changeset.change(current_period_end: ends) |> Repo.update!()
+      subscription
+      |> Ecto.Changeset.change(status: "active", trial_end: nil, current_period_end: ends)
+      |> Repo.update!()
 
     on_exit(fn ->
       Application.delete_env(:phoenix_kit_billing, :stripe_req_options)
@@ -90,7 +93,7 @@ defmodule PhoenixKitBilling.SubscriptionChargeRaceTest do
       Sandbox.mode(Repo, :manual)
     end)
 
-    %{subscription: subscription}
+    %{subscription: subscription, user: user, type: type, method: method}
   end
 
   defp renew(subscription) do
@@ -129,6 +132,37 @@ defmodule PhoenixKitBilling.SubscriptionChargeRaceTest do
 
     assert_received {:second, second, nil}
     assert {:ok, :skipped} = Task.await(second, 5_000)
+    assert :counters.get(charges, 1) == 1
+  end
+
+  test "the daily run that meets a first charge in flight waits, and charges nothing", %{
+    user: user,
+    type: type,
+    method: method
+  } do
+    charges = :counters.new(1, [])
+    test_pid = self()
+
+    stub_charge(charges, fn ->
+      started =
+        Repo.one!(
+          from(s in Subscription,
+            where: s.user_uuid == ^user.uuid and s.current_period_end <= ^DateTime.utc_now()
+          )
+        )
+
+      worker = Task.async(fn -> renew(started) end)
+      send(test_pid, {:worker, worker, Task.yield(worker, 300)})
+    end)
+
+    assert {:ok, %Subscription{status: "active"}} =
+             Billing.create_subscription(user.uuid, %{
+               subscription_type_uuid: type.uuid,
+               payment_method_uuid: method.uuid
+             })
+
+    assert_received {:worker, worker, nil}
+    assert {:ok, :skipped} = Task.await(worker, 5_000)
     assert :counters.get(charges, 1) == 1
   end
 

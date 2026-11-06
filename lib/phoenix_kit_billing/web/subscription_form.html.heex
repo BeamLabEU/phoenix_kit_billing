@@ -347,8 +347,10 @@
             </button>
           <% else %>
             <button
+              id="create-subscription-button"
               type="button"
               phx-click="save"
+              phx-disable-with={gettext("Creating...")}
               class="btn btn-primary"
               disabled={is_nil(@selected_user) || is_nil(@selected_subscription_type_uuid)}
             >
@@ -451,6 +453,19 @@
                 <% end %>
               <% end %>
             </div>
+
+            <%= if @live_action != :edit do %>
+              <% note =
+                first_charge_note(
+                  @subscription_types,
+                  @selected_subscription_type_uuid,
+                  @enable_trial,
+                  @trial_days
+                ) %>
+              <%= if note do %>
+                <p class="text-sm text-base-content/60 mt-2">{note}</p>
+              <% end %>
+            <% end %>
           </div>
         </div>
       </div>

@@ -63,6 +63,8 @@ defmodule PhoenixKitBilling.BillingProfile do
   alias PhoenixKit.Utils.CountryData
   alias PhoenixKit.Utils.Date, as: UtilsDate
 
+  @type t :: %__MODULE__{}
+
   @primary_key {:uuid, UUIDv7, autogenerate: true}
   @valid_types ~w(individual company)
 

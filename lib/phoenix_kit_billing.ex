@@ -66,6 +66,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
   alias PhoenixKitBilling.Transaction
+  alias PhoenixKitBilling.Workers.SubscriptionCharge
   alias PhoenixKitWeb.Live.Settings.Organization
 
   require Logger
@@ -613,6 +614,18 @@ defmodule PhoenixKitBilling do
       Decimal.new("0")
     end
   end
+
+  @doc """
+  Returns the rate a document for this billing profile is taxed at, as a fraction: the
+  standard VAT rate of the profile's country, or `get_tax_rate/0` without a profile.
+  Zero while tax is disabled.
+  """
+  @spec tax_rate_for(BillingProfile.t() | nil) :: Decimal.t()
+  def tax_rate_for(%BillingProfile{country: country}) when is_binary(country) do
+    if tax_enabled?(), do: Order.get_country_tax_rate(country), else: Decimal.new("0")
+  end
+
+  def tax_rate_for(_no_profile), do: get_tax_rate()
 
   @doc """
   Returns the default tax rate as integer percentage (e.g., 20 for 20%).
@@ -2582,13 +2595,22 @@ defmodule PhoenixKitBilling do
   inside your own transaction only if holding that lock until commit is fine.
 
   Returns `{:ok, order}`, `{:error, :order_not_payable}` when the stored status
-  is not `"confirmed"`, or `{:error, changeset}`.
+  is not `"confirmed"`, `{:error, :order_has_open_invoices}`, or `{:error, changeset}`.
+
+  This records no payment, so it is for an order with no invoice waiting to be paid.
+  With one, a draft, sent or overdue invoice that is not in the trash, it is refused:
+  the invoice could still be paid, and the money would be missing from the ledger.
+  `mark_invoice_paid/2` is the way to settle that order. The order is taken `FOR
+  UPDATE`, so an invoice still being created is waited for and then counted.
 
   Enqueues the durable `:paid` event (`PhoenixKitBilling.OrderEvents`) in the same
   transaction.
   """
   def mark_order_paid(%Order{} = order, opts \\ []) do
-    case pay_order(order, opts) do
+    result =
+      transition_order(order, &pay_uninvoiced_order(&1, opts), &lock_order_row_for_update/1)
+
+    case result do
       {:ok, paid_order} ->
         Events.broadcast_order_paid(paid_order)
         {:ok, paid_order}
@@ -2598,22 +2620,40 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp pay_order(order, opts) do
-    transition_order(order, fn current ->
-      if Order.payable?(current) do
-        changeset = Order.status_changeset(current, "paid")
+  defp pay_uninvoiced_order(current, opts) do
+    if Order.payable?(current) and unsettled_invoices?(current.uuid),
+      do: {:error, :order_has_open_invoices},
+      else: pay_locked_order(current, opts)
+  end
 
-        changeset =
-          case opts[:payment_method] do
-            nil -> changeset
-            pm -> Ecto.Changeset.put_change(changeset, :payment_method, pm)
-          end
+  # Not `open_invoices?/1`, which counts a paid invoice too: an order left unpaid by
+  # its paid invoice is what this is the way out of.
+  defp unsettled_invoices?(order_uuid) do
+    repo().exists?(
+      from(i in Invoice,
+        where:
+          i.order_uuid == ^order_uuid and i.status in ["draft", "sent", "overdue"] and
+            is_nil(i.trashed_at)
+      )
+    )
+  end
 
-        changeset |> repo().update() |> enqueue_order_event(:paid)
-      else
-        {:error, :order_not_payable}
-      end
-    end)
+  defp pay_order(order, opts), do: transition_order(order, &pay_locked_order(&1, opts))
+
+  defp pay_locked_order(current, opts) do
+    if Order.payable?(current) do
+      changeset = Order.status_changeset(current, "paid")
+
+      changeset =
+        case opts[:payment_method] do
+          nil -> changeset
+          pm -> Ecto.Changeset.put_change(changeset, :payment_method, pm)
+        end
+
+      changeset |> repo().update() |> enqueue_order_event(:paid)
+    else
+      {:error, :order_not_payable}
+    end
   end
 
   # Inside the transition's transaction, so the event commits with the status or
@@ -2747,9 +2787,10 @@ defmodule PhoenixKitBilling do
   #
   # An order in the trash changes in no way: that is read off the locked row as
   # well, and refused with `:order_trashed` before `fun` runs.
-  defp transition_order(%Order{} = order, fun) when is_function(fun, 1) do
+  defp transition_order(%Order{} = order, fun, lock_row \\ &lock_order_row/1)
+       when is_function(fun, 1) do
     unwrap_transaction(fn ->
-      current = Map.merge(order, lock_order_row(order))
+      current = Map.merge(order, lock_row.(order))
 
       if Order.trashed?(current), do: {:error, :order_trashed}, else: fun.(current)
     end)
@@ -2762,12 +2803,18 @@ defmodule PhoenixKitBilling do
   # the caller's values, so the UPDATE that follows fails the way it always
   # did.
   defp lock_order_row(%Order{uuid: uuid}) do
+    uuid |> order_row() |> lock("FOR NO KEY UPDATE") |> repo().one() |> Kernel.||(%{})
+  end
+
+  # Conflicts with that FOR KEY SHARE, so it waits for an invoice in flight.
+  defp lock_order_row_for_update(%Order{uuid: uuid}) do
+    uuid |> order_row() |> lock("FOR UPDATE") |> repo().one() |> Kernel.||(%{})
+  end
+
+  defp order_row(uuid) do
     Order
     |> where([o], o.uuid == ^uuid)
-    |> lock("FOR NO KEY UPDATE")
     |> select([o], map(o, [:status, :internal_notes, :metadata, :trashed_at]))
-    |> repo().one()
-    |> Kernel.||(%{})
   end
 
   @doc """
@@ -6192,8 +6239,14 @@ defmodule PhoenixKitBilling do
   @doc """
   Creates a new subscription for a user.
 
-  This creates the master subscription record. The first payment should be
-  processed separately via checkout session.
+  A subscription pays in advance. A plan with no trial is charged here, for the period
+  that starts today, and the card has to be there: `:payment_method_uuid` is required.
+  A trial takes no card and no money: its period ends with the trial, and the renewal
+  worker charges it then. A free plan has nothing to charge.
+
+  The subscription stores the plan's price, name and currency, and pays those until
+  `change_subscription_type/3` or `apply_plan_price/1` moves it. The price has the tax
+  inside it (see `PhoenixKitBilling.Workers.SubscriptionCharge`).
 
   ## Parameters
 
@@ -6201,17 +6254,33 @@ defmodule PhoenixKitBilling do
   - `attrs` - Subscription attributes:
     - `:subscription_type_uuid` - Required: subscription type UUID
     - `:billing_profile_uuid` - Optional: billing profile UUID to use
-    - `:payment_method_uuid` - Optional: saved payment method UUID for renewals
+    - `:payment_method_uuid` - The saved payment method to charge
     - `:trial_days` - Optional: override type's trial days
     - `:plan_uuid` - Alternative: can use `:plan_uuid` instead of `:subscription_type_uuid`
 
+  ## Returns
+
+  `{:ok, subscription}`, or `{:error, reason}`:
+
+  - `:no_payment_method` - nothing to charge, and nothing was created;
+  - `:in_transaction` - it would charge the card inside the caller's transaction, whose
+    rollback would lose the record of the payment. Nothing was created;
+  - a declined charge's reason - the subscription did not start: it is left cancelled
+    and its invoice void, as the record of the attempt;
+  - `{:charged_not_recorded, reason}` - the money was taken and the ledger refused it.
+    The subscription is left past due, not retried, for an operator.
+
   ## Examples
 
-      Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid})
+      Billing.create_subscription(user.uuid, %{
+        subscription_type_uuid: type.uuid,
+        payment_method_uuid: method.uuid
+      })
+
       Billing.create_subscription(user.uuid, %{subscription_type_uuid: type.uuid, trial_days: 14})
 
       # Using plan_uuid parameter
-      Billing.create_subscription(user.uuid, %{plan_uuid: type.uuid})
+      Billing.create_subscription(user.uuid, %{plan_uuid: type.uuid, trial_days: 14})
   """
   def create_subscription(user_uuid, attrs) do
     type_uuid =
@@ -6219,53 +6288,78 @@ defmodule PhoenixKitBilling do
         attrs[:plan_uuid] || attrs["plan_uuid"]
 
     with :ok <- ensure_payment_method_usable(user_uuid, attrs),
-         {:ok, type} <- get_subscription_type(type_uuid) do
-      trial_days = attrs[:trial_days] || type.trial_days || 0
-      now = UtilsDate.utc_now()
+         {:ok, type} <- get_subscription_type(type_uuid),
+         trial_days = attrs[:trial_days] || type.trial_days || 0,
+         charge_now? = trial_days <= 0 and Decimal.positive?(type.price),
+         :ok <- ensure_first_charge_possible(charge_now?, attrs),
+         {:ok, subscription} <-
+           insert_subscription(user_uuid, type, attrs, trial_days, charge_now?),
+         {:ok, started} <- take_first_charge(subscription, charge_now?) do
+      Events.broadcast_subscription_created(started)
+      {:ok, started}
+    end
+  end
 
-      {status, trial_end, period_start, period_end} =
-        if trial_days > 0 do
-          trial_end = DateTime.add(now, trial_days, :day)
-          period_end = SubscriptionType.next_billing_date(type, DateTime.to_date(trial_end))
-          {"trialing", trial_end, now, datetime_from_date(period_end)}
-        else
-          period_end = SubscriptionType.next_billing_date(type, Date.utc_today())
-          {"active", nil, now, datetime_from_date(period_end)}
-        end
+  defp ensure_first_charge_possible(false, _attrs), do: :ok
 
-      billing_profile_uuid = attrs[:billing_profile_uuid]
-      payment_method_uuid = attrs[:payment_method_uuid]
+  defp ensure_first_charge_possible(true, attrs) do
+    cond do
+      repo().in_transaction?() ->
+        {:error, :in_transaction}
 
-      subscription_attrs = %{
+      (attrs[:payment_method_uuid] || attrs["payment_method_uuid"]) in [nil, ""] ->
+        {:error, :no_payment_method}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp insert_subscription(user_uuid, type, attrs, trial_days, charge_now?) do
+    now = UtilsDate.utc_now()
+    trial_end = if trial_days > 0, do: DateTime.add(now, trial_days, :day)
+
+    subscription_attrs =
+      type
+      |> plan_snapshot()
+      |> Map.merge(%{
         user_uuid: user_uuid,
         subscription_type_uuid: type.uuid,
-        billing_profile_uuid: billing_profile_uuid,
-        payment_method_uuid: payment_method_uuid,
-        plan_name: type.name,
-        price: type.price,
-        # §3.3: base = is_default row (billing_default_currency is no longer read)
-        currency: type.currency || base_currency_code(),
-        status: status,
-        current_period_start: period_start,
-        current_period_end: period_end,
-        trial_start: if(trial_days > 0, do: now),
+        billing_profile_uuid: attrs[:billing_profile_uuid],
+        payment_method_uuid: attrs[:payment_method_uuid] || attrs["payment_method_uuid"],
+        status: if(trial_end, do: "trialing", else: "active"),
+        current_period_start: now,
+        current_period_end: first_period_end(type, trial_end, now, charge_now?),
+        trial_start: if(trial_end, do: now),
         trial_end: trial_end
-      }
+      })
 
-      result =
-        %Subscription{}
-        |> Subscription.changeset(subscription_attrs)
-        |> repo().insert()
+    %Subscription{}
+    |> Subscription.changeset(subscription_attrs)
+    |> repo().insert()
+  end
 
-      case result do
-        {:ok, subscription} ->
-          Events.broadcast_subscription_created(subscription)
-          {:ok, subscription}
+  # A trial's period is the trial. A first charge starts from a period of no length,
+  # which the payment ends: if the charge never finishes, it is due and the daily
+  # renewal run takes it from there.
+  defp first_period_end(_type, %DateTime{} = trial_end, _now, _charge_now?), do: trial_end
+  defp first_period_end(_type, nil, now, true), do: now
 
-        error ->
-          error
-      end
-    end
+  defp first_period_end(type, nil, _now, false) do
+    type |> SubscriptionType.next_billing_date(Date.utc_today()) |> datetime_from_date()
+  end
+
+  defp take_first_charge(subscription, false), do: {:ok, subscription}
+  defp take_first_charge(subscription, true), do: SubscriptionCharge.first_charge(subscription)
+
+  # What a subscription keeps of its plan: the plan can change, what was sold cannot.
+  defp plan_snapshot(%SubscriptionType{} = type) do
+    %{
+      plan_name: type.name,
+      price: type.price,
+      # §3.3: base = is_default row (billing_default_currency is no longer read)
+      currency: type.currency || base_currency_code()
+    }
   end
 
   @doc """
@@ -6430,30 +6524,32 @@ defmodule PhoenixKitBilling do
   @doc """
   Changes a subscription's type.
 
-  By default, the new type takes effect at the next billing cycle.
+  The subscription takes the new plan's price, name and currency, and pays them from
+  its next period: an invoice already made for this one keeps its amount.
+
+  Returns `{:ok, subscription}`, `{:error, :subscription_type_not_found}` or
+  `{:error, changeset}`.
   """
   def change_subscription_type(%Subscription{} = subscription, new_type_uuid, _opts \\ []) do
     old_type_uuid = subscription.subscription_type_uuid
 
-    type_uuid = resolve_subscription_type_uuid(new_type_uuid)
+    with {:ok, type} <-
+           new_type_uuid |> resolve_subscription_type_uuid() |> get_subscription_type(),
+         {:ok, updated_subscription} <-
+           subscription
+           |> Ecto.Changeset.change(
+             type
+             |> plan_snapshot()
+             |> Map.put(:subscription_type_uuid, type.uuid)
+           )
+           |> repo().update() do
+      Events.broadcast_subscription_type_changed(
+        updated_subscription,
+        old_type_uuid,
+        new_type_uuid
+      )
 
-    result =
-      subscription
-      |> Ecto.Changeset.change(%{subscription_type_uuid: type_uuid})
-      |> repo().update()
-
-    case result do
-      {:ok, updated_subscription} ->
-        Events.broadcast_subscription_type_changed(
-          updated_subscription,
-          old_type_uuid,
-          new_type_uuid
-        )
-
-        {:ok, updated_subscription}
-
-      error ->
-        error
+      {:ok, updated_subscription}
     end
   end
 
@@ -6531,6 +6627,44 @@ defmodule PhoenixKitBilling do
     type
     |> SubscriptionType.changeset(attrs)
     |> repo().update()
+  end
+
+  @doc """
+  Moves the plan's subscribers to what the plan costs now.
+
+  Editing a plan changes what new subscribers pay and nobody else's price: this is the
+  deliberate step that moves the existing ones. Every subscription of the plan that is
+  not cancelled takes its current price, name and currency, and pays them from its next
+  period: an invoice already made for this one keeps its amount. **Nothing is sent to
+  the subscribers**, so tell them first.
+
+  The plan is read again, so a stale struct cannot set an old price.
+
+  Returns `{:ok, count}` with the number of subscriptions that changed, or
+  `{:error, :subscription_type_not_found}`.
+  """
+  @spec apply_plan_price(SubscriptionType.t()) ::
+          {:ok, non_neg_integer()} | {:error, :subscription_type_not_found}
+  def apply_plan_price(%SubscriptionType{uuid: uuid}) do
+    with {:ok, type} <- get_subscription_type(uuid) do
+      %{plan_name: name, price: price, currency: currency} = plan_snapshot(type)
+
+      {count, _} =
+        from(s in Subscription,
+          where: s.subscription_type_uuid == ^type.uuid and s.status != "cancelled",
+          where: s.plan_name != ^name or s.price != ^price or s.currency != ^currency
+        )
+        |> repo().update_all(
+          set: [
+            plan_name: name,
+            price: price,
+            currency: currency,
+            updated_at: UtilsDate.utc_now()
+          ]
+        )
+
+      {:ok, count}
+    end
   end
 
   @doc """

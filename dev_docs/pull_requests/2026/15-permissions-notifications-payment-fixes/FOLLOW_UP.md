@@ -139,7 +139,7 @@ One LOW finding left open:
 
 ## Status — Claude, 2026-11-05
 
-Every item above, checked against the code. Items fixed today are not yet released.
+Every item above, checked against the code. What this says was fixed "today" shipped in 0.26.0, and what was fixed on 2026-11-06 in 0.27.0.
 
 **Provider payload semantics**
 
@@ -151,7 +151,7 @@ Every item above, checked against the code. Items fixed today are not yet releas
 | 4 | `Decimal.to_integer/1` without rounding | Fixed; `Providers.MinorUnits`. |
 | 5 | Webhook idempotency race | Fixed; unique index on `(provider, event_id)`. |
 | 6 | Webhook binds a transaction as an invoice | Fixed. |
-| 7 | Renewals ignore tax | **Open, needs a decision:** whether a plan price includes tax. |
+| 7 | Renewals ignore tax | Fixed 2026-11-06. Decided: a plan's price has the tax inside it, so the card is charged the same and the invoice shows the net and the tax. |
 | 8 | `fully_refunded?` compares to the total | Fixed today. |
 
 **Subscription and invoice lifecycle**
@@ -161,10 +161,10 @@ Every item above, checked against the code. Items fixed today are not yet releas
 | 1 | `cancel_at_period_end` never ends a subscription | Fixed today. The worker had a branch for it, but the daily query excluded those rows, so it was never reached. |
 | 2 | Dunning charges with no invoice or ledger row | Fixed today, in `Workers.SubscriptionCharge`. |
 | 3 | Resume does not clear the flag | Fixed today. It also turned a trial into `active`. |
-| 4 | A trial bills a period late | **Open, needs a decision.** Not clearly a bug: `create_subscription/2` takes no first payment on any plan, so this may be billing in arrears. It decides when cards are charged, so it was left alone. |
+| 4 | A trial bills a period late | Fixed 2026-11-06. Decided: billing in advance. It was wider than a trial: no plan took a first payment, and cancelling took no final one, so a customer could use a period and never pay. `create_subscription/2` now charges a plan with no trial, and a trial is charged when it ends. |
 | 5 | No status-transition guards | Fixed today for pause and resume, on the locked row. |
-| 6 | Order "mark paid" leaves its invoice open | **Open, needs a decision:** refuse, or settle the invoice. Each is defensible. An order can also still carry several open invoices through `create_invoice_from_order/2`. |
-| 7 | Live plan price; no `subscription_uuid`; orphan invoice | `subscription_uuid` and the orphan invoice fixed today. **The live price is open, needs a decision:** using the snapshot would grandfather every subscriber, and `change_subscription_type/3` relies on the live plan. |
+| 6 | Order "mark paid" leaves its invoice open | Fixed 2026-11-06. Decided: refuse (`:order_has_open_invoices`), as an order can carry several open invoices through `create_invoice_from_order/2`, so settling one would be a guess. |
+| 7 | Live plan price; no `subscription_uuid`; orphan invoice | `subscription_uuid` and the orphan invoice fixed on 2026-11-05. Live price fixed 2026-11-06. Decided: subscribers keep their price. `change_subscription_type/3` moves the stored price, and `apply_plan_price/1` is the deliberate step that moves a plan's subscribers. |
 | 8 | Numbering collisions | Fixed by V7. |
 | 9 | Voiding a part-paid invoice | Fixed today (`:invoice_has_payments`). A partial refund leaving `paid` is as designed. |
 

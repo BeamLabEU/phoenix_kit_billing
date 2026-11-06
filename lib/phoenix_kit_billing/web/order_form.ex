@@ -416,7 +416,7 @@ defmodule PhoenixKitBilling.Web.OrderForm do
   defp get_country_tax_info(nil), do: {nil, nil, nil}
 
   defp get_country_tax_info(country_code) when is_binary(country_code) do
-    tax_rate = CountryData.get_standard_vat_rate(country_code)
+    tax_rate = Order.get_country_tax_rate(country_code)
     vat_percent = CountryData.get_standard_vat_percent(country_code)
     country_name = CountryData.get_country_name(country_code)
 

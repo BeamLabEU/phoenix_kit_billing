@@ -407,6 +407,25 @@ defmodule PhoenixKitBilling.Web.SubscriptionForm do
 
   # Private helpers
 
+  # When the card is first charged, for the plan picked. A free plan never is. Blank or
+  # zero days are no trial, so the save would charge now.
+  defp first_charge_note(types, type_uuid, enable_trial, trial_days) do
+    type = Enum.find(types, &(to_string(&1.uuid) == to_string(type_uuid)))
+
+    cond do
+      is_nil(type) or not Decimal.positive?(type.price) ->
+        nil
+
+      enable_trial and match?({days, ""} when days > 0, Integer.parse(trial_days)) ->
+        gettext("The first charge comes when the trial ends.")
+
+      true ->
+        gettext(
+          "The first period is charged when you create this subscription. If the card is declined, the subscription does not start."
+        )
+    end
+  end
+
   # Persists the editable fields that changed in edit mode. The
   # subscription type goes through `change_subscription_type/2` so its
   # broadcast fires; the payment method goes through

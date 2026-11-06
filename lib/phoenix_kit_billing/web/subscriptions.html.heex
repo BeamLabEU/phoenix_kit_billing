@@ -245,14 +245,7 @@
                     </div>
                   </.table_default_cell>
                   <.table_default_cell>
-                    <%= if sub.subscription_type do %>
-                      <.currency_compact
-                        amount={sub.subscription_type.price}
-                        currency={sub.subscription_type.currency}
-                      />
-                    <% else %>
-                      <span class="text-base-content/50">-</span>
-                    <% end %>
+                    <.currency_compact amount={sub.price} currency={sub.currency} />
                   </.table_default_cell>
                   <.table_default_cell>
                     <.table_row_menu id={"menu-#{sub.uuid}"}>

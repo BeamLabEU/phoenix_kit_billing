@@ -5460,3 +5460,43 @@ msgstr "Оплату нельзя начать внутри транзакции
 #, elixir-autogen, elixir-format
 msgid "There is nothing left to pay."
 msgstr "Оплачивать больше нечего."
+
+#, elixir-autogen, elixir-format
+msgid "Apply price to subscribers"
+msgstr "Применить цену к подписчикам"
+
+#, elixir-autogen, elixir-format
+msgid "Failed to apply the price: %{reason}"
+msgstr "Не удалось применить цену: %{reason}"
+
+#, elixir-autogen, elixir-format
+msgid "Includes tax, when tax is enabled. Existing subscribers keep their price until you apply this one from the list of subscription types."
+msgstr "Включает налог, если налог включён. Текущие подписчики сохраняют свою цену, пока вы не примените эту из списка типов подписок."
+
+#, elixir-autogen, elixir-format
+msgid "Move every running subscription of this type to its current price? They pay it from their next period, and nothing is sent to them."
+msgstr "Перевести все действующие подписки этого типа на текущую цену? Она применится со следующего периода, подписчикам ничего не отправляется."
+
+#, elixir-autogen, elixir-format
+msgid "Subscriptions moved to the current price: %{count}"
+msgstr "Подписок переведено на текущую цену: %{count}"
+
+#, elixir-autogen, elixir-format
+msgid "The first charge comes when the trial ends."
+msgstr "Первое списание произойдёт по окончании пробного периода."
+
+#, elixir-autogen, elixir-format
+msgid "The first period is charged when you create this subscription. If the card is declined, the subscription does not start."
+msgstr "Первый период списывается при создании этой подписки. Если карта отклонена, подписка не начнётся."
+
+#, elixir-autogen, elixir-format
+msgid "The payment was taken but could not be recorded. Reconcile it by hand."
+msgstr "Платёж списан, но его не удалось записать. Сверьте его вручную."
+
+#, elixir-autogen, elixir-format
+msgid "This order has an open invoice. Mark that invoice as paid: it records the payment and settles the order."
+msgstr "У заказа есть открытый счёт. Отметьте этот счёт как оплаченный: так платёж будет записан, а заказ оплачен."
+
+#, elixir-autogen, elixir-format
+msgid "Creating..."
+msgstr "Создание..."

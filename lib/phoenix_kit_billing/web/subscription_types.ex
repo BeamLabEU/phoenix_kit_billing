@@ -66,6 +66,46 @@ defmodule PhoenixKitBilling.Web.SubscriptionTypes do
     end)
   end
 
+  @impl true
+  def handle_event("apply_plan_price", params, socket) do
+    Authz.authorize(socket, :manage_subscriptions, fn ->
+      gated_event("apply_plan_price", params, socket)
+    end)
+  end
+
+  defp gated_event("apply_plan_price", %{"uuid" => uuid}, socket) do
+    type = Enum.find(socket.assigns.subscription_types, &(&1.uuid == uuid))
+
+    case type && Billing.apply_plan_price(type) do
+      nil ->
+        {:noreply, put_flash(socket, :error, gettext("Subscription type not found"))}
+
+      {:ok, count} ->
+        Activity.log("billing.subscription_type_price_applied",
+          actor_uuid: Activity.actor_uuid(socket),
+          actor_role: Activity.actor_role(socket),
+          resource_type: "subscription_type",
+          resource_uuid: type.uuid,
+          metadata: %{"count" => count, "currency" => type.currency}
+        )
+
+        {:noreply,
+         put_flash(
+           socket,
+           :info,
+           gettext("Subscriptions moved to the current price: %{count}", count: count)
+         )}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Failed to apply the price: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
   defp gated_event("toggle_active", %{"uuid" => uuid}, socket) do
     type = Enum.find(socket.assigns.subscription_types, &(&1.uuid == uuid))
 

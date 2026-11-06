@@ -66,6 +66,17 @@
                     icon={if type.active, do: "hero-pause", else: "hero-play"}
                     label={if type.active, do: gettext("Deactivate"), else: gettext("Activate")}
                   />
+                  <.table_row_menu_button
+                    phx-click="apply_plan_price"
+                    phx-value-uuid={type.uuid}
+                    data-confirm={
+                      gettext(
+                        "Move every running subscription of this type to its current price? They pay it from their next period, and nothing is sent to them."
+                      )
+                    }
+                    icon="hero-arrow-path"
+                    label={gettext("Apply price to subscribers")}
+                  />
                   <.table_row_menu_divider />
                   <.table_row_menu_button
                     phx-click="delete_subscription_type"

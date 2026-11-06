@@ -1,11 +1,14 @@
 defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
   @moduledoc """
-  Charging a subscription for its period: what the renewal and dunning workers share.
+  Charging a subscription for its period: what signup and the renewal and dunning
+  workers share.
 
-  A period has one invoice, found by the subscription and the period's end (stored
-  under `metadata["period_end"]`), and that invoice is what gets charged. So a retry
-  finds the invoice a decline left open, and a period paid some other way (*Mark
-  paid*, or the webhook of a charge whose worker crashed) is not charged again.
+  A subscription pays in advance, at the price it stored, so a charge pays for the
+  period that starts with it. A period has one invoice, found by the subscription and
+  the moment the charge falls due (stored under `metadata["period_end"]`), and that
+  invoice is what gets charged. So a retry finds the invoice a decline left open, and
+  a period paid some other way (*Mark paid*, or the webhook of a charge whose worker
+  crashed) is not charged again.
 
   It takes two transactions:
 
@@ -16,6 +19,19 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
 
   What the locks hold off: a second worker, which finds the period moved on, and a
   void or a payment of the invoice, which wait for the charge to be recorded.
+
+  A subscription with nothing to pay (a free plan) moves to its next period with no
+  invoice and no call to a provider, which would refuse the amount.
+
+  ## The price and the tax
+
+  The invoice bills `subscription.price`, in `subscription.currency`: what the plan
+  cost when the subscriber took it, not what it costs now.
+  `PhoenixKitBilling.change_subscription_type/3` and
+  `PhoenixKitBilling.apply_plan_price/1` are what change them.
+
+  That price has the tax inside it, so the card is charged the same with tax on or
+  off. The invoice shows the net and the tax at `PhoenixKitBilling.tax_rate_for/1`.
 
   ## A crash past the charge
 
@@ -36,9 +52,12 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
   import Ecto.Query
 
   alias PhoenixKit.RepoHelper
+  alias PhoenixKit.Settings
+  alias PhoenixKit.Utils.Date, as: UtilsDate
   alias PhoenixKitBilling, as: Billing
 
   alias PhoenixKitBilling.{
+    BillingProfile,
     Invoice,
     Notifications,
     PaymentMethod,
@@ -81,9 +100,53 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
 
     case result do
       {:ok, %Invoice{} = invoice} -> settle(subscription, invoice, opts)
+      {:ok, %Subscription{}} = nothing_to_pay -> nothing_to_pay
       {:error, reason} -> under_lock(subscription, &declined.(&1, reason))
       :skipped -> {:ok, :skipped}
     end
+  end
+
+  @doc """
+  Takes the first payment of a subscription just created, which has a period of no
+  length until it is paid.
+
+  Declined, the subscription ends here and its invoice is voided, and the reason is
+  returned: it never started. A crash leaves it `active` with that empty period, so
+  the daily renewal run takes it from there, on the same invoice.
+
+  Returns `{:ok, subscription}` or `{:error, reason}`. Like `run/2`, that can be
+  `{:error, {:charged_not_recorded, reason}}`: the subscription is left past due, with
+  no retry, for an operator.
+  """
+  @spec first_charge(Subscription.t()) :: {:ok, Subscription.t()} | {:error, term()}
+  def first_charge(%Subscription{current_period_end: period_end} = subscription) do
+    result =
+      run(subscription,
+        description: "Subscription first payment",
+        due?: &first_charge_due?(&1, period_end),
+        declined: fn _locked, reason -> {:declined, reason} end
+      )
+
+    case result do
+      {:ok, %Subscription{}} = paid ->
+        paid
+
+      # The daily run got to it first, and what it did stands.
+      {:ok, :skipped} ->
+        {:ok, RepoHelper.repo().get!(Subscription, subscription.uuid)}
+
+      {:declined, reason} ->
+        {:ok, _ended} = end_subscription(subscription, "First payment declined")
+        {:error, reason}
+
+      {:error, {:charged_not_recorded, _reason}} = error ->
+        {:ok, _past_due} = mark_past_due(subscription)
+        error
+    end
+  end
+
+  defp first_charge_due?(%Subscription{} = locked, period_end) do
+    locked.status == "active" and DateTime.compare(locked.current_period_end, period_end) == :eq
   end
 
   @doc """
@@ -98,6 +161,20 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
       void_open_invoices(cancelled, reason)
       {:ok, cancelled}
     end
+  end
+
+  @doc """
+  Moves the subscription to `past_due`, with the grace period starting now, which also
+  keeps the daily renewal run from charging it.
+  """
+  @spec mark_past_due(Subscription.t()) :: {:ok, Subscription.t()} | {:error, Ecto.Changeset.t()}
+  def mark_past_due(%Subscription{} = subscription) do
+    grace_days =
+      Settings.get_setting("billing_subscription_grace_days", "3") |> String.to_integer()
+
+    subscription
+    |> Subscription.past_due_changeset(DateTime.add(UtilsDate.utc_now(), grace_days, :day))
+    |> RepoHelper.repo().update()
   end
 
   defp void_open_invoices(%Subscription{uuid: uuid}, reason) do
@@ -135,14 +212,14 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
     from(s in Subscription,
       where: s.uuid == ^uuid,
       lock: "FOR UPDATE",
-      preload: [:subscription_type, :payment_method]
+      preload: [:subscription_type, :payment_method, :billing_profile]
     )
     |> repo.one()
   end
 
   defp period_invoice(%Subscription{} = subscription) do
     case find_period_invoice(subscription) do
-      nil -> create_period_invoice(subscription)
+      nil -> bill_period(subscription)
       invoice -> {:ok, invoice}
     end
   end
@@ -165,32 +242,47 @@ defmodule PhoenixKitBilling.Workers.SubscriptionCharge do
     DateTime.to_iso8601(period_end)
   end
 
-  defp create_period_invoice(%Subscription{subscription_type: nil}), do: {:error, :no_plan}
+  defp bill_period(%Subscription{subscription_type: nil}), do: {:error, :no_plan}
 
-  defp create_period_invoice(%Subscription{subscription_type: plan} = subscription) do
+  defp bill_period(%Subscription{price: price} = subscription) do
+    if Decimal.positive?(price),
+      do: create_period_invoice(subscription),
+      else: next_period(subscription, RepoHelper.repo())
+  end
+
+  defp create_period_invoice(%Subscription{billing_profile: profile} = subscription) do
+    tax_rate = Billing.tax_rate_for(profile)
+    {net, tax} = Invoice.split_included_tax(subscription.price, tax_rate)
+
     line_items = [
       %{
-        "name" => "#{plan.name} subscription",
-        "description" => "#{SubscriptionType.interval_description(plan)}",
+        "name" => "#{subscription.plan_name} subscription",
+        "description" =>
+          "#{SubscriptionType.interval_description(subscription.subscription_type)}",
         "quantity" => 1,
-        "unit_price" => plan.price,
-        "total" => plan.price
+        "unit_price" => net,
+        "total" => net
       }
     ]
 
     Billing.create_invoice(subscription.user_uuid, %{
       subscription_uuid: subscription.uuid,
-      billing_profile_uuid: subscription.billing_profile_uuid,
-      currency: plan.currency,
+      billing_details: billing_details(profile),
+      currency: subscription.currency,
       status: "sent",
       due_date: Date.utc_today(),
-      notes: "Subscription renewal: #{plan.name}",
+      notes: "Subscription: #{subscription.plan_name}",
       line_items: line_items,
-      subtotal: plan.price,
-      total: plan.price,
+      subtotal: net,
+      tax_rate: tax_rate,
+      tax_amount: tax,
+      total: subscription.price,
       metadata: %{"period_end" => period_key(subscription)}
     })
   end
+
+  defp billing_details(nil), do: %{}
+  defp billing_details(%BillingProfile{} = profile), do: BillingProfile.to_snapshot(profile)
 
   defp settle(%Subscription{} = subscription, %Invoice{} = invoice, opts) do
     repo = RepoHelper.repo()

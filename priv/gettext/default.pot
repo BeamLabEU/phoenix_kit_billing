@@ -5305,3 +5305,43 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "There is nothing left to pay."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Apply price to subscribers"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Failed to apply the price: %{reason}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Includes tax, when tax is enabled. Existing subscribers keep their price until you apply this one from the list of subscription types."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Move every running subscription of this type to its current price? They pay it from their next period, and nothing is sent to them."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Subscriptions moved to the current price: %{count}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The first charge comes when the trial ends."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The first period is charged when you create this subscription. If the card is declined, the subscription does not start."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The payment was taken but could not be recorded. Reconcile it by hand."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This order has an open invoice. Mark that invoice as paid: it records the payment and settles the order."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Creating..."
+msgstr ""

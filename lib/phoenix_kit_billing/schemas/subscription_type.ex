@@ -11,7 +11,8 @@ defmodule PhoenixKitBilling.SubscriptionType do
   - `name` - Display name (e.g., "Basic", "Pro", "Enterprise")
   - `slug` - Unique identifier (e.g., "basic", "pro")
   - `description` - Marketing description
-  - `price` - Price per billing period (Decimal)
+  - `price` - Price per billing period (Decimal), with the tax inside it. A subscription
+    keeps the price it started on; see `PhoenixKitBilling.apply_plan_price/1`
   - `currency` - Three-letter currency code (default: "EUR")
   - `interval` - Billing interval: "day", "week", "month", "year"
   - `interval_count` - Number of intervals (e.g., 3 months)
@@ -42,6 +43,8 @@ defmodule PhoenixKitBilling.SubscriptionType do
   alias PhoenixKit.RepoHelper
 
   @intervals ~w(day week month year)
+
+  @type t :: %__MODULE__{}
 
   @primary_key {:uuid, UUIDv7, autogenerate: true}
 

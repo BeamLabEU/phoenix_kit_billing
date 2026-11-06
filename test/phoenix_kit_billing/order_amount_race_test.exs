@@ -1,13 +1,13 @@
 defmodule PhoenixKitBilling.OrderAmountRaceTest do
   @moduledoc """
-  A new order total against an invoice being created for the old one, under real
-  concurrency (separate connections, outside the sandbox; `async: false` because it
-  changes the sandbox mode for the run).
+  A new order total, or a mark as paid, against an invoice being created for the
+  order, under real concurrency (separate connections, outside the sandbox;
+  `async: false` because it changes the sandbox mode for the run).
 
-  `update_order/2` looks for an invoice before it writes. An invoice still in its
-  transaction is not there to be seen, so the edit has to wait for it: the row is
-  taken `FOR UPDATE`, which conflicts with the `FOR KEY SHARE` the invoice insert
-  holds on the order.
+  `update_order/2` and `mark_order_paid/2` look for an invoice before they write. An
+  invoice still in its transaction is not there to be seen, so they have to wait for
+  it: the row is taken `FOR UPDATE`, which conflicts with the `FOR KEY SHARE` the
+  invoice insert holds on the order.
   """
 
   use ExUnit.Case, async: false
@@ -76,5 +76,33 @@ defmodule PhoenixKitBilling.OrderAmountRaceTest do
     assert {:ok, {:error, :order_amount_invoiced}} = Task.yield(editor, 5_000)
 
     assert Decimal.equal?(Repo.get!(Order, order.uuid).total, "25.00")
+  end
+
+  test "marking the order paid waits for the invoice in flight, and is refused", %{order: order} do
+    {:ok, confirmed} = Billing.confirm_order(order)
+    test_pid = self()
+
+    creator =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          result = Billing.create_invoice_from_order(confirmed)
+          send(test_pid, :created)
+
+          receive do
+            :commit -> result
+          end
+        end)
+      end)
+
+    assert_receive :created, 5_000
+
+    marker = Task.async(fn -> Billing.mark_order_paid(confirmed) end)
+    assert Task.yield(marker, 300) == nil
+
+    send(creator.pid, :commit)
+    assert {:ok, {:ok, {:ok, %Invoice{}}}} = Task.yield(creator, 5_000)
+    assert {:ok, {:error, :order_has_open_invoices}} = Task.yield(marker, 5_000)
+
+    assert Repo.get!(Order, order.uuid).status == "confirmed"
   end
 end
