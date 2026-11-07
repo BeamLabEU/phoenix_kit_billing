@@ -546,6 +546,58 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
     end
   end
 
+  describe "a subscription paid by invoice, without a card" do
+    # bank transfer: the renewal makes the period's invoice, nothing can be charged,
+    # and the subscriber pays the invoice, which an operator marks paid
+    defp invoiced_subscription! do
+      subscription = subscription!()
+
+      Repo.update_all(from(s in Subscription, where: s.uuid == ^subscription.uuid),
+        set: [payment_method_uuid: nil]
+      )
+
+      {:ok, _} = renew(subscription)
+      Repo.delete_all(Oban.Job)
+      reload(subscription)
+    end
+
+    test "is past due with the period's invoice open after the renewal" do
+      subscription = invoiced_subscription!()
+      assert %Subscription{status: "past_due"} = subscription
+      assert [%Invoice{status: status}] = invoices(subscription)
+      assert status in ["draft", "sent"]
+    end
+
+    test "marking the invoice paid queues a retry, which starts the next period without a charge" do
+      subscription = invoiced_subscription!()
+      [open] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(open)
+      assert [_job] = dunning_jobs()
+
+      assert {:ok, %Subscription{status: "active"}} = dun(subscription)
+      assert flush_charges() == []
+      renewed = reload(subscription)
+      assert renewed.status == "active"
+      assert DateTime.compare(renewed.current_period_end, subscription.current_period_end) == :gt
+    end
+
+    test "unpaid, a retry waits for the next day and counts no attempt" do
+      subscription = invoiced_subscription!()
+      assert {:ok, :no_payment_method} = dun(subscription)
+      assert %Subscription{status: "past_due", renewal_attempts: attempts} = reload(subscription)
+      assert attempts == subscription.renewal_attempts
+      assert [_next] = dunning_jobs()
+      assert flush_charges() == []
+    end
+
+    test "a card renewal that pays its invoice queues no extra retry" do
+      subscription = subscription!()
+      approve()
+      assert {:ok, %Subscription{status: "active"}} = renew(subscription)
+      assert dunning_jobs() == []
+    end
+  end
+
   describe "SubscriptionCharge.run/2 between its two transactions" do
     # Asked once per transaction. Whatever happens in between, as a second worker
     # would, is what the second answer has to catch before the card is touched.

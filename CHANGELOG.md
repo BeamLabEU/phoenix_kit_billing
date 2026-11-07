@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Fixed
+
+- **A subscription paid by invoice moves on to its next period.** Without a saved
+  payment method (a subscriber paying by bank transfer), a renewal leaves the period's
+  invoice open and the subscription past due. Marking that invoice paid, or recording
+  its payment by hand, left the subscription past due until the grace period ran out
+  and dunning cancelled it, paid: dunning skipped the charge path for a subscription
+  with no card, so it never found the invoice paid. Dunning now runs that path without
+  a card, which starts the next period when the invoice is paid and waits for the next
+  day as before when it is not, counting no attempt. Paying the invoice outside a charge
+  also queues the retry at once, so the subscription is active again within seconds.
+
 ## 0.27.0 - 2026-11-06
 
 Subscriptions pay in advance, at the price they started on, with the tax inside that

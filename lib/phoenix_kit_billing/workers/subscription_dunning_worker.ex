@@ -105,11 +105,22 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     end
   end
 
+  # No card to charge, but the period may be paid already: an invoice paid by bank
+  # transfer and marked paid. `SubscriptionCharge.run/2` finds that invoice paid and
+  # moves the subscription on without a charge. Unpaid, it asks for a charge, gets
+  # `:no_payment_method`, and this waits for the next day as before: no attempt is
+  # counted, so a subscriber paying by invoice has the whole grace period.
   defp attempt_payment_retry(%Subscription{payment_method: nil} = subscription) do
-    Logger.warning("Subscription #{subscription.uuid} has no payment method for retry")
-    # Still schedule next retry in case user adds payment method
-    schedule_next_retry(subscription)
-    {:ok, :no_payment_method}
+    SubscriptionCharge.run(subscription,
+      description: "Subscription renewal (dunning retry)",
+      due?: &Subscription.past_due?/1,
+      declined: fn locked, _reason ->
+        Logger.warning("Subscription #{locked.uuid} has no payment method for retry")
+        # Still schedule next retry in case user adds payment method
+        schedule_next_retry(locked)
+        {:ok, :no_payment_method}
+      end
+    )
   end
 
   defp attempt_payment_retry(%Subscription{} = subscription) do
