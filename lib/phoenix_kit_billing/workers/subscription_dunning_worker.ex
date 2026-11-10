@@ -13,7 +13,9 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
      (see `SubscriptionCharge`), so the money reaches the ledger
   4. If payment succeeds → status = `active`
   5. If max attempts reached or grace period ends → status = `cancelled`, and the
-     invoice is voided: nothing is owed for a period that was not given
+     invoice is voided: nothing is owed for a period that was not given — unless the
+     period's invoice was paid some other way (*Mark paid*), which moves the period on
+     before either is looked at
 
   A declined retry is a handled outcome, not a failed job. Returned as an error, Oban
   would retry it within seconds: each try counts, so one decline would use up every
@@ -92,7 +94,7 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
       # Paid some other way (bank transfer marked paid): the period moves on, whatever
       # the attempts or the grace period say. Nothing is charged for a paid invoice.
       SubscriptionCharge.period_paid?(subscription) ->
-        retry_charge(subscription)
+        settle_paid_period(subscription)
 
       # Cancel BEFORE attempting if this attempt would push us past the
       # configured cap. `renewal_attempts` is the number of completed
@@ -147,12 +149,25 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     end
   end
 
-  defp retry_charge(%Subscription{} = subscription) do
+  # Paid when looked at, so under the locks `SubscriptionCharge` finds it paid and moves
+  # the period on without a charge. Refunded in between, it is a retry like any other,
+  # except that a decline is not counted: the attempts cap is for a card that keeps
+  # being refused, and this subscriber had paid.
+  defp settle_paid_period(%Subscription{} = subscription) do
+    retry_charge(subscription, fn locked, reason ->
+      Logger.warning("Subscription #{locked.uuid} period is no longer paid: #{inspect(reason)}")
+
+      schedule_next_retry(locked)
+      {:ok, {:declined, reason}}
+    end)
+  end
+
+  defp retry_charge(%Subscription{} = subscription, declined \\ &handle_decline/2) do
     result =
       SubscriptionCharge.run(subscription,
         description: "Subscription renewal (dunning retry)",
         due?: &Subscription.past_due?/1,
-        declined: &handle_decline/2
+        declined: declined
       )
 
     case result do

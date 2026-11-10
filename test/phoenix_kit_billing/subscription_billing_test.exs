@@ -613,11 +613,11 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       assert job_states() == ["available", "scheduled"]
     end
 
-    test "marking it paid twice queues one retry" do
+    test "a second mark-paid is refused and queues nothing more" do
       subscription = renewed_without_card!()
       [open] = invoices(subscription)
       assert {:ok, _} = Billing.mark_invoice_paid(open)
-      assert {:error, _} = Billing.mark_invoice_paid(open)
+      assert {:error, :invoice_not_payable} = Billing.mark_invoice_paid(open)
       assert job_states() == ["available", "scheduled"]
     end
 
@@ -652,6 +652,20 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       [open] = invoices(subscription)
       assert {:ok, {:ok, _}} = Repo.transaction(fn -> Billing.mark_invoice_paid(open) end)
       assert dunning_jobs() == []
+    end
+
+    test "after a void of the invoice, a retry issues another and counts no attempt" do
+      subscription = invoiced_subscription!()
+      [voided] = invoices(subscription)
+      assert {:ok, _} = Billing.void_invoice(voided)
+
+      assert {:ok, :no_payment_method} = dun(subscription)
+
+      assert [%Invoice{status: "sent"}] =
+               Enum.reject(invoices(subscription), &(&1.uuid == voided.uuid))
+
+      assert reload(subscription).renewal_attempts == subscription.renewal_attempts
+      assert flush_charges() == []
     end
 
     test "unpaid, a retry waits for the next day and counts no attempt" do

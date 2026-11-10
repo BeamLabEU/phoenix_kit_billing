@@ -18,7 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   day as before when it is not, counting no attempt. Paying the invoice in full outside
   a charge (*Mark paid*, a payment recorded by hand, or a provider webhook) also queues
   a retry at once, so the subscription is active again within seconds; that retry is
-  not dropped next to the one scheduled for the next day. A part payment queues none.
+  not dropped next to the one scheduled for the next day. A part payment queues none,
+  and neither does a payment made inside the caller's own transaction: there the
+  scheduled retry moves the subscription on.
 - **A period paid by bank transfer is not cancelled at the last retry.** Dunning
   checked the attempts and the grace period before anything else, so a subscription
   whose last card retry was due ended even though its invoice had been marked paid.
