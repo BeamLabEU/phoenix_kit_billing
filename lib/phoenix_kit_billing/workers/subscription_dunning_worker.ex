@@ -14,8 +14,9 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
   4. If payment succeeds → status = `active`
   5. If max attempts reached or grace period ends → status = `cancelled`, and the
      invoice is voided: nothing is owed for a period that was not given — unless the
-     period's invoice was paid some other way (*Mark paid*), which moves the period on
-     before either is looked at
+     period's invoice was paid some other way (*Mark paid*): that is looked at first,
+     and moves the period on while it stays paid. Refunded meanwhile, the run retries
+     without counting an attempt
 
   A declined retry is a handled outcome, not a failed job. Returned as an error, Oban
   would retry it within seconds: each try counts, so one decline would use up every

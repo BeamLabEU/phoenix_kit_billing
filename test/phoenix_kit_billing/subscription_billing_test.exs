@@ -508,6 +508,25 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       assert [%Invoice{status: "paid"}] = invoices(subscription)
     end
 
+    test "a paid period that cannot move on is retried without counting an attempt" do
+      subscription = past_due_subscription!()
+      [invoice] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(invoice)
+      Repo.delete_all(Oban.Job)
+
+      # what `SubscriptionCharge` declines under the locks after the paid check; a
+      # refund landing in between takes the same callback
+      Repo.update_all(from(s in Subscription, where: s.uuid == ^subscription.uuid),
+        set: [subscription_type_uuid: nil]
+      )
+
+      before = reload(subscription)
+      assert {:ok, {:declined, :no_plan}} = dun(before)
+      assert %Subscription{status: "past_due", renewal_attempts: attempts} = reload(subscription)
+      assert attempts == before.renewal_attempts
+      assert [%Oban.Job{state: "scheduled"}] = dunning_jobs()
+    end
+
     test "giving up leaves an invoice with money on it for an operator" do
       subscription = past_due_subscription!()
       [invoice] = invoices(subscription)
