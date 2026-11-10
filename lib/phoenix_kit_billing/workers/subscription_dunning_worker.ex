@@ -89,6 +89,11 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     max_attempts = get_max_attempts()
 
     cond do
+      # Paid some other way (bank transfer marked paid): the period moves on, whatever
+      # the attempts or the grace period say. Nothing is charged for a paid invoice.
+      SubscriptionCharge.period_paid?(subscription) ->
+        retry_charge(subscription)
+
       # Cancel BEFORE attempting if this attempt would push us past the
       # configured cap. `renewal_attempts` is the number of completed
       # failed attempts so far; the next try would be attempt N+1.

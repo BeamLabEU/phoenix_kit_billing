@@ -492,6 +492,22 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       assert dunning_jobs() == []
     end
 
+    test "at the last attempt, a period paid by bank transfer moves on instead of ending" do
+      subscription = past_due_subscription!()
+      [invoice] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(invoice)
+      Repo.delete_all(Oban.Job)
+
+      subscription
+      |> reload()
+      |> Ecto.Changeset.change(renewal_attempts: 3)
+      |> Repo.update!()
+
+      assert {:ok, %Subscription{status: "active"}} = dun(subscription)
+      assert flush_charges() == []
+      assert [%Invoice{status: "paid"}] = invoices(subscription)
+    end
+
     test "giving up leaves an invoice with money on it for an operator" do
       subscription = past_due_subscription!()
       [invoice] = invoices(subscription)
@@ -550,6 +566,13 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
     # bank transfer: the renewal makes the period's invoice, nothing can be charged,
     # and the subscriber pays the invoice, which an operator marks paid
     defp invoiced_subscription! do
+      subscription = renewed_without_card!()
+      Repo.delete_all(Oban.Job)
+      subscription
+    end
+
+    # with the retry the renewal scheduled for tomorrow still queued
+    defp renewed_without_card! do
       subscription = subscription!()
 
       Repo.update_all(from(s in Subscription, where: s.uuid == ^subscription.uuid),
@@ -557,9 +580,10 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       )
 
       {:ok, _} = renew(subscription)
-      Repo.delete_all(Oban.Job)
       reload(subscription)
     end
+
+    defp job_states, do: dunning_jobs() |> Enum.map(& &1.state) |> Enum.sort()
 
     test "is past due with the period's invoice open after the renewal" do
       subscription = invoiced_subscription!()
@@ -579,6 +603,55 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       renewed = reload(subscription)
       assert renewed.status == "active"
       assert DateTime.compare(renewed.current_period_end, subscription.current_period_end) == :gt
+    end
+
+    test "marking the invoice paid queues a retry now, beside the one scheduled for tomorrow" do
+      subscription = renewed_without_card!()
+      assert job_states() == ["scheduled"]
+      [open] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(open)
+      assert job_states() == ["available", "scheduled"]
+    end
+
+    test "marking it paid twice queues one retry" do
+      subscription = renewed_without_card!()
+      [open] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(open)
+      assert {:error, _} = Billing.mark_invoice_paid(open)
+      assert job_states() == ["available", "scheduled"]
+    end
+
+    test "a payment recorded for the whole amount queues a retry" do
+      subscription = invoiced_subscription!()
+      [open] = invoices(subscription)
+
+      assert {:ok, _} =
+               Billing.record_payment(
+                 open,
+                 %{amount: Decimal.to_string(open.total), payment_method: "bank"},
+                 nil
+               )
+
+      assert [%Oban.Job{state: "available"}] = dunning_jobs()
+      assert {:ok, %Subscription{status: "active"}} = dun(subscription)
+      assert flush_charges() == []
+    end
+
+    test "a part payment queues nothing" do
+      subscription = invoiced_subscription!()
+      [open] = invoices(subscription)
+
+      assert {:ok, _} =
+               Billing.record_payment(open, %{amount: "1.00", payment_method: "bank"}, nil)
+
+      assert dunning_jobs() == []
+    end
+
+    test "marking it paid inside a transaction queues nothing" do
+      subscription = invoiced_subscription!()
+      [open] = invoices(subscription)
+      assert {:ok, {:ok, _}} = Repo.transaction(fn -> Billing.mark_invoice_paid(open) end)
+      assert dunning_jobs() == []
     end
 
     test "unpaid, a retry waits for the next day and counts no attempt" do
