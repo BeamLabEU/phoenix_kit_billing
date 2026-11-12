@@ -67,6 +67,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.Providers
   alias PhoenixKitBilling.Transaction
   alias PhoenixKitBilling.Workers.SubscriptionCharge
+  alias PhoenixKitBilling.Workers.SubscriptionDunningWorker
   alias PhoenixKitWeb.Live.Settings.Organization
 
   require Logger
@@ -4658,6 +4659,7 @@ defmodule PhoenixKitBilling do
         {:ok, {paid_invoice, order_broadcasts}} ->
           Events.broadcast_invoice_paid(paid_invoice)
           Enum.each(order_broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+          _ = resume_paid_subscription(paid_invoice)
           {:ok, paid_invoice}
 
         error ->
@@ -4667,6 +4669,46 @@ defmodule PhoenixKitBilling do
       {:error, :invoice_not_payable}
     end
   end
+
+  # A subscription's period invoice paid outside a charge (bank transfer marked paid,
+  # or a payment recorded by hand) leaves the subscription past due until something
+  # runs its charge again, which finds the invoice paid and starts the next period.
+  # Dunning does that, but only on its next day — and without a card it used to skip
+  # the charge altogether. Queue it now, after the commit. Inside a transaction this is
+  # the charge itself recording its payment (`SubscriptionCharge`), which moves the
+  # period on in the same transaction: nothing to queue.
+  #
+  # Unique among jobs ready to run only: the worker's own uniqueness covers every state
+  # for an hour, so it would drop this job next to the retry scheduled for tomorrow.
+  defp resume_paid_subscription(%Invoice{subscription_uuid: uuid}) when is_binary(uuid) do
+    past_due? =
+      from(s in PhoenixKitBilling.Subscription, where: s.uuid == ^uuid and s.status == "past_due")
+      |> repo().exists?()
+
+    if past_due? and not repo().in_transaction?() do
+      %{subscription_uuid: uuid}
+      |> SubscriptionDunningWorker.new(
+        unique: [period: 3600, keys: [:subscription_uuid], states: [:available]]
+      )
+      |> Oban.insert()
+      |> case do
+        {:ok, _job} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Subscription #{uuid} stays past due until its next retry: " <>
+              "could not queue one now: #{inspect(reason)}"
+          )
+
+          :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp resume_paid_subscription(_invoice), do: :ok
 
   # The outstanding balance, recorded as an offline payment so the ledger
   # matches the invoice. Nothing to record when it is already settled.
@@ -5952,6 +5994,8 @@ defmodule PhoenixKitBilling do
 
       {:ok, {transaction, broadcasts}} ->
         Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+
+        for {:broadcast_invoice_paid, paid} <- broadcasts, do: resume_paid_subscription(paid)
         {:ok, transaction}
 
       error ->

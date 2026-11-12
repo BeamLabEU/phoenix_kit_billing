@@ -13,7 +13,10 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
      (see `SubscriptionCharge`), so the money reaches the ledger
   4. If payment succeeds → status = `active`
   5. If max attempts reached or grace period ends → status = `cancelled`, and the
-     invoice is voided: nothing is owed for a period that was not given
+     invoice is voided: nothing is owed for a period that was not given — unless the
+     period's invoice was paid some other way (*Mark paid*): that is looked at first,
+     and moves the period on while it stays paid. Refunded meanwhile, the run retries
+     without counting an attempt
 
   A declined retry is a handled outcome, not a failed job. Returned as an error, Oban
   would retry it within seconds: each try counts, so one decline would use up every
@@ -89,6 +92,11 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     max_attempts = get_max_attempts()
 
     cond do
+      # Paid some other way (bank transfer marked paid): the period moves on, whatever
+      # the attempts or the grace period say. Nothing is charged for a paid invoice.
+      SubscriptionCharge.period_paid?(subscription) ->
+        settle_paid_period(subscription)
+
       # Cancel BEFORE attempting if this attempt would push us past the
       # configured cap. `renewal_attempts` is the number of completed
       # failed attempts so far; the next try would be attempt N+1.
@@ -105,11 +113,22 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     end
   end
 
+  # No card to charge, but the period may be paid already: an invoice paid by bank
+  # transfer and marked paid. `SubscriptionCharge.run/2` finds that invoice paid and
+  # moves the subscription on without a charge. Unpaid, it asks for a charge, gets
+  # `:no_payment_method`, and this waits for the next day as before: no attempt is
+  # counted, so a subscriber paying by invoice has the whole grace period.
   defp attempt_payment_retry(%Subscription{payment_method: nil} = subscription) do
-    Logger.warning("Subscription #{subscription.uuid} has no payment method for retry")
-    # Still schedule next retry in case user adds payment method
-    schedule_next_retry(subscription)
-    {:ok, :no_payment_method}
+    SubscriptionCharge.run(subscription,
+      description: "Subscription renewal (dunning retry)",
+      due?: &Subscription.past_due?/1,
+      declined: fn locked, _reason ->
+        Logger.warning("Subscription #{locked.uuid} has no payment method for retry")
+        # Still schedule next retry in case user adds payment method
+        schedule_next_retry(locked)
+        {:ok, :no_payment_method}
+      end
+    )
   end
 
   defp attempt_payment_retry(%Subscription{} = subscription) do
@@ -131,12 +150,25 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
     end
   end
 
-  defp retry_charge(%Subscription{} = subscription) do
+  # Paid when looked at, so under the locks `SubscriptionCharge` finds it paid and moves
+  # the period on without a charge. Refunded in between, it is a retry like any other,
+  # except that a decline is not counted: the attempts cap is for a card that keeps
+  # being refused, and this subscriber had paid.
+  defp settle_paid_period(%Subscription{} = subscription) do
+    retry_charge(subscription, fn locked, reason ->
+      Logger.warning("Subscription #{locked.uuid} period is no longer paid: #{inspect(reason)}")
+
+      schedule_next_retry(locked)
+      {:ok, {:declined, reason}}
+    end)
+  end
+
+  defp retry_charge(%Subscription{} = subscription, declined \\ &handle_decline/2) do
     result =
       SubscriptionCharge.run(subscription,
         description: "Subscription renewal (dunning retry)",
         due?: &Subscription.past_due?/1,
-        declined: &handle_decline/2
+        declined: declined
       )
 
     case result do
