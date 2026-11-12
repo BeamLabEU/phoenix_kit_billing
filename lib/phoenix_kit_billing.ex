@@ -4678,14 +4678,14 @@ defmodule PhoenixKitBilling do
   # the charge itself recording its payment (`SubscriptionCharge`), which moves the
   # period on in the same transaction: nothing to queue.
   #
+  # Only when the paid invoice leaves the CURRENT period paid. Any other invoice of a
+  # past-due subscription paid in full would queue a dunning run that finds the period
+  # unpaid and charges the card off its daily schedule.
+  #
   # Unique among jobs ready to run only: the worker's own uniqueness covers every state
   # for an hour, so it would drop this job next to the retry scheduled for tomorrow.
   defp resume_paid_subscription(%Invoice{subscription_uuid: uuid}) when is_binary(uuid) do
-    past_due? =
-      from(s in PhoenixKitBilling.Subscription, where: s.uuid == ^uuid and s.status == "past_due")
-      |> repo().exists?()
-
-    if past_due? and not repo().in_transaction?() do
+    if not repo().in_transaction?() and past_due_period_paid?(uuid) do
       %{subscription_uuid: uuid}
       |> SubscriptionDunningWorker.new(
         unique: [period: 3600, keys: [:subscription_uuid], states: [:available]]
@@ -4709,6 +4709,16 @@ defmodule PhoenixKitBilling do
   end
 
   defp resume_paid_subscription(_invoice), do: :ok
+
+  defp past_due_period_paid?(subscription_uuid) do
+    case repo().get_by(PhoenixKitBilling.Subscription,
+           uuid: subscription_uuid,
+           status: "past_due"
+         ) do
+      nil -> false
+      subscription -> SubscriptionCharge.period_paid?(subscription)
+    end
+  end
 
   # The outstanding balance, recorded as an offline payment so the ledger
   # matches the invoice. Nothing to record when it is already settled.

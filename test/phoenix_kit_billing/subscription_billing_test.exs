@@ -508,6 +508,20 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       assert [%Invoice{status: "paid"}] = invoices(subscription)
     end
 
+    test "paying an invoice of another period queues no retry off the schedule" do
+      subscription = past_due_subscription!()
+      [invoice] = invoices(subscription)
+
+      # not the current period's any more: the run it queued would find the period
+      # unpaid and charge the card a second time that day
+      Repo.update_all(from(i in Invoice, where: i.uuid == ^invoice.uuid),
+        set: [metadata: %{"period_end" => "2020-01-01T00:00:00Z"}]
+      )
+
+      assert {:ok, _} = Billing.mark_invoice_paid(Repo.get!(Invoice, invoice.uuid))
+      assert dunning_jobs() == []
+    end
+
     test "a paid period that cannot move on is retried without counting an attempt" do
       subscription = past_due_subscription!()
       [invoice] = invoices(subscription)
