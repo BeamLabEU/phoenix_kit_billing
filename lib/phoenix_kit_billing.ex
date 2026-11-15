@@ -4703,15 +4703,18 @@ defmodule PhoenixKitBilling do
       :ok
     end
   rescue
-    error -> warn_not_resumed(uuid, Exception.message(error))
+    error -> warn_not_resumed(uuid, error, __STACKTRACE__)
   end
 
   defp resume_paid_subscription(_invoice), do: :ok
 
-  defp warn_not_resumed(subscription_uuid, reason) do
+  defp warn_not_resumed(subscription_uuid, reason, stacktrace \\ []) do
+    metadata = if stacktrace == [], do: [], else: [crash_reason: {reason, stacktrace}]
+
     Logger.warning(
       "Subscription #{subscription_uuid} stays past due until its next retry: " <>
-        "could not queue one now: #{inspect(reason)}"
+        "could not queue one now: #{inspect(reason)}",
+      metadata
     )
 
     :ok

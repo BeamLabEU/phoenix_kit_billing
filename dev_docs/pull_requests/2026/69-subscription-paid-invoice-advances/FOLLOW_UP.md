@@ -12,3 +12,19 @@
   The retry scheduled earlier still stands. See the review.
 - **NITPICK: CHANGELOG entry in the feature PR — left for the release commit**, which
   should say "the period's invoice".
+
+2026-11-15 — Grok review of everything since 0.27.0, including the commits after this PR.
+
+- **BUG - MEDIUM: a decline while the payment-triggered job is executing drops the next retry — fixed.**
+  `schedule_next_retry/1` uses the worker's uniqueness without `:executing`. The retry
+  queued on payment is inserted and runs at once, so the next day it schedules conflicted
+  with itself. When that job was the only one, the subscription stayed past due. A job
+  that is waiting, held or already finished still keeps the slot. Test: "a paid period
+  that cannot move on still queues the next day while that retry is running".
+- **NITPICK from the Claude review (a declined payment-triggered retry cannot reschedule itself) — fixed**,
+  the same change. A second decline beside a retry that is already scheduled still queues
+  nothing more.
+- **The post-commit rescue stays.** A raise while queueing the immediate retry is logged
+  with its stacktrace and `mark_invoice_paid/2` still returns the paid invoice. No direct
+  test: the raise is after the commit, and the suite has no insert seam. The daily retry
+  still moves the subscription on.

@@ -213,10 +213,28 @@ defmodule PhoenixKitBilling.Workers.SubscriptionDunningWorker do
   # Unconditional: `process_dunning/1` decides at the next run whether that is another
   # try or the end. Stopping here on the last attempt left the subscription past due
   # for good, and `active?/1` counts that as in service.
+  #
+  # States are the worker's default (`:successful`) without `:executing`. The retry
+  # queued when the period's invoice is paid is inserted and runs at once, and this
+  # schedules the next day while that job is still executing. Counting `:executing`
+  # drops the insert: the running job conflicts with itself, and when it was the only
+  # one queued the subscription stays past due. A job that is waiting, held or already
+  # finished still keeps the slot, so a second retry is not queued beside it.
   defp schedule_next_retry(%Subscription{} = subscription) do
+    states = Oban.Job.unique_states(:successful) -- [:executing]
+
     %{subscription_uuid: subscription.uuid}
-    |> __MODULE__.new(schedule_in: 86_400)
+    |> __MODULE__.new(schedule_in: 86_400, unique: [states: states])
     |> Oban.insert()
+    |> case do
+      {:ok, _job} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "Subscription #{subscription.uuid} has no dunning retry queued: #{inspect(reason)}"
+        )
+    end
   end
 
   # ============================================

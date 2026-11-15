@@ -541,6 +541,50 @@ defmodule PhoenixKitBilling.SubscriptionBillingTest do
       assert [%Oban.Job{state: "scheduled"}] = dunning_jobs()
     end
 
+    # `dun/1` calls the worker directly, so the row Oban would be running is not in
+    # the table. The payment queues that row and Oban marks it executing before
+    # `perform/1`; uniqueness that counts `:executing` then drops the next day.
+    test "a paid period that cannot move on still queues the next day while that retry is running" do
+      subscription = past_due_subscription!()
+      [invoice] = invoices(subscription)
+      assert {:ok, _} = Billing.mark_invoice_paid(invoice)
+      assert [%Oban.Job{state: "available"} = running] = dunning_jobs()
+
+      {1, _} =
+        Repo.update_all(from(j in Oban.Job, where: j.id == ^running.id),
+          set: [state: "executing"]
+        )
+
+      Repo.update_all(from(s in Subscription, where: s.uuid == ^subscription.uuid),
+        set: [subscription_type_uuid: nil]
+      )
+
+      before = reload(subscription)
+      assert {:ok, {:declined, :no_plan}} = dun(before)
+      assert reload(subscription).renewal_attempts == before.renewal_attempts
+
+      # `all_enqueued/1` hides an executing job, which is the row this has to keep.
+      states =
+        Oban.Job
+        |> where([j], j.worker == ^inspect(SubscriptionDunningWorker))
+        |> Repo.all()
+        |> Enum.map(& &1.state)
+        |> Enum.sort()
+
+      assert states == ["executing", "scheduled"]
+    end
+
+    test "a decline does not queue a second retry while one is already scheduled" do
+      subscription = past_due_subscription!()
+      decline()
+
+      assert {:ok, _} = dun(subscription)
+      assert [_scheduled] = dunning_jobs()
+
+      assert {:ok, _} = dun(reload(subscription))
+      assert [%Oban.Job{state: "scheduled"}] = dunning_jobs()
+    end
+
     test "giving up leaves an invoice with money on it for an operator" do
       subscription = past_due_subscription!()
       [invoice] = invoices(subscription)

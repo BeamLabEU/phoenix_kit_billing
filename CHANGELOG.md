@@ -18,10 +18,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   day as before when it is not, counting no attempt. Paying the period's invoice in full
   outside a charge (*Mark paid*, a payment recorded by hand, or a provider webhook) also
   queues a retry at once, so the subscription is active again within seconds; that retry
-  is not dropped next to the one scheduled for the next day. A part payment queues none,
-  and neither does paying an invoice of another period, or a payment made inside the
-  caller's own transaction: there the scheduled retry moves the subscription on. Failing
-  to queue that retry is logged and never turns the committed payment into an error.
+  is not dropped next to the one scheduled for the next day. If that run cannot move the
+  period on, it still schedules the next day, including while it is the job Oban is
+  running. A part payment queues none, and neither does paying an invoice of another
+  period, or a payment made inside the caller's own transaction: there the scheduled
+  retry moves the subscription on. Failing to queue that retry is logged and never turns
+  the committed payment into an error.
 - **A period paid by bank transfer is not cancelled at the last retry.** Dunning
   checked the attempts and the grace period before anything else, so a subscription
   whose last card retry was due ended even though its invoice had been marked paid.
