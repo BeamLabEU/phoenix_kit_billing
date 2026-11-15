@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.28.0 - 2026-11-15
+
+A subscriber who pays by invoice instead of a card stays subscribed: paying the
+period's invoice moves the subscription on to its next period. Core 3.5.0 is now the
+floor.
+
+**Upgrading.** Needs core 3.5.0 or later: update core first if the host is on 3.4.
+Billing has no migration. Dunning jobs queued before the upgrade still run.
 
 ### Fixed
 
@@ -41,6 +48,12 @@ Other changes:
 - Dunning for a subscription without a card takes the charge path, which makes the
   period's invoice when it has none, as it does for a card. So if that invoice is
   voided, the next retry issues a new one.
+- A dunning job belongs to the period it was queued for (`period_end` in its args) and
+  does nothing once the subscription has moved to another period, so a delayed retry
+  cannot charge a later period off its schedule. A job without `period_end`, such as
+  one queued before this release or by hand, runs as before.
+- A card attached while a no-card retry runs is charged like any card retry: a decline
+  counts an attempt, and a charge the ledger refused is not retried.
 
 ## 0.27.0 - 2026-11-06
 
