@@ -28,3 +28,17 @@
   with its stacktrace and `mark_invoice_paid/2` still returns the paid invoice. No direct
   test: the raise is after the commit, and the suite has no insert seam. The daily retry
   still moves the subscription on.
+
+2026-11-15 — Codex review of changes since Hex 0.27.0.
+
+- **BUG - HIGH: a card attached after the initial read bypasses charge outcome handling — fixed.**
+  The no-card path now uses `retry_charge/2`. A charge the ledger refused completes
+  the job without retrying; a card decline increments the attempt count. Two
+  regression tests exercise the attachment between the initial read and the lock.
+- **BUG - HIGH: a delayed payment-triggered job charges a later unpaid period — fixed.**
+  Automatic dunning jobs carry their period and skip a different one. Their
+  uniqueness includes the period, preserving scheduled retries for later periods.
+  The charge predicate also checks the period under its lock.
+  Tests cover both a delayed job and a period changed after the initial read.
+
+Details and validation are in `CODEX_REVIEW.md`.

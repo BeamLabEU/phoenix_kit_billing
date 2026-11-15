@@ -4681,6 +4681,8 @@ defmodule PhoenixKitBilling do
   # Only when the paid invoice leaves the CURRENT period paid. Any other invoice of a
   # past-due subscription paid in full would queue a dunning run that finds the period
   # unpaid and charges the card off its daily schedule.
+  # Carry that period into the job too: by the time it runs, another retry may have
+  # moved the subscription on and a later renewal may have failed.
   #
   # Unique among jobs ready to run only: the worker's own uniqueness covers every state
   # for an hour, so it would drop this job next to the retry scheduled for tomorrow.
@@ -4689,10 +4691,11 @@ defmodule PhoenixKitBilling do
   # caller as failed (an operator clicking again, a provider redelivering the webhook).
   # The retry already scheduled moves the subscription on without this one.
   defp resume_paid_subscription(%Invoice{subscription_uuid: uuid}) when is_binary(uuid) do
-    if not repo().in_transaction?() and past_due_period_paid?(uuid) do
-      %{subscription_uuid: uuid}
+    with false <- repo().in_transaction?(),
+         period_end when is_binary(period_end) <- past_due_paid_period(uuid) do
+      %{subscription_uuid: uuid, period_end: period_end}
       |> SubscriptionDunningWorker.new(
-        unique: [period: 3600, keys: [:subscription_uuid], states: [:available]]
+        unique: [period: 3600, keys: [:subscription_uuid, :period_end], states: [:available]]
       )
       |> Oban.insert()
       |> case do
@@ -4700,7 +4703,7 @@ defmodule PhoenixKitBilling do
         {:error, reason} -> warn_not_resumed(uuid, reason)
       end
     else
-      :ok
+      _ -> :ok
     end
   rescue
     error -> warn_not_resumed(uuid, error, __STACKTRACE__)
@@ -4720,13 +4723,17 @@ defmodule PhoenixKitBilling do
     :ok
   end
 
-  defp past_due_period_paid?(subscription_uuid) do
+  defp past_due_paid_period(subscription_uuid) do
     case repo().get_by(PhoenixKitBilling.Subscription,
            uuid: subscription_uuid,
            status: "past_due"
          ) do
-      nil -> false
-      subscription -> SubscriptionCharge.period_paid?(subscription)
+      nil ->
+        nil
+
+      subscription ->
+        if SubscriptionCharge.period_paid?(subscription),
+          do: DateTime.to_iso8601(subscription.current_period_end)
     end
   end
 
