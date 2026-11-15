@@ -539,7 +539,9 @@ Test database `phoenix_kit_billing_test`. Unit tests (schemas, changesets, pure
 functions, the migration-statement parsers, the pin and pot guards) always run.
 DB-backed tests are tagged `:integration` through `PhoenixKitBilling.DataCase` and
 are excluded automatically when the database is absent or unreachable — the helper
-probes with `psql -lqt` and falls back to a connection attempt.
+makes one classified connection attempt with the repo's own credentials and
+transport (core's `PhoenixKit.TestSupport.PostgresPreflight`) and prints the
+reason when it fails.
 
 `test/test_helper.exs`:
 

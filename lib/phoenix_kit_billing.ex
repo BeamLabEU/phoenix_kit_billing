@@ -4684,6 +4684,10 @@ defmodule PhoenixKitBilling do
   #
   # Unique among jobs ready to run only: the worker's own uniqueness covers every state
   # for an hour, so it would drop this job next to the retry scheduled for tomorrow.
+  #
+  # Never raises: the payment is committed, and a crash here would report it to the
+  # caller as failed (an operator clicking again, a provider redelivering the webhook).
+  # The retry already scheduled moves the subscription on without this one.
   defp resume_paid_subscription(%Invoice{subscription_uuid: uuid}) when is_binary(uuid) do
     if not repo().in_transaction?() and past_due_period_paid?(uuid) do
       %{subscription_uuid: uuid}
@@ -4692,23 +4696,26 @@ defmodule PhoenixKitBilling do
       )
       |> Oban.insert()
       |> case do
-        {:ok, _job} ->
-          :ok
-
-        {:error, reason} ->
-          Logger.warning(
-            "Subscription #{uuid} stays past due until its next retry: " <>
-              "could not queue one now: #{inspect(reason)}"
-          )
-
-          :ok
+        {:ok, _job} -> :ok
+        {:error, reason} -> warn_not_resumed(uuid, reason)
       end
     else
       :ok
     end
+  rescue
+    error -> warn_not_resumed(uuid, Exception.message(error))
   end
 
   defp resume_paid_subscription(_invoice), do: :ok
+
+  defp warn_not_resumed(subscription_uuid, reason) do
+    Logger.warning(
+      "Subscription #{subscription_uuid} stays past due until its next retry: " <>
+        "could not queue one now: #{inspect(reason)}"
+    )
+
+    :ok
+  end
 
   defp past_due_period_paid?(subscription_uuid) do
     case repo().get_by(PhoenixKitBilling.Subscription,
@@ -7218,14 +7225,13 @@ defmodule PhoenixKitBilling do
     translated_country_name(code) || CountryData.get_country_name(code) || code
   end
 
-  # `BeamLabCountries` arrives with core; its translations module only in
-  # its later releases, so an older one falls back to the English name.
+  # `BeamLabCountries` arrives with core (`~> 2.1` from core 3.5.0), which ships the
+  # translations module; `nil` for a code it has no name for.
   defp translated_country_name(code) do
-    translations = BeamLabCountries.Translations
-
-    if Code.ensure_loaded?(translations) and function_exported?(translations, :get_name, 2) do
-      translations.get_name(code, base_locale(Gettext.get_locale(PhoenixKitBilling.Gettext)))
-    end
+    BeamLabCountries.Translations.get_name(
+      code,
+      base_locale(Gettext.get_locale(PhoenixKitBilling.Gettext))
+    )
   end
 
   @doc """

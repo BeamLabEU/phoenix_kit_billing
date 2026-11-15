@@ -36,7 +36,7 @@ defmodule PhoenixKitBilling.CoreCompat do
   # by hand below.
   @runtime_calls [
     {PhoenixKit.Activity, :log, 3},
-    # The generated `ExpectedSchema` validates the prefix it is handed.
+    # `Migrations` and the generated `ExpectedSchema` validate the prefix they are handed.
     {PhoenixKit.Migrations.Postgres.Helpers, :validate_prefix!, 1},
     # InvoiceEvents and OrderEvents find modules declaring their handler callbacks.
     {PhoenixKit.ModuleRegistry, :all_modules, 0},

@@ -15,18 +15,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and dunning cancelled it, paid: dunning skipped the charge path for a subscription
   with no card, so it never found the invoice paid. Dunning now runs that path without
   a card, which starts the next period when the invoice is paid and waits for the next
-  day as before when it is not, counting no attempt. Paying the invoice in full outside
-  a charge (*Mark paid*, a payment recorded by hand, or a provider webhook) also queues
-  a retry at once, so the subscription is active again within seconds; that retry is
-  not dropped next to the one scheduled for the next day. A part payment queues none,
-  and neither does a payment made inside the caller's own transaction: there the
-  scheduled retry moves the subscription on.
+  day as before when it is not, counting no attempt. Paying the period's invoice in full
+  outside a charge (*Mark paid*, a payment recorded by hand, or a provider webhook) also
+  queues a retry at once, so the subscription is active again within seconds; that retry
+  is not dropped next to the one scheduled for the next day. A part payment queues none,
+  and neither does paying an invoice of another period, or a payment made inside the
+  caller's own transaction: there the scheduled retry moves the subscription on. Failing
+  to queue that retry is logged and never turns the committed payment into an error.
 - **A period paid by bank transfer is not cancelled at the last retry.** Dunning
   checked the attempts and the grace period before anything else, so a subscription
   whose last card retry was due ended even though its invoice had been marked paid.
   A paid period now moves on first.
 
 ### Changed
+
+Changes that can break a caller:
+
+- **Requires `phoenix_kit >= 3.5.0 and < 4.0.0`** (was `>= 3.4.0`), the ecosystem-wide
+  minimum core. A host on core 3.4 updates core first. Billing has no migration.
+
+Other changes:
 
 - Dunning for a subscription without a card takes the charge path, which makes the
   period's invoice when it has none, as it does for a card. So if that invoice is
