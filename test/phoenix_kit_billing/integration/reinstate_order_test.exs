@@ -191,6 +191,22 @@ defmodule PhoenixKitBilling.Integration.ReinstateOrderTest do
       assert twice.metadata["reinstated"]["reason"] == "third"
     end
 
+    test "clears cancelled_at on the stored row for a struct read before the cancel", %{
+      user: user
+    } do
+      {:ok, confirmed} = Billing.confirm_order(create_order(user))
+      assert confirmed.cancelled_at == nil
+      {:ok, cancelled} = Billing.cancel_order(confirmed)
+      assert %DateTime{} = Billing.get_order!(cancelled.uuid).cancelled_at
+
+      assert {:ok, reinstated} = Billing.reinstate_order(confirmed)
+
+      assert reinstated.cancelled_at == nil
+      stored = Billing.get_order!(cancelled.uuid)
+      assert stored.status == "confirmed"
+      assert stored.cancelled_at == nil
+    end
+
     test "decides on the stored status, not the stale struct's", %{user: user} do
       cancelled = cancelled_from(user, "draft")
       {:ok, _} = Billing.reinstate_order(cancelled)

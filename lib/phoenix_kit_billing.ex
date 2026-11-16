@@ -2897,12 +2897,12 @@ defmodule PhoenixKitBilling do
     end)
   end
 
-  # SELECT status, internal_notes, metadata, trashed_at ... FOR NO KEY UPDATE. That lock
-  # queues transitions behind each other (it conflicts with itself and with
-  # the UPDATE that follows) but not with the FOR KEY SHARE an invoice insert
-  # takes on the order through its foreign key. A row that has vanished keeps
-  # the caller's values, so the UPDATE that follows fails the way it always
-  # did.
+  # SELECT status, internal_notes, metadata, cancelled_at, trashed_at ... FOR NO
+  # KEY UPDATE. That lock queues transitions behind each other (it conflicts
+  # with itself and with the UPDATE that follows) but not with the FOR KEY SHARE
+  # an invoice insert takes on the order through its foreign key. A row that has
+  # vanished keeps the caller's values, so the UPDATE that follows fails the way
+  # it always did.
   defp lock_order_row(%Order{uuid: uuid}) do
     uuid |> order_row() |> lock("FOR NO KEY UPDATE") |> repo().one() |> Kernel.||(%{})
   end
@@ -2915,7 +2915,7 @@ defmodule PhoenixKitBilling do
   defp order_row(uuid) do
     Order
     |> where([o], o.uuid == ^uuid)
-    |> select([o], map(o, [:status, :internal_notes, :metadata, :trashed_at]))
+    |> select([o], map(o, [:status, :internal_notes, :metadata, :cancelled_at, :trashed_at]))
   end
 
   @doc """

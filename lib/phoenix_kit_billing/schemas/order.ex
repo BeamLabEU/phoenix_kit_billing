@@ -410,7 +410,10 @@ defmodule PhoenixKitBilling.Order do
 
     changeset =
       order
-      |> change(status: to, cancelled_at: nil)
+      |> change(status: to)
+      # Forced: a struct read before the cancellation has `cancelled_at` nil
+      # already, and `change/2` would drop the no-op and leave the stored value.
+      |> force_change(:cancelled_at, nil)
       |> track_revision()
       # After `bump_revision/1` (registered by `track_revision/1`), which keeps
       # the stored trail: this replaces it with the reinstatement's own.
