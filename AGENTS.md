@@ -330,8 +330,9 @@ and skips an invoice of it that is in the trash, making a new one.
   `event_uuid`, and (order uuid, event) is not one occurrence - an order cancelled,
   reinstated and cancelled again fires `:cancelled` twice - so a handler's effect is
   idempotent against the order's status. An order's `:refunded` takes a full refund.
-  A handler with no clause for `:reinstated` (older than it) is skipped for it, not
-  retried. PubSub still goes out after the commit.
+  A handler ends with a catch-all clause: events are added over time
+  (`:reinstated` was), and one with no clause fails its job. PubSub still goes out
+  after the commit.
 - **`EmailDefaults`** — the fallback copy for the four financial emails, handed
   to `PhoenixKit.Mailer.send_from_template/4` as `:defaults`. Resolution order is
   an active database template, then a host override file for the recipient's
