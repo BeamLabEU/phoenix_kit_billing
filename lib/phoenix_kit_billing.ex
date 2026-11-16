@@ -2791,8 +2791,11 @@ defmodule PhoenixKitBilling do
   Returns `{:ok, order}` (the order as it ends up), `{:error,
   :order_not_reinstatable}` when the stored status is not `"cancelled"`,
   `{:error, :order_trashed}`, or `{:error, changeset}`. Refusals are returned,
-  not rolled back. On success an `:order_reinstated` event is broadcast, then
-  `:order_confirmed` and `:order_paid` when a paid invoice settled the order.
+  not rolled back. The durable `:reinstated` event
+  (`PhoenixKitBilling.OrderEvents`) is enqueued in the same transaction, and
+  `:paid` after it when a paid invoice settled the order. On success an
+  `:order_reinstated` event is broadcast, then `:order_confirmed` and
+  `:order_paid` when a paid invoice settled the order.
   """
   def reinstate_order(%Order{} = order, reason \\ nil, opts \\ []) do
     reason = normalize_reason(reason)
@@ -2827,6 +2830,7 @@ defmodule PhoenixKitBilling do
         |> Order.reinstate_changeset(opts[:actor_uuid], reason)
         |> put_reason_note("Reinstated", current.internal_notes, reason)
         |> repo().update()
+        |> enqueue_order_event(:reinstated)
       else
         {:error, :order_not_reinstatable}
       end
