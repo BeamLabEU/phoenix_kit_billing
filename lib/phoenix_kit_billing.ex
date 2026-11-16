@@ -2773,9 +2773,11 @@ defmodule PhoenixKitBilling do
   (paying it does not move a cancelled order). Then the order does not stay at
   the status it went back to: it is confirmed (when it went back to `"draft"` or
   `"pending"`) and marked paid, in the same transaction, as a payment of the
-  invoice would have done. A payment or a refund of the invoice that runs at
-  the same time waits for the order row and then sees the reinstated order, so
-  the order ends up paid (or refunded) whichever commits first.
+  invoice would have done. A payment of the invoice that runs at the same time
+  waits for the order row and sees the reinstated order, so the order is paid
+  whichever commits first. A full refund of it that commits first voids the
+  invoice, and the reinstate then confirms the order without paying it; one
+  that waits for the reinstate refunds the order it reinstated.
 
   ## Options
 
@@ -5065,7 +5067,10 @@ defmodule PhoenixKitBilling do
 
   @reason_max_length 500
 
-  @doc "The longest reason `void_invoice/3` and `cancel_order/3` keep; longer ones are cut."
+  @doc """
+  The longest reason `void_invoice/3`, `cancel_order/3` and `reinstate_order/3`
+  keep; longer ones are cut.
+  """
   def reason_max_length, do: @reason_max_length
 
   @doc false
