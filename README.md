@@ -317,7 +317,8 @@ PhoenixKitBilling.list_orders(%{trashed: :only})    # :include for both
   it was before the trash.
 - Trashing and restoring leave `updated_at` as it was.
 - `trash_order/2` takes an optional `:reason` (trimmed, cut like the cancel reason),
-  appended to the order's `internal_notes` as `Trashed <date>: <reason>`.
+  appended to the order's `internal_notes` as `Trashed <date>: <reason>`. It is an
+  API option: the admin's Move to trash does not ask for one.
 - Restoring a trashed draft invoice puts back its old figures. If the order's
   lines changed meanwhile, the invoice no longer matches them: check it before
   sending.
