@@ -2936,7 +2936,9 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
-  Takes an order out of the trash. Nothing else about it changes.
+  Takes an order out of the trash. Its revision moves on, as it does when it
+  goes there (see `Order`'s moduledoc), and nothing else about it changes: not
+  the status, not `updated_at`.
 
   Takes a row lock on the order and decides on the stored row. The options are
   accepted for symmetry with `trash_order/2` and not used.
