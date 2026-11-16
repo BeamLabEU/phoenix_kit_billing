@@ -44,27 +44,6 @@ defmodule PhoenixKitBilling.OrderEventsTest do
     def handle_order_event(_event, _order), do: raise("downstream exploded")
   end
 
-  # Written before `:reinstated` existed: clauses for the first three events.
-  defmodule LegacyHandler do
-    @moduledoc false
-    def handle_order_event(event, order) when event in [:paid, :refunded, :cancelled] do
-      send(
-        Application.fetch_env!(:phoenix_kit_billing, :order_events_test_pid),
-        {:legacy_handled, order.uuid}
-      )
-
-      :ok
-    end
-  end
-
-  defmodule DeepRaisingHandler do
-    @moduledoc false
-    # A FunctionClauseError of some other function than the handler's own.
-    def handle_order_event(_event, order), do: deeper(order)
-
-    defp deeper(%{no_such_field: _}), do: :ok
-  end
-
   defmodule PaidOnlyHandler do
     @moduledoc false
     def handle_order_event(:paid, _order), do: :ok
@@ -638,29 +617,7 @@ defmodule PhoenixKitBilling.OrderEventsTest do
                perform_job(OrderEventWorker, args(%{uuid: Ecto.UUID.generate()}, Handler))
     end
 
-    test "a handler with clauses for the first three events only is skipped for :reinstated", %{
-      order: order
-    } do
-      Application.put_env(:phoenix_kit_billing, :order_event_handlers, [LegacyHandler])
-
-      for event <- ~w(paid refunded cancelled) do
-        assert :ok = perform_job(OrderEventWorker, args(order, LegacyHandler, event))
-        assert_receive {:legacy_handled, _}
-      end
-
-      assert :ok = perform_job(OrderEventWorker, args(order, LegacyHandler, "reinstated"))
-      refute_received {:legacy_handled, _}
-    end
-
-    test "a raise from deeper inside a handler is still retried for :reinstated", %{order: order} do
-      Application.put_env(:phoenix_kit_billing, :order_event_handlers, [DeepRaisingHandler])
-
-      assert_raise FunctionClauseError, fn ->
-        perform_job(OrderEventWorker, args(order, DeepRaisingHandler, "reinstated"))
-      end
-    end
-
-    test "a missing clause for an older event is still a failure", %{order: order} do
+    test "a handler with no clause for an event fails the job", %{order: order} do
       Application.put_env(:phoenix_kit_billing, :order_event_handlers, [PaidOnlyHandler])
 
       assert_raise FunctionClauseError, fn ->

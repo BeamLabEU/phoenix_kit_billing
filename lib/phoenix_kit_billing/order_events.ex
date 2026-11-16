@@ -37,10 +37,9 @@ defmodule PhoenixKitBilling.OrderEvents do
               PhoenixKitBilling.Order.t()
             ) :: :ok | {:error, term()}
 
-  A handler written before `:reinstated` existed, with clauses for the other
-  three only, is not called wrongly for it: a `FunctionClauseError` raised by its
-  own `handle_order_event/2` for `:reinstated` counts as "not interested" and the
-  job completes. End the handler with a catch-all clause all the same.
+  End the handler with a catch-all clause (`def handle_order_event(_event,
+  _order), do: :ok`): events are added over time (`:reinstated` was), and a
+  handler with no clause for one fails its job and is retried.
 
   Duck-typed - no compile-time dependency on billing - the same pattern as
   `InvoiceEvents`, so an optional billing integration costs nothing when billing
