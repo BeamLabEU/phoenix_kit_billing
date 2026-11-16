@@ -7159,47 +7159,44 @@ defmodule PhoenixKitBilling do
   # transaction. Both callers publish the returned events after it commits.
   defp maybe_mark_linked_order_paid(%{order_uuid: nil}), do: []
 
+  # Runs inside the caller's transaction (`mark_invoice_paid/2`,
+  # `do_record_transaction/4` and `reinstate_order/3` all open one), so the
+  # invoice and the order are paid together or not at all.
+  #
   # The order's status is read under its row lock (step 7 of the lock order in
-  # `PhoenixKitBilling.Migrations`, after the invoice row), held until the
-  # transaction ends, or for this call's own when the payment has committed
-  # already. A `reinstate_order/3` in flight holds that row: the payment waits
-  # for it and pays the order it reinstated, instead of reading the order as
-  # still cancelled while the reinstate, which cannot see the uncommitted
-  # payment, leaves it unpaid.
+  # `PhoenixKitBilling.Migrations`, after the invoice row), held until that
+  # transaction ends. A `reinstate_order/3` in flight holds that row: the
+  # payment waits for it and pays the order it reinstated, instead of reading
+  # the order as still cancelled while the reinstate, which cannot see the
+  # uncommitted payment, leaves it unpaid.
   defp maybe_mark_linked_order_paid(%{order_uuid: order_uuid} = invoice) do
     # Get the primary payment method from the invoice's transactions
     invoice_with_txns = repo().preload(invoice, :transactions)
     payment_method = Invoice.primary_payment_method(invoice_with_txns)
 
-    fn ->
-      case lock_linked_order(order_uuid) do
-        %Order{status: "confirmed"} = order ->
-          order_paid_broadcasts(order, payment_method)
+    case lock_linked_order(order_uuid) do
+      %Order{status: "confirmed"} = order ->
+        order_paid_broadcasts(order, payment_method)
 
-        %Order{status: status} = order when status in ["draft", "pending"] ->
-          case confirm_order_transition(order) do
-            {:ok, confirmed} ->
-              paid_broadcasts = order_paid_broadcasts(confirmed, payment_method)
-              [{:broadcast_order_confirmed, confirmed} | paid_broadcasts]
+      %Order{status: status} = order when status in ["draft", "pending"] ->
+        case confirm_order_transition(order) do
+          {:ok, confirmed} ->
+            paid_broadcasts = order_paid_broadcasts(confirmed, payment_method)
+            [{:broadcast_order_confirmed, confirmed} | paid_broadcasts]
 
-            error ->
-              warn_order_untouched(order_uuid, error)
-              []
-          end
+          error ->
+            warn_order_untouched(order_uuid, error)
+            []
+        end
 
-        _ ->
-          []
-      end
-    end
-    |> repo().transaction()
-    |> case do
-      {:ok, broadcasts} -> broadcasts
-      {:error, _} -> []
+      _ ->
+        []
     end
   end
 
   # With the billing profile `get_order!/1` preloads, which the broadcasts that
-  # follow hand to subscribers.
+  # follow hand to subscribers. Returns nil where `get_order!/1` raised: ON DELETE
+  # SET NULL means a vanished order has nothing to settle.
   defp lock_linked_order(order_uuid) do
     Order
     |> where([o], o.uuid == ^order_uuid)
