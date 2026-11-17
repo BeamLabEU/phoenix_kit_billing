@@ -15,6 +15,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
   @moduletag :integration
 
   import Ecto.Query
+  import PhoenixKitBilling.Test.LockWait
 
   alias Ecto.Adapters.SQL.Sandbox
   alias PhoenixKit.Users.Auth
@@ -99,6 +100,15 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
     assert {:ok, {:ok, _}} = Task.yield(holder, 5_000)
   end
 
+  # `task` is blocked on a lock held by an open transaction: a database backend
+  # is seen waiting on it (not merely "has not answered yet", which a slow call
+  # also does), and the call has not returned. Exactly one call waits at a time
+  # in these tests, so any waiting backend is it.
+  defp assert_waits(task, what) do
+    :ok = wait_until_a_backend_waits_on_a_lock(200, "#{what} never waited on a lock")
+    assert Task.yield(task, 0) == nil
+  end
+
   test "two reinstates: the second waits, then refuses, and one note is written", %{
     order: order
   } do
@@ -106,7 +116,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
     assert reinstated.status == "confirmed"
 
     second = Task.async(fn -> Billing.reinstate_order(order, "two") end)
-    assert Task.yield(second, 300) == nil
+    assert_waits(second, "the second reinstate")
 
     commit(first)
     assert {:ok, {:error, :order_not_reinstatable}} = Task.yield(second, 5_000)
@@ -121,7 +131,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
     {trasher, {:ok, _trashed}} = hold_open(fn -> Billing.trash_order(order) end)
 
     reinstater = Task.async(fn -> Billing.reinstate_order(order, "late") end)
-    assert Task.yield(reinstater, 300) == nil
+    assert_waits(reinstater, "the reinstate")
 
     commit(trasher)
     assert {:ok, {:error, :order_trashed}} = Task.yield(reinstater, 5_000)
@@ -135,7 +145,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
     {reinstater, {:ok, _}} = hold_open(fn -> Billing.reinstate_order(order, "back") end)
 
     trasher = Task.async(fn -> Billing.trash_order(order) end)
-    assert Task.yield(trasher, 300) == nil
+    assert_waits(trasher, "the trash")
 
     commit(reinstater)
     assert {:ok, {:error, :order_not_trashable}} = Task.yield(trasher, 5_000)
@@ -155,7 +165,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
       assert reinstated.status == "confirmed"
 
       payer = Task.async(fn -> Billing.mark_invoice_paid(invoice) end)
-      assert Task.yield(payer, 300) == nil
+      assert_waits(payer, "the payment")
 
       commit(reinstater)
       assert {:ok, {:ok, %Invoice{status: "paid"}}} = Task.yield(payer, 5_000)
@@ -174,7 +184,7 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
         end)
 
       reinstater = Task.async(fn -> Billing.reinstate_order(order, "back") end)
-      assert Task.yield(reinstater, 300) == nil
+      assert_waits(reinstater, "the reinstate")
 
       commit(payer)
       assert {:ok, {:ok, %Order{status: "paid"}}} = Task.yield(reinstater, 5_000)
@@ -206,13 +216,42 @@ defmodule PhoenixKitBilling.ReinstateRaceTest do
           Billing.record_refund(paid_invoice, %{amount: "10.00", reason: "x"}, nil)
         end)
 
-      assert Task.yield(refunder, 300) == nil
+      assert_waits(refunder, "the refund")
 
       commit(reinstater)
       assert {:ok, {:ok, _tx}} = Task.yield(refunder, 5_000)
 
       assert Billing.get_invoice!(invoice.uuid).status == "void"
       assert Billing.get_order!(order.uuid).status == "refunded"
+    end
+
+    test "a refund recorded first, still open: the reinstate waits, then puts the order back unpaid",
+         %{
+           user: user
+         } do
+      {order, invoice} = cancelled_with_invoice(user)
+      {:ok, paid_invoice} = Billing.mark_invoice_paid(invoice)
+
+      # The refund takes the order row too (it looks at the order's status), and
+      # keeps it until it commits; the invoice goes void with it.
+      {refunder, {:ok, _tx}} =
+        hold_open(fn ->
+          Billing.record_refund(paid_invoice, %{amount: "10.00", reason: "x"}, nil)
+        end)
+
+      reinstater = Task.async(fn -> Billing.reinstate_order(order, "back") end)
+      assert_waits(reinstater, "the reinstate")
+
+      commit(refunder)
+
+      # No paid invoice is left to settle the order: it goes back to the status it
+      # was cancelled from and stays unpaid.
+      assert {:ok, {:ok, %Order{status: "confirmed"}}} = Task.yield(reinstater, 5_000)
+
+      assert Billing.get_invoice!(invoice.uuid).status == "void"
+      stored = Billing.get_order!(order.uuid)
+      assert stored.status == "confirmed"
+      assert is_nil(stored.paid_at)
     end
   end
 end
