@@ -94,7 +94,9 @@ defmodule PhoenixKitBilling.Schemas.TrashFieldsTest do
     end
 
     test "trashing without an actor stores none" do
-      changeset = Order.trash_changeset(%Order{}, nil)
+      # a stored row, as the trash only ever gets one
+      changeset = %Order{} |> Ecto.put_meta(state: :loaded) |> Order.trash_changeset(nil)
+
       assert %DateTime{} = changeset.changes.trashed_at
       refute Map.has_key?(changeset.changes, :trashed_by_uuid)
     end
