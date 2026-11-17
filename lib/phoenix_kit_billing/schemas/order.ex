@@ -411,8 +411,10 @@ defmodule PhoenixKitBilling.Order do
     changeset =
       order
       |> change(status: to)
-      # Forced: a struct read before the cancellation has `cancelled_at` nil
-      # already, and `change/2` would drop the no-op and leave the stored value.
+      # Forced for a struct read before the cancellation: `cancelled_at` is nil on
+      # it already, so `change/2` would drop the no-op and the stored value would
+      # stay. Only a direct call can hand one over; `reinstate_order/3` merges the
+      # locked row, `cancelled_at` included, before it gets here.
       |> force_change(:cancelled_at, nil)
       |> track_revision()
       # After `bump_revision/1` (registered by `track_revision/1`), which keeps

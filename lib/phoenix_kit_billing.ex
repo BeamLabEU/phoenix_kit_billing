@@ -2788,8 +2788,10 @@ defmodule PhoenixKitBilling do
 
   Takes a row lock on the order for the duration of the call and decides on
   the stored row, not the struct's, so of two concurrent calls one reinstates
-  and the other is refused. An order in the trash is refused: restore it with
-  `restore_order/2` first.
+  and the other is refused. Call it inside your own transaction only if
+  holding that lock until commit is fine; the broadcasts go out when the call
+  returns, before your transaction commits. An order in the trash is refused:
+  restore it with `restore_order/2` first.
 
   Returns `{:ok, order}` (the order as it ends up), `{:error,
   :order_not_reinstatable}` when the stored status is not `"cancelled"`,

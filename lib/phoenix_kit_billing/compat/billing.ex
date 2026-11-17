@@ -80,6 +80,7 @@ defmodule PhoenixKit.Modules.Billing do
   defdelegate delete_order(order), to: PhoenixKitBilling
   defdelegate confirm_order(order), to: PhoenixKitBilling
   defdelegate cancel_order(order, reason \\ nil, opts \\ []), to: PhoenixKitBilling
+  defdelegate reinstate_order(order, reason \\ nil, opts \\ []), to: PhoenixKitBilling
   defdelegate mark_order_paid(order, opts \\ []), to: PhoenixKitBilling
   defdelegate mark_order_refunded(order), to: PhoenixKitBilling
   defdelegate trash_order(order, opts \\ []), to: PhoenixKitBilling
