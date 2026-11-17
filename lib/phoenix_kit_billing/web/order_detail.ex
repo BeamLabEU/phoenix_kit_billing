@@ -274,7 +274,13 @@ defmodule PhoenixKitBilling.Web.OrderDetail do
             resource_type: "order",
             resource_uuid: order.uuid,
             # Not the reason: it is free text, and it is kept in the order's internal notes.
-            metadata: %{"order_number" => order.order_number, "status" => order.status}
+            # "status" is where the order ended (`paid` when an invoice paid meanwhile
+            # settled it); "reinstated_status" is the status it went back to.
+            metadata: %{
+              "order_number" => order.order_number,
+              "status" => order.status,
+              "reinstated_status" => get_in(order.metadata || %{}, ["reinstated", "status"])
+            }
           )
 
           {:noreply,

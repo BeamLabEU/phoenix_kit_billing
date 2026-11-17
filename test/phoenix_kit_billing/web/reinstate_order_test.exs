@@ -10,6 +10,8 @@ defmodule PhoenixKitBilling.Web.ReinstateOrderTest do
 
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.Invoice
+  alias PhoenixKitBilling.Test.Repo
 
   setup %{conn: conn} do
     Settings.update_setting("billing_enabled", "true")
@@ -76,10 +78,37 @@ defmodule PhoenixKitBilling.Web.ReinstateOrderTest do
       assert_activity_logged("billing.order_reinstated",
         resource_uuid: order.uuid,
         actor_uuid: user.uuid,
-        metadata_has: %{"status" => "confirmed"}
+        metadata_has: %{"status" => "confirmed", "reinstated_status" => "confirmed"}
       )
 
     refute Map.has_key?(row.metadata, "reason")
+  end
+
+  test "a paid invoice settles the order: the Activity row says both where it went back to and where it ended",
+       %{conn: conn, user: user} do
+    {:ok, order} =
+      Billing.create_order(user, %{
+        "total" => Decimal.new("99.00"),
+        "currency" => "EUR",
+        "billing_snapshot" => %{"email" => "g@example.com"},
+        "line_items" => [%{"name" => "Item", "total" => "99.00"}]
+      })
+
+    {:ok, invoice} = Billing.create_invoice_from_order(order)
+    {:ok, sent} = invoice |> Invoice.status_changeset("sent") |> Repo.update()
+    {:ok, _cancelled} = Billing.cancel_order(order, "Changed mind")
+    {:ok, _paid_invoice} = Billing.mark_invoice_paid(sent)
+
+    {:ok, view, _html} = live(conn, "/en/admin/billing/orders/#{order.uuid}")
+    view |> element("#reinstate-order-button") |> render_click()
+    view |> form("#reinstate-order-form", %{"reason" => ""}) |> render_submit()
+
+    assert Billing.get_order!(order.uuid).status == "paid"
+
+    assert_activity_logged("billing.order_reinstated",
+      resource_uuid: order.uuid,
+      metadata_has: %{"status" => "paid", "reinstated_status" => "draft"}
+    )
   end
 
   test "closing the confirmation reinstates nothing", %{conn: conn, user: user} do
@@ -128,6 +157,29 @@ defmodule PhoenixKitBilling.Web.ReinstateOrderTest do
 
     assert flash["error"] =~ "permission"
     assert Billing.get_order!(order.uuid).status == "cancelled"
+  end
+
+  test "the handler re-checks manage_orders: with it revoked on the open page, the event is refused",
+       %{conn: conn, user: user} do
+    order = cancelled_order(user)
+    {:ok, view, _html} = live(conn, "/en/admin/billing/orders/#{order.uuid}")
+    assert has_element?(view, "#reinstate-order-button")
+
+    # The operator held manage_orders at mount and lost it while the page stayed
+    # open: only the check inside the handler can stop a reinstate now.
+    revoked = fake_scope(user_uuid: user.uuid, roles: ["Employee"], permissions: ["billing"])
+
+    :sys.replace_state(view.pid, fn state ->
+      update_in(state.socket.assigns, &Map.put(&1, :phoenix_kit_current_scope, revoked))
+    end)
+
+    render_hook(view, "reinstate_order", %{"reason" => "sneaky"})
+
+    assert has_element?(view, "#flash-error", "permission")
+    stored = Billing.get_order!(order.uuid)
+    assert stored.status == "cancelled"
+    refute Map.has_key?(stored.metadata, "reinstated")
+    refute_activity_logged("billing.order_reinstated", resource_uuid: order.uuid)
   end
 
   test "reinstated from another session meanwhile: refused with a message", %{
