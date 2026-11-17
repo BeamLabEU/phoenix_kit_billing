@@ -58,9 +58,12 @@ defmodule PhoenixKitBilling.Integration.ReinstateOrderTest do
     sent
   end
 
-  defp received_events(acc \\ []) do
+  # What reached this process about ONE order: the orders topic is shared with
+  # every async module, so an event of another test's order must not count.
+  defp received_events(uuid, acc \\ []) do
     receive do
-      {event, %Order{}} = message when is_atom(event) -> received_events([message | acc])
+      {event, %Order{uuid: ^uuid}} = message when is_atom(event) ->
+        received_events(uuid, [message | acc])
     after
       0 -> Enum.reverse(acc)
     end
@@ -387,8 +390,8 @@ defmodule PhoenixKitBilling.Integration.ReinstateOrderTest do
       uuid = reinstated.uuid
       assert_receive {:order_reinstated, %Order{uuid: ^uuid, status: "confirmed"}}
       assert_receive {:order_reinstated, %Order{uuid: ^uuid}}
-      refute_received {:order_paid, _}
-      refute_received {:order_cancelled, _}
+      refute_received {:order_paid, %Order{uuid: ^uuid}}
+      refute_received {:order_cancelled, %Order{uuid: ^uuid}}
     end
 
     test "with an invoice paid meanwhile, :order_paid follows", %{user: user} do
@@ -419,13 +422,14 @@ defmodule PhoenixKitBilling.Integration.ReinstateOrderTest do
 
         {:ok, settled} = Billing.reinstate_order(cancelled)
         assert settled.status == "paid"
+        uuid = settled.uuid
 
         # Each goes out on the orders topic and the user's, so twice.
         assert [
                  {:order_reinstated, %Order{status: unquote(status)}},
                  {:order_confirmed, %Order{status: "confirmed"}},
                  {:order_paid, %Order{status: "paid"}}
-               ] = received_events() |> Enum.dedup_by(&elem(&1, 0))
+               ] = uuid |> received_events() |> Enum.dedup_by(&elem(&1, 0))
       end
     end
 
@@ -434,7 +438,9 @@ defmodule PhoenixKitBilling.Integration.ReinstateOrderTest do
       flush_events()
 
       {:error, :order_not_reinstatable} = Billing.reinstate_order(order)
-      refute_received {:order_reinstated, _}
+
+      uuid = order.uuid
+      refute_received {:order_reinstated, %Order{uuid: ^uuid}}
     end
   end
 end
