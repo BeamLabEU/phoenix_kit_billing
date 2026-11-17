@@ -66,8 +66,9 @@ defmodule PhoenixKitBilling.Order do
   the trash (`nil` while it is not in it). They are billing's own: `changeset/2`
   cannot set or clear them, only `PhoenixKitBilling.trash_order/2` and
   `restore_order/2` write them. Only a `draft` or `cancelled` order can be
-  trashed, and the status does not change. A trashed order refuses every
-  change until it is restored.
+  trashed, and the status does not change. `trash_order/2` takes an optional
+  `:reason`, which it appends to `internal_notes` in the same write. A trashed
+  order refuses every change until it is restored.
 
   ## Status Workflow
 
@@ -782,8 +783,10 @@ defmodule PhoenixKitBilling.Order do
   @doc """
   Changeset that moves an order to the trash. `actor_uuid` is the user who does
   it, or `nil`. It changes nothing else: not the status, not `metadata`, not the
-  revision an external system reads, not `updated_at`. Written here and by `restore_changeset/1`
-  only: `changeset/2` cannot set these fields.
+  revision an external system reads, not `updated_at`, not the notes. (A reason
+  that `PhoenixKitBilling.trash_order/2` is given is added to this changeset by
+  that function, as a line in `internal_notes`.) Written here and by
+  `restore_changeset/1` only: `changeset/2` cannot set these fields.
   """
   def trash_changeset(%__MODULE__{} = order, actor_uuid) do
     order

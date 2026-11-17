@@ -92,7 +92,11 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
     end
 
     test "a reason is appended to the stored internal notes", %{user: user, actor: actor} do
-      order = create_order(user, %{"internal_notes" => "Called the customer"})
+      order =
+        create_order(user, %{
+          "internal_notes" => "Called the customer",
+          "notes" => "Please ship on Friday"
+        })
 
       # Written after the caller read the struct.
       order
@@ -110,7 +114,8 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
       assert Order.trashed?(row)
       assert row.trashed_by_uuid == actor
       assert row.status == "draft"
-      assert row.notes == order.notes
+      # The customer's own notes are not the internal ones: the reason stays out.
+      assert row.notes == "Please ship on Friday"
     end
 
     test "a reason on an order without notes is the whole note", %{user: user} do

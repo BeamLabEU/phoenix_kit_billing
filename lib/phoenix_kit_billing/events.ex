@@ -176,7 +176,8 @@ defmodule PhoenixKitBilling.Events do
 
   @doc """
   Broadcasts order trashed event. Trashing changes nothing else about the
-  order, so it is announced on its own: no `:order_updated` or
+  order (but the line in its internal notes when `trash_order/2` is given a
+  `:reason`), so it is announced on its own: no `:order_updated` or
   `:order_cancelled` goes with it.
   """
   def broadcast_order_trashed(order) do
