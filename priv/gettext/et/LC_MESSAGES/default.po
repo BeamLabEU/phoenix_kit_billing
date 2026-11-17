@@ -5487,17 +5487,17 @@ msgstr "Sellel tellimusel on avatud arve. Märkige see arve tasutuks: nii salves
 msgid "Creating..."
 msgstr "Loomine..."
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:293
+#: lib/phoenix_kit_billing/web/order_detail.ex:299
 #, elixir-autogen, elixir-format
 msgid "Failed to reinstate the order: %{reason}"
 msgstr "Tellimuse ennistamine ebaõnnestus: %{reason}"
 
-#: lib/phoenix_kit_billing/errors.ex:237
+#: lib/phoenix_kit_billing/errors.ex:238
 #, elixir-autogen, elixir-format
 msgid "Only a cancelled order can be reinstated."
 msgstr "Ennistada saab ainult tühistatud tellimust."
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:284
+#: lib/phoenix_kit_billing/web/order_detail.ex:290
 #, elixir-autogen, elixir-format
 msgid "Order reinstated"
 msgstr "Tellimus ennistatud"
@@ -5517,7 +5517,7 @@ msgstr "Kas ennistada tellimus %{number}?"
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:441
 #, elixir-autogen, elixir-format
 msgid "The order goes back to the status it had before it was cancelled. If one of its invoices was paid meanwhile, it is marked as paid."
-msgstr "Tellimus saab tagasi oleku, mis tal oli enne tühistamist. Kui vahepeal tasuti mõni selle arve, märgitakse tellimus tasutuks."
+msgstr "Tellimus saab tagasi oleku, mis tal oli enne tühistamist. Kui vahepeal tasuti mõni selle tellimuse arvetest, märgitakse tellimus tasutuks."
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:456
 #, elixir-autogen, elixir-format

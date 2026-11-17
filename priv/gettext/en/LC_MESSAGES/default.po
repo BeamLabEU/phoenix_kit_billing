@@ -5486,17 +5486,17 @@ msgstr "This order has an open invoice. Mark that invoice as paid: it records th
 msgid "Creating..."
 msgstr "Creating..."
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:293
+#: lib/phoenix_kit_billing/web/order_detail.ex:299
 #, elixir-autogen, elixir-format
 msgid "Failed to reinstate the order: %{reason}"
 msgstr "Failed to reinstate the order: %{reason}"
 
-#: lib/phoenix_kit_billing/errors.ex:237
+#: lib/phoenix_kit_billing/errors.ex:238
 #, elixir-autogen, elixir-format
 msgid "Only a cancelled order can be reinstated."
 msgstr "Only a cancelled order can be reinstated."
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:284
+#: lib/phoenix_kit_billing/web/order_detail.ex:290
 #, elixir-autogen, elixir-format
 msgid "Order reinstated"
 msgstr "Order reinstated"
