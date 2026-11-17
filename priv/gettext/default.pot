@@ -5346,17 +5346,17 @@ msgstr ""
 msgid "Creating..."
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:293
+#: lib/phoenix_kit_billing/web/order_detail.ex:299
 #, elixir-autogen, elixir-format
 msgid "Failed to reinstate the order: %{reason}"
 msgstr ""
 
-#: lib/phoenix_kit_billing/errors.ex:237
+#: lib/phoenix_kit_billing/errors.ex:238
 #, elixir-autogen, elixir-format
 msgid "Only a cancelled order can be reinstated."
 msgstr ""
 
-#: lib/phoenix_kit_billing/web/order_detail.ex:284
+#: lib/phoenix_kit_billing/web/order_detail.ex:290
 #, elixir-autogen, elixir-format
 msgid "Order reinstated"
 msgstr ""

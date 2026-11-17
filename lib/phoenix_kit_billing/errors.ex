@@ -232,7 +232,6 @@ defmodule PhoenixKitBilling.Errors do
   def message(:order_not_editable), do: gettext("This order can no longer be edited.")
   def message(:order_not_found), do: gettext("Order not found.")
   def message(:order_not_payable), do: gettext("This order cannot be paid in its current state.")
-
   def message(:order_not_refundable), do: gettext("This order cannot be refunded.")
 
   def message(:order_not_reinstatable),

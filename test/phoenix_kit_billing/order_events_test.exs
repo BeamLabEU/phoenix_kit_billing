@@ -381,6 +381,25 @@ defmodule PhoenixKitBilling.OrderEventsTest do
                Enum.find_index(steps, &(&1 == :job_insert))
     end
 
+    test "reinstate_order/3 settling a paid invoice: the reinstate and the payment commit together",
+         %{order: order} do
+      invoice = invoiced(order)
+      {:ok, cancelled} = Billing.cancel_order(order)
+      {:ok, _} = Billing.mark_invoice_paid(invoice)
+
+      steps =
+        steps(fn -> assert {:ok, %Order{status: "paid"}} = Billing.reinstate_order(cancelled) end)
+
+      # One transaction around both: the :reinstated and the :paid job go in
+      # before its only commit, and nothing commits between the two.
+      assert Enum.take(steps, 1) == [:begin]
+      assert List.last(steps) == :commit
+      assert Enum.count(steps, &(&1 == :begin)) == 1
+      assert Enum.count(steps, &(&1 == :commit)) == 1
+      assert Enum.count(steps, &(&1 == :job_insert)) == 2
+      assert Enum.count(steps, &(&1 == :order_update)) >= 2
+    end
+
     test "a payment through the invoice: one transaction, ending after the job", %{order: order} do
       invoice = invoiced(order)
 

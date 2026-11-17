@@ -11,6 +11,7 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
   @moduletag :integration
 
   import Ecto.Query
+  import PhoenixKitBilling.Test.LockWait
 
   alias Ecto.Adapters.SQL.Sandbox
   alias PhoenixKit.Users.Auth
@@ -219,7 +220,7 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
     second = Task.async(fn -> Billing.create_order(user, order_attrs()) end)
 
     # The second create is stuck on the first one's uncommitted counter row.
-    :ok = wait_until_a_backend_waits_on_a_lock()
+    :ok = wait_until_a_backend_waits_on_a_lock(200, "no create ever waited on the counter row")
     send(first.pid, :commit)
 
     assert {:ok, ^first_order} = Task.await(first, 30_000)
@@ -263,7 +264,9 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
       end)
 
     # The renumbering is waiting for the order row.
-    :ok = wait_until_a_backend_waits_on_a_lock()
+    :ok =
+      wait_until_a_backend_waits_on_a_lock(200, "the renumbering never waited for the order row")
+
     send(holder.pid, :go)
 
     assert {:ok, {:ok, created}} = Task.await(holder, 30_000)
@@ -271,27 +274,5 @@ defmodule PhoenixKitBilling.NumberSequencesRaceTest do
 
     assert renumbered.order_number =~ ~r/-0050$/
     assert created.order_number =~ ~r/-0002$/
-  end
-
-  defp wait_until_a_backend_waits_on_a_lock(attempts \\ 200) do
-    waiting =
-      Repo.query!("""
-      SELECT count(*) FROM pg_stat_activity
-      WHERE datname = current_database() AND wait_event_type = 'Lock'
-      """).rows
-
-    cond do
-      waiting != [[0]] ->
-        :ok
-
-      attempts == 0 ->
-        flunk("no create ever waited on the counter row")
-
-      true ->
-        receive do
-        after
-          25 -> wait_until_a_backend_waits_on_a_lock(attempts - 1)
-        end
-    end
   end
 end
