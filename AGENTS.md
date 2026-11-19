@@ -200,7 +200,7 @@ lib/phoenix_kit_billing/
 ├── invoice_events.ex                    # Durable paid/refunded/voided hook for other modules (Oban)
 ├── migrations.ex                        # Module-owned migration chain
 ├── notifications.ex                     # Audience resolution + copy for core notifications
-├── order_events.ex                      # Durable paid/refunded/cancelled hook for other modules (Oban)
+├── order_events.ex                      # Durable paid/refunded/cancelled/reinstated hook for other modules (Oban)
 ├── paths.ex                             # Centralized URL helpers
 ├── supervisor.ex                        # Registers providers, logs the CoreCompat report
 ├── compat/                              # Legacy PhoenixKit.Modules.Billing delegates
@@ -242,6 +242,22 @@ Invoice status workflow: `draft → sent → paid`, with `sent → overdue → p
 (`:invoice_has_payments`): it is refunded, and the refund that takes it to zero
 voids it.
 
+**Reinstating a cancelled order.** `reinstate_order/3` (`reason`, `actor_uuid:`;
+no actor when the system does it) takes a `cancelled` order back to
+`metadata["cancelled_from"]` (`pending` when an old order has no trail),
+clears `cancelled_at`, moves the revision on, enqueues the durable `:reinstated`
+order event and broadcasts `:order_reinstated`. The trail is
+`metadata["reinstated"]` (`status`, `reason`, `by_uuid`, `at`), billing's own like
+`cancelled_from`; a reason is also appended to the stored `internal_notes` as
+`Reinstated <date>: <reason>`. An invoice paid while the order was cancelled settles
+it in the same transaction (confirmed, then paid, with `:order_confirmed` /
+`:order_paid`). Paying and refunding read the linked order's
+status under its row lock (step 7), so they wait for a reinstate in flight
+instead of reading the order as cancelled. The reinstate decides on the locked row:
+anything but `cancelled` is `:order_not_reinstatable` (`refunded` is final), an
+order in the trash is `:order_trashed` - restore it first. The admin order page
+offers *Reinstate order* under `manage_orders`.
+
 **The trash.** `Order` and `Invoice` carry `trashed_at` / `trashed_by_uuid` (V8),
 billing's own: `changeset/2` cannot set or clear them, only `trash_order/2`,
 `restore_order/2`, `trash_invoice/2` and `restore_invoice/2` do. Trash is the only
@@ -256,8 +272,8 @@ the dashboard leave the trash out by default (`trashed: :only | :include`
 brings it back), and so do a customer's orders, the invoices preloaded on them
 and `get_order_by_uuid/2`. An invoice cannot be created for, moved onto or
 restored onto an order in the trash (`:order_trashed`). A restore is also refused
-for a cancelled order (`:order_cancelled`; it stays cancelled, so an invoice
-trashed from it stays in the trash and its number stays used) and for an order
+for a cancelled order (`:order_cancelled`; an invoice trashed from it stays in the
+trash until the order is reinstated, and its number stays used) and for an order
 with another invoice that is neither void nor in the trash
 (`:order_has_open_invoices`); creating an invoice for a cancelled order is as it
 was before the trash. The checks lock the order row against `trash_order/2`. A stored order is edited only while its stored status is `draft`
@@ -311,9 +327,12 @@ and skips an invoice of it that is in the trash, making a new one.
   delivered at least once with the record re-read. A handler is found through
   `billing_invoice_event_handlers/0` or `billing_order_event_handlers/0`, or the
   `:invoice_event_handlers` and `:order_event_handlers` config, and is not handed
-  `event_uuid`: an order's handler keys on the order's uuid and the event, as an
-  order reaches each status once. An order's `:refunded` takes a full refund. PubSub
-  still goes out after the commit.
+  `event_uuid`, and (order uuid, event) is not one occurrence - an order cancelled,
+  reinstated and cancelled again fires `:cancelled` twice - so a handler's effect is
+  idempotent against the order's status. An order's `:refunded` takes a full refund.
+  A handler ends with a catch-all clause: events are added over time
+  (`:reinstated` was), and one with no clause fails its job. PubSub still goes out
+  after the commit.
 - **`EmailDefaults`** — the fallback copy for the four financial emails, handed
   to `PhoenixKit.Mailer.send_from_template/4` as `:defaults`. Resolution order is
   an active database template, then a host override file for the recipient's
@@ -352,8 +371,10 @@ per-user form with a `:user:<user_uuid>` suffix.
 Trashing announces `{:order_trashed, order}` / `{:order_restored, order}` and
 `{:invoice_trashed, invoice}` / `{:invoice_restored, invoice}` on the order and
 invoice topics - and nothing else with them: not `:order_updated`, `:order_cancelled`
-or `:invoice_voided`, and no durable `InvoiceEvents` or `OrderEvents` event. A
-subscriber with a strict `handle_info/2` needs a catch-all clause for these.
+or `:invoice_voided`, and no durable `InvoiceEvents` or `OrderEvents` event.
+Reinstating announces `{:order_reinstated, order}`; unlike trashing it does enqueue a
+durable `OrderEvents` `:reinstated` event. A subscriber with a strict `handle_info/2`
+needs a catch-all clause for these.
 
 ### Permissions
 

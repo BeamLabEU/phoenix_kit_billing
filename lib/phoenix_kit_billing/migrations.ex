@@ -341,8 +341,9 @@ defmodule PhoenixKitBilling.Migrations do
        invoice row first, then lifts the counters - no other path waits on that
        row while holding a counter it needs.)
     6. The transaction counter, then the receipt counter.
-    7. The order row `FOR NO KEY UPDATE` (status transitions, `put_order_sync/2`,
-       and every other `update_order/2`, which decides on the stored row).
+    7. The order row `FOR NO KEY UPDATE` (status transitions such as
+       `cancel_order/3` and `reinstate_order/3`, `put_order_sync/2`, and every
+       other `update_order/2`, which decides on the stored row).
 
   A subscription row comes before all of these: the renewal and dunning workers take
   it `FOR UPDATE`, and only then create or lock the invoice of the period. A charge
