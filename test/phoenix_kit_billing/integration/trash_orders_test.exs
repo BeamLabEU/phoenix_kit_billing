@@ -43,7 +43,7 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
   end
 
   describe "trash_order/2" do
-    test "trashes a draft order: when, by whom, and nothing else changes", %{
+    test "trashes a draft order: when, by whom, the revision moves, nothing else changes", %{
       user: user,
       actor: actor
     } do
@@ -61,8 +61,27 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
       assert row.trashed_at == trashed.trashed_at
       assert row.trashed_by_uuid == actor
       assert row.status == "draft"
-      assert row.metadata == order.metadata
-      assert Order.revision(row) == before_revision
+      assert Map.delete(row.metadata, "revision") == Map.delete(order.metadata, "revision")
+      # an external system takes the order again (an ERP puts a deletion mark on it)
+      assert Order.revision(row) == before_revision + 1
+    end
+
+    test "an order an external system holds reads as pending again", %{user: user} do
+      {:ok, cancelled} = Billing.cancel_order(create_order(user), "x")
+
+      {:ok, marked} =
+        Billing.put_order_sync(cancelled, %{state: "synced", revision: Order.revision(cancelled)})
+
+      assert {:ok, trashed} = Billing.trash_order(marked)
+      assert Order.sync(trashed)["state"] == "pending"
+      assert Order.revision(trashed) == Order.revision(cancelled) + 1
+
+      {:ok, marked} =
+        Billing.put_order_sync(trashed, %{state: "synced", revision: Order.revision(trashed)})
+
+      assert {:ok, restored} = Billing.restore_order(marked)
+      assert Order.sync(restored)["state"] == "pending"
+      assert Order.revision(restored) == Order.revision(trashed) + 1
     end
 
     test "trashes a cancelled order and leaves it cancelled", %{user: user, actor: actor} do
@@ -77,6 +96,86 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
       assert {:ok, trashed} = Billing.trash_order(create_order(user))
       assert %DateTime{} = trashed.trashed_at
       assert trashed.trashed_by_uuid == nil
+    end
+
+    test "updated_at stays what it was", %{user: user, actor: actor} do
+      # Long ago, so a write that stamped it again would show.
+      long_ago = ~U[2020-05-05 10:00:00Z]
+      order = create_order(user)
+      Repo.update_all(from(o in Order, where: o.uuid == ^order.uuid), set: [updated_at: long_ago])
+
+      assert {:ok, trashed} = Billing.trash_order(order, actor_uuid: actor, reason: "Duplicate")
+
+      assert trashed.updated_at == long_ago
+      assert stored(order).updated_at == long_ago
+    end
+
+    test "a reason is appended to the stored internal notes", %{user: user, actor: actor} do
+      order =
+        create_order(user, %{
+          "internal_notes" => "Called the customer",
+          "notes" => "Please ship on Friday"
+        })
+
+      # Written after the caller read the struct.
+      order
+      |> Ecto.Changeset.change(internal_notes: "Called the customer\n\nSecond note")
+      |> Repo.update!()
+
+      assert {:ok, trashed} =
+               Billing.trash_order(order, actor_uuid: actor, reason: "  Created by mistake  ")
+
+      assert trashed.internal_notes =~
+               ~r/\ACalled the customer\n\nSecond note\n\nTrashed \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC: Created by mistake\z/
+
+      row = stored(order)
+      assert row.internal_notes == trashed.internal_notes
+      assert Order.revision(row) == Order.revision(order) + 1
+      assert Order.trashed?(row)
+      assert row.trashed_by_uuid == actor
+      assert row.status == "draft"
+      # The customer's own notes are not the internal ones: the reason stays out.
+      assert row.notes == "Please ship on Friday"
+    end
+
+    test "a reason on an order without notes is the whole note", %{user: user} do
+      order = create_order(user)
+
+      assert {:ok, trashed} = Billing.trash_order(order, reason: "Created by mistake")
+
+      assert trashed.internal_notes =~
+               ~r/\ATrashed \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC: Created by mistake\z/
+    end
+
+    test "a long reason is cut like the void and cancel reasons", %{user: user} do
+      order = create_order(user)
+      max = Billing.reason_max_length()
+
+      assert {:ok, trashed} = Billing.trash_order(order, reason: String.duplicate("é", max + 50))
+
+      [_, reason] = String.split(trashed.internal_notes, " UTC: ", parts: 2)
+      assert String.length(reason) == max
+    end
+
+    test "without a reason, or a blank one, the notes are untouched", %{user: user} do
+      for opts <- [[], [reason: nil], [reason: "   "]] do
+        order = create_order(user, %{"internal_notes" => "Called the customer"})
+
+        assert {:ok, trashed} = Billing.trash_order(order, opts)
+        assert trashed.internal_notes == "Called the customer"
+        assert stored(order).internal_notes == "Called the customer"
+      end
+
+      order = create_order(user)
+      assert {:ok, trashed} = Billing.trash_order(order)
+      assert trashed.internal_notes == nil
+    end
+
+    test "a refused trash writes no note", %{user: user} do
+      pending = create_order(user, %{"status" => "pending", "internal_notes" => "Keep"})
+
+      assert {:error, :order_not_trashable} = Billing.trash_order(pending, reason: "Nope")
+      assert stored(pending).internal_notes == "Keep"
     end
 
     test "any other status is refused, and the order stays where it was", %{user: user} do
@@ -233,7 +332,21 @@ defmodule PhoenixKitBilling.Integration.TrashOrdersTest do
       refute Order.trashed?(row)
       assert row.trashed_by_uuid == nil
       assert row.status == "draft"
-      assert Order.revision(row) == Order.revision(trashed)
+      assert Order.revision(row) == Order.revision(trashed) + 1
+    end
+
+    test "updated_at stays what it was", %{user: user, actor: actor} do
+      # Long ago, so a write that stamped it again would show.
+      long_ago = ~U[2020-05-05 10:00:00Z]
+      trashed = trashed(user, actor)
+
+      Repo.update_all(from(o in Order, where: o.uuid == ^trashed.uuid),
+        set: [updated_at: long_ago]
+      )
+
+      assert {:ok, restored} = Billing.restore_order(trashed)
+      assert restored.updated_at == long_ago
+      assert stored(trashed).updated_at == long_ago
     end
 
     test "an order that is not in the trash is refused", %{user: user} do
