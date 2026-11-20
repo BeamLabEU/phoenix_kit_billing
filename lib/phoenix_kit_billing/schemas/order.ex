@@ -69,9 +69,9 @@ defmodule PhoenixKitBilling.Order do
   cannot set or clear them, only `PhoenixKitBilling.trash_order/2` and
   `restore_order/2` write them. Only a `draft` or `cancelled` order can be
   trashed, and the status does not change. `trash_order/2` takes an optional
-  `:reason`, which it appends to `internal_notes` in the same write. Trashing and restoring advance the
-  revision and preserve `updated_at`. A trashed
-  order refuses every change until it is restored.
+  `:reason`, which it appends to `internal_notes` in the same write. Trashing and
+  restoring advance the revision and preserve `updated_at`. A trashed order refuses
+  every change until it is restored.
 
   ## Status Workflow
 

@@ -287,10 +287,11 @@ draft, sent or overdue invoice outside the trash (`:order_has_open_invoices`), w
 could still be paid: `mark_invoice_paid/2` settles such an order. It takes a paid
 invoice, as that is how an order its invoice failed to move is put right. Trashing and
 restoring do not touch `updated_at`, but move an order's revision (`trashed_at` is a
-revision field), so an external system that holds the order takes it again (an ERP
-marks it for deletion). An optional `:reason` passed to `trash_order/2` is appended to the
-stored `internal_notes` as `Trashed <date>: <reason>`. A void invoice of an order in the trash stays in the invoice
-lists: it is an issued document, and only a draft can be trashed.
+revision field), so an external system that holds the order takes it again (an ERP marks
+it for deletion). An optional `:reason` passed to `trash_order/2` is appended to the
+stored `internal_notes` as `Trashed <date>: <reason>`. A void invoice of an order in the
+trash stays in the invoice lists: it is an issued document, and only a draft can be
+trashed.
 `OrderPayment.start_order_payment/2` refuses an order in the trash (`:order_trashed`)
 and skips an invoice of it that is in the trash, making a new one.
 
