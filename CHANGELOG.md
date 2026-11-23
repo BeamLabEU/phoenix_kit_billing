@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.29.0 - 2026-11-23
+
+A cancelled order can be reinstated. Moving an order to the trash can record why, and
+trashing or restoring an order now moves its revision, so an external system picks the
+change up.
+
+**Upgrading.** No migration, and the core requirement is unchanged
+(`>= 3.5.0 and < 4.0.0`). Read "Changes that can break a caller" below. An
+`OrderEvents` handler with no catch-all clause has to get one before deploying.
+
+### Added
+
+- **`reinstate_order/3` and *Reinstate order* on the admin order page** (under
+  `billing.manage_orders`, with an optional reason). It takes a `cancelled` order
+  back to the status it was cancelled from (`metadata["cancelled_from"]`, or `pending`
+  for an order cancelled before that was recorded), clears `cancelled_at` and moves the
+  revision on. The trail goes to `metadata["reinstated"]` (`status`, `reason`,
+  `by_uuid`, `at`). A reason is also appended to `internal_notes` as
+  `Reinstated <date>: <reason>`. If one of the order's invoices was paid while it was
+  cancelled, the order is confirmed and marked paid in the same transaction. A
+  payment or refund of that invoice that runs at the same time waits for the
+  reinstate. An order that is not cancelled is `:order_not_reinstatable` (`refunded`
+  stays final). An order in the trash is `:order_trashed` and has to be restored first.
+  Also delegated from `PhoenixKit.Modules.Billing`.
+- `Order.reinstated_status/1` and `Order.reinstate_changeset/3`.
+- A durable `OrderEvents` `:reinstated` event and an `{:order_reinstated, order}`
+  PubSub broadcast on the order topics, the per-user topic included.
+- `trash_order/2` takes an optional `:reason`, appended to `internal_notes` as
+  `Trashed <date>: <reason>` in the same write. The admin's *Move to trash* still asks
+  for no reason.
+- An `Errors` message for `:order_not_reinstatable`, translated in every shipped
+  locale.
+
+### Changed
+
+Changes that can break a caller:
+
+- **`OrderEvents` handlers get a new event, `:reinstated`.** A
+  `handle_order_event/2` with no clause for it fails its job. Each handler needs a
+  catch-all clause, because new events will keep being added.
+- **(order uuid, event) no longer identifies a single occurrence.** If an order is
+  cancelled, reinstated and then cancelled again, `:cancelled` fires twice. A handler
+  that deduplicated on the order's uuid and the event has to make its effect
+  idempotent against the order's status instead.
+- **Trashing and restoring an order move its revision.** `trashed_at` is now a
+  revision field, so an external system that syncs on the revision picks the order up
+  again (an ERP marks its document for deletion). `updated_at` is still not touched.
+- A PubSub subscriber with a strict `handle_info/2` on the order topics needs a
+  catch-all clause for `{:order_reinstated, order}`.
+
 ## 0.28.0 - 2026-11-15
 
 A subscriber who pays by invoice instead of a card stays subscribed: paying the
