@@ -87,6 +87,46 @@ defmodule PhoenixKitBilling.Schemas.OrderTest do
     end
   end
 
+  describe "reinstate_changeset/3 and reinstated_status/1" do
+    # A stored row, as reinstate only ever gets one: track_revision/1 on a
+    # :built struct would stamp revision 1 into the changes.
+    defp stored_order(attrs) do
+      %Order{} |> struct(attrs) |> Ecto.put_meta(state: :loaded)
+    end
+
+    test "reinstated_status/1: the status it was cancelled from, pending without a trail" do
+      for {from, to} <- [{"draft", "draft"}, {"pending", "pending"}, {"confirmed", "confirmed"}] do
+        assert Order.reinstated_status(stored_order(metadata: %{"cancelled_from" => from})) == to
+      end
+
+      assert Order.reinstated_status(stored_order(metadata: %{})) == "pending"
+      assert Order.reinstated_status(stored_order(metadata: nil)) == "pending"
+      # A trail outside the whitelist (hand-written metadata) falls back too.
+      assert Order.reinstated_status(stored_order(metadata: %{"cancelled_from" => "paid"})) ==
+               "pending"
+    end
+
+    test "reinstate_changeset/3 goes back and clears cancelled_at" do
+      cancelled =
+        stored_order(
+          status: "cancelled",
+          cancelled_at: ~U[2026-01-01 00:00:00Z],
+          metadata: %{"cancelled_from" => "confirmed"}
+        )
+
+      cs = Order.reinstate_changeset(cancelled, "actor-uuid", "back")
+      assert cs.valid?
+      assert cs.changes.status == "confirmed"
+      assert cs.changes.cancelled_at == nil
+    end
+
+    test "reinstate_changeset/3 refuses an order that is not cancelled" do
+      cs = Order.reinstate_changeset(stored_order(status: "draft"), nil, nil)
+      refute cs.valid?
+      assert %{status: [_ | _]} = errors_on(cs)
+    end
+  end
+
   describe "calculate_totals/3" do
     test "sums line items, applies tax on (subtotal - discount)" do
       items = [%{"total" => "100.00"}, %{"total" => "50.00"}]
