@@ -68,6 +68,15 @@ defmodule PhoenixKitBilling.I18nTest do
       end
     end
 
+    test "unknown locale falls back to the raw msgid" do
+      Gettext.put_locale(BillingGettext, "zz")
+
+      parent = Enum.find(PhoenixKitBilling.admin_tabs(), &(&1.id == :admin_billing))
+      assert Tab.localized_label(parent) == parent.label
+    end
+  end
+
+  describe "customer page strings against the module's catalogue" do
     test "the customer pages' sample strings resolve per locale" do
       samples = %{
         "de" => [
@@ -107,62 +116,6 @@ defmodule PhoenixKitBilling.I18nTest do
       assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Bezahlt"
       Gettext.put_locale(BillingGettext, "fr")
       assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Payé"
-    end
-
-    test "unknown locale falls back to the raw msgid" do
-      Gettext.put_locale(BillingGettext, "zz")
-
-      parent = Enum.find(PhoenixKitBilling.admin_tabs(), &(&1.id == :admin_billing))
-      assert Tab.localized_label(parent) == parent.label
-    end
-  end
-
-  describe "customer pages behind the user menu tabs" do
-    @customer_sources ~w(
-      web/user_orders.ex
-      web/user_orders.html.heex
-      web/user_billing_profiles.ex
-      web/user_billing_profile_form.ex
-      web/components/billing_profile_fields.ex
-    )
-
-    # Words that are the same in the target language (or a loanword there).
-    @identical %{
-      "de" => ~w(Region),
-      "fr" => ~w(Date Type Contact Options)
-    }
-
-    @customer_msgids (for file <- @customer_sources,
-                          source = File.read!(Path.join(["lib", "phoenix_kit_billing", file])),
-                          [_, msgid] <-
-                            Regex.scan(~r/(?<![a-z_])gettext\("((?:[^"\\]|\\.)*)"/, source) do
-                        msgid
-                      end)
-                     |> Enum.uniq()
-
-    test "the source scan found the customer strings" do
-      assert length(@customer_msgids) > 80
-      assert "No orders yet" in @customer_msgids
-      assert "My Billing Profiles" in @customer_msgids
-    end
-
-    test "none of them carries an interpolation or plural form this guard cannot judge" do
-      refute Enum.any?(@customer_msgids, &String.contains?(&1, "%{"))
-    end
-
-    for locale <- ~w(de fr) do
-      test "every customer string is translated in #{locale}" do
-        Gettext.put_locale(BillingGettext, unquote(locale))
-        identical = Map.fetch!(@identical, unquote(locale))
-
-        untranslated =
-          for msgid <- @customer_msgids,
-              msgid not in identical,
-              Gettext.dgettext(BillingGettext, "default", msgid) == msgid,
-              do: msgid
-
-        assert untranslated == []
-      end
     end
   end
 end

@@ -4941,7 +4941,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:37
 #, elixir-autogen, elixir-format
 msgid "No invoices yet for this order"
-msgstr "Aucune facture pour cette commande pour le moment"
+msgstr "Aucune facture n'a encore été émise pour cette commande"
 
 #: lib/phoenix_kit_billing/errors.ex:178
 #, elixir-autogen, elixir-format
