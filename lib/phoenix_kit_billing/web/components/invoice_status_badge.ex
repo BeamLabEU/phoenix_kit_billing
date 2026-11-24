@@ -51,6 +51,11 @@ defmodule PhoenixKitBilling.Web.Components.InvoiceStatusBadge do
   defp status_class("paid"), do: "badge-success"
   defp status_class("void"), do: "badge-error"
   defp status_class("overdue"), do: "badge-warning"
+
+  defp status_class(status)
+       when is_atom(status) and not is_nil(status) and not is_boolean(status),
+       do: status |> Atom.to_string() |> status_class()
+
   defp status_class(_), do: "badge-ghost"
 
   # The "invoice status" labels the printed documents use: "Void" and "Sent"

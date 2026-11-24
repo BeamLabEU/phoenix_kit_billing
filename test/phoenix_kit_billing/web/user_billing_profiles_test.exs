@@ -6,9 +6,9 @@ defmodule PhoenixKitBilling.Web.UserBillingProfilesTest do
 
   use PhoenixKitBilling.LiveCase, async: false
 
-  alias PhoenixKit.Settings
   import Ecto.Query, only: [from: 2]
 
+  alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.BillingProfile
   alias PhoenixKitBilling.Test.Repo

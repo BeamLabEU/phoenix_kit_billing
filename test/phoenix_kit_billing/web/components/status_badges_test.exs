@@ -15,6 +15,7 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
 
   alias PhoenixKitBilling.Invoice
   alias PhoenixKitBilling.Order
+  alias PhoenixKitBilling.Web.Components.BillingProfileFields
   alias PhoenixKitBilling.Web.Components.InvoiceStatusBadge
   alias PhoenixKitBilling.Web.Components.OrderStatusBadge
 
@@ -99,11 +100,18 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       assert order_badge("") == ""
     end
 
-    test "nil is an empty badge and an atom its capitalised name, not a crash" do
+    test "nil, booleans and non-strings are empty badges; atoms are normalised" do
       Gettext.put_locale(PhoenixKitBilling.Gettext, "de")
 
       assert order_badge(nil) == ""
-      assert order_badge(:paid) == "Paid"
+      assert order_badge(true) == ""
+      assert order_badge(false) == ""
+      assert order_badge(123) == ""
+      assert order_badge(:paid) == "Bezahlt"
+      assert order_badge(:on_hold) == "On_hold"
+
+      html = render_component(&OrderStatusBadge.order_status_badge/1, status: :paid)
+      assert html =~ "badge-success"
     end
   end
 
@@ -140,11 +148,46 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       assert invoice_badge("") == ""
     end
 
-    test "nil is an empty badge and an atom its capitalised name, not a crash" do
+    test "nil, booleans and non-strings are empty badges; atoms are normalised" do
       Gettext.put_locale(PhoenixKitBilling.Gettext, "fr")
 
       assert invoice_badge(nil) == ""
-      assert invoice_badge(:paid) == "Paid"
+      assert invoice_badge(true) == ""
+      assert invoice_badge(false) == ""
+      assert invoice_badge(123) == ""
+      assert invoice_badge(:paid) == "Payée"
+      assert invoice_badge(:disputed) == "Disputed"
+
+      html = render_component(&InvoiceStatusBadge.invoice_status_badge/1, status: :paid)
+      assert html =~ "badge-success"
+    end
+  end
+
+  describe "billing profile type label" do
+    for {locale, individual, company} <- [
+          {"en", "Individual", "Company"},
+          {"de", "Privatperson", "Unternehmen"},
+          {"fr", "Particulier", "Entreprise"}
+        ] do
+      test "reads in #{locale}" do
+        Gettext.put_locale(PhoenixKitBilling.Gettext, unquote(locale))
+
+        assert BillingProfileFields.type_label("individual") == unquote(individual)
+        assert BillingProfileFields.type_label("company") == unquote(company)
+        assert BillingProfileFields.type_label(:company) == unquote(company)
+      end
+    end
+
+    test "handles unknown values, nil, booleans and non-strings safely" do
+      Gettext.put_locale(PhoenixKitBilling.Gettext, "de")
+
+      assert BillingProfileFields.type_label("partnership") == "Partnership"
+      assert BillingProfileFields.type_label(:partnership) == "Partnership"
+      assert BillingProfileFields.type_label("") == ""
+      assert BillingProfileFields.type_label(nil) == ""
+      assert BillingProfileFields.type_label(true) == ""
+      assert BillingProfileFields.type_label(false) == ""
+      assert BillingProfileFields.type_label(42) == ""
     end
   end
 end

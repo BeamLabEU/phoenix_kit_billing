@@ -52,22 +52,30 @@ defmodule PhoenixKitBilling.Web.Components.OrderStatusBadge do
   defp status_class("paid"), do: "badge-success"
   defp status_class("cancelled"), do: "badge-error"
   defp status_class("refunded"), do: "badge-secondary"
+
+  defp status_class(status)
+       when is_atom(status) and not is_nil(status) and not is_boolean(status),
+       do: status |> Atom.to_string() |> status_class()
+
   defp status_class(_), do: "badge-ghost"
 
   # The status in the reader's language, in the "order status" context: the
   # plain msgids are shared with filters, timeline rows and subscription
   # pages, where a language with grammatical gender needs another form. A
-  # status without a label shows as the raw value, and nil as nothing, rather
-  # than failing the page.
+  # status without a label shows as the raw value, and nil/booleans as nothing,
+  # rather than failing the page.
+  defp format_status(nil), do: ""
+  defp format_status(status) when is_boolean(status), do: ""
   defp format_status("draft"), do: pgettext("order status", "Draft")
   defp format_status("pending"), do: pgettext("order status", "Pending")
   defp format_status("confirmed"), do: pgettext("order status", "Confirmed")
   defp format_status("paid"), do: pgettext("order status", "Paid")
   defp format_status("cancelled"), do: pgettext("order status", "Cancelled")
   defp format_status("refunded"), do: pgettext("order status", "Refunded")
+  defp format_status(status) when is_binary(status), do: String.capitalize(status)
 
-  defp format_status(status) when is_binary(status) or is_atom(status),
-    do: status |> to_string() |> String.capitalize()
+  defp format_status(status) when is_atom(status),
+    do: status |> Atom.to_string() |> format_status()
 
   defp format_status(_status), do: ""
 

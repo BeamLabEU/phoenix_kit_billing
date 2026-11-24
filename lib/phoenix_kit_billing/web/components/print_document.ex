@@ -260,16 +260,16 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
   end
 
   @doc "An invoice status as a label in the reader's language."
-  @spec status_label(String.t() | nil) :: String.t()
+  @spec status_label(String.t() | atom() | nil) :: String.t()
+  def status_label(nil), do: ""
+  def status_label(status) when is_boolean(status), do: ""
   def status_label("draft"), do: pgettext("invoice status", "Draft")
   def status_label("sent"), do: pgettext("invoice status", "Sent")
   def status_label("paid"), do: pgettext("invoice status", "Paid")
   def status_label("overdue"), do: pgettext("invoice status", "Overdue")
   def status_label("void"), do: pgettext("invoice status", "Void")
-
-  def status_label(status) when is_binary(status) or is_atom(status),
-    do: status |> to_string() |> String.capitalize()
-
+  def status_label(status) when is_binary(status), do: String.capitalize(status)
+  def status_label(status) when is_atom(status), do: status |> Atom.to_string() |> status_label()
   def status_label(_status), do: ""
 
   @doc """

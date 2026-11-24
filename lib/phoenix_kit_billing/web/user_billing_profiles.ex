@@ -7,13 +7,13 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
 
   use Phoenix.LiveView
   use Gettext, backend: PhoenixKitBilling.Gettext
-  alias PhoenixKit.Utils.Routes
   import PhoenixKitWeb.LayoutHelpers, only: [dashboard_assigns: 1]
   import PhoenixKitWeb.Components.Core.Icon
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Events
+  alias PhoenixKitBilling.Web.Components.BillingProfileFields
 
   @impl true
   def mount(_params, _session, socket) do
@@ -155,7 +155,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
                     <div class="flex-1">
                       <div class="flex items-center gap-3 mb-2">
                         <span class={"badge #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
-                          {type_label(profile.type)}
+                          {BillingProfileFields.type_label(profile.type)}
                         </span>
                         <%= if profile.is_default do %>
                           <span class="badge badge-success">{gettext("Default")}</span>
@@ -231,10 +231,6 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
   end
 
   # Private helpers
-
-  defp type_label("individual"), do: gettext("Individual")
-  defp type_label("company"), do: gettext("Company")
-  defp type_label(type), do: type |> to_string() |> String.capitalize()
 
   defp get_current_user(socket) do
     case socket.assigns[:phoenix_kit_current_scope] do

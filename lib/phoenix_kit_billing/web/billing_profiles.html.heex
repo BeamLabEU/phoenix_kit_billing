@@ -100,7 +100,7 @@
                     <% end %>
                   </span>
                   <span class={"badge badge-sm #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
-                    {String.capitalize(profile.type)}
+                    {BillingProfileFields.type_label(profile.type)}
                   </span>
                 </div>
               </:card_header>
@@ -139,7 +139,7 @@
                     </.table_default_cell>
                     <.table_default_cell>
                       <span class={"badge badge-sm #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
-                        {String.capitalize(profile.type)}
+                        {BillingProfileFields.type_label(profile.type)}
                       </span>
                     </.table_default_cell>
                     <.table_default_cell>

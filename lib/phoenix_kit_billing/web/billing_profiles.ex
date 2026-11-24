@@ -9,7 +9,6 @@ defmodule PhoenixKitBilling.Web.BillingProfiles do
   use Gettext, backend: PhoenixKitBilling.Gettext
   import PhoenixKitWeb.Components.Core.AdminPageHeader
   import PhoenixKitWeb.Components.Core.UserInfo
-  alias PhoenixKit.Utils.Routes
   import PhoenixKitWeb.Components.Core.Icon
   import PhoenixKitWeb.Components.Core.Pagination
   import PhoenixKitWeb.Components.Core.TableDefault
@@ -20,6 +19,7 @@ defmodule PhoenixKitBilling.Web.BillingProfiles do
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Events
+  alias PhoenixKitBilling.Web.Components.BillingProfileFields
   alias PhoenixKitBilling.Web.Trail
 
   @default_per_page 25

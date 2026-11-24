@@ -30,28 +30,42 @@ defmodule PhoenixKitBilling.PotDriftTest do
   defp pot_msgids(path) do
     %Expo.Messages{messages: messages} = Expo.PO.parse_file!(path)
 
-    for %Expo.Message.Singular{msgid: msgid} <- messages,
+    for %Expo.Message.Singular{msgid: msgid, msgctxt: nil} <- messages,
         text = IO.iodata_to_binary(msgid),
         text != "",
         into: MapSet.new(),
         do: text
   end
 
+  defp pot_contextual_msgids(path) do
+    %Expo.Messages{messages: messages} = Expo.PO.parse_file!(path)
+
+    for %Expo.Message.Singular{msgid: msgid, msgctxt: msgctxt} <- messages,
+        is_list(msgctxt),
+        ctx = IO.iodata_to_binary(msgctxt),
+        text = IO.iodata_to_binary(msgid),
+        ctx != "" and text != "",
+        into: MapSet.new(),
+        do: {ctx, text}
+  end
+
   defp po_translations(locale) do
     path = Path.join(["priv/gettext", locale, "LC_MESSAGES/default.po"])
     %Expo.Messages{messages: messages} = Expo.PO.parse_file!(path)
 
-    for %Expo.Message.Singular{msgid: msgid, msgstr: msgstr} <- messages,
+    for %Expo.Message.Singular{msgid: msgid, msgctxt: msgctxt, msgstr: msgstr} <- messages,
         id = IO.iodata_to_binary(msgid),
         id != "",
+        ctx = if(is_list(msgctxt), do: IO.iodata_to_binary(msgctxt), else: nil),
         into: %{},
-        do: {id, IO.iodata_to_binary(msgstr)}
+        do: {{ctx, id}, IO.iodata_to_binary(msgstr)}
   end
 
   # A function, not an attribute: a compiled regex cannot be stored in one on
-  # OTP 28. `ngettext`, `pgettext` and `Gettext.gettext/2` do not match, and neither
+  # OTP 28. `ngettext` and `Gettext.gettext/2` do not match, and neither
   # does a heredoc msgid, which the email defaults use.
   defp gettext_call, do: ~r/(?<![\w.])gettext\(\s*"((?:[^"\\]|\\.)*)"/
+  defp pgettext_call, do: ~r/(?<![\w.])pgettext\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"/
 
   defp source_msgids do
     for path <- Path.wildcard("lib/**/*.{ex,heex}"),
@@ -59,6 +73,14 @@ defmodule PhoenixKitBilling.PotDriftTest do
         literal != "",
         into: MapSet.new(),
         do: Macro.unescape_string(literal)
+  end
+
+  defp source_contextual_msgids do
+    for path <- Path.wildcard("lib/**/*.{ex,heex}"),
+        [_call, ctx, literal] <- Regex.scan(pgettext_call(), File.read!(path)),
+        ctx != "" and literal != "",
+        into: MapSet.new(),
+        do: {Macro.unescape_string(ctx), Macro.unescape_string(literal)}
   end
 
   describe "default.pot covers every gettext call in lib/" do
@@ -71,6 +93,17 @@ defmodule PhoenixKitBilling.PotDriftTest do
 
       assert missing == [],
              "gettext/1 calls missing from #{@pot_path}: #{inspect(missing)}. Add them to " <>
+               "the .pot template and run `mix gettext.merge priv/gettext --no-fuzzy`."
+    end
+
+    test "no pgettext/2 {context, msgid} is missing" do
+      msgids = pot_contextual_msgids(@pot_path)
+
+      missing =
+        source_contextual_msgids() |> Enum.reject(&MapSet.member?(msgids, &1)) |> Enum.sort()
+
+      assert missing == [],
+             "pgettext/2 calls missing from #{@pot_path}: #{inspect(missing)}. Add them to " <>
                "the .pot template and run `mix gettext.merge priv/gettext --no-fuzzy`."
     end
   end
@@ -93,7 +126,7 @@ defmodule PhoenixKitBilling.PotDriftTest do
         translations = po_translations(unquote(locale))
 
         untranslated =
-          for {msgid, msgstr} <- translations, msgstr == "", do: msgid
+          for {key, msgstr} <- translations, msgstr == "", do: key
 
         assert untranslated == [],
                "Locale #{unquote(locale)} has empty msgstr for: #{inspect(untranslated)}. " <>
@@ -106,7 +139,7 @@ defmodule PhoenixKitBilling.PotDriftTest do
       translations = po_translations("en")
 
       mismatches =
-        for {msgid, msgstr} <- translations, msgstr != msgid, do: {msgid, msgstr}
+        for {{_ctx, msgid} = key, msgstr} <- translations, msgstr != msgid, do: {key, msgstr}
 
       assert mismatches == [],
              "English catalogue has non-identity translations: #{inspect(mismatches)}. " <>

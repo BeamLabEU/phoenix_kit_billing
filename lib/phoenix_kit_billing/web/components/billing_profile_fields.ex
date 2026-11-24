@@ -57,6 +57,19 @@ defmodule PhoenixKitBilling.Web.Components.BillingProfileFields do
   import PhoenixKitWeb.Components.Core.Select, only: [select: 1]
   import PhoenixKitWeb.Components.Core.Textarea, only: [textarea: 1]
 
+  @doc """
+  A billing profile type (`"individual"` or `"company"`) as a label in the
+  reader's language.
+  """
+  @spec type_label(String.t() | atom() | nil) :: String.t()
+  def type_label(nil), do: ""
+  def type_label(type) when is_boolean(type), do: ""
+  def type_label("individual"), do: gettext("Individual")
+  def type_label("company"), do: gettext("Company")
+  def type_label(type) when is_binary(type), do: String.capitalize(type)
+  def type_label(type) when is_atom(type), do: type |> Atom.to_string() |> type_label()
+  def type_label(_type), do: ""
+
   attr(:form, Phoenix.HTML.Form, required: true, doc: "form over a billing profile changeset")
   attr(:type, :string, required: true, values: ~w(individual company))
 
