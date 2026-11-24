@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.29.1 - 2026-11-24
+
+PR #73. German and French translations for the account menu's billing tabs ("My Orders", "Billing
+Profiles") and the customer pages behind them (order list, billing profiles, profile form) — 44
+customer-visible strings whose `msgstr` was empty in the `de` and `fr` catalogs. Shared msgids
+also translate the matching admin screens and invoice/receipt wording in those locales. No code
+change.
+
 ## 0.29.0 - 2026-11-23
 
 A cancelled order can be reinstated. Moving an order to the trash can record why, and
