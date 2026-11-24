@@ -71,7 +71,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/trail.ex:76
 #, elixir-autogen
 msgid "Billing Profiles"
-msgstr ""
+msgstr "Profils de facturation"
 
 #: lib/phoenix_kit_billing.ex:258
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:61
@@ -92,7 +92,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.ex:47
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:4
 msgid "My Orders"
-msgstr ""
+msgstr "Mes commandes"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:57
 #, elixir-autogen, elixir-format
@@ -173,7 +173,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.ex:33
 #, elixir-autogen, elixir-format
 msgid "Billing module is not enabled"
-msgstr ""
+msgstr "Le module de facturation n'est pas activé"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:344
 #: lib/phoenix_kit_billing/web/currencies.html.heex:429
@@ -199,7 +199,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:530
 #, elixir-autogen, elixir-format
 msgid "Cancel"
-msgstr ""
+msgstr "Annuler"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:6
 #, elixir-autogen, elixir-format
@@ -233,7 +233,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:67
 #, elixir-autogen, elixir-format
 msgid "Date"
-msgstr ""
+msgstr "Date"
 
 #: lib/phoenix_kit_billing/web/subscription_types.html.heex:67
 #, elixir-autogen, elixir-format
@@ -251,7 +251,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:219
 #, elixir-autogen, elixir-format
 msgid "Delete"
-msgstr ""
+msgstr "Supprimer"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:119
 #: lib/phoenix_kit_billing/web/currencies.html.heex:236
@@ -288,7 +288,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:200
 #, elixir-autogen, elixir-format
 msgid "Edit"
-msgstr ""
+msgstr "Modifier"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:119
 #: lib/phoenix_kit_billing/web/currencies.html.heex:236
@@ -350,7 +350,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:130
 #, elixir-autogen, elixir-format
 msgid "New Profile"
-msgstr ""
+msgstr "Nouveau profil"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:52
 #: lib/phoenix_kit_billing/web/index.html.heex:259
@@ -367,7 +367,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:12
 #, elixir-autogen, elixir-format
 msgid "No orders yet"
-msgstr ""
+msgstr "Aucune commande pour le moment"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:108
 #: lib/phoenix_kit_billing/web/invoices.html.heex:48
@@ -462,7 +462,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:209
 #, elixir-autogen, elixir-format
 msgid "Set Default"
-msgstr ""
+msgstr "Définir par défaut"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:126
 #: lib/phoenix_kit_billing/web/currencies.html.heex:243
@@ -644,7 +644,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:75
 #, elixir-autogen, elixir-format
 msgid "Access denied"
-msgstr ""
+msgstr "Accès refusé"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:445
 #, elixir-autogen, elixir-format
@@ -748,7 +748,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:69
 #, elixir-autogen, elixir-format
 msgid "Amount"
-msgstr ""
+msgstr "Montant"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:274
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:444
@@ -769,7 +769,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:216
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this billing profile?"
-msgstr ""
+msgstr "Voulez-vous vraiment supprimer ce profil de facturation ?"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:86
 #, elixir-autogen, elixir-format
@@ -847,13 +847,13 @@ msgstr "E-mail de facturation (peut différer de l'e-mail du compte)"
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:151
 #, elixir-autogen, elixir-format
 msgid "Billing profile created successfully"
-msgstr ""
+msgstr "Profil de facturation créé avec succès"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:64
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:68
 #, elixir-autogen, elixir-format
 msgid "Billing profile not found"
-msgstr ""
+msgstr "Profil de facturation introuvable"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.ex:181
 #, elixir-autogen, elixir-format
@@ -863,7 +863,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:150
 #, elixir-autogen, elixir-format
 msgid "Billing profile updated successfully"
-msgstr ""
+msgstr "Profil de facturation mis à jour avec succès"
 
 #: lib/phoenix_kit_billing/web/billing_profiles.html.heex:37
 #, elixir-autogen, elixir-format
@@ -1130,7 +1130,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Create Profile"
-msgstr ""
+msgstr "Créer le profil"
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:7
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:355
@@ -1141,12 +1141,12 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:144
 #, elixir-autogen, elixir-format
 msgid "Create Your First Profile"
-msgstr ""
+msgstr "Créer votre premier profil"
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:141
 #, elixir-autogen, elixir-format
 msgid "Create a billing profile to use for your orders"
-msgstr ""
+msgstr "Créez un profil de facturation à utiliser pour vos commandes"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:11
 #, elixir-autogen, elixir-format
@@ -1156,7 +1156,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:184
 #, elixir-autogen, elixir-format
 msgid "Create a new billing profile for orders"
-msgstr ""
+msgstr "Créer un nouveau profil de facturation pour les commandes"
 
 #: lib/phoenix_kit_billing/web/order_form.html.heex:10
 #, elixir-autogen, elixir-format
@@ -1314,7 +1314,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:161
 #, elixir-autogen, elixir-format
 msgid "Default"
-msgstr ""
+msgstr "Par défaut"
 
 #: lib/phoenix_kit_billing/web/settings.html.heex:85
 #, elixir-autogen, elixir-format
@@ -1324,7 +1324,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:63
 #, elixir-autogen, elixir-format
 msgid "Default profile updated"
-msgstr ""
+msgstr "Profil par défaut mis à jour"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:282
 #: lib/phoenix_kit_billing/web/order_form.html.heex:117
@@ -1373,7 +1373,7 @@ msgstr "Format de TVA UE : code pays + numéro"
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:81
 #, elixir-autogen, elixir-format
 msgid "Edit Billing Profile"
-msgstr ""
+msgstr "Modifier le profil de facturation"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:286
 #, elixir-autogen, elixir-format
@@ -1523,7 +1523,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:88
 #, elixir-autogen, elixir-format
 msgid "Failed to delete profile"
-msgstr ""
+msgstr "Impossible de supprimer le profil"
 
 #: lib/phoenix_kit_billing/web/subscription_types.ex:143
 #, elixir-autogen, elixir-format
@@ -1565,7 +1565,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:66
 #, elixir-autogen, elixir-format
 msgid "Failed to set default profile"
-msgstr ""
+msgstr "Impossible de définir le profil par défaut"
 
 #: lib/phoenix_kit_billing/web/currencies.ex:315
 #, elixir-autogen, elixir-format
@@ -1859,7 +1859,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:123
 #, elixir-autogen, elixir-format
 msgid "Manage your billing information for orders and invoices"
-msgstr ""
+msgstr "Gérez vos informations de facturation pour les commandes et les factures"
 
 #: lib/phoenix_kit_billing/web/subscription_form.html.heex:13
 #, elixir-autogen, elixir-format
@@ -1907,7 +1907,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:121
 #, elixir-autogen, elixir-format
 msgid "My Billing Profiles"
-msgstr ""
+msgstr "Mes profils de facturation"
 
 #: lib/phoenix_kit_billing/web/currencies.html.heex:316
 #: lib/phoenix_kit_billing/web/currencies.html.heex:472
@@ -1932,7 +1932,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:59
 #, elixir-autogen, elixir-format
 msgid "New Billing Profile"
-msgstr ""
+msgstr "Nouveau profil de facturation"
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:19
 #, elixir-autogen, elixir-format
@@ -1973,7 +1973,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:139
 #, elixir-autogen, elixir-format
 msgid "No billing profiles yet"
-msgstr ""
+msgstr "Aucun profil de facturation pour le moment"
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:207
 #, elixir-autogen, elixir-format
@@ -2032,7 +2032,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "No transactions recorded yet"
-msgstr ""
+msgstr "Aucune transaction enregistrée pour le moment"
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:207
 #, elixir-autogen, elixir-format
@@ -2152,7 +2152,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "Paid"
-msgstr ""
+msgstr "Payé"
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:39
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:118
@@ -2203,7 +2203,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Payment"
-msgstr ""
+msgstr "Paiement"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:193
 #, elixir-autogen, elixir-format
@@ -2302,12 +2302,12 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:34
 #, elixir-autogen, elixir-format
 msgid "Please log in to manage billing profiles"
-msgstr ""
+msgstr "Veuillez vous connecter pour gérer vos profils de facturation"
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:32
 #, elixir-autogen, elixir-format
 msgid "Please log in to view your billing profiles"
-msgstr ""
+msgstr "Veuillez vous connecter pour consulter vos profils de facturation"
 
 #: lib/phoenix_kit_billing/web/subscription_form.ex:235
 #, elixir-autogen, elixir-format
@@ -2376,13 +2376,13 @@ msgstr "Type de profil"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:85
 #, elixir-autogen, elixir-format
 msgid "Profile deleted successfully"
-msgstr ""
+msgstr "Profil supprimé avec succès"
 
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:69
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:91
 #, elixir-autogen, elixir-format
 msgid "Profile not found"
-msgstr ""
+msgstr "Profil introuvable"
 
 #: lib/phoenix_kit_billing/web/subscription_detail.html.heex:272
 #, elixir-autogen, elixir-format
@@ -2458,7 +2458,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:78
 #, elixir-autogen, elixir-format
 msgid "Refund"
-msgstr ""
+msgstr "Remboursement"
 
 #: lib/phoenix_kit_billing/web/invoice_detail.html.heex:781
 #, elixir-autogen, elixir-format
@@ -2490,7 +2490,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:46
 #, elixir-autogen, elixir-format
 msgid "Region"
-msgstr ""
+msgstr "Région"
 
 #: lib/phoenix_kit_billing/web/billing_profile_form.html.heex:214
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:363
@@ -2567,7 +2567,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:534
 #, elixir-autogen, elixir-format
 msgid "Save Changes"
-msgstr ""
+msgstr "Enregistrer les modifications"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:484
 #, elixir-autogen, elixir-format
@@ -3041,7 +3041,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:68
 #, elixir-autogen, elixir-format
 msgid "Type"
-msgstr ""
+msgstr "Type"
 
 #: lib/phoenix_kit_billing/web/subscription_type_form.html.heex:49
 #, elixir-autogen, elixir-format
@@ -3093,7 +3093,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_billing_profile_form.ex:182
 #, elixir-autogen, elixir-format
 msgid "Update your billing information"
-msgstr ""
+msgstr "Mettez à jour vos informations de facturation"
 
 #: lib/phoenix_kit_billing/web/provider_settings.html.heex:537
 #, elixir-autogen, elixir-format
@@ -3131,7 +3131,7 @@ msgstr "Numéro de TVA"
 #: lib/phoenix_kit_billing/web/user_billing_profiles.ex:169
 #, elixir-autogen, elixir-format
 msgid "VAT:"
-msgstr ""
+msgstr "TVA :"
 
 #: lib/phoenix_kit_billing/web/order_detail.html.heex:302
 #, elixir-autogen, elixir-format
@@ -4941,7 +4941,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:37
 #, elixir-autogen, elixir-format
 msgid "No invoices yet for this order"
-msgstr ""
+msgstr "Aucune facture n'a encore été émise pour cette commande"
 
 #: lib/phoenix_kit_billing/errors.ex:178
 #, elixir-autogen, elixir-format
@@ -4991,7 +4991,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.ex:39
 #, elixir-autogen, elixir-format
 msgid "Please log in to view your orders"
-msgstr ""
+msgstr "Veuillez vous connecter pour consulter vos commandes"
 
 #: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:404
 #, elixir-autogen, elixir-format
@@ -5266,12 +5266,12 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Your order history, invoices, and payments"
-msgstr ""
+msgstr "Votre historique de commandes, vos factures et vos paiements"
 
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:14
 #, elixir-autogen, elixir-format
 msgid "Your orders will appear here once you place one"
-msgstr ""
+msgstr "Vos commandes apparaîtront ici dès que vous en aurez passé une"
 
 #, elixir-autogen, elixir-format
 msgid "This invoice has payments on it. Refund them before voiding it."

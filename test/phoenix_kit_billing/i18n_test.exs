@@ -50,11 +50,72 @@ defmodule PhoenixKitBilling.I18nTest do
       assert Tab.localized_label(parent) == "Arveldus"
     end
 
+    for {locale, orders, profiles} <- [
+          {"de", "Meine Bestellungen", "Rechnungsprofile"},
+          {"fr", "Mes commandes", "Profils de facturation"}
+        ] do
+      test "#{locale} locale resolves the customer-facing user tabs" do
+        Gettext.put_locale(BillingGettext, unquote(locale))
+        tabs = PhoenixKitBilling.user_dashboard_tabs()
+
+        assert tabs
+               |> Enum.find(&(&1.id == :dashboard_orders))
+               |> Tab.localized_label() == unquote(orders)
+
+        assert tabs
+               |> Enum.find(&(&1.id == :dashboard_billing_profiles))
+               |> Tab.localized_label() == unquote(profiles)
+      end
+    end
+
     test "unknown locale falls back to the raw msgid" do
       Gettext.put_locale(BillingGettext, "zz")
 
       parent = Enum.find(PhoenixKitBilling.admin_tabs(), &(&1.id == :admin_billing))
       assert Tab.localized_label(parent) == parent.label
+    end
+  end
+
+  describe "customer page strings against the module's catalogue" do
+    test "the customer pages' sample strings resolve per locale" do
+      samples = %{
+        "de" => [
+          {"No orders yet", "Noch keine Bestellungen"},
+          {"Your order history, invoices, and payments",
+           "Ihr Bestellverlauf, Ihre Rechnungen und Zahlungen"},
+          {"Refund", "Erstattung"},
+          {"My Billing Profiles", "Meine Rechnungsprofile"},
+          {"Are you sure you want to delete this billing profile?",
+           "Möchten Sie dieses Rechnungsprofil wirklich löschen?"},
+          {"Billing profile created successfully", "Rechnungsprofil erfolgreich erstellt"},
+          {"Save Changes", "Änderungen speichern"}
+        ],
+        "fr" => [
+          {"No orders yet", "Aucune commande pour le moment"},
+          {"Your order history, invoices, and payments",
+           "Votre historique de commandes, vos factures et vos paiements"},
+          {"Refund", "Remboursement"},
+          {"My Billing Profiles", "Mes profils de facturation"},
+          {"Are you sure you want to delete this billing profile?",
+           "Voulez-vous vraiment supprimer ce profil de facturation ?"},
+          {"Billing profile created successfully", "Profil de facturation créé avec succès"},
+          {"Save Changes", "Enregistrer les modifications"}
+        ]
+      }
+
+      for {locale, pairs} <- samples, {msgid, expected} <- pairs do
+        Gettext.put_locale(BillingGettext, locale)
+
+        assert Gettext.dgettext(BillingGettext, "default", msgid) == expected,
+               "#{locale}: #{inspect(msgid)}"
+      end
+    end
+
+    test "plain 'Paid' resolves to the order-list label, not a print-document context" do
+      Gettext.put_locale(BillingGettext, "de")
+      assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Bezahlt"
+      Gettext.put_locale(BillingGettext, "fr")
+      assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Payé"
     end
   end
 end
