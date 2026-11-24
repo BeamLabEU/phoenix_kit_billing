@@ -50,6 +50,24 @@ defmodule PhoenixKitBilling.I18nTest do
       assert Tab.localized_label(parent) == "Arveldus"
     end
 
+    for {locale, orders, profiles} <- [
+          {"de", "Meine Bestellungen", "Rechnungsprofile"},
+          {"fr", "Mes commandes", "Profils de facturation"}
+        ] do
+      test "#{locale} locale resolves the customer-facing user tabs" do
+        Gettext.put_locale(BillingGettext, unquote(locale))
+        tabs = PhoenixKitBilling.user_dashboard_tabs()
+
+        assert tabs
+               |> Enum.find(&(&1.id == :dashboard_orders))
+               |> Tab.localized_label() == unquote(orders)
+
+        assert tabs
+               |> Enum.find(&(&1.id == :dashboard_billing_profiles))
+               |> Tab.localized_label() == unquote(profiles)
+      end
+    end
+
     test "unknown locale falls back to the raw msgid" do
       Gettext.put_locale(BillingGettext, "zz")
 

@@ -71,7 +71,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/trail.ex:76
 #, elixir-autogen
 msgid "Billing Profiles"
-msgstr ""
+msgstr "Profils de facturation"
 
 #: lib/phoenix_kit_billing.ex:258
 #: lib/phoenix_kit_billing/web/components/settings_tabs.ex:61
@@ -92,7 +92,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.ex:47
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:4
 msgid "My Orders"
-msgstr ""
+msgstr "Mes commandes"
 
 #: lib/phoenix_kit_billing/web/index.html.heex:57
 #, elixir-autogen, elixir-format
