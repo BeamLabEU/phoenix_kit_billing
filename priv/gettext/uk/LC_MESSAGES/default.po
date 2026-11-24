@@ -4549,6 +4549,42 @@ msgctxt "invoice status"
 msgid "Void"
 msgstr "Анульовано"
 
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:66
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Cancelled"
+msgstr "Скасовано"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:64
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Confirmed"
+msgstr "Підтверджено"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:62
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Draft"
+msgstr "Чернетка"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:65
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Paid"
+msgstr "Оплачено"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:63
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Pending"
+msgstr "Очікує"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:67
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Refunded"
+msgstr "Повернено"
+
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:484
 #, elixir-autogen, elixir-format
 msgctxt "receipt status"

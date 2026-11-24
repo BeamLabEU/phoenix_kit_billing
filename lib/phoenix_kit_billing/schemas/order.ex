@@ -817,6 +817,10 @@ defmodule PhoenixKitBilling.Order do
   def payable?(%__MODULE__{status: "confirmed"}), do: true
   def payable?(_), do: false
 
+  @doc "The statuses an order can have."
+  @spec statuses() :: [String.t()]
+  def statuses, do: @valid_statuses
+
   @doc """
   Returns human-readable status label.
   """

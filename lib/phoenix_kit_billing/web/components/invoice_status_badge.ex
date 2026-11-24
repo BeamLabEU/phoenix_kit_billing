@@ -8,6 +8,8 @@ defmodule PhoenixKitBilling.Web.Components.InvoiceStatusBadge do
 
   use Phoenix.Component
 
+  alias PhoenixKitBilling.Web.Components.PrintDocument
+
   @doc """
   Renders an invoice status badge with appropriate styling.
 
@@ -51,8 +53,9 @@ defmodule PhoenixKitBilling.Web.Components.InvoiceStatusBadge do
   defp status_class("overdue"), do: "badge-warning"
   defp status_class(_), do: "badge-ghost"
 
-  # Format status text for display
-  defp format_status(status), do: String.capitalize(status)
+  # The "invoice status" labels the printed documents use: "Void" and "Sent"
+  # are statuses there, where the plain msgids are a button and a filter.
+  defp format_status(status), do: PrintDocument.status_label(status)
 
   # Size classes
   defp size_class(:xs), do: "badge-xs"

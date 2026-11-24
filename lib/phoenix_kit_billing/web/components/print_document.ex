@@ -3,7 +3,8 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
   The parts the four printable documents (invoice, receipt, credit note,
   payment confirmation) share: the logo bar, the seller's and the customer's
   details, the footer, the print controls, and the dates, statuses and
-  payment methods written in the reader's language.
+  payment methods written in the reader's language. `status_label/1` also
+  labels the invoice status badge on screen.
 
   Each document keeps its own page and stylesheet; these render inside it and
   use its `meta-section`, `company-name`, `footer-company`, `footer-note` and
@@ -265,7 +266,10 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
   def status_label("paid"), do: pgettext("invoice status", "Paid")
   def status_label("overdue"), do: pgettext("invoice status", "Overdue")
   def status_label("void"), do: pgettext("invoice status", "Void")
-  def status_label(status) when is_binary(status), do: String.capitalize(status)
+
+  def status_label(status) when is_binary(status) or is_atom(status),
+    do: status |> to_string() |> String.capitalize()
+
   def status_label(_status), do: ""
 
   @doc """
