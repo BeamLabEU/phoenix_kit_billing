@@ -234,7 +234,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
 
   defp type_label("individual"), do: gettext("Individual")
   defp type_label("company"), do: gettext("Company")
-  defp type_label(type), do: String.capitalize(type)
+  defp type_label(type), do: type |> to_string() |> String.capitalize()
 
   defp get_current_user(socket) do
     case socket.assigns[:phoenix_kit_current_scope] do

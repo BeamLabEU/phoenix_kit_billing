@@ -32,7 +32,7 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       "pending" => "En attente",
       "confirmed" => "Confirmée",
       "paid" => "Payée",
-      "cancelled" => "Annulé",
+      "cancelled" => "Annulée",
       "refunded" => "Remboursée"
     }
   }
@@ -53,12 +53,6 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       "overdue" => "En retard"
     }
   }
-
-  setup do
-    original = Gettext.get_locale(PhoenixKitBilling.Gettext)
-    on_exit(fn -> Gettext.put_locale(PhoenixKitBilling.Gettext, original) end)
-    :ok
-  end
 
   defp badge_text(fun, status) do
     fun
@@ -104,6 +98,13 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       assert order_badge("on_hold") == "On_hold"
       assert order_badge("") == ""
     end
+
+    test "nil is an empty badge and an atom its capitalised name, not a crash" do
+      Gettext.put_locale(PhoenixKitBilling.Gettext, "de")
+
+      assert order_badge(nil) == ""
+      assert order_badge(:paid) == "Paid"
+    end
   end
 
   describe "invoice status badge" do
@@ -136,6 +137,14 @@ defmodule PhoenixKitBilling.Web.Components.StatusBadgesTest do
       Gettext.put_locale(PhoenixKitBilling.Gettext, "fr")
 
       assert invoice_badge("disputed") == "Disputed"
+      assert invoice_badge("") == ""
+    end
+
+    test "nil is an empty badge and an atom its capitalised name, not a crash" do
+      Gettext.put_locale(PhoenixKitBilling.Gettext, "fr")
+
+      assert invoice_badge(nil) == ""
+      assert invoice_badge(:paid) == "Paid"
     end
   end
 end

@@ -7,7 +7,11 @@ defmodule PhoenixKitBilling.Web.UserBillingProfilesTest do
   use PhoenixKitBilling.LiveCase, async: false
 
   alias PhoenixKit.Settings
+  import Ecto.Query, only: [from: 2]
+
   alias PhoenixKitBilling, as: Billing
+  alias PhoenixKitBilling.BillingProfile
+  alias PhoenixKitBilling.Test.Repo
 
   setup %{conn: conn} do
     Settings.update_setting("billing_enabled", "true")
@@ -31,24 +35,40 @@ defmodule PhoenixKitBilling.Web.UserBillingProfilesTest do
     {:ok, conn: put_test_scope(conn, scope)}
   end
 
+  # {company label, individual label}: the primary badge is a company's, the
+  # secondary one an individual's, so a swapped mapping shows up as a swap.
   defp type_badges(html) do
-    html
-    |> LazyHTML.from_fragment()
-    |> LazyHTML.query("#profiles-list span.badge-primary, #profiles-list span.badge-secondary")
-    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
-    |> Enum.sort()
+    doc = html |> LazyHTML.from_fragment()
+
+    text = fn selector ->
+      doc |> LazyHTML.query(selector) |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+    end
+
+    {text.("#profiles-list span.badge-primary"), text.("#profiles-list span.badge-secondary")}
   end
 
-  for {locale, labels} <- [
-        {"en", ["Company", "Individual"]},
-        {"de", ["Privatperson", "Unternehmen"]},
-        {"fr", ["Entreprise", "Particulier"]}
+  for {locale, company, individual} <- [
+        {"en", "Company", "Individual"},
+        {"de", "Unternehmen", "Privatperson"},
+        {"fr", "Entreprise", "Particulier"}
       ] do
     test "profile types read in #{locale}", %{conn: conn} do
       {:ok, _view, html} =
         live(put_test_locale(conn, unquote(locale)), "/en/dashboard/billing-profiles")
 
-      assert type_badges(html) == unquote(labels)
+      assert type_badges(html) == {[unquote(company)], [unquote(individual)]}
     end
+  end
+
+  test "a type without a label shows as its capitalised value", %{conn: conn} do
+    Repo.update_all(from(p in BillingProfile, where: p.type == "company"),
+      set: [type: "partnership"]
+    )
+
+    {:ok, _view, html} =
+      live(put_test_locale(conn, "de"), "/en/dashboard/billing-profiles")
+
+    assert {[], secondary} = type_badges(html)
+    assert Enum.sort(secondary) == ["Partnership", "Privatperson"]
   end
 end

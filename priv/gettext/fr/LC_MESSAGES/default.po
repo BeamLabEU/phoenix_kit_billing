@@ -929,7 +929,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:125
 #, elixir-autogen, elixir-format
 msgid "Cancelled"
-msgstr "Annulé"
+msgstr ""
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:230
 #, elixir-autogen, elixir-format
@@ -2152,7 +2152,7 @@ msgstr ""
 #: lib/phoenix_kit_billing/web/user_orders.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "Paid"
-msgstr "Payée"
+msgstr "Payé"
 
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:39
 #: lib/phoenix_kit_billing/web/subscriptions.html.heex:118
@@ -4535,6 +4535,42 @@ msgstr "Envoyée"
 msgctxt "invoice status"
 msgid "Void"
 msgstr "Annulée"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:66
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Cancelled"
+msgstr "Annulée"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:64
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Confirmed"
+msgstr "Confirmée"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:62
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Draft"
+msgstr "Brouillon"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:65
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Paid"
+msgstr "Payée"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:63
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Pending"
+msgstr "En attente"
+
+#: lib/phoenix_kit_billing/web/components/order_status_badge.ex:67
+#, elixir-autogen, elixir-format
+msgctxt "order status"
+msgid "Refunded"
+msgstr "Remboursée"
 
 #: lib/phoenix_kit_billing/web/receipt_print.html.heex:484
 #, elixir-autogen, elixir-format
