@@ -146,7 +146,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
             </div>
           </div>
         <% else %>
-          <div class="space-y-4">
+          <div id="profiles-list" class="space-y-4">
             <%= for profile <- @profiles do %>
               <div class="card bg-base-100 shadow-lg">
                 <div class="card-body">
@@ -155,7 +155,7 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
                     <div class="flex-1">
                       <div class="flex items-center gap-3 mb-2">
                         <span class={"badge #{if profile.type == "company", do: "badge-primary", else: "badge-secondary"}"}>
-                          {String.capitalize(profile.type)}
+                          {type_label(profile.type)}
                         </span>
                         <%= if profile.is_default do %>
                           <span class="badge badge-success">{gettext("Default")}</span>
@@ -231,6 +231,10 @@ defmodule PhoenixKitBilling.Web.UserBillingProfiles do
   end
 
   # Private helpers
+
+  defp type_label("individual"), do: gettext("Individual")
+  defp type_label("company"), do: gettext("Company")
+  defp type_label(type), do: String.capitalize(type)
 
   defp get_current_user(socket) do
     case socket.assigns[:phoenix_kit_current_scope] do

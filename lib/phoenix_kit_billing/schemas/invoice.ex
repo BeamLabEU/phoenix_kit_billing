@@ -551,6 +551,10 @@ defmodule PhoenixKitBilling.Invoice do
     Date.compare(due_date, Date.utc_today()) == :lt
   end
 
+  @doc "The statuses an invoice can have."
+  @spec statuses() :: [String.t()]
+  def statuses, do: @valid_statuses
+
   @doc """
   Returns human-readable status label.
   """

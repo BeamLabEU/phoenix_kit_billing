@@ -115,7 +115,7 @@ defmodule PhoenixKitBilling.I18nTest do
       Gettext.put_locale(BillingGettext, "de")
       assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Bezahlt"
       Gettext.put_locale(BillingGettext, "fr")
-      assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Payé"
+      assert Gettext.dgettext(BillingGettext, "default", "Paid") == "Payée"
     end
   end
 end

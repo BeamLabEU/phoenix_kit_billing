@@ -7,6 +7,7 @@ defmodule PhoenixKitBilling.Web.Components.OrderStatusBadge do
   """
 
   use Phoenix.Component
+  use Gettext, backend: PhoenixKitBilling.Gettext
 
   @doc """
   Renders an order status badge with appropriate styling.
@@ -53,7 +54,14 @@ defmodule PhoenixKitBilling.Web.Components.OrderStatusBadge do
   defp status_class("refunded"), do: "badge-secondary"
   defp status_class(_), do: "badge-ghost"
 
-  # Format status text for display
+  # The status in the reader's language; a status without a label shows as
+  # the raw value rather than failing the page.
+  defp format_status("draft"), do: gettext("Draft")
+  defp format_status("pending"), do: gettext("Pending")
+  defp format_status("confirmed"), do: gettext("Confirmed")
+  defp format_status("paid"), do: gettext("Paid")
+  defp format_status("cancelled"), do: gettext("Cancelled")
+  defp format_status("refunded"), do: gettext("Refunded")
   defp format_status(status), do: String.capitalize(status)
 
   # Size classes
