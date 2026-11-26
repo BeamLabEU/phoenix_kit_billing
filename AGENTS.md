@@ -289,7 +289,9 @@ provider's optional `expire_checkout_session/1`, outside the row lock: refused w
 `{:checkout_not_closed, reason}` when the provider cannot be reached
 (`close_checkout: false` skips the step); a provider that cannot close sessions or
 is no longer configured voids as before, with a warning; a session recorded meanwhile goes round
-again (three rounds, then `:checkout_reopened`).
+again (three rounds, then `:checkout_reopened`). Recording a new session closes the
+open one it replaces, and a refund that voids a part-paid invoice closes its open
+session after the commit.
 
 **Refunds that move money.** `record_refund/3` only books; `refund_at_provider/3`
 (`ProviderRefunds`) calls `Providers.create_refund/4` for the invoice's provider
@@ -304,8 +306,11 @@ the invoice.
 **Guest invoices.** `create_guest_invoice/2` (no `user_uuid`, details in
 `billing_details`); `InvoiceLinks` signs `Phoenix.Token`s over the invoice uuid with
 the endpoint's `secret_key_base` (or `:invoice_link_secret`), 180 days by default
-(`:invoice_link_max_age`). The token is the page's only credential; a token of an
-invoice in the trash finds nothing.
+(`:invoice_link_max_age`). The token is the page's only credential and carries
+the invoice's link generation (`metadata["pay_link_generation"]`), which
+`revoke_invoice_pay_links/1` moves on to stop that invoice's links; a token of a
+draft or of an invoice in the trash finds nothing. The page's `live_session` takes
+core's `PhoenixKitWeb.CSP` session and on_mount when core has the module.
 
 **Reinstating a cancelled order.** `reinstate_order/3` (`reason`, `actor_uuid:`;
 no actor when the system does it) takes a `cancelled` order back to

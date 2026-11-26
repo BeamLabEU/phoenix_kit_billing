@@ -218,7 +218,10 @@ the only credential: send it to the payer only. It is a `Phoenix.Token` signed
 with the endpoint's `secret_key_base` (or `config :phoenix_kit_billing,
 invoice_link_secret:`) and lasts 180 days (`invoice_link_max_age:`, seconds).
 The admin invoice page shows the link of a payable invoice, and a guest's
-invoice email links to it.
+invoice email links to it. A draft's link opens nothing until the invoice is
+sent. `revoke_invoice_pay_links/1` (the admin page's **New link**) stops every
+link issued so far for that one invoice - for a link sent to the wrong address -
+and the next `invoice_pay_url/1` is a new one; rotating the secret stops them all.
 
 ### Voiding an invoice with an open checkout
 
@@ -229,7 +232,10 @@ already paid through it, the void is refused with `:checkout_completed`; when th
 provider cannot be reached, with `{:checkout_not_closed, reason}`, and
 `close_checkout: false` voids anyway. A provider without
 `expire_checkout_session/1`, or one no longer configured, voids as before (logged); a payment that still lands is kept
-on the invoice's void trail for a refund.
+on the invoice's void trail for a refund. An invoice keeps one session: opening a
+new one (a second tab of the payment page, another provider) closes the open one it
+replaces, and a refund that takes a part-paid invoice to zero closes the session
+open for the rest, as a void does.
 
 ### Testing Stripe locally
 
