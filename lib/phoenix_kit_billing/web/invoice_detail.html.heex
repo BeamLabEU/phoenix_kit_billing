@@ -588,6 +588,18 @@
                 <div class="text-xs text-base-content/60 mt-1">
                   {gettext("Anyone with this link can view and pay the invoice. Send it only to the payer.")}
                 </div>
+                <button
+                  :if={@can_manage_invoices}
+                  type="button"
+                  class="btn btn-ghost btn-xs mt-1"
+                  id="invoice-pay-link-revoke"
+                  phx-click="revoke_pay_link"
+                  data-confirm={
+                    gettext("The link sent so far will stop working. Make a new one?")
+                  }
+                >
+                  {gettext("New link")}
+                </button>
               </div>
             <% end %>
           </div>

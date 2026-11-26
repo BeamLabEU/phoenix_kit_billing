@@ -22,18 +22,29 @@ defmodule PhoenixKitBilling.InvoiceLinks do
 
   A token for an invoice in the trash finds nothing; a void or paid invoice is
   still shown (its status says so) but offers no payment.
+
+  ## Revoking one invoice's links
+
+  The token carries the invoice's link generation
+  (`metadata["pay_link_generation"]`, 0 until first revoked). `revoke/1` moves it
+  on, so every link issued for that invoice so far stops working and the next
+  `pay_url/1` is a new one - for a link sent to the wrong address. Other
+  invoices' links are untouched.
   """
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.{Invoice, Paths}
 
+  import Ecto.Query, only: [from: 2]
+
   @salt "phoenix_kit_billing:invoice_link"
+  @generation_key "pay_link_generation"
   @default_max_age 60 * 60 * 24 * 180
 
   @doc "A token for `invoice`'s payment page."
   @spec token(Invoice.t()) :: String.t()
-  def token(%Invoice{uuid: uuid}) when is_binary(uuid) do
-    Phoenix.Token.sign(secret!(), @salt, uuid)
+  def token(%Invoice{uuid: uuid} = invoice) when is_binary(uuid) do
+    Phoenix.Token.sign(secret!(), @salt, [uuid, generation(invoice)])
   end
 
   @doc "The page's path for `invoice` (host prefix and locale applied)."
@@ -51,8 +62,10 @@ defmodule PhoenixKitBilling.InvoiceLinks do
   @spec invoice_from_token(term()) :: Invoice.t() | nil
   def invoice_from_token(token) when is_binary(token) do
     with secret when is_binary(secret) <- secret(),
-         {:ok, uuid} <- Phoenix.Token.verify(secret, @salt, token, max_age: max_age()),
+         {:ok, [uuid, generation]} when is_binary(uuid) <-
+           Phoenix.Token.verify(secret, @salt, token, max_age: max_age()),
          %Invoice{} = invoice <- PhoenixKitBilling.get_invoice(uuid, preload: [:order, :user]),
+         true <- generation(invoice) == generation,
          false <- Invoice.trashed?(invoice) do
       invoice
     else
@@ -61,6 +74,34 @@ defmodule PhoenixKitBilling.InvoiceLinks do
   end
 
   def invoice_from_token(_token), do: nil
+
+  @doc """
+  Revokes every payment link issued for `invoice` so far; the next `pay_url/1` is
+  a new one. Returns `{:ok, invoice}` or `{:error, :invoice_not_found}`.
+  """
+  @spec revoke(Invoice.t()) :: {:ok, Invoice.t()} | {:error, term()}
+  def revoke(%Invoice{uuid: uuid}) do
+    repo = PhoenixKit.RepoHelper.repo()
+
+    repo.transaction(fn ->
+      query = from(i in Invoice, where: i.uuid == ^uuid, lock: "FOR UPDATE")
+
+      with %Invoice{} = locked <- repo.one(query),
+           metadata = Map.put(locked.metadata || %{}, @generation_key, generation(locked) + 1),
+           {:ok, updated} <- locked |> Ecto.Changeset.change(metadata: metadata) |> repo.update() do
+        updated
+      else
+        nil -> repo.rollback(:invoice_not_found)
+        {:error, reason} -> repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp generation(%Invoice{metadata: %{@generation_key => generation}})
+       when is_integer(generation),
+       do: generation
+
+  defp generation(_invoice), do: 0
 
   @doc "Whether links can be signed here (a secret is configured)."
   @spec available?() :: boolean()

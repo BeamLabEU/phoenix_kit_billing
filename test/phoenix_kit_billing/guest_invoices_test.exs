@@ -155,6 +155,26 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       assert Billing.get_invoice_by_pay_token(token) == nil
     end
 
+    test "revoking one invoice's links stops them, and only them" do
+      invoice = guest_invoice!()
+      other = guest_invoice!()
+      old_token = InvoiceLinks.token(invoice)
+      other_token = InvoiceLinks.token(other)
+
+      assert {:ok, revoked} = Billing.revoke_invoice_pay_links(invoice)
+
+      assert Billing.get_invoice_by_pay_token(old_token) == nil
+      assert %Invoice{} = Billing.get_invoice_by_pay_token(other_token)
+
+      new_token = InvoiceLinks.token(revoked)
+      assert new_token != old_token
+      assert %Invoice{uuid: uuid} = Billing.get_invoice_by_pay_token(new_token)
+      assert uuid == invoice.uuid
+
+      assert {:error, :invoice_not_found} =
+               Billing.revoke_invoice_pay_links(%Invoice{uuid: Ecto.UUID.generate()})
+    end
+
     test "the URL is absolute and carries the token" do
       invoice = guest_invoice!()
       url = Billing.invoice_pay_url(invoice)
@@ -316,6 +336,26 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
       assert has_element?(view, "#invoice-pay-link")
       assert render(view) =~ "/billing/pay/"
+    end
+
+    test "New link revokes the link shown so far", %{conn: conn} do
+      invoice = guest_invoice!()
+      conn = put_test_scope(conn, fake_scope())
+
+      {:ok, view, html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+      old_token = shown_token(html)
+      assert %Invoice{} = Billing.get_invoice_by_pay_token(old_token)
+
+      html = view |> element("#invoice-pay-link-revoke") |> render_click()
+
+      assert Billing.get_invoice_by_pay_token(old_token) == nil
+      assert %Invoice{uuid: uuid} = html |> shown_token() |> Billing.get_invoice_by_pay_token()
+      assert uuid == invoice.uuid
+    end
+
+    defp shown_token(html) do
+      [_, token] = Regex.run(~r{/billing/pay/([^"?]+)"}, html)
+      token
     end
   end
 end

@@ -5674,3 +5674,18 @@ msgstr "See link on vigane või aegunud."
 #, elixir-autogen, elixir-format
 msgid "This payment method is not available."
 msgstr "See makseviis pole saadaval."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:598
+#, elixir-autogen, elixir-format
+msgid "The link sent so far will stop working. Make a new one?"
+msgstr "Seni saadetud link lakkab töötamast. Kas teha uus?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:601
+#, elixir-autogen, elixir-format
+msgid "New link"
+msgstr "Uus link"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:485
+#, elixir-autogen, elixir-format
+msgid "The old payment link no longer works. Send the new one."
+msgstr "Vana makselink enam ei tööta. Saatke uus."

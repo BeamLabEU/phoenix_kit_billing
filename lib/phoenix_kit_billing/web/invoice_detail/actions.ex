@@ -466,6 +466,29 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     end
   end
 
+  def revoke_pay_link(socket) do
+    invoice = socket.assigns.invoice
+
+    case Billing.revoke_invoice_pay_links(invoice) do
+      {:ok, _invoice} ->
+        Activity.log("billing.pay_link_revoked",
+          actor_uuid: actor_uuid(socket),
+          actor_role: actor_role(socket),
+          resource_type: "invoice",
+          resource_uuid: invoice.uuid,
+          metadata: %{"invoice_number" => invoice.invoice_number}
+        )
+
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> put_flash(:info, gettext("The old payment link no longer works. Send the new one."))}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, Errors.message(reason))}
+    end
+  end
+
   def generate_receipt(socket) do
     case Billing.generate_receipt(socket.assigns.invoice) do
       {:ok, invoice} ->

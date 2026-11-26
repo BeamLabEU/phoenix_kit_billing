@@ -409,6 +409,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   end
 
   @impl true
+  def handle_event("revoke_pay_link", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("revoke_pay_link", params, socket)
+    end)
+  end
+
+  @impl true
   def handle_event("generate_receipt", params, socket) do
     Authz.authorize(socket, :manage_invoices, fn ->
       gated_event("generate_receipt", params, socket)
@@ -449,6 +456,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
     do: Actions.void_invoice(socket, params["reason"])
 
   defp gated_event("generate_receipt", _params, socket), do: Actions.generate_receipt(socket)
+
+  defp gated_event("revoke_pay_link", _params, socket), do: Actions.revoke_pay_link(socket)
 
   defp gated_event("trash_invoice", _params, socket), do: Actions.trash_invoice(socket)
 

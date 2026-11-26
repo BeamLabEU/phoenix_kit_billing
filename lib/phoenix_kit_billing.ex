@@ -3804,6 +3804,14 @@ defmodule PhoenixKitBilling do
     to: PhoenixKitBilling.InvoiceLinks,
     as: :invoice_from_token
 
+  @doc """
+  Revokes every payment link issued for `invoice` so far (a link sent to the wrong
+  address): they open nothing any more, and the next `invoice_pay_url/1` is a new
+  link. Other invoices' links keep working. `{:ok, invoice}` or
+  `{:error, :invoice_not_found}`.
+  """
+  defdelegate revoke_invoice_pay_links(invoice), to: PhoenixKitBilling.InvoiceLinks, as: :revoke
+
   # The order an invoice is created for, moved onto or restored onto must not be
   # in the trash (and a restore also not cancelled, below). Checked in the transaction that writes the
   # invoice, with the order row locked `FOR KEY SHARE` - what the invoice's

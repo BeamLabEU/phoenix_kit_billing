@@ -5545,3 +5545,18 @@ msgstr "Це посилання недійсне або застаріле."
 #, elixir-autogen, elixir-format
 msgid "This payment method is not available."
 msgstr "Цей спосіб оплати недоступний."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:598
+#, elixir-autogen, elixir-format
+msgid "The link sent so far will stop working. Make a new one?"
+msgstr "Надіслане раніше посилання перестане працювати. Створити нове?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:601
+#, elixir-autogen, elixir-format
+msgid "New link"
+msgstr "Нове посилання"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:485
+#, elixir-autogen, elixir-format
+msgid "The old payment link no longer works. Send the new one."
+msgstr "Старе посилання на оплату більше не працює. Надішліть нове."
