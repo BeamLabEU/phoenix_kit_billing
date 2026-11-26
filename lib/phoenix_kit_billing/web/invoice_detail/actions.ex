@@ -165,6 +165,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
   # The provider idempotency key of the dialog: its opening's nonce and the
   # amount, so a corrected amount is a new request and the same one is not.
+  # No dialog opened (a crafted event): the per-payment default key.
+  defp refund_key(nil, _amount), do: nil
+
   defp refund_key(nonce, amount) do
     amount =
       case Decimal.parse(String.trim(to_string(amount || ""))) do
@@ -218,11 +221,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          )}
 
       {:error, {:refunded_not_recorded, _refund, _reason}} ->
-        # Reopening the dialog keeps the key, so the same refund asked again
-        # before the webhook books it is the one already made.
         {:noreply,
          socket
-         |> Phoenix.Component.assign(:refund_key_kept, true)
          |> reload_invoice()
          |> Phoenix.Component.assign(:show_refund_modal, false)
          |> put_flash(
@@ -233,9 +233,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          )}
 
       {:error, reason} ->
-        # The key stays: a retry of the same amount after a lost answer (a
-        # timeout) gets the refund Stripe may have made, and a corrected amount
-        # is another key (`refund_key/2`).
+        # The key stays for this opening: a retry of the same amount after a lost
+        # answer (a timeout) gets the refund Stripe may have made, and a corrected
+        # amount is another key (`refund_key/2`). A new opening is a new refund.
         {:noreply,
          socket
          |> put_flash(

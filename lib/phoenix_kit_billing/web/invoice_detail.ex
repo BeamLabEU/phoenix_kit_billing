@@ -186,9 +186,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
      |> assign(:show_refund_modal, true)
      # One provider idempotency key per opening of the dialog (with the amount):
      # a submit that reaches the server twice gets the refund already made back.
-     # Kept after a refund made but not recorded, which must not be made again.
-     |> assign(:refund_idempotency_key, refund_nonce(socket))
-     |> assign(:refund_key_kept, false)
+     |> assign(:refund_idempotency_key, "pkb-admin-refund:" <> Ecto.UUID.generate())
      |> assign(:refund_amount, "")
      |> assign(:refund_description, "")}
   end
@@ -440,12 +438,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
       gated_event("restore_invoice", params, socket)
     end)
   end
-
-  defp refund_nonce(%{assigns: %{refund_key_kept: true, refund_idempotency_key: nonce}})
-       when is_binary(nonce),
-       do: nonce
-
-  defp refund_nonce(_socket), do: "pkb-admin-refund:" <> Ecto.UUID.generate()
 
   defp gated_event("record_payment", _params, socket), do: Actions.record_payment(socket)
 
