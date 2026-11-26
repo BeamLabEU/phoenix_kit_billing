@@ -17,10 +17,12 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   id for the payment. Newest first; `:provider` and `:transaction_uuid` narrow the
   choice. Each payment can give back what it took less the refunds already
   recorded against it - a refund names the payment it reversed in its
-  `provider_data` (`"charge_id"`, `"payment_intent_id"`), and one that names no
-  payment (recorded by hand) counts against every payment of its method, the rule
-  the refund webhooks follow too. The whole is capped by the invoice's
-  `paid_amount`.
+  `provider_data` (`"charge_id"`, `"payment_intent_id"`). One that names no
+  payment (recorded by hand) is counted once, through the cap of the whole by the
+  invoice's `paid_amount`, not against each payment; one the provider failed and
+  billing put back (`reversed_by_uuid`) counts nowhere. (The refund webhooks
+  reconcile a charge's running total more cautiously: there a refund recorded by
+  hand counts against the charge, so that nothing is booked twice.)
 
   Without `:amount` everything refundable is refunded (one provider refund per
   payment). An amount is taken from the newest payments first, split across them
@@ -219,32 +221,37 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   end
 
   @doc false
-  # The refunds recorded against `payment`: those of its method that do not name
-  # another payment. A refund recorded by hand names none and counts here.
+  # The refunds recorded against `payment`: those of its method that name it. A
+  # refund recorded by hand names no payment; it is not counted against each one
+  # (that made an invoice with two payments refundable twice over less), but once,
+  # through the `paid_amount` cap. A refund the provider failed, put back on the
+  # invoice (`reversed_by_uuid`), gave nothing back.
   def recorded_against(payment, refunds) do
     ids = payment_ids(payment)
 
     refunds
     |> Enum.filter(fn refund ->
-      refund.payment_method == payment.payment_method and
-        not names_other_payment?(refund.provider_data || %{}, ids, payment.uuid)
+      data = refund.provider_data || %{}
+
+      refund.payment_method == payment.payment_method and not reversed?(data) and
+        names_payment?(data, ids, payment.uuid)
     end)
     |> Enum.reduce(Decimal.new(0), fn refund, sum ->
       Decimal.add(sum, Decimal.abs(refund.amount))
     end)
   end
 
-  defp names_other_payment?(provider_data, ids, payment_uuid) do
+  defp reversed?(provider_data), do: is_binary(provider_data["reversed_by_uuid"])
+
+  defp names_payment?(provider_data, ids, payment_uuid) do
     case provider_data["refunded_transaction_uuid"] do
       uuid when is_binary(uuid) ->
-        uuid != payment_uuid
+        uuid == payment_uuid
 
       _ ->
-        named =
-          [provider_data["charge_id"], provider_data["payment_intent_id"]]
-          |> Enum.reject(&is_nil/1)
-
-        named != [] and not Enum.any?(named, &(&1 in ids))
+        [provider_data["charge_id"], provider_data["payment_intent_id"]]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.any?(&(&1 in ids))
     end
   end
 

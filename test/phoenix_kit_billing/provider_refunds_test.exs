@@ -313,6 +313,30 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
       assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("5.00"))
     end
 
+    test "a refund recorded by hand counts once, through paid_amount, not against each payment" do
+      invoice = two_payment_invoice()
+      stub_refunds()
+
+      {:ok, _} =
+        Billing.record_refund(
+          invoice,
+          %{amount: "5.00", payment_method: "stripe", description: "bank transfer back"},
+          nil
+        )
+
+      invoice = Repo.get!(Invoice, invoice.uuid)
+      assert Decimal.equal?(Billing.provider_refundable_amount(invoice), Decimal.new("25.00"))
+
+      # Everything left: 20.00 from the newest payment, 5.00 from the older.
+      assert {:ok, [_, _]} = Billing.refund_at_provider(invoice, %{})
+      assert_received {:stripe, "POST", "/v1/refunds", %{"amount" => "2000"}, _}
+      assert_received {:stripe, "POST", "/v1/refunds", %{"amount" => "500"}, _}
+
+      stored = Repo.get!(Invoice, invoice.uuid)
+      assert Decimal.equal?(stored.paid_amount, Decimal.new("0"))
+      assert stored.status == "void"
+    end
+
     test "an amount finer than the currency is refused before any payment is refunded" do
       invoice = two_payment_invoice()
       stub_refunds()
