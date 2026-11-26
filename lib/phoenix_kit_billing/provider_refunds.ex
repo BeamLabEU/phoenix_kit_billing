@@ -64,6 +64,7 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   alias PhoenixKit.RepoHelper
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Invoice, Providers, Transaction}
+  alias PhoenixKitBilling.Providers.MinorUnits
   alias PhoenixKitBilling.Providers.Types.RefundResult
 
   @doc "See the moduledoc and `PhoenixKitBilling.refund_at_provider/3`."
@@ -269,10 +270,18 @@ defmodule PhoenixKitBilling.ProviderRefunds do
 
     cond do
       not Decimal.positive?(amount) -> {:error, :invalid_amount}
+      finer_than_currency?(amount, invoice.currency) -> {:error, :invalid_amount}
       Decimal.compare(amount, invoice.paid_amount) == :gt -> {:error, :exceeds_paid_amount}
       Decimal.compare(amount, available) == :gt -> {:error, :exceeds_refundable}
       true -> {:ok, allocate(payments, amount)}
     end
+  end
+
+  # An amount the currency cannot carry (5.005 EUR, 10.5 JPY) is refused before any
+  # provider call: split across payments, the newest could be refunded in full and
+  # the fractional rest refused by the provider, leaving a part refund behind.
+  defp finer_than_currency?(amount, currency) do
+    MinorUnits.to_minor_units(amount, currency) == {:error, :fractional_amount}
   end
 
   # Newest payment first, each giving what it can until `total` is reached.

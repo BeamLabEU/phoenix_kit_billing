@@ -266,6 +266,65 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
     end
   end
 
+  describe "an invoice paid in two Stripe payments" do
+    # 10.00 through pi_old, then 20.00 through pi_new.
+    defp two_payment_invoice do
+      user = fixture_user()
+
+      {:ok, invoice} =
+        Billing.create_invoice(user, %{
+          total: Decimal.new("30.00"),
+          subtotal: Decimal.new("30.00"),
+          currency: "EUR"
+        })
+
+      {:ok, invoice, _} = Billing.send_invoice(invoice, send_email: false)
+
+      for {amount, pi} <- [{"10.00", "pi_old"}, {"20.00", "pi_new"}] do
+        {:ok, _} =
+          Billing.record_payment(
+            Repo.get!(Invoice, invoice.uuid),
+            %{
+              amount: amount,
+              payment_method: "stripe",
+              provider_transaction_id: pi,
+              provider_data: %{"payment_intent_id" => pi}
+            },
+            nil
+          )
+      end
+
+      Repo.get!(Invoice, invoice.uuid)
+    end
+
+    test "an amount is taken from the newest payment first, then split onto the older" do
+      invoice = two_payment_invoice()
+      stub_refunds()
+
+      assert {:ok, [first, second]} = Billing.refund_at_provider(invoice, %{amount: "25.00"})
+
+      assert_received {:stripe, "POST", "/v1/refunds", %{"payment_intent" => "pi_new"} = p1, _}
+      assert p1["amount"] == "2000"
+      assert_received {:stripe, "POST", "/v1/refunds", %{"payment_intent" => "pi_old"} = p2, _}
+      assert p2["amount"] == "500"
+
+      assert first.payment.provider_transaction_id == "pi_new"
+      assert second.payment.provider_transaction_id == "pi_old"
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("5.00"))
+    end
+
+    test "an amount finer than the currency is refused before any payment is refunded" do
+      invoice = two_payment_invoice()
+      stub_refunds()
+
+      # 20.00 from pi_new would go through, and 0.005 from pi_old be refused.
+      assert {:error, :invalid_amount} = Billing.refund_at_provider(invoice, %{amount: "20.005"})
+
+      refute_received {:stripe, _, _, _, _}
+      assert refunds(invoice) == []
+    end
+  end
+
   describe "idempotency" do
     test "a repeated request carries the same idempotency key, and books once" do
       invoice = paid_invoice()
