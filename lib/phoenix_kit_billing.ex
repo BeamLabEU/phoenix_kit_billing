@@ -6510,11 +6510,41 @@ defmodule PhoenixKitBilling do
         Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
 
         for {:broadcast_invoice_paid, paid} <- broadcasts, do: resume_paid_subscription(paid)
+
+        for {:broadcast_transaction_refunded, refund} <- broadcasts,
+            do: close_checkout_of_refunded_void(refund.invoice_uuid)
+
         {:ok, transaction}
 
       error ->
         error
     end
+  end
+
+  # A refund that takes the invoice to zero voids it (`handle_refund_transaction/1`)
+  # without `void_invoice/3`: a checkout session still open for the rest of a
+  # part-paid invoice is closed here, after the commit, as a void would close it.
+  defp close_checkout_of_refunded_void(invoice_uuid) do
+    with %Invoice{status: "void", metadata: metadata} = invoice <-
+           repo().get(Invoice, invoice_uuid),
+         %{"provider" => provider, "provider_session_id" => session_id} <-
+           open_checkout(metadata || %{}) do
+      case Providers.expire_checkout_session(provider, session_id) do
+        :ok ->
+          mark_checkout_session_closed(invoice_uuid, session_id, "voided")
+
+        {:error, reason} when reason in [:not_supported, :provider_not_available] ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Invoice #{invoice.invoice_number} was voided by a full refund with its " <>
+              "#{provider} checkout session #{session_id} still open: #{inspect(reason)}"
+          )
+      end
+    end
+
+    :ok
   end
 
   defp transaction_amount(amount_fun, locked) when is_function(amount_fun, 1),

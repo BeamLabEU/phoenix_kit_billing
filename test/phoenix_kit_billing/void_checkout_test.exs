@@ -198,6 +198,20 @@ defmodule PhoenixKitBilling.VoidCheckoutTest do
     assert Billing.open_checkout(Repo.get!(Invoice, invoice.uuid).metadata)
   end
 
+  test "a refund that voids a part-paid invoice closes its checkout for the rest" do
+    invoice = sent_invoice()
+    {:ok, _} = Billing.record_payment(invoice, %{amount: "5.00", payment_method: "bank"}, nil)
+    invoice = Repo.get!(Invoice, invoice.uuid) |> with_session("cs_rest")
+    stub(fn "POST", _ -> {200, %{"status" => "expired"}} end)
+
+    {:ok, _} = Billing.record_refund(invoice, %{amount: "5.00", payment_method: "bank"}, nil)
+
+    stored = Repo.get!(Invoice, invoice.uuid)
+    assert stored.status == "void"
+    assert_received {:stripe, "POST", "/v1/checkout/sessions/cs_rest/expire"}
+    assert stored.metadata["checkout"]["closed_reason"] == "voided"
+  end
+
   test "checkout.session.expired marks the recorded session closed" do
     invoice = sent_invoice() |> with_session("cs_hook")
 
