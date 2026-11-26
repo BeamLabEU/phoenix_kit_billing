@@ -7499,30 +7499,9 @@ defmodule PhoenixKitBilling do
             {:error, :invoice_not_found}
 
           locked ->
-            if Invoice.payable?(locked) do
-              checkout =
-                %{
-                  "provider_session_id" => session.id,
-                  "url" => session.url,
-                  "provider" => to_string(provider),
-                  "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
-                }
-                |> put_session_expiry(session)
-
-              replaced = superseded_checkout(locked.metadata, session.id)
-
-              locked
-              |> Ecto.Changeset.change(%{
-                metadata: Map.put(locked.metadata || %{}, "checkout", checkout)
-              })
-              |> repo().update()
-              |> case do
-                {:ok, _invoice} -> {:ok, replaced}
-                error -> error
-              end
-            else
-              {:error, :invoice_not_payable}
-            end
+            if Invoice.payable?(locked),
+              do: put_checkout_session(locked, provider, session),
+              else: {:error, :invoice_not_payable}
         end
       end)
 
@@ -7536,6 +7515,29 @@ defmodule PhoenixKitBilling do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  # On the locked, payable row: `{:ok, replaced}` with the open session the new one
+  # replaces (or nil).
+  defp put_checkout_session(locked, provider, session) do
+    checkout =
+      %{
+        "provider_session_id" => session.id,
+        "url" => session.url,
+        "provider" => to_string(provider),
+        "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
+      }
+      |> put_session_expiry(session)
+
+    replaced = superseded_checkout(locked.metadata, session.id)
+
+    locked
+    |> Ecto.Changeset.change(%{metadata: Map.put(locked.metadata || %{}, "checkout", checkout)})
+    |> repo().update()
+    |> case do
+      {:ok, _invoice} -> {:ok, replaced}
+      error -> error
     end
   end
 
@@ -7562,6 +7564,10 @@ defmodule PhoenixKitBilling do
       {:error, reason} when reason in [:not_supported, :provider_not_available] ->
         :ok
 
+      # Paid before it could be closed: the provider's webhook books it.
+      {:error, :checkout_completed} ->
+        Logger.info("Checkout session #{id} replaced by a newer one had already been paid")
+
       {:error, reason} ->
         Logger.warning(
           "Checkout session #{id} replaced by a newer one could not be closed at " <>
@@ -7569,6 +7575,9 @@ defmodule PhoenixKitBilling do
         )
     end
   end
+
+  # A recorded session without a provider (metadata written by hand): nothing to call.
+  defp close_superseded_session(_checkout), do: :ok
 
   @doc """
   Starts the online payment of an order and returns where to send the buyer.
