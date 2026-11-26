@@ -556,6 +556,55 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
       assert Repo.get!(Invoice, invoice.uuid).status == "void"
     end
 
+    test "a failed refund of an invoice partly refunded before comes back owed, not paid" do
+      invoice = paid_invoice()
+      stub_refunds()
+
+      {:ok, [_]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+      {:ok, [%{refund: last}]} = Billing.refund_at_provider(invoice, %{})
+      assert Repo.get!(Invoice, invoice.uuid).status == "void"
+
+      capture_log(fn -> deliver(refund_failed(last.id, 2000)) end)
+
+      restored = Repo.get!(Invoice, invoice.uuid)
+      assert Decimal.equal?(restored.paid_amount, Decimal.new("20.00"))
+      assert restored.status in ["sent", "overdue"]
+      assert restored.paid_at == nil
+    end
+
+    test "an earlier refund failing un-voids the invoice too, and it can be refunded to zero again" do
+      invoice = paid_invoice()
+      stub_refunds()
+
+      {:ok, [%{refund: first}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+      {:ok, [_]} = Billing.refund_at_provider(invoice, %{})
+
+      capture_log(fn -> deliver(refund_failed(first.id, 1000)) end)
+
+      restored = Repo.get!(Invoice, invoice.uuid)
+      assert restored.status in ["sent", "overdue"]
+      assert Decimal.equal?(restored.paid_amount, Decimal.new("10.00"))
+
+      # Refunding it again (a new key: the failed refund is not replayed) voids it again.
+      assert {:ok, [%{refund: again}]} = Billing.refund_at_provider(restored, %{})
+      assert again.id != first.id
+      assert Repo.get!(Invoice, invoice.uuid).status == "void"
+    end
+
+    test "a failure matched by charge and amount, delivered again, is not reported unmatched" do
+      invoice = paid_invoice()
+      capture_log(fn -> deliver(charge_refunded(1000)) end)
+      capture_log(fn -> deliver(refund_failed("re_unknown", 1000)) end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, :refund_failed} = deliver(refund_failed("re_unknown", 1000))
+        end)
+
+      refute log =~ "no ledger row matches it"
+      assert length(reversals(invoice)) == 1
+    end
+
     test "a refund the webhook booked without its id is found by charge and amount" do
       invoice = paid_invoice()
       capture_log(fn -> assert {:ok, %Transaction{}} = deliver(charge_refunded(1000)) end)

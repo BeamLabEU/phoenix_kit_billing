@@ -469,15 +469,12 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   # charge and the amount when exactly one row fits. A redelivery changes nothing.
   defp process_refund_failure(%{refund_id: refund_id} = data) when is_binary(refund_id) do
     case failed_refund_rows(data) do
+      # Delivered again after it was put back through the charge and amount (the
+      # reversal carries the refund's id; the refund row does not).
       [] ->
-        Logger.error(
-          "#{data.provider} refund #{refund_id} #{data[:status]} " <>
-            "(#{inspect(data[:failure_reason])}): the customer did not get the money back, " <>
-            "and no ledger row matches it (by refund id, or by charge and amount). " <>
-            "Reconcile it by hand."
-        )
-
-        {:ok, :unmatched_refund}
+        if failure_already_reversed?(data),
+          do: {:ok, :refund_failed},
+          else: unmatched_failure(data)
 
       rows ->
         Enum.each(rows, &reverse_failed_refund(&1, data))
@@ -486,6 +483,28 @@ defmodule PhoenixKitBilling.WebhookProcessor do
   end
 
   defp process_refund_failure(_data), do: {:ok, :ignored}
+
+  defp failure_already_reversed?(data) do
+    repo().exists?(
+      from(t in Transaction,
+        where:
+          t.amount > 0 and t.payment_method == ^data.provider and
+            fragment("?->>'source'", t.provider_data) == "refund_failed" and
+            fragment("?->>'refund_id'", t.provider_data) == ^data.refund_id
+      )
+    )
+  end
+
+  defp unmatched_failure(%{refund_id: refund_id} = data) do
+    Logger.error(
+      "#{data.provider} refund #{refund_id} #{data[:status]} " <>
+        "(#{inspect(data[:failure_reason])}): the customer did not get the money back, " <>
+        "and no ledger row matches it (by refund id, or by charge and amount). " <>
+        "Reconcile it by hand."
+    )
+
+    {:ok, :unmatched_refund}
+  end
 
   defp reverse_failed_refund(row, data) do
     case Billing.reverse_failed_refund(row, data) do

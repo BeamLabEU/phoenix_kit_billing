@@ -36,7 +36,8 @@ defmodule PhoenixKitBilling.ProviderRefunds do
     made before the first is in the ledger - two concurrent clicks, a crash
     between the provider's answer and the ledger - gets the refund already made
     back, not a second one. A repeat AFTER the first was recorded is a new refund
-    under the default key (what is recorded has changed); a caller that means
+    under the default key (what is recorded has changed, and so does a refund that
+    failed and was put back); a caller that means
     "the same refund" passes its own `:idempotency_key`, as the admin dialog does
     (one per opening). Stripe keeps a key for 24 hours.
   - The ledger row is the refund's own id (`provider_transaction_id`), written under
@@ -338,12 +339,16 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   end
 
   defp refund_payment(invoice, payment, amount, attrs, admin_user) do
-    before = recorded_against(payment, refund_rows(invoice.uuid))
+    refunds = refund_rows(invoice.uuid)
+    before = recorded_against(payment, refunds)
+    # A refund that failed and was put back takes `before` back where it was: the
+    # count of those keeps "refund it again" from replaying the failed refund.
+    failed = failed_against(payment, refunds)
 
     opts =
       [
         currency: invoice.currency,
-        idempotency_key: idempotency_key(attrs, payment, before, amount),
+        idempotency_key: idempotency_key(attrs, payment, {before, failed}, amount),
         metadata: %{
           "invoice_uuid" => invoice.uuid,
           "invoice_number" => invoice.invoice_number,
@@ -378,8 +383,23 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   defp idempotency_key(%{idempotency_key: key}, payment, _before, _amount) when is_binary(key),
     do: "#{key}:#{payment.uuid}"
 
-  defp idempotency_key(_attrs, payment, before, amount),
+  defp idempotency_key(_attrs, payment, {before, 0}, amount),
     do: "pkb-refund:#{payment.uuid}:#{Decimal.to_string(before)}:#{Decimal.to_string(amount)}"
+
+  defp idempotency_key(_attrs, payment, {before, failed}, amount),
+    do:
+      "pkb-refund:#{payment.uuid}:#{Decimal.to_string(before)}:#{Decimal.to_string(amount)}:f#{failed}"
+
+  defp failed_against(payment, refunds) do
+    ids = payment_ids(payment)
+
+    Enum.count(refunds, fn refund ->
+      data = refund.provider_data || %{}
+
+      refund.payment_method == payment.payment_method and reversed?(data) and
+        names_payment?(data, ids, payment.uuid)
+    end)
+  end
 
   defp record(invoice, payment, refund, amount, before, attrs, admin_user) do
     refunded = refunded_amount(refund, amount)

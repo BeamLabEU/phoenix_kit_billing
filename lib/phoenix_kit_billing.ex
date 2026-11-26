@@ -6510,6 +6510,7 @@ defmodule PhoenixKitBilling do
 
       {:ok, {reversal, broadcasts}} ->
         Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+        for {:broadcast_invoice_paid, paid} <- broadcasts, do: resume_paid_subscription(paid)
         {:ok, reversal}
 
       error ->
@@ -6574,6 +6575,17 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  # "paid" only when the ledger covers the total again (another refund of it may have
+  # gone through); otherwise owed, and overdue past its due date.
+  defp restored_status(from, invoice, paid_amount) do
+    cond do
+      from == "paid" and Decimal.compare(paid_amount, invoice.total) != :lt -> "paid"
+      from == "overdue" -> "overdue"
+      invoice.due_date && Date.compare(invoice.due_date, Date.utc_today()) == :lt -> "overdue"
+      true -> "sent"
+    end
+  end
+
   defp restore_after_failed_refund(locked, refund, reversal, failure) do
     metadata = locked.metadata || %{}
 
@@ -6590,22 +6602,29 @@ defmodule PhoenixKitBilling do
     metadata =
       Map.put(metadata, "refund_failures", (metadata["refund_failures"] || []) ++ [entry])
 
-    changes = %{
-      paid_amount: calculate_invoice_paid_amount(locked.uuid),
-      metadata: metadata
-    }
+    paid_amount = calculate_invoice_paid_amount(locked.uuid)
+    changes = %{paid_amount: paid_amount, metadata: metadata}
 
-    # Only the void THIS refund caused is undone; status_changeset/2 allows no way
-    # out of "void", so the row is put back as it was by hand.
+    # A void a refund caused (paid_amount reached zero) is undone once money is back
+    # on the invoice - whichever of its refunds failed. A void made by
+    # `void_invoice/3` has no such marker and stays. status_changeset/2 allows no
+    # way out of "void", so the row is put back by hand, at the status its ledger
+    # now supports.
     changes =
       case metadata["voided_by_refund"] do
-        %{"refund_uuid" => uuid, "from" => from}
-        when uuid == refund.uuid and locked.status == "void" ->
-          Map.merge(changes, %{
-            status: from,
-            voided_at: nil,
-            metadata: Map.delete(metadata, "voided_by_refund")
-          })
+        %{"from" => from} ->
+          if locked.status == "void" and Decimal.positive?(paid_amount) do
+            status = restored_status(from, locked, paid_amount)
+
+            Map.merge(changes, %{
+              status: status,
+              voided_at: nil,
+              paid_at: if(status == "paid", do: locked.paid_at),
+              metadata: Map.delete(metadata, "voided_by_refund")
+            })
+          else
+            changes
+          end
 
         _ ->
           changes
@@ -7931,21 +7950,32 @@ defmodule PhoenixKitBilling do
     # If fully refunded (paid_amount = 0), mark invoice as void and order as refunded.
     # The refund that voided it is noted, so that `reverse_failed_refund/2` can undo
     # the void when that refund fails at the provider.
-    if Decimal.eq?(invoice.paid_amount, Decimal.new(0)) do
-      marker = %{"refund_uuid" => refund_uuid, "from" => invoice.status, "at" => now_iso()}
+    cond do
+      not Decimal.eq?(invoice.paid_amount, Decimal.new(0)) ->
+        []
 
-      invoice
-      |> Invoice.status_changeset("void")
-      |> Ecto.Changeset.put_change(
-        :metadata,
-        Map.put(invoice.metadata || %{}, "voided_by_refund", marker)
-      )
-      |> repo().update!()
+      # Void already, holding money a failed refund put back: the last refund
+      # leaves it void (a void has no transition to void).
+      invoice.status == "void" ->
+        maybe_mark_linked_order_refunded(invoice)
 
-      maybe_mark_linked_order_refunded(invoice)
-    else
-      []
+      true ->
+        void_by_refund(invoice, refund_uuid)
     end
+  end
+
+  defp void_by_refund(invoice, refund_uuid) do
+    marker = %{"refund_uuid" => refund_uuid, "from" => invoice.status, "at" => now_iso()}
+
+    invoice
+    |> Invoice.status_changeset("void")
+    |> Ecto.Changeset.put_change(
+      :metadata,
+      Map.put(invoice.metadata || %{}, "voided_by_refund", marker)
+    )
+    |> repo().update!()
+
+    maybe_mark_linked_order_refunded(invoice)
   end
 
   defp get_bank_details do
