@@ -301,7 +301,18 @@ it) with an idempotency key, then books the refund under its own id with
 `provider_data`, through `record_provider_refund/4` under the invoice lock. What
 the webhook's running total already booked is not booked again, and vice versa.
 The admin refund dialog takes this path for a provider method with a payment on
-the invoice.
+the invoice, unless "Already refunded at the provider - only record it" is ticked.
+A refund that names no payment (recorded by hand) counts once, through
+`paid_amount`, not against each payment (the webhooks' running-total
+reconciliation still counts it against the charge). A refund the provider fails
+later is put back by `reverse_failed_refund/2`: a reversal row (`"source" =>
+"refund_failed"`), `reversed_by_uuid` on the refund row, the void it caused undone
+(`metadata["voided_by_refund"]`), `metadata["refund_failures"]` for the admin page,
+an activity row written by the webhook processor (no LiveView is involved there).
+A currency with more than two decimal places is refused for provider refunds and
+new invoices (`:currency_too_precise`): the ledger columns are `numeric(15,2)`.
+`metadata["void"]`, `["pay_link_generation"]`, `["voided_by_refund"]` and
+`["refund_failures"]` are billing's own: `Invoice.changeset/2` keeps them.
 
 **Guest invoices.** `create_guest_invoice/2` (no `user_uuid`, details in
 `billing_details`); `InvoiceLinks` signs `Phoenix.Token`s over the invoice uuid with

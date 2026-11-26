@@ -183,12 +183,30 @@ Each provider call carries an idempotency key (Stripe's `Idempotency-Key`), and
 the ledger row is the refund's own id with the payment it reversed named in its
 `provider_data`, so a retry, a double click or the `charge.refunded` webhook that
 follows books nothing twice. A refund that takes the invoice to zero voids it
-and refunds its order, as `record_refund/3` always has. A refund Stripe later
-reports as `failed` (`refund.failed` / `charge.refund.updated`) marks its ledger
-row and logs an error; the ledger is left for the operator to settle. The admin
-invoice page refunds through the provider when the chosen method is a provider
-with a payment on the invoice, and says so in the dialog.
+and refunds its order, as `record_refund/3` always has. Each payment gives back
+what it took less the refunds that name it; a refund recorded by hand (no charge
+id) counts once, through the invoice's `paid_amount`.
 `provider_refundable_amount/2` tells what can still be refunded.
+
+A refund the provider reports later as `failed` or `canceled` (Stripe:
+`refund.failed` / `charge.refund.updated`) is put back on the invoice: a reversal
+row (`provider_data["source"] == "refund_failed"`) brings `paid_amount` back, the
+void that refund caused is undone (a void made by `void_invoice/3` never is), the
+admin invoice page shows a warning, and an activity row
+(`billing.refund_failed_reversed`) is written. A linked order marked refunded stays
+so - the warning says it. The failure is found by the refund's id, or, for a
+refund the webhook booked without one, by the charge and the amount when exactly
+one row fits; otherwise it is logged as unmatched. A failure delivered twice
+changes nothing.
+
+The admin refund dialog refunds through the provider when the chosen method is a
+provider with a payment on the invoice, and says so. "Already refunded at the
+provider - only record it" books the refund without calling the provider (for a
+refund made in the provider's dashboard).
+
+The ledger keeps two decimal places. A currency with more (BHD, KWD, ... -
+`decimal_places` above 2 in the currency table) is refused for provider refunds
+(`:currency_too_precise`) and for new invoices (a changeset error on `:currency`).
 
 ### Guest invoices and the payment link
 
@@ -230,7 +248,8 @@ not expired (Stripe: the session is expired through the API), so the customer
 cannot pay a void invoice through a link they still hold. When the customer
 already paid through it, the void is refused with `:checkout_completed`; when the
 provider cannot be reached, with `{:checkout_not_closed, reason}`, and
-`close_checkout: false` voids anyway. A provider without
+`close_checkout: false` voids anyway (the admin void dialog then offers "Void
+anyway"). A provider without
 `expire_checkout_session/1`, or one no longer configured, voids as before (logged); a payment that still lands is kept
 on the invoice's void trail for a refund. An invoice keeps one session: opening a
 new one (a second tab of the payment page, another provider) closes the open one it
@@ -358,7 +377,10 @@ The jobs run on the `billing` queue, which the module declares through
 `mix phoenix_kit.doctor` reports it when it is missing. Without it the jobs wait
 and nothing fails. The daily subscription renewal run is declared the same way,
 through `oban_crons/0` (`{"0 6 * * *", PhoenixKitBilling.Workers.SubscriptionRenewalWorker}`),
-and written into the host's crontab by the same tasks.
+and written into the host's crontab by the same tasks. A host that copied that
+entry into its own Oban config by hand should remove its copy: two entries run the
+batch twice (harmless - each subscription is one unique job - but pointless).
+Renewals pause while billing is disabled: the batch run does nothing then.
 
 ### Reinstating a cancelled order
 
