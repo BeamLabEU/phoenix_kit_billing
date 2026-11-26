@@ -151,13 +151,28 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         attrs =
           attrs
           |> Map.put(:provider, payment_method)
-          |> Map.put(:idempotency_key, socket.assigns[:refund_idempotency_key])
+          |> Map.put(
+            :idempotency_key,
+            refund_key(socket.assigns[:refund_idempotency_key], amount)
+          )
 
         refund_at_provider(socket, invoice, attrs)
       else
         record_refund_only(socket, invoice, attrs, current_scope)
       end
     end
+  end
+
+  # The provider idempotency key of the dialog: its opening's nonce and the
+  # amount, so a corrected amount is a new request and the same one is not.
+  defp refund_key(nonce, amount) do
+    amount =
+      case Decimal.parse(String.trim(to_string(amount || ""))) do
+        {decimal, ""} -> decimal |> Decimal.normalize() |> Decimal.to_string(:normal)
+        _ -> "all"
+      end
+
+    "#{nonce}:#{amount}"
   end
 
   defp refund_at_provider(socket, invoice, attrs) do
@@ -203,8 +218,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          )}
 
       {:error, {:refunded_not_recorded, _refund, _reason}} ->
+        # Reopening the dialog keeps the key, so the same refund asked again
+        # before the webhook books it is the one already made.
         {:noreply,
          socket
+         |> Phoenix.Component.assign(:refund_key_kept, true)
          |> reload_invoice()
          |> Phoenix.Component.assign(:show_refund_modal, false)
          |> put_flash(
@@ -215,14 +233,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          )}
 
       {:error, reason} ->
-        # Nothing was refunded: a corrected retry from the same dialog is a new
-        # request, which the provider would refuse under the old key.
+        # The key stays: a retry of the same amount after a lost answer (a
+        # timeout) gets the refund Stripe may have made, and a corrected amount
+        # is another key (`refund_key/2`).
         {:noreply,
          socket
-         |> Phoenix.Component.assign(
-           :refund_idempotency_key,
-           "pkb-admin-refund:" <> Ecto.UUID.generate()
-         )
          |> put_flash(
            :error,
            gettext("Refund failed: %{reason}", reason: Errors.message(reason))

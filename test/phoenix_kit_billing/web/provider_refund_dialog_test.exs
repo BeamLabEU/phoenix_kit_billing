@@ -117,4 +117,52 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     assert other_key != key
     assert length(refund_rows(invoice)) == 2
   end
+
+  test "after a lost answer the same amount is retried under the same key, a new amount is not",
+       %{conn: conn} do
+    invoice = paid_invoice()
+    test_pid = self()
+    {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+    # The first answer is lost (Stripe made the refund, billing saw an error).
+    Req.Test.stub(__MODULE__, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      params = URI.decode_query(body)
+      key = conn |> Plug.Conn.get_req_header("idempotency-key") |> List.first()
+      send(test_pid, {:stripe_refund, params, key})
+
+      if Agent.get_and_update(calls, &{&1, &1 + 1}) == 0 do
+        conn
+        |> Plug.Conn.put_status(400)
+        |> Req.Test.json(%{"error" => %{"code" => "lost", "message" => "lost"}})
+      else
+        Req.Test.json(conn, %{
+          "id" => "re_" <> Integer.to_string(:erlang.phash2(key)),
+          "object" => "refund",
+          "amount" => String.to_integer(params["amount"]),
+          "currency" => "eur",
+          "status" => "succeeded",
+          "charge" => "ch_1",
+          "payment_intent" => "pi_123"
+        })
+      end
+    end)
+
+    {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+    view |> element("button[phx-click=open_refund_modal]") |> render_click()
+
+    params = %{"amount" => "10.00", "payment_method" => "stripe", "description" => "late cancel"}
+    render_change(view, "update_refund_form", params)
+    render_hook(view, "record_refund", %{})
+    render_change(view, "update_refund_form", %{params | "amount" => "10"})
+    render_hook(view, "record_refund", %{})
+
+    assert_received {:stripe_refund, _, key}
+    assert_received {:stripe_refund, _, ^key}
+
+    render_change(view, "update_refund_form", %{params | "amount" => "5.00"})
+    render_hook(view, "record_refund", %{})
+    assert_received {:stripe_refund, %{"amount" => "500"}, other}
+    assert other != key
+  end
 end
