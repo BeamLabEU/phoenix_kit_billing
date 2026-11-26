@@ -283,13 +283,14 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
   # A guest payer cannot open the admin print page: their email links to the
   # public payment page instead. A user's email is unchanged.
-  defp invoice_url(%{user_uuid: nil} = invoice) do
+  @doc false
+  def invoice_url(%{user_uuid: nil} = invoice) do
     if PhoenixKitBilling.InvoiceLinks.available?(),
       do: PhoenixKitBilling.InvoiceLinks.pay_url(invoice),
       else: Routes.base_url() <> Paths.invoice_print(invoice.uuid)
   end
 
-  defp invoice_url(invoice), do: Routes.base_url() <> Paths.invoice_print(invoice.uuid)
+  def invoice_url(invoice), do: Routes.base_url() <> Paths.invoice_print(invoice.uuid)
 
   def send_invoice(socket) do
     invoice = socket.assigns.invoice

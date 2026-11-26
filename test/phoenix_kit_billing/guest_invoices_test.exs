@@ -13,6 +13,7 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Events, Invoice, InvoiceLinks, Providers, WebhookProcessor}
   alias PhoenixKitBilling.Test.Repo
+  alias PhoenixKitBilling.Web.InvoiceDetail.Actions
   alias PhoenixKitBilling.Workers.InvoiceEventWorker
 
   @guest %{email: "ann@example.com", name: "Ann Guest", phone: "+372 5555 5555"}
@@ -362,6 +363,15 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
       assert has_element?(view, "#invoice-pay-link")
       assert render(view) =~ "/billing/pay/"
+    end
+
+    test "a guest's invoice email links to the payment page, a user's to the print page" do
+      guest = guest_invoice!()
+      assert Actions.invoice_url(guest) =~ "/billing/pay/"
+
+      {:ok, user_invoice} = Billing.create_invoice(fixture_user(), attrs())
+      url = Actions.invoice_url(user_invoice)
+      assert url =~ "/admin/billing/invoices/#{user_invoice.uuid}/print"
     end
 
     test "New link revokes the link shown so far", %{conn: conn} do
