@@ -9,6 +9,8 @@ defmodule PhoenixKitBilling.Events do
 
   - `phoenix_kit:billing:orders` - Order events (created, updated, confirmed, paid, refunded, cancelled, reinstated, trashed, restored)
   - `phoenix_kit:billing:invoices` - Invoice events (created, sent, paid, voided, trashed, restored)
+  - `phoenix_kit:billing:invoices:invoice:<uuid>` - One invoice's events and its
+    transactions' (`subscribe_invoice/1`)
   - `phoenix_kit:billing:profiles` - Billing profile events (created, updated, deleted)
   - `phoenix_kit:billing:transactions` - Transaction events (created, refunded)
   - `phoenix_kit:billing:credit_notes` - Credit note events (sent, applied)
@@ -56,6 +58,26 @@ defmodule PhoenixKitBilling.Events do
   def subscribe_invoices do
     Manager.subscribe(@invoices_topic)
   end
+
+  @doc """
+  Subscribes to the events of ONE invoice, on `phoenix_kit:billing:invoice:<uuid>`.
+
+  Every invoice event (`:invoice_created`, `:invoice_sent`, `:invoice_paid`,
+  `:invoice_voided`, `:invoice_trashed`, `:invoice_restored`) and every
+  transaction on it (`:transaction_created`, `:transaction_refunded`) is sent
+  here too, so a page that shows one invoice - a booking waiting for its payment,
+  the guest payment page - follows it without filtering the global topic. It
+  works for guest invoices, which have no user topic.
+
+  PubSub is for live screens. Work that must happen when an invoice is paid
+  belongs in a durable handler (`PhoenixKitBilling.InvoiceEvents`).
+  """
+  def subscribe_invoice(invoice_uuid) when is_binary(invoice_uuid) do
+    Manager.subscribe(invoice_topic(invoice_uuid))
+  end
+
+  @doc "The per-invoice topic `subscribe_invoice/1` subscribes to."
+  def invoice_topic(invoice_uuid), do: "#{@invoices_topic}:invoice:#{invoice_uuid}"
 
   @doc """
   Subscribes to billing profile events.
@@ -200,32 +222,28 @@ defmodule PhoenixKitBilling.Events do
   Broadcasts invoice created event.
   """
   def broadcast_invoice_created(invoice) do
-    broadcast(@invoices_topic, {:invoice_created, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_created, invoice})
+    broadcast_invoice({:invoice_created, invoice}, invoice)
   end
 
   @doc """
   Broadcasts invoice sent event.
   """
   def broadcast_invoice_sent(invoice) do
-    broadcast(@invoices_topic, {:invoice_sent, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_sent, invoice})
+    broadcast_invoice({:invoice_sent, invoice}, invoice)
   end
 
   @doc """
   Broadcasts invoice paid event.
   """
   def broadcast_invoice_paid(invoice) do
-    broadcast(@invoices_topic, {:invoice_paid, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_paid, invoice})
+    broadcast_invoice({:invoice_paid, invoice}, invoice)
   end
 
   @doc """
   Broadcasts invoice voided event.
   """
   def broadcast_invoice_voided(invoice) do
-    broadcast(@invoices_topic, {:invoice_voided, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_voided, invoice})
+    broadcast_invoice({:invoice_voided, invoice}, invoice)
   end
 
   @doc """
@@ -234,16 +252,14 @@ defmodule PhoenixKitBilling.Events do
   `PhoenixKitBilling.InvoiceEvents` are not involved.
   """
   def broadcast_invoice_trashed(invoice) do
-    broadcast(@invoices_topic, {:invoice_trashed, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_trashed, invoice})
+    broadcast_invoice({:invoice_trashed, invoice}, invoice)
   end
 
   @doc """
   Broadcasts invoice restored event (the invoice left the trash).
   """
   def broadcast_invoice_restored(invoice) do
-    broadcast(@invoices_topic, {:invoice_restored, invoice})
-    broadcast("#{@invoices_topic}:user:#{invoice.user_uuid}", {:invoice_restored, invoice})
+    broadcast_invoice({:invoice_restored, invoice}, invoice)
   end
 
   # ============================================
@@ -280,11 +296,8 @@ defmodule PhoenixKitBilling.Events do
   """
   def broadcast_transaction_created(transaction) do
     broadcast(@transactions_topic, {:transaction_created, transaction})
-
-    broadcast(
-      "#{@transactions_topic}:user:#{transaction.user_uuid}",
-      {:transaction_created, transaction}
-    )
+    broadcast_user(@transactions_topic, transaction, {:transaction_created, transaction})
+    broadcast_on_invoice(transaction, {:transaction_created, transaction})
   end
 
   @doc """
@@ -292,11 +305,8 @@ defmodule PhoenixKitBilling.Events do
   """
   def broadcast_transaction_refunded(transaction) do
     broadcast(@transactions_topic, {:transaction_refunded, transaction})
-
-    broadcast(
-      "#{@transactions_topic}:user:#{transaction.user_uuid}",
-      {:transaction_refunded, transaction}
-    )
+    broadcast_user(@transactions_topic, transaction, {:transaction_refunded, transaction})
+    broadcast_on_invoice(transaction, {:transaction_refunded, transaction})
   end
 
   # ============================================
@@ -425,4 +435,22 @@ defmodule PhoenixKitBilling.Events do
   defp broadcast(topic, message) do
     Manager.broadcast(topic, message)
   end
+
+  # The global topic, the payer's topic (a guest invoice has no user, and no
+  # `:user:` topic) and the invoice's own.
+  defp broadcast_invoice(message, invoice) do
+    broadcast(@invoices_topic, message)
+    broadcast_user(@invoices_topic, invoice, message)
+    broadcast(invoice_topic(invoice.uuid), message)
+  end
+
+  defp broadcast_user(topic, %{user_uuid: user_uuid}, message) when is_binary(user_uuid),
+    do: broadcast("#{topic}:user:#{user_uuid}", message)
+
+  defp broadcast_user(_topic, _record, _message), do: :ok
+
+  defp broadcast_on_invoice(%{invoice_uuid: invoice_uuid}, message) when is_binary(invoice_uuid),
+    do: broadcast(invoice_topic(invoice_uuid), message)
+
+  defp broadcast_on_invoice(_record, _message), do: :ok
 end
