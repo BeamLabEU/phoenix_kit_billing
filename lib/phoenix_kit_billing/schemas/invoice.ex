@@ -192,6 +192,14 @@ defmodule PhoenixKitBilling.Invoice do
 
   defp keep_void_trail(changeset) do
     case fetch_change(changeset, :metadata) do
+      # `metadata: nil` would wipe them as surely as a map without them.
+      {:ok, nil} ->
+        put_change(
+          changeset,
+          :metadata,
+          Map.take(changeset.data.metadata || %{}, @billing_owned_metadata)
+        )
+
       {:ok, %{} = metadata} ->
         kept = Map.take(changeset.data.metadata || %{}, @billing_owned_metadata)
 

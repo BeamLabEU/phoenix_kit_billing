@@ -156,6 +156,7 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       # A stale struct's metadata, or a forged generation, written back.
       {:ok, _} = Billing.update_invoice(draft, %{metadata: %{"note" => "x"}})
       {:ok, _} = Billing.update_invoice(draft, %{metadata: %{"pay_link_generation" => 0}})
+      {:ok, _} = Billing.update_invoice(draft, %{metadata: nil})
 
       {:ok, invoice, _} = Billing.send_invoice(Repo.get!(Invoice, draft.uuid), send_email: false)
       assert Billing.get_invoice_by_pay_token(old_token) == nil
