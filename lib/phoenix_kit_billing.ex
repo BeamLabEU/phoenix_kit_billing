@@ -3798,7 +3798,8 @@ defmodule PhoenixKitBilling do
   defdelegate invoice_pay_url(invoice), to: PhoenixKitBilling.InvoiceLinks, as: :pay_url
 
   @doc """
-  The invoice a payment-page token names, or nil (invalid, expired, in the trash).
+  The invoice a payment-page token names, or nil (invalid, expired or revoked; a
+  draft not yet sent; in the trash).
   """
   defdelegate get_invoice_by_pay_token(token),
     to: PhoenixKitBilling.InvoiceLinks,

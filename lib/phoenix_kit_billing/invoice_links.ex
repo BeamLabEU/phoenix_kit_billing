@@ -20,8 +20,9 @@ defmodule PhoenixKitBilling.InvoiceLinks do
   - `config :phoenix_kit_billing, invoice_link_max_age: seconds` - how long a
     link works, default 180 days.
 
-  A token for an invoice in the trash finds nothing; a void or paid invoice is
-  still shown (its status says so) but offers no payment.
+  A token for a draft (until it is sent) or an invoice in the trash finds
+  nothing; a void or paid invoice is still shown (its status says so) but offers
+  no payment.
 
   ## Revoking one invoice's links
 
@@ -56,8 +57,8 @@ defmodule PhoenixKitBilling.InvoiceLinks do
   def pay_url(%Invoice{} = invoice), do: Routes.base_url() <> pay_path(invoice)
 
   @doc """
-  The invoice a token names, or nil: an invalid or expired token, an invoice that
-  is gone or is in the trash. Never raises.
+  The invoice a token names, or nil: an invalid, expired or revoked token, an
+  invoice that is gone, still a draft or in the trash. Never raises.
   """
   @spec invoice_from_token(term()) :: Invoice.t() | nil
   def invoice_from_token(token) when is_binary(token) do
@@ -66,7 +67,7 @@ defmodule PhoenixKitBilling.InvoiceLinks do
            Phoenix.Token.verify(secret, @salt, token, max_age: max_age()),
          %Invoice{} = invoice <- PhoenixKitBilling.get_invoice(uuid, preload: [:order, :user]),
          true <- generation(invoice) == generation,
-         false <- Invoice.trashed?(invoice) do
+         true <- issued?(invoice) do
       invoice
     else
       _ -> nil
@@ -96,6 +97,12 @@ defmodule PhoenixKitBilling.InvoiceLinks do
       end
     end)
   end
+
+  # A draft is not issued yet (its amounts can still change) and an invoice in the
+  # trash is gone: a link opens neither. A link made for a draft works once the
+  # invoice is sent.
+  defp issued?(%Invoice{status: "draft"}), do: false
+  defp issued?(invoice), do: not Invoice.trashed?(invoice)
 
   defp generation(%Invoice{metadata: %{@generation_key => generation}})
        when is_integer(generation),

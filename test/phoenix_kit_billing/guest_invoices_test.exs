@@ -147,6 +147,16 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       assert Billing.get_invoice_by_pay_token(token) == nil
     end
 
+    test "a draft is not shown through its link until it is sent" do
+      {:ok, draft} = Billing.create_guest_invoice(@guest, attrs())
+      token = InvoiceLinks.token(draft)
+
+      assert Billing.get_invoice_by_pay_token(token) == nil
+
+      {:ok, _sent, _} = Billing.send_invoice(draft, send_email: false)
+      assert %Invoice{status: "sent"} = Billing.get_invoice_by_pay_token(token)
+    end
+
     test "an invoice in the trash is not found through its link" do
       {:ok, draft} = Billing.create_guest_invoice(@guest, attrs())
       token = InvoiceLinks.token(draft)
