@@ -196,9 +196,12 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     refute_received {:stripe_refund, _, _}
     assert [row] = refund_rows(invoice)
     assert Decimal.equal?(row.amount, Decimal.new("-10.00"))
+    assert row.provider_data["recorded_as_provider_refund"] == true
 
-    # Unticked again (absent from the form), the next refund goes to Stripe.
+    # The next opening starts unticked.
     view |> element("button[phx-click=open_refund_modal]") |> render_click()
+    assert has_element?(view, "#refund-record-only")
+    refute has_element?(view, "#refund-record-only[checked]")
     render_change(view, "update_refund_form", Map.delete(params, "record_only"))
     render_hook(view, "record_refund", %{})
     assert_received {:stripe_refund, %{"amount" => "1000"}, _}

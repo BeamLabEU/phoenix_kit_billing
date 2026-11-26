@@ -349,6 +349,49 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
     end
   end
 
+  describe "a refund only recorded, then reported by a provider without a running total" do
+    test "is matched to the recorded row instead of booked again" do
+      user = fixture_user()
+
+      {:ok, invoice} =
+        Billing.create_invoice(user, %{total: Decimal.new("30.00"), currency: "EUR"})
+
+      {:ok, invoice, _} = Billing.send_invoice(invoice, send_email: false)
+
+      {:ok, _} =
+        Billing.record_payment(
+          invoice,
+          %{amount: "30.00", payment_method: "paypal", provider_transaction_id: "cap_1"},
+          nil
+        )
+
+      {:ok, _} =
+        Billing.record_refund(
+          Repo.get!(Invoice, invoice.uuid),
+          %{
+            amount: "10.00",
+            payment_method: "paypal",
+            description: "refunded in PayPal",
+            provider_data: %{"recorded_as_provider_refund" => true}
+          },
+          nil
+        )
+
+      event = %{
+        event_id: "evt_paypal_refund_#{System.unique_integer([:positive])}",
+        provider: :paypal,
+        type: "refund.created",
+        data: %{charge_id: "cap_1", refund_id: "rf_1", amount_refunded: 1000, currency: "EUR"}
+      }
+
+      capture_log(fn -> assert {:ok, :already_recorded} = WebhookProcessor.process(event) end)
+
+      assert [row] = refunds(invoice)
+      assert row.provider_transaction_id == "rf_1"
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("20.00"))
+    end
+  end
+
   describe "a currency with three decimal places" do
     test "is refused for a provider refund and for a new invoice" do
       invoice = paid_invoice()

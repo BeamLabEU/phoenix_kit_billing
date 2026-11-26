@@ -93,7 +93,6 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
             |> assign(:show_trash_modal, false)
             |> assign(:show_restore_modal, false)
             |> assign(:payment_amount, Invoice.remaining_amount(invoice) |> Decimal.to_string())
-            |> assign(:refund_record_only, false)
             |> assign(:refund_amount, "")
             |> assign(:payment_description, "")
             |> assign(:refund_description, "")
@@ -190,6 +189,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
      # One provider idempotency key per opening of the dialog (with the amount):
      # a submit that reaches the server twice gets the refund already made back.
      |> assign(:refund_idempotency_key, "pkb-admin-refund:" <> Ecto.UUID.generate())
+     # Each refund decides afresh whether it is only recorded.
+     |> assign(:refund_record_only, false)
      |> assign(:refund_amount, "")
      |> assign(:refund_description, "")}
   end

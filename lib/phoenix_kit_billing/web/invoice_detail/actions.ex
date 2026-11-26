@@ -161,7 +161,12 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
         refund_at_provider(socket, invoice, attrs)
       else
-        record_refund_only(socket, invoice, attrs, current_scope)
+        record_refund_only(
+          socket,
+          invoice,
+          recorded_only_attrs(socket, invoice, attrs),
+          current_scope
+        )
       end
     end
   end
@@ -179,6 +184,17 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       end
 
     "#{nonce}:#{amount}"
+  end
+
+  # A provider refund the operator made in the provider's dashboard: booked here
+  # with a mark, so that the provider's own report of it, when one arrives without
+  # a running total (PayPal, Razorpay), is matched to this row instead of booked
+  # again (`WebhookProcessor`).
+  defp recorded_only_attrs(socket, invoice, attrs) do
+    if socket.assigns[:refund_record_only] == true and
+         Helpers.provider_refundable(invoice, attrs.payment_method),
+       do: Map.put(attrs, :provider_data, %{"recorded_as_provider_refund" => true}),
+       else: attrs
   end
 
   defp refund_at_provider(socket, invoice, attrs) do

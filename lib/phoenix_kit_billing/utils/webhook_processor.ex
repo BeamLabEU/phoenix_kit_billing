@@ -378,8 +378,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
       result =
         Billing.record_provider_refund(invoice, refund_attrs, fn locked ->
-          with :ok <- ensure_refund_not_recorded(locked, data) do
-            refund_amount(data, locked, original_tx, payment_ids)
+          with :ok <- ensure_refund_not_recorded(locked, data),
+               {:ok, amount} <- refund_amount(data, locked, original_tx, payment_ids),
+               :ok <- claim_recorded_only_refund(locked, data, amount) do
+            {:ok, amount}
           end
         end)
 
@@ -397,6 +399,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
         {:error, reason} when reason in [:already_recorded, :already_refunded] ->
           {:ok, reason}
+
+        {:error, {:recorded_only, row_uuid}} ->
+          claim_row(row_uuid, refund_id(data), data)
+          {:ok, :already_recorded}
 
         {:error, reason} ->
           {:error, reason}
@@ -666,6 +672,63 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   # A cumulative total can include earlier refunds missing from the ledger,
   # even when its latest refund id is already recorded. Reconcile the total.
+  # The admin's "Already refunded at the provider - only record it" books a refund
+  # without the provider's id (`"recorded_as_provider_refund"`). A provider that
+  # reports one refund at a time (PayPal, Razorpay) then sends that refund: the
+  # booked row, of the same method and amount and not claimed yet, is it. It takes
+  # the refund's id and nothing more is booked. (A running total - Stripe, EveryPay
+  # - already counts the row against the charge.)
+  defp claim_recorded_only_refund(_invoice, %{amount_refunded_total: total}, _amount)
+       when is_integer(total),
+       do: :ok
+
+  defp claim_recorded_only_refund(invoice, data, amount) do
+    case refund_id(data) do
+      nil ->
+        :ok
+
+      _refund_id ->
+        from(t in Transaction,
+          where:
+            t.invoice_uuid == ^invoice.uuid and t.amount == ^Decimal.negate(amount) and
+              t.payment_method == ^data.provider and is_nil(t.provider_transaction_id) and
+              fragment("(?->>'recorded_as_provider_refund')::boolean", t.provider_data) == true,
+          order_by: [asc: t.inserted_at, asc: t.uuid],
+          limit: 1
+        )
+        |> repo().one()
+        |> case do
+          nil ->
+            :ok
+
+          # The booking rolls back on any refusal, so the row takes the id after it
+          # (`claim_row/3`).
+          row ->
+            {:error, {:recorded_only, row.uuid}}
+        end
+    end
+  end
+
+  defp claim_row(row_uuid, refund_id, data) do
+    case repo().get(Transaction, row_uuid) do
+      %Transaction{provider_transaction_id: nil} = row ->
+        row
+        |> Ecto.Changeset.change(
+          provider_transaction_id: refund_id,
+          provider_data:
+            Map.merge(row.provider_data || %{}, %{
+              "refund_id" => refund_id,
+              "charge_id" => data[:charge_id],
+              "payment_intent_id" => data[:payment_intent_id]
+            })
+        )
+        |> repo().update()
+
+      _ ->
+        :ok
+    end
+  end
+
   defp ensure_refund_not_recorded(_invoice, %{amount_refunded_total: total})
        when is_integer(total),
        do: :ok
