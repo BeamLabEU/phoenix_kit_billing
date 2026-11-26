@@ -65,6 +65,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.OrderEvents
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
+  alias PhoenixKitBilling.Providers.MinorUnits
   alias PhoenixKitBilling.Transaction
   alias PhoenixKitBilling.Workers.SubscriptionCharge
   alias PhoenixKitBilling.Workers.SubscriptionDunningWorker
@@ -3670,9 +3671,10 @@ defmodule PhoenixKitBilling do
     guard = fn -> ensure_order_takes_invoice(order_uuid) end
     draft = build.(nil)
 
-    with :ok <- draft |> Ecto.Changeset.get_field(:currency) |> check_ledger_currency() do
-      insert_numbered_invoice(build, config, source, guard)
-    else
+    case draft |> Ecto.Changeset.get_field(:currency) |> check_ledger_currency() do
+      :ok ->
+        insert_numbered_invoice(build, config, source, guard)
+
       {:error, :currency_too_precise} ->
         {:error,
          Ecto.Changeset.add_error(
@@ -3690,7 +3692,7 @@ defmodule PhoenixKitBilling do
   the currency table does not know is left to the rest of billing, as before.
   """
   def check_ledger_currency(code) when is_binary(code) do
-    case PhoenixKitBilling.Providers.MinorUnits.decimal_places(code) do
+    case MinorUnits.decimal_places(code) do
       {:ok, places} when places > 2 -> {:error, :currency_too_precise}
       _ -> :ok
     end
