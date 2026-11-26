@@ -5580,3 +5580,18 @@ msgstr "%{amount} %{currency} (%{provider}) повернуто на цей ра�
 #, elixir-autogen, elixir-format
 msgid "The order is still marked refunded."
 msgstr "Замовлення досі позначене як повернене."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1013
+#, elixir-autogen, elixir-format
+msgid "The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund."
+msgstr "Не вдалося зв'язатися з платіжним провайдером, щоб закрити відкриту оплату клієнта. Якщо анулювати все одно, клієнт ще зможе сплатити через неї; такий платіж зберігається на анульованому рахунку для повернення."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1026
+#, elixir-autogen, elixir-format
+msgid "The customer's checkout may still be payable. Void the invoice anyway?"
+msgstr "Оплата клієнта може бути ще доступна. Все одно анулювати рахунок?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1029
+#, elixir-autogen, elixir-format
+msgid "Void anyway"
+msgstr "Все одно анулювати"

@@ -1004,8 +1004,30 @@
             ></textarea>
           </div>
 
+          <div
+            :if={@void_checkout_unreachable}
+            id="void-checkout-unreachable"
+            role="alert"
+            class="alert alert-warning mt-4 text-sm"
+          >
+            {gettext("The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund.")}
+          </div>
+
           <div class="modal-action">
             <button type="button" phx-click="close_void_modal" class="btn">{gettext("Cancel")}</button>
+            <button
+              :if={@void_checkout_unreachable}
+              type="submit"
+              id="void-anyway-button"
+              name="void_anyway"
+              value="true"
+              class="btn btn-error btn-outline"
+              data-confirm={
+                gettext("The customer's checkout may still be payable. Void the invoice anyway?")
+              }
+            >
+              {gettext("Void anyway")}
+            </button>
             <button type="submit" class="btn btn-error">
               <.icon name="hero-x-mark" class="w-4 h-4" /> {gettext("Void")}
             </button>

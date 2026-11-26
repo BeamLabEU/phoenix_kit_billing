@@ -5709,3 +5709,18 @@ msgstr "%{amount} %{currency} (%{provider}) kanti sellele arvele tagasi. Tehke t
 #, elixir-autogen, elixir-format
 msgid "The order is still marked refunded."
 msgstr "Tellimus on endiselt märgitud tagastatuks."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1013
+#, elixir-autogen, elixir-format
+msgid "The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund."
+msgstr "Makseteenuse pakkujaga ei saadud ühendust, et kliendi avatud makse sulgeda. Kui tühistate siiski, võib klient selle kaudu veel maksta; selline makse jäetakse tühistatud arvele tagastamiseks."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1026
+#, elixir-autogen, elixir-format
+msgid "The customer's checkout may still be payable. Void the invoice anyway?"
+msgstr "Kliendi makse võib olla veel tasutav. Kas tühistada arve siiski?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1029
+#, elixir-autogen, elixir-format
+msgid "Void anyway"
+msgstr "Tühista siiski"

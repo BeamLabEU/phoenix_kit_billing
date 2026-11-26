@@ -459,10 +459,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     end
   end
 
-  def void_invoice(socket, reason) do
+  def void_invoice(socket, reason, void_anyway? \\ false) do
     actor_uuid = actor_uuid(socket)
+    opts = [actor_uuid: actor_uuid, close_checkout: not void_anyway?]
 
-    case Billing.void_invoice(socket.assigns.invoice, reason, actor_uuid: actor_uuid) do
+    case Billing.void_invoice(socket.assigns.invoice, reason, opts) do
       {:ok, invoice} ->
         Activity.log("billing.invoice_voided",
           actor_uuid: actor_uuid,
@@ -470,14 +471,28 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           resource_type: "invoice",
           resource_uuid: invoice.uuid,
           # Not the reason: it is free text, and it is kept on the invoice's void trail.
-          metadata: %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
+          metadata:
+            %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
+            |> then(&if(void_anyway?, do: Map.put(&1, "checkout_left_open", true), else: &1))
         )
 
         {:noreply,
          socket
          |> reload_invoice()
-         |> Phoenix.Component.assign(:show_void_modal, false)
+         |> Phoenix.Component.assign(show_void_modal: false, void_checkout_unreachable: false)
          |> put_flash(:info, gettext("Invoice voided"))}
+
+      # The provider could not be reached to close the customer's checkout: the
+      # dialog stays open and offers "Void anyway".
+      {:error, {:checkout_not_closed, _reason} = reason} ->
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> Phoenix.Component.assign(void_checkout_unreachable: true)
+         |> put_flash(
+           :error,
+           gettext("Failed to void invoice: %{reason}", reason: Errors.message(reason))
+         )}
 
       {:error, reason} ->
         # The page may be showing a status the invoice has since left (a
