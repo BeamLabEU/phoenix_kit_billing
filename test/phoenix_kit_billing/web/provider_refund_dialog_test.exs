@@ -165,4 +165,15 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     assert_received {:stripe_refund, %{"amount" => "500"}, other}
     assert other != key
   end
+
+  test "a refund put back after it failed at Stripe is flagged on the invoice page", %{conn: conn} do
+    invoice = paid_invoice()
+    {:ok, [%{transaction: tx}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+    {:ok, _reversal} = Billing.reverse_failed_refund(tx, %{provider: "stripe", status: "failed"})
+
+    {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+
+    assert has_element?(view, "#invoice-refund-failures")
+    assert render(view) =~ "10.00 EUR through Stripe was put back on this invoice"
+  end
 end

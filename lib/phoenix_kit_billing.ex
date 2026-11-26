@@ -6465,6 +6465,161 @@ defmodule PhoenixKitBilling do
   end
 
   @doc """
+  Puts a refund that failed at the provider back on its invoice.
+
+  A provider can accept a refund and fail it later (a closed card, a refund the
+  bank returns): the customer never got the money, but the ledger had booked it.
+  The webhook processor calls this for the refund's ledger row (`refund`, a
+  negative transaction) with what the provider said (`failure`: `:provider`,
+  `:refund_id`, `:status`, `:failure_reason`). Under the invoice lock it:
+
+  - books a reversal: a positive row of the refunded amount, same method, with
+    `provider_data` `"source" => "refund_failed"` and `"reverses_refund_uuid"`;
+    `paid_amount` goes back up by it;
+  - marks the refund row (`"refund_status"`, `"failure_reason"`,
+    `"reversed_by_uuid"`), so later refunds do not count it as given back;
+  - undoes the void this refund caused (`metadata["voided_by_refund"]`): the
+    invoice goes back to the status it had (`paid`, or `sent`/`overdue` for a part
+    payment). A void made by `void_invoice/3`, or one another refund caused, stays;
+  - adds an entry to `metadata["refund_failures"]`, which the admin invoice page
+    shows.
+
+  A linked order marked refunded stays refunded: the page says so, for the
+  operator to settle. Returns `{:ok, reversal}`, `{:ok, :already_reversed}` (the
+  failure arrived again: nothing changes) or `{:error, reason}`.
+  """
+  def reverse_failed_refund(%Transaction{} = refund, failure) when is_map(failure) do
+    result =
+      repo().transaction(fn ->
+        with %Invoice{} = locked <- fetch_locked_invoice(%Invoice{uuid: refund.invoice_uuid}),
+             %Transaction{} = stored <- repo().get(Transaction, refund.uuid),
+             true <- Decimal.negative?(stored.amount) || repo().rollback(:not_a_refund),
+             false <- refund_reversed?(stored) do
+          book_refund_reversal(locked, stored, failure)
+        else
+          true -> :already_reversed
+          nil -> repo().rollback(:not_found)
+        end
+      end)
+
+    case result do
+      {:ok, :already_reversed} ->
+        {:ok, :already_reversed}
+
+      {:ok, {reversal, broadcasts}} ->
+        Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+        {:ok, reversal}
+
+      error ->
+        error
+    end
+  end
+
+  defp refund_reversed?(%Transaction{uuid: uuid, provider_data: data}) do
+    is_binary((data || %{})["reversed_by_uuid"]) or
+      repo().exists?(
+        from(t in Transaction,
+          where: t.amount > 0 and fragment("?->>'reverses_refund_uuid'", t.provider_data) == ^uuid
+        )
+      )
+  end
+
+  defp book_refund_reversal(locked, refund, failure) do
+    amount = Decimal.abs(refund.amount)
+    refund_id = failure[:refund_id] || refund.provider_transaction_id
+
+    attrs = %{
+      payment_method: refund.payment_method,
+      description: "Refund #{refund_id || refund.transaction_number} failed: put back",
+      provider_data: %{
+        "source" => "refund_failed",
+        "reverses_refund_uuid" => refund.uuid,
+        "refund_id" => refund_id,
+        "refund_status" => failure[:status],
+        "failure_reason" => failure[:failure_reason]
+      }
+    }
+
+    case insert_transaction(build_transaction_attrs(locked, amount, attrs, nil)) do
+      {:ok, reversal} ->
+        refund
+        |> Ecto.Changeset.change(
+          provider_data:
+            Map.merge(refund.provider_data || %{}, %{
+              "refund_status" => failure[:status],
+              "failure_reason" => failure[:failure_reason],
+              "reversed_by_uuid" => reversal.uuid
+            })
+        )
+        |> repo().update!()
+
+        invoice = restore_after_failed_refund(locked, refund, reversal, failure)
+        update_receipt_status(invoice)
+
+        broadcasts =
+          [{:broadcast_transaction_created, reversal}] ++
+            if invoice.status == "paid" and locked.status == "void",
+              do: [{:broadcast_invoice_paid, invoice}],
+              else: []
+
+        {reversal, broadcasts}
+
+      {:exhausted, changeset} ->
+        repo().rollback(changeset)
+
+      {:error, changeset} ->
+        repo().rollback(changeset)
+    end
+  end
+
+  defp restore_after_failed_refund(locked, refund, reversal, failure) do
+    metadata = locked.metadata || %{}
+
+    entry = %{
+      "refund_transaction_uuid" => refund.uuid,
+      "reversal_transaction_uuid" => reversal.uuid,
+      "refund_id" => failure[:refund_id] || refund.provider_transaction_id,
+      "provider" => to_string(failure[:provider] || refund.payment_method),
+      "amount" => Decimal.to_string(Decimal.abs(refund.amount)),
+      "failure_reason" => failure[:failure_reason],
+      "at" => now_iso()
+    }
+
+    metadata =
+      Map.put(metadata, "refund_failures", (metadata["refund_failures"] || []) ++ [entry])
+
+    changes = %{
+      paid_amount: calculate_invoice_paid_amount(locked.uuid),
+      metadata: metadata
+    }
+
+    # Only the void THIS refund caused is undone; status_changeset/2 allows no way
+    # out of "void", so the row is put back as it was by hand.
+    changes =
+      case metadata["voided_by_refund"] do
+        %{"refund_uuid" => uuid, "from" => from}
+        when uuid == refund.uuid and locked.status == "void" ->
+          Map.merge(changes, %{
+            status: from,
+            voided_at: nil,
+            metadata: Map.delete(metadata, "voided_by_refund")
+          })
+
+        _ ->
+          changes
+      end
+
+    restored = locked |> Ecto.Changeset.change(changes) |> repo().update!()
+
+    # Handlers that undid their work on `:refunded` hear that it is paid again.
+    if restored.status == "paid" and locked.status == "void" do
+      InvoiceEvents.enqueue(:paid, restored)
+    end
+
+    restored
+  end
+
+  @doc """
   Refunds an invoice's provider payments AT THE PROVIDER and records the refunds.
 
   `record_refund/3` only books a refund in the ledger; this one returns the money:
@@ -6592,7 +6747,7 @@ defmodule PhoenixKitBilling do
         # `change/2`, so against the caller's older struct it drops the
         # update whenever the ledger sum happens to equal the old value,
         # leaving the column out of step with the ledger.
-        invoice_broadcasts = apply_transaction_to_invoice(locked, amount)
+        invoice_broadcasts = apply_transaction_to_invoice(locked, amount, transaction)
 
         transaction_broadcast =
           if Decimal.negative?(amount),
@@ -6642,7 +6797,7 @@ defmodule PhoenixKitBilling do
 
   # Inside the transaction: brings the invoice in line with its ledger and
   # returns the broadcasts to send once it commits.
-  defp apply_transaction_to_invoice(invoice, amount) do
+  defp apply_transaction_to_invoice(invoice, amount, transaction) do
     new_paid_amount = calculate_invoice_paid_amount(invoice.uuid)
 
     invoice
@@ -6672,7 +6827,7 @@ defmodule PhoenixKitBilling do
       end
 
     if Decimal.negative?(amount) do
-      order_broadcasts = handle_refund_transaction(invoice.uuid)
+      order_broadcasts = handle_refund_transaction(invoice.uuid, transaction.uuid)
       InvoiceEvents.enqueue(:refunded, get_invoice!(invoice.uuid))
       became_paid ++ order_broadcasts
     else
@@ -7767,14 +7922,22 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp handle_refund_transaction(invoice_uuid) do
+  defp handle_refund_transaction(invoice_uuid, refund_uuid) do
     invoice = get_invoice!(invoice_uuid)
     update_receipt_status(invoice)
 
-    # If fully refunded (paid_amount = 0), mark invoice as void and order as refunded
+    # If fully refunded (paid_amount = 0), mark invoice as void and order as refunded.
+    # The refund that voided it is noted, so that `reverse_failed_refund/2` can undo
+    # the void when that refund fails at the provider.
     if Decimal.eq?(invoice.paid_amount, Decimal.new(0)) do
+      marker = %{"refund_uuid" => refund_uuid, "from" => invoice.status, "at" => now_iso()}
+
       invoice
       |> Invoice.status_changeset("void")
+      |> Ecto.Changeset.put_change(
+        :metadata,
+        Map.put(invoice.metadata || %{}, "voided_by_refund", marker)
+      )
       |> repo().update!()
 
       maybe_mark_linked_order_refunded(invoice)

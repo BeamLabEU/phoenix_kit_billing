@@ -5708,3 +5708,18 @@ msgstr "Старая ссылка на оплату больше не работ
 #, elixir-autogen, elixir-format
 msgid "This currency has more than two decimal places, which billing's amounts cannot hold."
 msgstr "У этой валюты больше двух знаков после запятой, а суммы в биллинге хранят только два."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:207
+#, elixir-autogen, elixir-format
+msgid "A refund failed at the payment provider - the customer did not get the money back"
+msgstr "Возврат не прошёл у платёжного провайдера - клиент не получил деньги"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:212
+#, elixir-autogen, elixir-format
+msgid "%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand."
+msgstr "%{amount} %{currency} (%{provider}) возвращены на этот счёт. Сделайте возврат ещё раз или урегулируйте вручную."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:221
+#, elixir-autogen, elixir-format
+msgid "The order is still marked refunded."
+msgstr "Заказ по-прежнему отмечен как возвращённый."

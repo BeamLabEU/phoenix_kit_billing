@@ -198,6 +198,32 @@
       <% end %>
     <% end %>
 
+    <%!-- A refund the provider failed later was put back on the invoice (reverse_failed_refund/2). --%>
+    <%= if failures = (@invoice.metadata || %{})["refund_failures"] do %>
+      <div id="invoice-refund-failures" role="alert" class="alert alert-warning mb-6">
+        <.icon name="hero-exclamation-triangle" class="w-6 h-6" />
+        <div>
+          <h3 class="font-bold">
+            {gettext("A refund failed at the payment provider - the customer did not get the money back")}
+          </h3>
+          <ul class="text-sm">
+            <%= for failure <- failures do %>
+              <li>
+                {gettext("%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand.",
+                  amount: failure["amount"],
+                  currency: @invoice.currency,
+                  provider: format_payment_method_name(failure["provider"])
+                )}
+              </li>
+            <% end %>
+          </ul>
+          <p :if={match?(%{status: "refunded"}, @invoice.order)} class="text-sm">
+            {gettext("The order is still marked refunded.")}
+          </p>
+        </div>
+      </div>
+    <% end %>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <%!-- Main Content --%>
       <div class="lg:col-span-2 space-y-6">

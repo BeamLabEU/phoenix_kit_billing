@@ -28,7 +28,16 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   alias PhoenixKit.RepoHelper
   alias PhoenixKitBilling, as: Billing
-  alias PhoenixKitBilling.{Invoice, Notifications, PaymentMethod, Transaction, WebhookEvent}
+
+  alias PhoenixKitBilling.{
+    Activity,
+    Invoice,
+    Notifications,
+    PaymentMethod,
+    Transaction,
+    WebhookEvent
+  }
+
   alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
@@ -453,41 +462,105 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     {:ok, :already_refunded}
   end
 
-  # The refund never reached the customer. Its ledger row stays (the money
-  # question is the operator's: refund again, or put the payment back by hand),
-  # but carries the provider's verdict, and the failure is logged as an error.
+  # The refund never reached the customer: its ledger row is put back on the
+  # invoice (`Billing.reverse_failed_refund/2`) - paid_amount up again, the void
+  # this refund caused undone, the invoice flagged for the admin. The row is found
+  # by the refund's id, else (a refund the webhook booked, without its id) by the
+  # charge and the amount when exactly one row fits. A redelivery changes nothing.
   defp process_refund_failure(%{refund_id: refund_id} = data) when is_binary(refund_id) do
-    rows =
-      from(t in Transaction,
-        where:
-          t.amount < 0 and t.payment_method == ^data.provider and
-            t.provider_transaction_id == ^refund_id
-      )
-      |> repo().all()
-
-    Logger.error(
-      "#{data.provider} refund #{refund_id} #{data[:status]} " <>
-        "(#{inspect(data[:failure_reason])}): the customer did not get the money back. " <>
-        if(rows == [],
-          do: "No ledger row carries this refund id.",
-          else: "Its ledger row stays booked; refund again or reverse it by hand."
+    case failed_refund_rows(data) do
+      [] ->
+        Logger.error(
+          "#{data.provider} refund #{refund_id} #{data[:status]} " <>
+            "(#{inspect(data[:failure_reason])}): the customer did not get the money back, " <>
+            "and no ledger row matches it (by refund id, or by charge and amount). " <>
+            "Reconcile it by hand."
         )
-    )
 
-    Enum.each(rows, fn row ->
-      provider_data =
-        Map.merge(row.provider_data || %{}, %{
-          "refund_status" => data[:status],
-          "failure_reason" => data[:failure_reason]
-        })
+        {:ok, :unmatched_refund}
 
-      row |> Ecto.Changeset.change(provider_data: provider_data) |> repo().update!()
-    end)
-
-    {:ok, if(rows == [], do: :unmatched_refund, else: :refund_failed)}
+      rows ->
+        Enum.each(rows, &reverse_failed_refund(&1, data))
+        {:ok, :refund_failed}
+    end
   end
 
   defp process_refund_failure(_data), do: {:ok, :ignored}
+
+  defp reverse_failed_refund(row, data) do
+    case Billing.reverse_failed_refund(row, data) do
+      {:ok, :already_reversed} ->
+        :ok
+
+      {:ok, reversal} ->
+        Logger.error(
+          "#{data.provider} refund #{data.refund_id} #{data[:status]} " <>
+            "(#{inspect(data[:failure_reason])}): the customer did not get the money back. " <>
+            "#{Decimal.to_string(reversal.amount)} #{reversal.currency} was put back on the invoice."
+        )
+
+        # No LiveView is involved: the provider reported it. The audit row has no actor.
+        Activity.log("billing.refund_failed_reversed",
+          actor_uuid: nil,
+          resource_type: "transaction",
+          resource_uuid: reversal.uuid,
+          metadata: %{
+            "refund_transaction_uuid" => row.uuid,
+            "amount" => Decimal.to_string(reversal.amount),
+            "currency" => reversal.currency,
+            "provider" => data.provider
+          }
+        )
+
+      {:error, reason} ->
+        Logger.error(
+          "#{data.provider} refund #{data.refund_id} failed and could NOT be put back on " <>
+            "its invoice: #{inspect(reason)}"
+        )
+    end
+  end
+
+  defp failed_refund_rows(data) do
+    by_id =
+      from(t in Transaction,
+        where:
+          t.amount < 0 and t.payment_method == ^data.provider and
+            t.provider_transaction_id == ^data.refund_id
+      )
+      |> repo().all()
+
+    if by_id == [], do: failed_refund_by_charge(data), else: by_id
+  end
+
+  # Only one candidate, or none: two rows of the same amount on the same charge
+  # cannot be told apart, and putting back the wrong one is worse than asking.
+  defp failed_refund_by_charge(data) do
+    ids = [data[:charge_id], data[:payment_intent_id]] |> Enum.reject(&is_nil/1)
+
+    with [_ | _] <- ids,
+         {:ok, amount} <- failure_amount(data) do
+      from(t in Transaction,
+        where:
+          t.amount == ^Decimal.negate(amount) and t.payment_method == ^data.provider and
+            (fragment("?->>'charge_id'", t.provider_data) in ^ids or
+               fragment("?->>'payment_intent_id'", t.provider_data) in ^ids) and
+            is_nil(fragment("?->>'reversed_by_uuid'", t.provider_data))
+      )
+      |> repo().all()
+      |> case do
+        [row] -> [row]
+        _ -> []
+      end
+    else
+      _ -> []
+    end
+  end
+
+  defp failure_amount(%{amount: amount, currency: currency})
+       when is_integer(amount) and is_binary(currency),
+       do: MinorUnits.from_minor_units(amount, String.upcase(currency))
+
+  defp failure_amount(_data), do: :error
 
   defp process_setup_completed(data) do
     user_uuid = data[:user_uuid]
@@ -689,7 +762,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     )
     |> repo().all()
     |> Enum.reject(fn {_amount, provider_data} ->
-      refund_of_other_payment?(provider_data, payment_ids)
+      # A refund the provider failed and billing put back is no longer in the
+      # charge's running total either.
+      refund_of_other_payment?(provider_data, payment_ids) or
+        is_binary((provider_data || %{})["reversed_by_uuid"])
     end)
     |> Enum.reduce(Decimal.new(0), fn {amount, _provider_data}, sum ->
       Decimal.add(sum, Decimal.abs(amount))

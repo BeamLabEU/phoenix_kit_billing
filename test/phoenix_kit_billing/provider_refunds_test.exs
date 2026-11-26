@@ -446,37 +446,140 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
   end
 
   describe "a refund that fails at Stripe later" do
-    test "marks its ledger row and logs, without moving money" do
+    defp refund_failed(refund_id, cents, extra \\ %{}) do
+      %{
+        "id" => "evt_#{System.unique_integer([:positive])}",
+        "type" => "charge.refund.updated",
+        "data" => %{
+          "object" =>
+            Map.merge(
+              %{
+                "id" => refund_id,
+                "object" => "refund",
+                "status" => "failed",
+                "failure_reason" => "expired_or_canceled_card",
+                "charge" => "ch_1",
+                "payment_intent" => "pi_123",
+                "amount" => cents,
+                "currency" => "eur"
+              },
+              extra
+            )
+        }
+      }
+    end
+
+    defp reversals(invoice) do
+      Repo.all(
+        from(t in Transaction,
+          where:
+            t.invoice_uuid == ^invoice.uuid and t.amount > 0 and
+              fragment("?->>'source'", t.provider_data) == "refund_failed"
+        )
+      )
+    end
+
+    test "is put back on the invoice once, flagged, with the refund row marked" do
       invoice = paid_invoice()
       stub_refunds()
 
       {:ok, [%{refund: refund, transaction: tx}]} =
         Billing.refund_at_provider(invoice, %{amount: "10.00"})
 
-      payload = %{
-        "id" => "evt_#{System.unique_integer([:positive])}",
-        "type" => "charge.refund.updated",
-        "data" => %{
-          "object" => %{
-            "id" => refund.id,
-            "object" => "refund",
-            "status" => "failed",
-            "failure_reason" => "expired_or_canceled_card",
-            "charge" => "ch_1",
-            "payment_intent" => "pi_123",
-            "amount" => 1000,
-            "currency" => "eur"
-          }
-        }
-      }
+      log =
+        capture_log(fn ->
+          assert {:ok, :refund_failed} = deliver(refund_failed(refund.id, 1000))
+        end)
 
-      log = capture_log(fn -> assert {:ok, :refund_failed} = deliver(payload) end)
       assert log =~ "did not get the money back"
+
+      stored = Repo.get!(Invoice, invoice.uuid)
+      assert Decimal.equal?(stored.paid_amount, Decimal.new("30.00"))
+
+      assert [%{"amount" => "10.00", "refund_id" => refund_id}] =
+               stored.metadata["refund_failures"]
+
+      assert refund_id == refund.id
+
+      assert [reversal] = reversals(invoice)
+      assert Decimal.equal?(reversal.amount, Decimal.new("10.00"))
+      assert reversal.provider_data["reverses_refund_uuid"] == tx.uuid
 
       row = Repo.get!(Transaction, tx.uuid)
       assert row.provider_data["refund_status"] == "failed"
-      assert row.provider_data["failure_reason"] == "expired_or_canceled_card"
-      assert Decimal.equal?(row.amount, Decimal.new("-10.00"))
+      assert row.provider_data["reversed_by_uuid"] == reversal.uuid
+
+      assert_activity_logged("billing.refund_failed_reversed", resource_uuid: reversal.uuid)
+
+      # The same failure delivered again changes nothing.
+      capture_log(fn ->
+        assert {:ok, :refund_failed} = deliver(refund_failed(refund.id, 1000))
+      end)
+
+      assert length(reversals(invoice)) == 1
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("30.00"))
+
+      # What failed can be refunded again.
+      assert Decimal.equal?(Billing.provider_refundable_amount(stored), Decimal.new("30.00"))
+    end
+
+    test "a failed full refund undoes the void it caused" do
+      invoice = paid_invoice()
+      stub_refunds()
+
+      {:ok, [%{refund: refund}]} = Billing.refund_at_provider(invoice, %{})
+      voided = Repo.get!(Invoice, invoice.uuid)
+      assert voided.status == "void"
+      assert voided.metadata["voided_by_refund"]["from"] == "paid"
+
+      capture_log(fn -> deliver(refund_failed(refund.id, 3000)) end)
+
+      restored = Repo.get!(Invoice, invoice.uuid)
+      assert restored.status == "paid"
+      assert restored.voided_at == nil
+      assert Decimal.equal?(restored.paid_amount, Decimal.new("30.00"))
+      refute restored.metadata["voided_by_refund"]
+    end
+
+    test "a void made by void_invoice/3 is never undone by a refund failure" do
+      invoice = paid_invoice()
+      stub_refunds()
+      {:ok, [%{refund: refund}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+
+      # A trail that is not this refund's.
+      Repo.get!(Invoice, invoice.uuid)
+      |> Ecto.Changeset.change(status: "void", metadata: %{"void" => %{"reason" => "x"}})
+      |> Repo.update!()
+
+      capture_log(fn -> deliver(refund_failed(refund.id, 1000)) end)
+
+      assert Repo.get!(Invoice, invoice.uuid).status == "void"
+    end
+
+    test "a refund the webhook booked without its id is found by charge and amount" do
+      invoice = paid_invoice()
+      capture_log(fn -> assert {:ok, %Transaction{}} = deliver(charge_refunded(1000)) end)
+
+      capture_log(fn ->
+        assert {:ok, :refund_failed} = deliver(refund_failed("re_unknown", 1000))
+      end)
+
+      assert [_] = reversals(invoice)
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("30.00"))
+    end
+
+    test "two rows that fit the charge and amount are not guessed between" do
+      invoice = paid_invoice()
+      capture_log(fn -> deliver(charge_refunded(1000)) end)
+      capture_log(fn -> deliver(charge_refunded(2000)) end)
+
+      log =
+        capture_log(fn ->
+          assert {:ok, :unmatched_refund} = deliver(refund_failed("re_unknown", 1000))
+        end)
+
+      assert log =~ "no ledger row matches it"
+      assert reversals(invoice) == []
     end
 
     test "a refund update that did not fail stays an unknown event" do

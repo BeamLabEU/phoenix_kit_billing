@@ -5694,3 +5694,18 @@ msgstr "Vana makselink enam ei tööta. Saatke uus."
 #, elixir-autogen, elixir-format
 msgid "This currency has more than two decimal places, which billing's amounts cannot hold."
 msgstr "Selle valuuta komakohti on rohkem kui kaks, mida arvelduse summad ei mahuta."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:207
+#, elixir-autogen, elixir-format
+msgid "A refund failed at the payment provider - the customer did not get the money back"
+msgstr "Tagasimakse ebaõnnestus makseteenuse pakkuja juures - klient ei saanud raha tagasi"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:212
+#, elixir-autogen, elixir-format
+msgid "%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand."
+msgstr "%{amount} %{currency} (%{provider}) kanti sellele arvele tagasi. Tehke tagasimakse uuesti või lahendage see käsitsi."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:221
+#, elixir-autogen, elixir-format
+msgid "The order is still marked refunded."
+msgstr "Tellimus on endiselt märgitud tagastatuks."

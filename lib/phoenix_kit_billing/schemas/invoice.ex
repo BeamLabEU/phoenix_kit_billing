@@ -188,7 +188,7 @@ defmodule PhoenixKitBilling.Invoice do
   # (`InvoiceLinks.revoke/1`; reset, it would bring revoked payment links back): an
   # input can neither forge them nor wipe them. A new invoice has none; a stored
   # one keeps what it has.
-  @billing_owned_metadata ["void", "pay_link_generation"]
+  @billing_owned_metadata ["void", "pay_link_generation", "voided_by_refund", "refund_failures"]
 
   defp keep_void_trail(changeset) do
     case fetch_change(changeset, :metadata) do
