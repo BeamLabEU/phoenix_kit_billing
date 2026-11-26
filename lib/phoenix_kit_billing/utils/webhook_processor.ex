@@ -149,6 +149,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     process_refund(Map.put(data, :provider, to_string(provider)))
   end
 
+  defp process_event(%{type: "refund.failed", provider: provider, data: data}) do
+    process_refund_failure(Map.put(data, :provider, to_string(provider)))
+  end
+
   defp process_event(%{type: "setup.completed", data: data}) do
     Logger.info("Processing setup.completed: #{inspect(data)}")
     # Save payment method for user
@@ -448,6 +452,42 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
     {:ok, :already_refunded}
   end
+
+  # The refund never reached the customer. Its ledger row stays (the money
+  # question is the operator's: refund again, or put the payment back by hand),
+  # but carries the provider's verdict, and the failure is logged as an error.
+  defp process_refund_failure(%{refund_id: refund_id} = data) when is_binary(refund_id) do
+    rows =
+      from(t in Transaction,
+        where:
+          t.amount < 0 and t.payment_method == ^data.provider and
+            t.provider_transaction_id == ^refund_id
+      )
+      |> repo().all()
+
+    Logger.error(
+      "#{data.provider} refund #{refund_id} #{data[:status]} " <>
+        "(#{inspect(data[:failure_reason])}): the customer did not get the money back. " <>
+        if(rows == [],
+          do: "No ledger row carries this refund id.",
+          else: "Its ledger row stays booked; refund again or reverse it by hand."
+        )
+    )
+
+    Enum.each(rows, fn row ->
+      provider_data =
+        Map.merge(row.provider_data || %{}, %{
+          "refund_status" => data[:status],
+          "failure_reason" => data[:failure_reason]
+        })
+
+      row |> Ecto.Changeset.change(provider_data: provider_data) |> repo().update!()
+    end)
+
+    {:ok, if(rows == [], do: :unmatched_refund, else: :refund_failed)}
+  end
+
+  defp process_refund_failure(_data), do: {:ok, :ignored}
 
   defp process_setup_completed(data) do
     user_uuid = data[:user_uuid]

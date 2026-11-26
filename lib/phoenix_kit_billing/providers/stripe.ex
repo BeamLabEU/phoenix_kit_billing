@@ -27,10 +27,15 @@ defmodule PhoenixKitBilling.Providers.Stripe do
 
   Configure your Stripe webhook to send these events:
   - `checkout.session.completed` - Payment completed
-  - `checkout.session.expired` - Session expired
+  - `checkout.session.expired` - Session expired (the invoice's recorded session is
+    marked closed)
   - `payment_intent.succeeded` - Payment succeeded (for saved cards)
   - `payment_intent.payment_failed` - Payment failed
   - `charge.refunded` - Refund processed
+  - `refund.failed` / `charge.refund.updated` / `refund.updated` - read only for a
+    refund that `failed` or was `canceled`: the ledger row of that refund is marked
+    with its status and an error is logged (the money is back on the charge, so
+    the refund has to be made again or settled by hand)
   - `setup_intent.succeeded` - Card saved successfully
 
   `charge.refunded` is the one refund event this provider consumes. Its
@@ -396,7 +401,12 @@ defmodule PhoenixKitBilling.Providers.Stripe do
     unit; never sent to Stripe itself, since a refund's currency is fixed
     by the charge it reverses
   - `:reason` - Reason for refund ("duplicate", "fraudulent", "requested_by_customer")
-  - `:metadata` - Additional metadata
+  - `:metadata` - Additional metadata, sent as the refund's Stripe metadata
+  - `:idempotency_key` - Sent as Stripe's `Idempotency-Key`: a retry with the same
+    key within Stripe's window returns the refund already made instead of a second one
+
+  The result's `metadata` carries the refunded `"charge_id"` and
+  `"payment_intent_id"` as Stripe reports them.
 
   ## Examples
 
@@ -407,8 +417,10 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   def create_refund(provider_transaction_id, amount, opts) do
     with {:ok, config} <- ensure_configured(),
          {:ok, params} <- build_refund_params(provider_transaction_id, amount, opts) do
-      case stripe_request(:post, "/refunds", params, config) do
-        {:ok, %{"id" => id, "amount" => amount_cents, "currency" => currency, "status" => status}} ->
+      case stripe_request(:post, "/refunds", params, config, idempotency_headers(opts)) do
+        {:ok,
+         %{"id" => id, "amount" => amount_cents, "currency" => currency, "status" => status} =
+             refund} ->
           with {:ok, refunded_amount} <- MinorUnits.from_minor_units(amount_cents, currency) do
             {:ok,
              %RefundResult{
@@ -416,7 +428,13 @@ defmodule PhoenixKitBilling.Providers.Stripe do
                provider_refund_id: id,
                amount: refunded_amount,
                status: status,
-               metadata: %{}
+               metadata:
+                 %{
+                   "charge_id" => refund["charge"],
+                   "payment_intent_id" => refund["payment_intent"],
+                   "currency" => currency
+                 }
+                 |> Map.reject(fn {_key, value} -> is_nil(value) end)
              }}
           end
 
@@ -437,7 +455,17 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   defp build_refund_params(provider_transaction_id, amount, opts) do
     with {:ok, params} <-
            maybe_put_refund_amount(refund_target(provider_transaction_id), amount, opts) do
-      {:ok, maybe_put_refund_reason(params, opts)}
+      {:ok, params |> maybe_put_refund_reason(opts) |> maybe_put_refund_metadata(opts)}
+    end
+  end
+
+  defp maybe_put_refund_metadata(params, opts) do
+    case Keyword.get(opts, :metadata) do
+      metadata when is_map(metadata) and map_size(metadata) > 0 ->
+        Map.put(params, :metadata, metadata)
+
+      _ ->
+        params
     end
   end
 
@@ -968,6 +996,29 @@ defmodule PhoenixKitBilling.Providers.Stripe do
          amount_refunded_total: object["amount_refunded"],
          currency: object["currency"],
          refund_id: latest_refund_id(object)
+       }
+     }}
+  end
+
+  # A refund that Stripe could not complete (the card was closed, ...). The
+  # charge's `amount_refunded` drops back, but no `charge.refunded` says so, so
+  # this is the only word of it. Only a failed or cancelled refund is read here;
+  # the others describe refunds `charge.refunded` already carries (see the
+  # moduledoc), and stay unknown events.
+  defp normalize_event(type, %{"object" => "refund", "status" => status} = object)
+       when type in ["charge.refund.updated", "refund.updated", "refund.failed"] and
+              status in ["failed", "canceled"] do
+    {:ok,
+     %{
+       type: "refund.failed",
+       data: %{
+         refund_id: object["id"],
+         status: status,
+         failure_reason: object["failure_reason"],
+         charge_id: object["charge"],
+         payment_intent_id: object["payment_intent"],
+         amount: object["amount"],
+         currency: object["currency"]
        }
      }}
   end

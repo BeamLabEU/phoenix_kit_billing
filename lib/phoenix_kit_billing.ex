@@ -6289,7 +6289,7 @@ defmodule PhoenixKitBilling do
   # invoice lock as the insert, so concurrent deliveries cannot both claim
   # the same unrecorded part of a cumulative refund.
   @doc false
-  def record_provider_refund(%Invoice{} = invoice, attrs, amount_fun)
+  def record_provider_refund(%Invoice{} = invoice, attrs, amount_fun, admin_user \\ nil)
       when is_function(amount_fun, 1) do
     do_record_transaction(
       invoice,
@@ -6305,9 +6305,53 @@ defmodule PhoenixKitBilling do
         end
       end,
       attrs,
-      nil
+      admin_user
     )
   end
+
+  @doc """
+  Refunds an invoice's provider payments AT THE PROVIDER and records the refunds.
+
+  `record_refund/3` only books a refund in the ledger; this one returns the money:
+  it calls the provider that took each payment (`Providers.create_refund/4`, with
+  an idempotency key), then books the refund under its own id, with the payment it
+  reversed named in `provider_data`. The provider's refund webhook that follows
+  adds nothing (and books the refund itself if this call crashed in between).
+
+  ## Attributes
+
+  - `:amount` - what to refund; omitted or nil refunds everything refundable (a
+    full refund). An amount is taken from the newest payments first.
+  - `:description` - the ledger row's description (default "Refund via <provider>")
+  - `:reason` - passed to the provider (Stripe: `"duplicate"`, `"fraudulent"`,
+    `"requested_by_customer"`)
+  - `:provider` - refund only payments of this provider
+  - `:transaction_uuid` - refund only this payment
+  - `:idempotency_key` - your own key for the provider calls (one per payment is
+    derived from it)
+
+  `admin_user` (a user, a scope or nil) is who the ledger rows are attributed to.
+  Results and errors: `PhoenixKitBilling.ProviderRefunds`. A full refund voids
+  the invoice and refunds its order as `record_refund/3` always has; the durable
+  `:refunded` invoice event is enqueued with each row.
+
+  ## Examples
+
+      {:ok, [%{refund: refund, transaction: tx}]} =
+        Billing.refund_at_provider(invoice, %{amount: "10.00", description: "Late cancel"}, admin)
+
+      {:ok, _results} = Billing.refund_at_provider(invoice, %{}, nil)
+  """
+  def refund_at_provider(%Invoice{} = invoice, attrs \\ %{}, admin_user \\ nil),
+    do: PhoenixKitBilling.ProviderRefunds.refund(invoice, attrs, admin_user)
+
+  @doc """
+  What `refund_at_provider/3` could refund on `invoice` right now, through
+  `provider` or any provider (nil): its provider payments less the refunds
+  recorded against them, capped by `paid_amount`.
+  """
+  def provider_refundable_amount(%Invoice{} = invoice, provider \\ nil),
+    do: PhoenixKitBilling.ProviderRefunds.refundable_amount(invoice, provider)
 
   defp do_record_transaction(invoice, amount_or_fun, attrs, admin_user) do
     result =
