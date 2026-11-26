@@ -5101,6 +5101,9 @@ defmodule PhoenixKitBilling do
     with true <- Keyword.get(opts, :close_checkout, true),
          %Invoice{metadata: metadata} = stored <- repo().get(Invoice, uuid),
          true <- Invoice.voidable?(stored),
+         # A part-paid invoice is refused under the lock below; its customer's
+         # checkout for the rest must not be closed by a void that cannot happen.
+         false <- Decimal.positive?(stored.paid_amount || Decimal.new(0)),
          %{"provider" => provider, "provider_session_id" => session_id} <-
            open_checkout(metadata) do
       case Providers.expire_checkout_session(provider, session_id) do

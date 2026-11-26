@@ -184,6 +184,20 @@ defmodule PhoenixKitBilling.VoidCheckoutTest do
     refute_received {:stripe, "POST", "/v1/checkout/sessions/cs_tab2/expire"}
   end
 
+  test "a part-paid invoice keeps its customer's checkout: the void is refused without closing it" do
+    invoice = sent_invoice()
+
+    {:ok, _} =
+      Billing.record_payment(invoice, %{amount: "5.00", payment_method: "bank"}, nil)
+
+    invoice = Repo.get!(Invoice, invoice.uuid) |> with_session("cs_rest")
+    stub(fn _, _ -> flunk("Stripe must not be called") end)
+
+    assert {:error, :invoice_has_payments} = Billing.void_invoice(invoice)
+    refute_received {:stripe, _, _}
+    assert Billing.open_checkout(Repo.get!(Invoice, invoice.uuid).metadata)
+  end
+
   test "checkout.session.expired marks the recorded session closed" do
     invoice = sent_invoice() |> with_session("cs_hook")
 
