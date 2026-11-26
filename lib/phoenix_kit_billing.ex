@@ -4927,6 +4927,8 @@ defmodule PhoenixKitBilling do
   ## Options
 
   - `:actor_uuid` - the user who voids the invoice
+  - `:close_checkout` - `false` skips closing an open checkout session (below);
+    default `true`
 
   Takes a row lock on the invoice for the duration of the call and checks
   `Invoice.voidable?/1` against the stored row, not the struct's, so a payment
@@ -4938,18 +4940,38 @@ defmodule PhoenixKitBilling do
   a document nobody owes anything on, and a new invoice would bill the customer in
   full.
 
+  ## An open checkout is closed first
+
+  An invoice with a hosted checkout session recorded on it (`metadata["checkout"]`,
+  written by `create_checkout_session/3`) that has not expired or been closed has
+  that session closed at its provider BEFORE the void
+  (`Providers.expire_checkout_session/2`), so the customer cannot pay a void invoice
+  through a link they still hold. The provider call is made before the invoice row
+  is locked, never under the lock. Then:
+
+  - closed (or already expired at the provider): the invoice is voided, and the
+    session is marked closed on it (`"closed_at"`, `"closed_reason" => "voided"`);
+  - the customer has already paid through it: `{:error, :checkout_completed}` and
+    nothing changes - the payment is on its way to the ledger;
+  - a provider that cannot close sessions (no `expire_checkout_session/1`): voided
+    as before; a payment that still lands is kept on the void trail for a refund;
+  - the provider could not be reached or refused: `{:error, {:checkout_not_closed,
+    reason}}` and nothing changes, since the link would still take money.
+    `close_checkout: false` voids anyway, as before this check existed.
+
+  A session opened while the first was being closed is closed too (up to three
+  rounds; after that `{:error, :checkout_reopened}`).
+
   Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
   does; the `{:invoice_voided, invoice}` event carries the same),
   `{:error, :invoice_not_voidable}`, `{:error, :invoice_has_payments}`,
+  `{:error, :checkout_completed}`, `{:error, {:checkout_not_closed, reason}}`,
   `{:error, :invoice_trashed}` for an invoice in the trash, `{:error, :invoice_not_found}` when the invoice is gone, or
   `{:error, changeset}`. Refusals are returned, not rolled
   back, so a transaction of the caller's stays usable.
   """
   def void_invoice(%Invoice{} = invoice, reason \\ nil, opts \\ []) do
-    # A transaction so the durable event commits with the void.
-    result = unwrap_transaction(fn -> void_locked_invoice(invoice, reason, opts) end)
-
-    case result do
+    case void_closing_checkout(invoice, reason, opts, 3) do
       {:ok, voided_invoice} ->
         voided_invoice = ensure_preloaded(voided_invoice, [:order, :user])
         Events.broadcast_invoice_voided(voided_invoice)
@@ -4960,7 +4982,75 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp void_locked_invoice(invoice, reason, opts) do
+  # Closes the open checkout session (outside any lock), then voids under the
+  # lock - provided no other session was opened in between, which goes round again.
+  defp void_closing_checkout(_invoice, _reason, _opts, 0), do: {:error, :checkout_reopened}
+
+  defp void_closing_checkout(invoice, reason, opts, rounds) do
+    with {:ok, handled} <- close_open_checkout(invoice, opts) do
+      # A transaction so the durable event commits with the void.
+      case unwrap_transaction(fn -> void_locked_invoice(invoice, reason, opts, handled) end) do
+        {:error, :checkout_reopened} -> void_closing_checkout(invoice, reason, opts, rounds - 1)
+        result -> result
+      end
+    end
+  end
+
+  # `{:ok, nil}` when there is nothing to close, `{:ok, {session_id, :closed |
+  # :left_open}}` for the session dealt with, or the refusal.
+  defp close_open_checkout(%Invoice{uuid: uuid}, opts) do
+    with true <- Keyword.get(opts, :close_checkout, true),
+         %Invoice{metadata: metadata} = stored <- repo().get(Invoice, uuid),
+         true <- Invoice.voidable?(stored),
+         %{"provider" => provider, "provider_session_id" => session_id} <-
+           open_checkout(metadata) do
+      case Providers.expire_checkout_session(provider, session_id) do
+        :ok ->
+          {:ok, {session_id, :closed}}
+
+        {:error, :not_supported} ->
+          {:ok, {session_id, :left_open}}
+
+        {:error, :checkout_completed} ->
+          {:error, :checkout_completed}
+
+        {:error, reason} ->
+          Logger.warning(
+            "Invoice #{stored.invoice_number} not voided: its #{provider} checkout session " <>
+              "could not be closed: #{inspect(reason)}"
+          )
+
+          {:error, {:checkout_not_closed, reason}}
+      end
+    else
+      _ -> {:ok, nil}
+    end
+  end
+
+  # The checkout session recorded on an invoice, while it can still be paid: not
+  # closed by billing and not past the expiry the provider gave it.
+  @doc false
+  def open_checkout(%{"checkout" => %{"provider_session_id" => id} = checkout})
+      when is_binary(id) do
+    cond do
+      checkout["closed_at"] -> nil
+      expired_checkout?(checkout["expires_at"]) -> nil
+      true -> checkout
+    end
+  end
+
+  def open_checkout(_metadata), do: nil
+
+  defp expired_checkout?(expires_at) when is_binary(expires_at) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, at, _} -> DateTime.compare(at, UtilsDate.utc_now()) != :gt
+      _ -> false
+    end
+  end
+
+  defp expired_checkout?(_), do: false
+
+  defp void_locked_invoice(invoice, reason, opts, handled) do
     # The caller's struct may be minutes old: a payment recorded since would
     # otherwise be overwritten by the void (status "paid" -> "void" with the
     # money still in the ledger).
@@ -4975,21 +5065,41 @@ defmodule PhoenixKitBilling do
         cond do
           not Invoice.voidable?(locked) -> {:error, :invoice_not_voidable}
           Decimal.positive?(locked.paid_amount) -> {:error, :invoice_has_payments}
-          true -> void_locked(locked, reason, opts)
+          checkout_reopened?(locked, handled, opts) -> {:error, :checkout_reopened}
+          true -> void_locked(locked, reason, opts, handled)
         end
     end
   end
 
-  defp void_locked(%Invoice{} = locked, reason, opts) do
+  # Another session was recorded after the one closed above was read.
+  defp checkout_reopened?(locked, handled, opts) do
+    case Keyword.get(opts, :close_checkout, true) && open_checkout(locked.metadata) do
+      %{"provider_session_id" => id} ->
+        case handled do
+          {^id, _} -> false
+          _ -> true
+        end
+
+      _ ->
+        false
+    end
+  end
+
+  defp void_locked(%Invoice{} = locked, reason, opts, handled) do
     trail = %{
       "reason" => normalize_reason(reason),
       "by_uuid" => opts[:actor_uuid],
       "at" => now_iso()
     }
 
+    metadata =
+      (locked.metadata || %{})
+      |> Map.put("void", trail)
+      |> mark_checkout_closed_in(handled)
+
     locked
     |> Invoice.status_changeset("void")
-    |> Ecto.Changeset.put_change(:metadata, Map.put(locked.metadata || %{}, "void", trail))
+    |> Ecto.Changeset.put_change(:metadata, metadata)
     |> repo().update()
     |> case do
       {:ok, voided} ->
@@ -5000,6 +5110,52 @@ defmodule PhoenixKitBilling do
         error
     end
   end
+
+  defp mark_checkout_closed_in(metadata, {session_id, :closed}),
+    do: close_checkout_entry(metadata, session_id, "voided")
+
+  defp mark_checkout_closed_in(metadata, _handled), do: metadata
+
+  defp close_checkout_entry(
+         %{"checkout" => %{"provider_session_id" => session_id} = checkout} = metadata,
+         session_id,
+         closed_reason
+       ) do
+    if checkout["closed_at"] do
+      metadata
+    else
+      checkout =
+        Map.merge(checkout, %{"closed_at" => now_iso(), "closed_reason" => closed_reason})
+
+      Map.put(metadata, "checkout", checkout)
+    end
+  end
+
+  defp close_checkout_entry(metadata, _session_id, _closed_reason), do: metadata
+
+  @doc false
+  # The provider reports a checkout session it closed on its own (expired): the
+  # invoice's recorded session, when it is that one, is marked closed so that
+  # nothing tries to close it or send a customer to it again. Returns `:ok` -
+  # an invoice that is gone, or holds another session, is left alone.
+  def mark_checkout_session_closed(invoice_uuid, session_id, closed_reason)
+      when is_binary(session_id) do
+    if is_binary(invoice_uuid) and UUIDUtils.valid?(invoice_uuid) do
+      unwrap_transaction(fn ->
+        with %Invoice{metadata: metadata} = locked <-
+               fetch_locked_invoice(%Invoice{uuid: invoice_uuid}),
+             stored = metadata || %{},
+             updated when updated != stored <-
+               close_checkout_entry(stored, session_id, closed_reason) do
+          locked |> Ecto.Changeset.change(metadata: updated) |> repo().update()
+        end
+      end)
+    end
+
+    :ok
+  end
+
+  def mark_checkout_session_closed(_invoice_uuid, _session_id, _closed_reason), do: :ok
 
   @doc """
   Keeps, on a void invoice, a provider charge that arrived after the void.
@@ -7099,6 +7255,9 @@ defmodule PhoenixKitBilling do
         {:ok, session.url}
 
       {:error, :invoice_not_payable} ->
+        # Voided (or paid) while the provider call was in flight. The session
+        # was never recorded, so a void cannot find it: close it here.
+        close_orphan_session(provider, session)
         {:error, :invoice_not_payable}
 
       {:error, reason} ->
@@ -7111,6 +7270,28 @@ defmodule PhoenixKitBilling do
     end
   end
 
+  # When the provider says when the session ends, so that `void_invoice/3` does
+  # not try to close one that is long gone.
+  defp put_session_expiry(checkout, %{expires_at: %DateTime{} = expires_at}),
+    do: Map.put(checkout, "expires_at", DateTime.to_iso8601(expires_at))
+
+  defp put_session_expiry(checkout, _session), do: checkout
+
+  defp close_orphan_session(provider, %{id: session_id}) when is_binary(session_id) do
+    case Providers.expire_checkout_session(provider, session_id) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "Checkout session #{session_id} opened for an invoice that is no longer payable " <>
+            "could not be closed: #{inspect(reason)}"
+        )
+    end
+  end
+
+  defp close_orphan_session(_provider, _session), do: :ok
+
   @doc false
   # Public for the tests only: the persistence half of create_checkout_session/3.
   def record_checkout_session(%Invoice{} = invoice, provider, session) do
@@ -7122,12 +7303,14 @@ defmodule PhoenixKitBilling do
 
           locked ->
             if Invoice.payable?(locked) do
-              checkout = %{
-                "provider_session_id" => session.id,
-                "url" => session.url,
-                "provider" => to_string(provider),
-                "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
-              }
+              checkout =
+                %{
+                  "provider_session_id" => session.id,
+                  "url" => session.url,
+                  "provider" => to_string(provider),
+                  "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
+                }
+                |> put_session_expiry(session)
 
               locked
               |> Ecto.Changeset.change(%{

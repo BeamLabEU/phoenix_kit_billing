@@ -263,5 +263,25 @@ defmodule PhoenixKitBilling.Providers.Provider do
   @callback detach_payment_method(provider_payment_method_id :: String.t()) ::
               :ok | {:error, term()}
 
-  @optional_callbacks detach_payment_method: 1
+  @doc """
+  Closes a hosted checkout session so it can no longer be paid.
+
+  Called by `PhoenixKitBilling.void_invoice/3` before it voids an invoice that has
+  a checkout session recorded on it: a session left open would let the customer
+  pay a void invoice.
+
+  ## Returns
+
+  - `:ok` - The session is closed (or had already expired)
+  - `{:error, :checkout_completed}` - The customer already paid through it; the
+    payment is on its way and the invoice must not be voided
+  - `{:error, reason}` - The session could not be closed
+
+  Optional: a provider without it is treated as one whose sessions cannot be
+  closed, and the void goes ahead (a payment that lands on the void invoice
+  anyway is kept on its void trail for a refund).
+  """
+  @callback expire_checkout_session(session_id :: String.t()) :: :ok | {:error, term()}
+
+  @optional_callbacks detach_payment_method: 1, expire_checkout_session: 1
 end

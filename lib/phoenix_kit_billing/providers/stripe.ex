@@ -141,6 +141,55 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   @doc """
+  Expires an open Checkout Session, so it can no longer be paid.
+
+  Stripe expires only a session that is still `open`. When it refuses, the
+  session is read back: one that has `expired` already is closed (`:ok`), and
+  one that is `complete` was paid - `{:error, :checkout_completed}`, the payment
+  is on its way. A session Stripe does not know cannot be paid either (`:ok`).
+  """
+  @impl true
+  def expire_checkout_session(session_id) when is_binary(session_id) do
+    with {:ok, config} <- ensure_configured() do
+      path = "/checkout/sessions/#{URI.encode_www_form(session_id)}"
+
+      case stripe_request(:post, path <> "/expire", %{}, config) do
+        {:ok, %{"status" => "expired"}} ->
+          :ok
+
+        {:ok, %{"status" => "complete"}} ->
+          {:error, :checkout_completed}
+
+        {:ok, _other} ->
+          :ok
+
+        {:error, %{"code" => "resource_missing"}} ->
+          :ok
+
+        {:error, reason} ->
+          session_state(path, config, reason)
+      end
+    end
+  end
+
+  defp session_state(path, config, expire_error) do
+    case stripe_request(:get, path, nil, config) do
+      {:ok, %{"status" => "expired"}} ->
+        :ok
+
+      {:ok, %{"status" => "complete"}} ->
+        {:error, :checkout_completed}
+
+      {:error, %{"code" => "resource_missing"}} ->
+        :ok
+
+      _other ->
+        Logger.error("Stripe checkout session could not be expired: #{inspect(expire_error)}")
+        {:error, expire_error}
+    end
+  end
+
+  @doc """
   Creates a Stripe Setup Session to save a payment method.
 
   ## Options

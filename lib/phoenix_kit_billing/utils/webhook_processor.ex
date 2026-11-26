@@ -110,7 +110,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp process_event(%{type: "checkout.expired", data: data}) do
     Logger.info("Checkout session expired: #{inspect(data[:session_id])}")
-    # Clear checkout session from order if needed
+    # The invoice's recorded session is marked closed, so a void does not try to
+    # close it and a customer is not sent to it again.
+    Billing.mark_checkout_session_closed(data[:invoice_uuid], data[:session_id], "expired")
     {:ok, :expired}
   end
 
