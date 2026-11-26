@@ -270,6 +270,14 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def oban_queues, do: [billing: 10]
 
+  # The daily renewal run, declared so `mix phoenix_kit.install` / `update` write it
+  # into the host's crontab instead of the host copying it from the worker's docs.
+  # A cron job carries no args, which is the worker's batch clause: it fans out one
+  # job per due subscription, and does nothing while billing is disabled. Dunning
+  # has no cron of its own: the renewal run schedules it per subscription.
+  @impl PhoenixKit.Module
+  def oban_crons, do: [{"0 6 * * *", PhoenixKitBilling.Workers.SubscriptionRenewalWorker}]
+
   # The four financial emails, with sample variables, for core's email
   # preview (`/admin/settings/email-sending/preview`).
   @impl PhoenixKit.Module
