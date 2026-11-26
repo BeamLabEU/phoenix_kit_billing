@@ -11,6 +11,7 @@ defmodule PhoenixKitBilling.Web.Routes do
   def generate(url_prefix) do
     webhook_controller = Web.WebhookController
     extra_on_mount = Application.get_env(:phoenix_kit, :extra_live_session_on_mount, [])
+    public_session = public_session_opts(extra_on_mount)
 
     quote do
       scope unquote(url_prefix) do
@@ -27,11 +28,7 @@ defmodule PhoenixKitBilling.Web.Routes do
       # locale segment once Languages is on (the same reason as bookings' public
       # pages). The path is specific, never a catch-all, so it cannot shadow
       # `/admin/*` as a locale.
-      live_session :phoenix_kit_billing_public,
-        on_mount:
-          unquote(
-            extra_on_mount ++ [{PhoenixKitWeb.Users.Auth, :phoenix_kit_mount_current_scope}]
-          ) do
+      live_session :phoenix_kit_billing_public, unquote(public_session) do
         scope unquote(localized_scope(url_prefix)) do
           pipe_through([:browser, :phoenix_kit_auto_setup, :phoenix_kit_locale_validation])
           unquote(public_live_routes("_locale"))
@@ -43,6 +40,29 @@ defmodule PhoenixKitBilling.Web.Routes do
         end
       end
     end
+  end
+
+  # The page renders core's app layout, whose inline <style>/<script> tags carry
+  # the host's CSP nonce. The first render gets it from the request; core's
+  # `PhoenixKitWeb.CSP` carries it into the connected LiveView (session + on_mount),
+  # so tags patched in after connect keep it. A core without that module (the
+  # published floor) gets the live_session as before.
+  @core_csp PhoenixKitWeb.CSP
+
+  @doc false
+  def public_session_opts(extra_on_mount) do
+    on_mount = extra_on_mount ++ [{PhoenixKitWeb.Users.Auth, :phoenix_kit_mount_current_scope}]
+
+    if core_csp?() do
+      [session: {@core_csp, :live_session, []}, on_mount: [@core_csp | on_mount]]
+    else
+      [on_mount: on_mount]
+    end
+  end
+
+  defp core_csp? do
+    Code.ensure_loaded?(@core_csp) and function_exported?(@core_csp, :live_session, 1) and
+      function_exported?(@core_csp, :on_mount, 4)
   end
 
   defp localized_scope(prefix) when prefix in ["/", ""], do: "/:locale"
