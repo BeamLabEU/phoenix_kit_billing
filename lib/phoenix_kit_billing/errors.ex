@@ -36,15 +36,20 @@ defmodule PhoenixKitBilling.Errors do
           | :authentication_failed
           | :can_only_delete_drafts
           | :card_declined
+          | :checkout_completed
+          | :checkout_reopened
+          | {:checkout_not_closed, term()}
           | :currency_in_use
           | :duplicate_event
           | :event_log_failed
           | :exceeds_paid_amount
+          | :exceeds_refundable
           | :exceeds_remaining
           | :has_active_subscriptions
           | :has_subscriptions
           | :in_transaction
           | :invalid_amount
+          | :invalid_email
           | :invalid_format
           | :invalid_json
           | :invalid_payload
@@ -70,6 +75,7 @@ defmodule PhoenixKitBilling.Errors do
           | :no_payment_method
           | :no_payments
           | :no_plan
+          | :no_provider_payments
           | :no_raw_body
           | :no_recipient_email
           | :no_signature
@@ -112,6 +118,7 @@ defmodule PhoenixKitBilling.Errors do
           | :timestamp_too_old
           | :transaction_not_found
           | {:charged_not_recorded, term()}
+          | {:refunded_not_recorded, term(), term()}
           | :unknown_event
 
   @doc """
@@ -129,10 +136,24 @@ defmodule PhoenixKitBilling.Errors do
 
   def message(:can_only_delete_drafts), do: gettext("Only draft records can be deleted.")
   def message(:card_declined), do: gettext("The card was declined.")
+
+  def message(:checkout_completed),
+    do:
+      gettext(
+        "The customer has already paid through the open checkout; the payment is on its way."
+      )
+
+  def message(:checkout_reopened),
+    do: gettext("A new checkout was opened for this invoice meanwhile. Try again.")
+
   def message(:currency_in_use), do: gettext("This currency is in use and cannot be removed.")
   def message(:duplicate_event), do: gettext("This event has already been processed.")
   def message(:event_log_failed), do: gettext("Failed to record the billing event.")
   def message(:exceeds_paid_amount), do: gettext("The amount exceeds the amount paid.")
+
+  def message(:exceeds_refundable),
+    do: gettext("The amount exceeds what the provider payments can give back.")
+
   def message(:exceeds_remaining), do: gettext("The amount exceeds the remaining balance.")
 
   def message(:has_active_subscriptions),
@@ -145,6 +166,7 @@ defmodule PhoenixKitBilling.Errors do
     do: gettext("A payment cannot be started inside a database transaction.")
 
   def message(:invalid_amount), do: gettext("The amount is invalid.")
+  def message(:invalid_email), do: gettext("The email address is invalid.")
   def message(:invalid_format), do: gettext("The format is invalid.")
   def message(:invalid_json), do: gettext("The response was not valid JSON.")
   def message(:invalid_payload), do: gettext("The webhook payload is invalid.")
@@ -197,6 +219,10 @@ defmodule PhoenixKitBilling.Errors do
   def message(:no_payment_method), do: gettext("No payment method is available.")
   def message(:no_payments), do: gettext("There are no payments to process.")
   def message(:no_plan), do: gettext("No plan is associated with this record.")
+
+  def message(:no_provider_payments),
+    do: gettext("Nothing on this invoice was paid through a payment provider.")
+
   def message(:no_raw_body), do: gettext("The webhook request body is missing.")
   def message(:no_recipient_email), do: gettext("No recipient email address is available.")
   def message(:no_signature), do: gettext("The webhook signature header is missing.")
@@ -273,6 +299,18 @@ defmodule PhoenixKitBilling.Errors do
 
   def message({:charged_not_recorded, _reason}) do
     gettext("The payment was taken but could not be recorded. Reconcile it by hand.")
+  end
+
+  def message({:checkout_not_closed, _reason}) do
+    gettext(
+      "The open checkout could not be closed at the payment provider, so the invoice was not voided."
+    )
+  end
+
+  def message({:refunded_not_recorded, _refund, _reason}) do
+    gettext(
+      "The refund was made at the provider but could not be recorded. Reconcile it by hand."
+    )
   end
 
   def message(%Ecto.Changeset{} = changeset) do

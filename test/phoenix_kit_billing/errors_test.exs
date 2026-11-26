@@ -374,6 +374,67 @@ defmodule PhoenixKitBilling.ErrorsTest do
     test ":order_not_found", do: assert(Errors.message(:order_not_found) == "Order not found.")
   end
 
+  describe "message/1 for checkouts, refunds and guest invoices" do
+    test ":checkout_completed",
+      do:
+        assert(
+          Errors.message(:checkout_completed) ==
+            "The customer has already paid through the open checkout; the payment is on its way."
+        )
+
+    test ":checkout_reopened",
+      do:
+        assert(
+          Errors.message(:checkout_reopened) ==
+            "A new checkout was opened for this invoice meanwhile. Try again."
+        )
+
+    test "{:checkout_not_closed, reason}",
+      do:
+        assert(
+          Errors.message({:checkout_not_closed, :timeout}) ==
+            "The open checkout could not be closed at the payment provider, so the invoice was not voided."
+        )
+
+    test ":exceeds_refundable",
+      do:
+        assert(
+          Errors.message(:exceeds_refundable) ==
+            "The amount exceeds what the provider payments can give back."
+        )
+
+    test ":no_provider_payments",
+      do:
+        assert(
+          Errors.message(:no_provider_payments) ==
+            "Nothing on this invoice was paid through a payment provider."
+        )
+
+    test "{:refunded_not_recorded, refund, reason}",
+      do:
+        assert(
+          Errors.message({:refunded_not_recorded, %{}, :db}) ==
+            "The refund was made at the provider but could not be recorded. Reconcile it by hand."
+        )
+
+    test ":invalid_email",
+      do: assert(Errors.message(:invalid_email) == "The email address is invalid.")
+
+    for locale <- ~w(ru uk et),
+        reason <- [:checkout_completed, :no_provider_payments, :invalid_email] do
+      test "#{reason} is translated in #{locale}" do
+        english = Errors.message(unquote(reason))
+
+        translated =
+          Gettext.with_locale(PhoenixKitBilling.Gettext, unquote(locale), fn ->
+            Errors.message(unquote(reason))
+          end)
+
+        refute translated == english
+      end
+    end
+  end
+
   describe "message/1 for a subscription" do
     test ":subscription_not_pausable",
       do:

@@ -5430,3 +5430,118 @@ msgstr "Замовлення повернеться до статусу, яки�
 #, elixir-autogen, elixir-format
 msgid "Why is this order being reinstated?"
 msgstr "Чому замовлення поновлюється?"
+
+#: lib/phoenix_kit_billing/errors.ex:144
+#, elixir-autogen, elixir-format
+msgid "A new checkout was opened for this invoice meanwhile. Try again."
+msgstr "Тим часом для цього рахунку відкрито нову оплату. Спробуйте ще раз."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:165
+#, elixir-autogen, elixir-format
+msgid "Amount due"
+msgstr "До сплати"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:589
+#, elixir-autogen, elixir-format
+msgid "Anyone with this link can view and pay the invoice. Send it only to the payer."
+msgstr "Будь-хто з цим посиланням може переглянути й сплатити рахунок. Надсилайте його лише платнику."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:131
+#, elixir-autogen, elixir-format
+msgid "Due date:"
+msgstr "Термін оплати:"
+
+#: lib/phoenix_kit_billing/errors.ex:219
+#, elixir-autogen, elixir-format
+msgid "Nothing on this invoice was paid through a payment provider."
+msgstr "За цим рахунком нічого не сплачено через платіжного провайдера."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:189
+#, elixir-autogen, elixir-format
+msgid "Online payment is not available. Please use the payment details on the invoice."
+msgstr "Онлайн-оплата недоступна. Скористайтеся платіжними реквізитами з рахунку."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:197
+#, elixir-autogen, elixir-format
+msgid "Only part of the refund was made: %{reason}"
+msgstr "Повернення виконано лише частково: %{reason}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:581
+#, elixir-autogen, elixir-format
+msgid "Payment link"
+msgstr "Посилання на оплату"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:217
+#, elixir-autogen, elixir-format
+msgid "Refund failed: %{reason}"
+msgstr "Повернення не виконано: %{reason}"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:185
+#, elixir-autogen, elixir-format
+msgid "Refund made at %{provider} and recorded"
+msgstr "Повернення виконано в %{provider} і записано"
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:184
+#, elixir-autogen, elixir-format
+msgid "Thank you! Your payment is being confirmed; this page updates when it is."
+msgstr "Дякуємо! Ваш платіж підтверджується; сторінка оновиться, щойно це станеться."
+
+#: lib/phoenix_kit_billing/errors.ex:150
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds what the provider payments can give back."
+msgstr "Сума перевищує те, що можна повернути за платежами через провайдера."
+
+#: lib/phoenix_kit_billing/errors.ex:141
+#, elixir-autogen, elixir-format
+msgid "The customer has already paid through the open checkout; the payment is on its way."
+msgstr "Клієнт уже сплатив через відкриту форму оплати; платіж у дорозі."
+
+#: lib/phoenix_kit_billing/errors.ex:164
+#, elixir-autogen, elixir-format
+msgid "The email address is invalid."
+msgstr "Неправильна адреса електронної пошти."
+
+#: lib/phoenix_kit_billing/errors.ex:299
+#, elixir-autogen, elixir-format
+msgid "The open checkout could not be closed at the payment provider, so the invoice was not voided."
+msgstr "Не вдалося закрити відкриту форму оплати в платіжного провайдера, тому рахунок не анульовано."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:922
+#, elixir-autogen, elixir-format
+msgid "The refund is made at %{provider} and returns the money to the customer (up to %{amount})."
+msgstr "Повернення виконується в %{provider}, гроші повертаються клієнту (до %{amount})."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:929
+#, elixir-autogen, elixir-format
+msgid "The refund is only recorded here: return the money yourself."
+msgstr "Повернення тут лише записується: поверніть гроші самостійно."
+
+#: lib/phoenix_kit_billing/errors.ex:303
+#, elixir-autogen, elixir-format
+msgid "The refund was made at the provider but could not be recorded. Reconcile it by hand."
+msgstr "Повернення виконано в провайдера, але не записано. Звірте його вручну."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:207
+#, elixir-autogen, elixir-format
+msgid "The refund was made at the provider but could not be recorded; the provider's webhook will record it."
+msgstr "Повернення виконано в провайдера, але не записано; його запише сповіщення провайдера."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:176
+#, elixir-autogen, elixir-format
+msgid "This invoice is paid. Thank you!"
+msgstr "Цей рахунок сплачено. Дякуємо!"
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:180
+#, elixir-autogen, elixir-format
+msgid "This invoice was cancelled and cannot be paid."
+msgstr "Цей рахунок анульовано, і його не можна сплатити."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:116
+#, elixir-autogen, elixir-format
+msgid "This link is invalid or has expired."
+msgstr "Це посилання недійсне або застаріле."
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:68
+#, elixir-autogen, elixir-format
+msgid "This payment method is not available."
+msgstr "Цей спосіб оплати недоступний."
