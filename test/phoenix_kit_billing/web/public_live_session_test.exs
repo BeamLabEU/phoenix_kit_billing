@@ -28,5 +28,10 @@ defmodule PhoenixKitBilling.Web.PublicLiveSessionTest do
 
     assert quoted =~ "live_session(:phoenix_kit_billing_public"
     assert quoted =~ "phoenix_kit_mount_current_scope"
+
+    if Code.ensure_loaded?(PhoenixKitWeb.CSP) and
+         function_exported?(PhoenixKitWeb.CSP, :live_session, 1) do
+      assert quoted =~ "session: {PhoenixKitWeb.CSP, :live_session, []}"
+    end
   end
 end

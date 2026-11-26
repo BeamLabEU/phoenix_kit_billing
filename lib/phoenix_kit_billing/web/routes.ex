@@ -28,7 +28,7 @@ defmodule PhoenixKitBilling.Web.Routes do
       # locale segment once Languages is on (the same reason as bookings' public
       # pages). The path is specific, never a catch-all, so it cannot shadow
       # `/admin/*` as a locale.
-      live_session :phoenix_kit_billing_public, unquote(public_session) do
+      live_session :phoenix_kit_billing_public, unquote(Macro.escape(public_session)) do
         scope unquote(localized_scope(url_prefix)) do
           pipe_through([:browser, :phoenix_kit_auto_setup, :phoenix_kit_locale_validation])
           unquote(public_live_routes("_locale"))
