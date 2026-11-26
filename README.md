@@ -228,7 +228,7 @@ cannot pay a void invoice through a link they still hold. When the customer
 already paid through it, the void is refused with `:checkout_completed`; when the
 provider cannot be reached, with `{:checkout_not_closed, reason}`, and
 `close_checkout: false` voids anyway. A provider without
-`expire_checkout_session/1` voids as before; a payment that still lands is kept
+`expire_checkout_session/1`, or one no longer configured, voids as before (logged); a payment that still lands is kept
 on the invoice's void trail for a refund.
 
 ### Testing Stripe locally

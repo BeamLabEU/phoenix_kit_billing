@@ -197,6 +197,19 @@ defmodule PhoenixKitBilling.VoidCheckoutTest do
     assert DateTime.compare(stored_at, expires_at) == :eq
   end
 
+  test "a provider that is not configured any more does not block the void" do
+    invoice = sent_invoice() |> with_session("cs_unconfigured")
+    Settings.update_setting("billing_stripe_enabled", "false")
+
+    log =
+      capture_log(fn ->
+        assert {:ok, %Invoice{status: "void"} = voided} = Billing.void_invoice(invoice)
+        refute voided.metadata["checkout"]["closed_at"]
+      end)
+
+    assert log =~ "left open"
+  end
+
   test "a provider without expire_checkout_session/1 answers :not_supported" do
     Settings.update_setting("billing_everypay_enabled", "true")
     on_exit(fn -> Settings.update_setting("billing_everypay_enabled", "false") end)

@@ -5049,8 +5049,9 @@ defmodule PhoenixKitBilling do
     session is marked closed on it (`"closed_at"`, `"closed_reason" => "voided"`);
   - the customer has already paid through it: `{:error, :checkout_completed}` and
     nothing changes - the payment is on its way to the ledger;
-  - a provider that cannot close sessions (no `expire_checkout_session/1`): voided
-    as before; a payment that still lands is kept on the void trail for a refund;
+  - a provider that cannot close sessions (no `expire_checkout_session/1`), or one
+    that is no longer configured here: voided as before (logged); a payment that
+    still lands is kept on the void trail for a refund;
   - the provider could not be reached or refused: `{:error, {:checkout_not_closed,
     reason}}` and nothing changes, since the link would still take money.
     `close_checkout: false` voids anyway, as before this check existed.
@@ -5105,6 +5106,17 @@ defmodule PhoenixKitBilling do
           {:ok, {session_id, :closed}}
 
         {:error, :not_supported} ->
+          {:ok, {session_id, :left_open}}
+
+        # Billing has no way to reach that provider any more (switched off or
+        # its keys removed): voided as before, with the payment-after-void
+        # trail as the backstop, rather than an invoice nobody can void.
+        {:error, reason} when reason in [:provider_not_available, :provider_not_found] ->
+          Logger.warning(
+            "Invoice #{stored.invoice_number} voided with its #{provider} checkout session " <>
+              "left open: the provider is not available to close it"
+          )
+
           {:ok, {session_id, :left_open}}
 
         {:error, :checkout_completed} ->

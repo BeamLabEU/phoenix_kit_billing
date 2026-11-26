@@ -287,7 +287,8 @@ voids it. A void first closes an open checkout session recorded on the invoice
 provider's optional `expire_checkout_session/1`, outside the row lock: refused with
 `:checkout_completed` when the customer paid through it and with
 `{:checkout_not_closed, reason}` when the provider cannot be reached
-(`close_checkout: false` skips the step); a session recorded meanwhile goes round
+(`close_checkout: false` skips the step); a provider that cannot close sessions or
+is no longer configured voids as before, with a warning; a session recorded meanwhile goes round
 again (three rounds, then `:checkout_reopened`).
 
 **Refunds that move money.** `record_refund/3` only books; `refund_at_provider/3`
