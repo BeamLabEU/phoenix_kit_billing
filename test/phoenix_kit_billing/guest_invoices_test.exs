@@ -147,6 +147,21 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
       assert Billing.get_invoice_by_pay_token(token) == nil
     end
 
+    test "an invoice edit cannot reset the link generation and bring revoked links back" do
+      # Only a draft is editable; its link is minted before it is sent.
+      {:ok, draft} = Billing.create_guest_invoice(@guest, attrs())
+      old_token = InvoiceLinks.token(draft)
+      {:ok, _} = Billing.revoke_invoice_pay_links(draft)
+
+      # A stale struct's metadata, or a forged generation, written back.
+      {:ok, _} = Billing.update_invoice(draft, %{metadata: %{"note" => "x"}})
+      {:ok, _} = Billing.update_invoice(draft, %{metadata: %{"pay_link_generation" => 0}})
+
+      {:ok, invoice, _} = Billing.send_invoice(Repo.get!(Invoice, draft.uuid), send_email: false)
+      assert Billing.get_invoice_by_pay_token(old_token) == nil
+      assert Repo.get!(Invoice, invoice.uuid).metadata["pay_link_generation"] == 1
+    end
+
     test "a draft is not shown through its link until it is sent" do
       {:ok, draft} = Billing.create_guest_invoice(@guest, attrs())
       token = InvoiceLinks.token(draft)

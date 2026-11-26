@@ -184,13 +184,22 @@ defmodule PhoenixKitBilling.Invoice do
   end
 
   # `metadata["void"]` is billing's own (written by `PhoenixKitBilling.void_invoice/3`
-  # and `record_payment_after_void/2`): an input can neither forge it nor wipe
-  # it. A new invoice has none; a stored one keeps what it has.
+  # and `record_payment_after_void/2`), and so is `metadata["pay_link_generation"]`
+  # (`InvoiceLinks.revoke/1`; reset, it would bring revoked payment links back): an
+  # input can neither forge them nor wipe them. A new invoice has none; a stored
+  # one keeps what it has.
+  @billing_owned_metadata ["void", "pay_link_generation"]
+
   defp keep_void_trail(changeset) do
     case fetch_change(changeset, :metadata) do
       {:ok, %{} = metadata} ->
-        kept = Map.take(changeset.data.metadata || %{}, ["void"])
-        put_change(changeset, :metadata, metadata |> Map.drop(["void"]) |> Map.merge(kept))
+        kept = Map.take(changeset.data.metadata || %{}, @billing_owned_metadata)
+
+        put_change(
+          changeset,
+          :metadata,
+          metadata |> Map.drop(@billing_owned_metadata) |> Map.merge(kept)
+        )
 
       _ ->
         changeset
