@@ -100,6 +100,14 @@ defmodule PhoenixKitBilling.CoreCompat do
     {PhoenixKit.Modules.Storage.URLSigner, :signed_url, 2},
     {PhoenixKit.Modules.Storage.URLSigner, :signed_url, 3},
     {PhoenixKit.Utils.Routes, :base_url, 0},
+    # InvoiceLinks signs the public payment links with the host endpoint's secret.
+    {PhoenixKit.Config, :get, 1},
+    {PhoenixKit.Config, :get_parent_endpoint, 0},
+    # The public payment page (Web.GuestInvoice) wraps itself in the host's app
+    # layout, and its live_session mounts the visitor's scope (Web.Routes) -
+    # both referenced from HEEx / a quoted route, which no call extractor sees.
+    {PhoenixKitWeb.Components.LayoutWrapper, :app_layout, 1},
+    {PhoenixKitWeb.Users.Auth, :on_mount, 4},
     # Billing → Settings → Printed Documents: the logo and footer are saved in
     # one transaction; the logo picker's uploads go to the host's branding
     # folder.

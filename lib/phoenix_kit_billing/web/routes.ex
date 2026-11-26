@@ -10,6 +10,7 @@ defmodule PhoenixKitBilling.Web.Routes do
 
   def generate(url_prefix) do
     webhook_controller = Web.WebhookController
+    extra_on_mount = Application.get_env(:phoenix_kit, :extra_live_session_on_mount, [])
 
     quote do
       scope unquote(url_prefix) do
@@ -19,6 +20,41 @@ defmodule PhoenixKitBilling.Web.Routes do
         post("/webhooks/billing/razorpay", unquote(webhook_controller), :razorpay)
         post("/webhooks/billing/everypay", unquote(webhook_controller), :everypay)
       end
+
+      # The public payment page of an invoice (`InvoiceLinks`): no login, the
+      # signed token is the credential. Both URL shapes, in one live_session,
+      # because `Paths.invoice_pay/1` goes through `Routes.path/1`, which adds a
+      # locale segment once Languages is on (the same reason as bookings' public
+      # pages). The path is specific, never a catch-all, so it cannot shadow
+      # `/admin/*` as a locale.
+      live_session :phoenix_kit_billing_public,
+        on_mount:
+          unquote(
+            extra_on_mount ++ [{PhoenixKitWeb.Users.Auth, :phoenix_kit_mount_current_scope}]
+          ) do
+        scope unquote(localized_scope(url_prefix)) do
+          pipe_through([:browser, :phoenix_kit_auto_setup, :phoenix_kit_locale_validation])
+          unquote(public_live_routes("_locale"))
+        end
+
+        scope unquote(url_prefix) do
+          pipe_through([:browser, :phoenix_kit_auto_setup, :phoenix_kit_locale_validation])
+          unquote(public_live_routes(""))
+        end
+      end
+    end
+  end
+
+  defp localized_scope(prefix) when prefix in ["/", ""], do: "/:locale"
+  defp localized_scope(prefix), do: "#{prefix}/:locale"
+
+  defp public_live_routes(suffix) do
+    guest_invoice = Web.GuestInvoice
+
+    quote do
+      live("/billing/pay/:token", unquote(guest_invoice), :show,
+        as: :"billing_invoice_pay#{unquote(suffix)}"
+      )
     end
   end
 

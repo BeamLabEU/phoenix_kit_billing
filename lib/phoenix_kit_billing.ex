@@ -3545,12 +3545,14 @@ defmodule PhoenixKitBilling do
         search ->
           search_term = "%#{search}%"
 
+          # A guest invoice has no user: its payer is the billing email.
           base_query
           |> join(:left, [i], u in assoc(i, :user))
           |> where(
             [i, u],
             ilike(i.invoice_number, ^search_term) or
-              ilike(u.email, ^search_term)
+              ilike(u.email, ^search_term) or
+              ilike(fragment("?->>'email'", i.billing_details), ^search_term)
           )
       end
 
@@ -3707,6 +3709,100 @@ defmodule PhoenixKitBilling do
     order_uuid = Map.get(attrs, :order_uuid) || Map.get(attrs, "order_uuid")
     insert_invoice(build, config, source, order_uuid)
   end
+
+  @doc """
+  Creates an invoice for a payer WITHOUT an account - a guest booking a class, a
+  customer paying by link - identified by an email.
+
+  `guest` holds the payer's details: `:email` (required, checked for shape) and
+  any of `:name`, `:first_name`, `:last_name`, `:phone`, `:company_name`,
+  `:address_line1`, `:city`, `:postal_code`, `:country` (string or atom keys).
+  They become the invoice's `billing_details` (with `"type" => "individual"` unless
+  given), which is what prints on the invoice, receives its emails and is shown to
+  admins as the payer ("Guest payer - no account"). The invoice has no
+  `user_uuid`; billing V5 allows that for a payer with a billing email.
+
+  `attrs` is what `create_invoice/2` takes (line items, totals, currency,
+  `metadata` - e.g. the booking it pays for, which a durable
+  `PhoenixKitBilling.InvoiceEvents` handler then reads back).
+
+  The invoice starts as a draft, like any other. To bill the guest:
+
+      {:ok, invoice} = Billing.create_guest_invoice(%{email: "ann@example.com", name: "Ann"}, attrs)
+      {:ok, invoice, _email} =
+        Billing.send_invoice(invoice, invoice_url: Billing.invoice_pay_url(invoice))
+
+  The link (`invoice_pay_url/1`) opens the public payment page, where the guest
+  pays through the providers' hosted checkout.
+
+  Returns `{:ok, invoice}`, `{:error, :invalid_email}` or what `create_invoice/2`
+  returns.
+  """
+  def create_guest_invoice(guest, attrs) when is_map(guest) and is_map(attrs) do
+    details = guest_details(guest)
+
+    if valid_guest_email?(details["email"]) do
+      key = if string_keyed?(attrs), do: "billing_details", else: :billing_details
+
+      existing =
+        Map.get(attrs, :billing_details) || Map.get(attrs, "billing_details") || %{}
+
+      attrs =
+        attrs
+        |> Map.drop([:billing_details, "billing_details", :user_uuid, "user_uuid"])
+        |> Map.put(key, Map.merge(stringify_keys(existing), details))
+
+      create_invoice(nil, attrs)
+    else
+      {:error, :invalid_email}
+    end
+  end
+
+  @guest_fields ~w(email name first_name last_name phone company_name company_vat_number
+                   address_line1 address_line2 city postal_code country type)
+
+  defp guest_details(guest) do
+    guest = stringify_keys(guest)
+
+    @guest_fields
+    |> Enum.reduce(%{}, fn field, acc ->
+      case guest[field] do
+        value when is_binary(value) ->
+          case String.trim(value) do
+            "" -> acc
+            trimmed -> Map.put(acc, field, trimmed)
+          end
+
+        _ ->
+          acc
+      end
+    end)
+    |> Map.put_new("type", "individual")
+  end
+
+  defp stringify_keys(map) when is_map(map),
+    do: Map.new(map, fn {key, value} -> {to_string(key), value} end)
+
+  defp stringify_keys(_), do: %{}
+
+  defp valid_guest_email?(email) when is_binary(email),
+    do: String.match?(email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+
+  defp valid_guest_email?(_), do: false
+
+  @doc """
+  The absolute URL of `invoice`'s public payment page, signed for it
+  (`PhoenixKitBilling.InvoiceLinks`). Send it only to the payer: it is the one
+  credential the page asks for.
+  """
+  defdelegate invoice_pay_url(invoice), to: PhoenixKitBilling.InvoiceLinks, as: :pay_url
+
+  @doc """
+  The invoice a payment-page token names, or nil (invalid, expired, in the trash).
+  """
+  defdelegate get_invoice_by_pay_token(token),
+    to: PhoenixKitBilling.InvoiceLinks,
+    as: :invoice_from_token
 
   # The order an invoice is created for, moved onto or restored onto must not be
   # in the trash (and a restore also not cancelled, below). Checked in the transaction that writes the

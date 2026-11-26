@@ -576,6 +576,20 @@
                 <p class="text-base-content/50 mt-2">{gettext("No customer linked")}</p>
               <% end %>
             <% end %>
+            <%= if pay_link = pay_link(@invoice) do %>
+              <div class="mt-3" id="invoice-pay-link">
+                <div class="text-sm font-medium">{gettext("Payment link")}</div>
+                <input
+                  type="text"
+                  readonly
+                  value={pay_link}
+                  class="input input-sm w-full font-mono text-xs"
+                />
+                <div class="text-xs text-base-content/60 mt-1">
+                  {gettext("Anyone with this link can view and pay the invoice. Send it only to the payer.")}
+                </div>
+              </div>
+            <% end %>
           </div>
         </div>
 
@@ -903,6 +917,18 @@
                 </option>
               <% end %>
             </select>
+            <%= if refundable = provider_refundable(@invoice, @selected_refund_payment_method) do %>
+              <p class="text-sm text-info mt-2" id="refund-at-provider-note">
+                {gettext("The refund is made at %{provider} and returns the money to the customer (up to %{amount}).",
+                  provider: format_payment_method_name(@selected_refund_payment_method),
+                  amount: "#{refundable} #{@invoice.currency}"
+                )}
+              </p>
+            <% else %>
+              <p class="text-sm text-base-content/60 mt-2">
+                {gettext("The refund is only recorded here: return the money yourself.")}
+              </p>
+            <% end %>
           </div>
 
           <div class="modal-action">

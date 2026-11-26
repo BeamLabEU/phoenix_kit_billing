@@ -40,6 +40,10 @@ defmodule PhoenixKitBilling.Paths do
   def user_orders, do: Routes.path("#{@user_base}/billing-orders")
   def user_billing_profiles, do: Routes.path("#{@user_base}/billing-profiles")
 
+  # The public payment page of an invoice, reached with a signed token
+  # (`PhoenixKitBilling.InvoiceLinks`). Registered by `Web.Routes.generate/1`.
+  def invoice_pay(token), do: Routes.path("/billing/pay/#{token}")
+
   # Bare dashboard root — unconditionally registered by core whenever
   # `PhoenixKit.Config.user_dashboard_enabled?()` is true, unlike the tabs
   # above which only exist when this module's own `:live_view` wiring does.

@@ -196,6 +196,27 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Helpers do
   end
 
   @doc """
+  The public payment link of a payable invoice, or nil when the invoice cannot be
+  paid or no secret is there to sign the link with.
+  """
+  def pay_link(invoice) do
+    if PhoenixKitBilling.Invoice.payable?(invoice) and PhoenixKitBilling.InvoiceLinks.available?(),
+      do: PhoenixKitBilling.InvoiceLinks.pay_url(invoice)
+  end
+
+  @doc """
+  What the refund dialog sends back through `provider`: the amount refundable at
+  that provider on this invoice, or nil for a method that is not a provider with a
+  payment on it (the refund is then only recorded).
+  """
+  def provider_refundable(invoice, method) do
+    if method in Enum.map(PhoenixKitBilling.Providers.all_providers(), &Atom.to_string/1) do
+      amount = PhoenixKitBilling.provider_refundable_amount(invoice, method)
+      if Decimal.positive?(amount), do: amount
+    end
+  end
+
+  @doc """
   Formats payment method name for display.
   """
   def format_payment_method_name("bank"), do: "Bank Transfer"
