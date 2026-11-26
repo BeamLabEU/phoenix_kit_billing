@@ -6334,6 +6334,9 @@ defmodule PhoenixKitBilling do
   Records a refund for an invoice.
 
   Creates a transaction with negative amount and updates invoice's paid_amount.
+  It moves no money: for a refund made some other way (a bank transfer). To
+  return a provider payment through its provider, use `refund_at_provider/3`,
+  which makes the refund there and records it.
 
   ## Parameters
 

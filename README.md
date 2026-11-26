@@ -163,6 +163,74 @@ Webhooks are handled automatically at `/webhooks/billing/:provider`.
 > `mix phoenix_kit_billing.install` does this for you. **Without it,
 > webhooks return `400` with `:no_raw_body`** before processing.
 
+### Refunds
+
+`record_refund/3` books a refund made some other way (a bank transfer).
+`refund_at_provider/3` returns the money through the provider that took it,
+then books it:
+
+```elixir
+# Everything refundable (one provider refund per payment)
+{:ok, [%{refund: refund, transaction: tx}]} = Billing.refund_at_provider(invoice, %{}, admin)
+
+# Part of it, with a reason for Stripe
+{:ok, _} =
+  Billing.refund_at_provider(invoice, %{amount: "10.00", reason: "requested_by_customer",
+    description: "Late cancellation"}, admin)
+```
+
+Each provider call carries an idempotency key (Stripe's `Idempotency-Key`), and
+the ledger row is the refund's own id with the payment it reversed named in its
+`provider_data`, so a retry, a double click or the `charge.refunded` webhook that
+follows books nothing twice. A refund that takes the invoice to zero voids it
+and refunds its order, as `record_refund/3` always has. A refund Stripe later
+reports as `failed` (`refund.failed` / `charge.refund.updated`) marks its ledger
+row and logs an error; the ledger is left for the operator to settle. The admin
+invoice page refunds through the provider when the chosen method is a provider
+with a payment on the invoice, and says so in the dialog.
+`provider_refundable_amount/2` tells what can still be refunded.
+
+### Guest invoices and the payment link
+
+A payer does not need an account. `create_guest_invoice/2` makes an invoice
+addressed to an email (the details become its `billing_details`, shown to
+admins as "Guest payer — no account" and searchable by that email), and
+`invoice_pay_url/1` signs a link to a public payment page,
+`/billing/pay/:token`, where the guest sees the invoice and pays through the
+providers' hosted checkout:
+
+```elixir
+{:ok, invoice} =
+  Billing.create_guest_invoice(%{email: "ann@example.com", name: "Ann"}, %{
+    total: Decimal.new("15.00"),
+    currency: "EUR",
+    line_items: [%{"name" => "Yoga class", "quantity" => 1, "unit_price" => "15.00", "total" => "15.00"}],
+    metadata: %{"booking_uuid" => booking.uuid}
+  })
+
+{:ok, invoice, _email} = Billing.send_invoice(invoice, invoice_url: Billing.invoice_pay_url(invoice))
+```
+
+The page is registered by billing's own routes (no host wiring), works for any
+invoice, offers payment only while the invoice is payable, and follows the
+invoice live, so the payment shows as soon as the webhook lands. The link is
+the only credential: send it to the payer only. It is a `Phoenix.Token` signed
+with the endpoint's `secret_key_base` (or `config :phoenix_kit_billing,
+invoice_link_secret:`) and lasts 180 days (`invoice_link_max_age:`, seconds).
+The admin invoice page shows the link of a payable invoice, and a guest's
+invoice email links to it.
+
+### Voiding an invoice with an open checkout
+
+`void_invoice/3` first closes a checkout session recorded on the invoice that has
+not expired (Stripe: the session is expired through the API), so the customer
+cannot pay a void invoice through a link they still hold. When the customer
+already paid through it, the void is refused with `:checkout_completed`; when the
+provider cannot be reached, with `{:checkout_not_closed, reason}`, and
+`close_checkout: false` voids anyway. A provider without
+`expire_checkout_session/1` voids as before; a payment that still lands is kept
+on the invoice's void trail for a refund.
+
 ### Testing Stripe locally
 
 1. **Configure test keys** at `/admin/settings/billing/providers` (Stripe
@@ -240,6 +308,34 @@ end
 
 Or from the host: `config :phoenix_kit_billing, order_event_handlers: [MyApp.OrderHandler]`.
 
+An invoice handler is registered the same way. A bookings module that confirms a
+booking once its invoice is paid, across restarts:
+
+```elixir
+# In the bookings PhoenixKit.Module
+def billing_invoice_event_handlers, do: [MyBookings.InvoicePaid]
+
+defmodule MyBookings.InvoicePaid do
+  # Optional: only for a module that may depend on billing at compile time.
+  @behaviour PhoenixKitBilling.InvoiceEventHandler
+
+  @impl true
+  def handle_invoice_event(:paid, invoice) do
+    # Idempotent: confirming a confirmed booking does nothing.
+    MyBookings.confirm_paid(invoice.metadata["booking_uuid"])
+  end
+
+  def handle_invoice_event(_event, _invoice), do: :ok
+end
+```
+
+The `:paid` job is enqueued in the transaction that marks the invoice paid
+(whether a webhook, a saved-card charge or an admin's *Mark paid* did it), so it
+commits with the payment or not at all. For a live screen, subscribe to the
+invoice's own topic as well: `PhoenixKitBilling.Events.subscribe_invoice(uuid)`
+delivers `{:invoice_paid, invoice}` and the invoice's other events and
+transactions, guest invoices included.
+
 - Delivery is **at-least-once**, so a handler must be idempotent. It is not handed
   the job's `event_uuid`, and (order, event) is not one occurrence: an order
   cancelled, reinstated and cancelled again fires `:cancelled` twice. Make the
@@ -254,7 +350,9 @@ Or from the host: `config :phoenix_kit_billing, order_event_handlers: [MyApp.Ord
 The jobs run on the `billing` queue, which the module declares through
 `oban_queues/0`. `mix phoenix_kit.update` adds it to a host's Oban config, and
 `mix phoenix_kit.doctor` reports it when it is missing. Without it the jobs wait
-and nothing fails.
+and nothing fails. The daily subscription renewal run is declared the same way,
+through `oban_crons/0` (`{"0 6 * * *", PhoenixKitBilling.Workers.SubscriptionRenewalWorker}`),
+and written into the host's crontab by the same tasks.
 
 ### Reinstating a cancelled order
 
@@ -539,7 +637,7 @@ Use `PhoenixKitBilling.DataCase` for schema/context tests and
 - Review `phoenix_kit_webhook_events` table for received events
 
 ### Subscription renewals or durable events not running
-- Ensure Oban is configured in the parent app with the `billing` queue: `mix phoenix_kit.update` adds it, and `mix phoenix_kit.doctor` reports it when it is missing
+- Ensure Oban is configured in the parent app with the `billing` queue and the renewal cron entry: `mix phoenix_kit.update` adds both (billing declares them through `oban_queues/0` and `oban_crons/0`), and `mix phoenix_kit.doctor` reports what is missing
 - Check Oban dashboard for failed jobs
 
 ## License
