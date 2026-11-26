@@ -8,6 +8,7 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
   use PhoenixKitBilling.LiveCase, async: false
   use Oban.Testing, repo: PhoenixKitBilling.Test.Repo
 
+  alias PhoenixKit.PubSub.Manager
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.{Events, Invoice, InvoiceLinks, Providers, WebhookProcessor}
@@ -85,7 +86,7 @@ defmodule PhoenixKitBilling.GuestInvoicesTest do
     end
 
     test "is announced on its own topic, and on no user topic" do
-      PhoenixKit.PubSub.Manager.subscribe("phoenix_kit:billing:invoices:user:")
+      Manager.subscribe("phoenix_kit:billing:invoices:user:")
       Events.subscribe_invoices()
 
       {:ok, invoice} = Billing.create_guest_invoice(@guest, attrs())

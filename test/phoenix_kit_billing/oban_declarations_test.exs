@@ -8,6 +8,8 @@ defmodule PhoenixKitBilling.ObanDeclarationsTest do
 
   use PhoenixKitBilling.DataCase, async: false
 
+  alias PhoenixKit.Modules.Billing, as: LegacyBilling
+  alias PhoenixKit.{ObanCrons, ObanQueues}
   alias PhoenixKit.Settings
   alias PhoenixKitBilling, as: Billing
   alias PhoenixKitBilling.Workers.SubscriptionRenewalWorker
@@ -23,15 +25,15 @@ defmodule PhoenixKitBilling.ObanDeclarationsTest do
   end
 
   test "core's readers take both declarations, without conflicts" do
-    assert {crons, []} = PhoenixKit.ObanCrons.declared([Billing])
+    assert {crons, []} = ObanCrons.declared([Billing])
     assert {"0 6 * * *", SubscriptionRenewalWorker} in crons
 
     assert %{name: :billing, limit: 10} =
-             Enum.find(PhoenixKit.ObanQueues.declared([Billing]), &(&1.name == :billing))
+             Enum.find(ObanQueues.declared([Billing]), &(&1.name == :billing))
   end
 
   test "the legacy namespace declares the same" do
-    assert PhoenixKit.Modules.Billing.oban_crons() == Billing.oban_crons()
+    assert LegacyBilling.oban_crons() == Billing.oban_crons()
   end
 
   test "the batch run does nothing while billing is disabled" do

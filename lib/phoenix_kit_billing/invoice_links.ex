@@ -24,6 +24,7 @@ defmodule PhoenixKitBilling.InvoiceLinks do
   still shown (its status says so) but offers no payment.
   """
 
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitBilling.{Invoice, Paths}
 
   @salt "phoenix_kit_billing:invoice_link"
@@ -41,7 +42,7 @@ defmodule PhoenixKitBilling.InvoiceLinks do
 
   @doc "The page's absolute URL for `invoice`, to put in an email."
   @spec pay_url(Invoice.t()) :: String.t()
-  def pay_url(%Invoice{} = invoice), do: PhoenixKit.Utils.Routes.base_url() <> pay_path(invoice)
+  def pay_url(%Invoice{} = invoice), do: Routes.base_url() <> pay_path(invoice)
 
   @doc """
   The invoice a token names, or nil: an invalid or expired token, an invoice that
