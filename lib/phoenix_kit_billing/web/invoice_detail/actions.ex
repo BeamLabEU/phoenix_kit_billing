@@ -148,7 +148,12 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       # A provider with a payment on this invoice returns the money there; any
       # other method only records a refund made outside billing.
       if Helpers.provider_refundable(invoice, payment_method) do
-        refund_at_provider(socket, invoice, Map.put(attrs, :provider, payment_method))
+        attrs =
+          attrs
+          |> Map.put(:provider, payment_method)
+          |> Map.put(:idempotency_key, socket.assigns[:refund_idempotency_key])
+
+        refund_at_provider(socket, invoice, attrs)
       else
         record_refund_only(socket, invoice, attrs, current_scope)
       end
@@ -210,9 +215,15 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
          )}
 
       {:error, reason} ->
+        # Nothing was refunded: a corrected retry from the same dialog is a new
+        # request, which the provider would refuse under the old key.
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> Phoenix.Component.assign(
+           :refund_idempotency_key,
+           "pkb-admin-refund:" <> Ecto.UUID.generate()
+         )
+         |> put_flash(
            :error,
            gettext("Refund failed: %{reason}", reason: Errors.message(reason))
          )}

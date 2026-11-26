@@ -184,6 +184,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
     {:noreply,
      socket
      |> assign(:show_refund_modal, true)
+     # One provider idempotency key per opening of the dialog: a submit that
+     # reaches the server twice gets the refund already made back.
+     |> assign(:refund_idempotency_key, "pkb-admin-refund:" <> Ecto.UUID.generate())
      |> assign(:refund_amount, "")
      |> assign(:refund_description, "")}
   end

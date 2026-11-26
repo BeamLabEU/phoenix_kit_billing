@@ -31,8 +31,12 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   - Every provider call carries an idempotency key (Stripe's `Idempotency-Key`):
     `:idempotency_key` with the payment's uuid appended, or by default one made of
     the payment, the refunds already recorded against it and the amount. A retry
-    of the same request - a double click, a crash between the provider's answer
-    and the ledger - gets the refund already made back, not a second one.
+    made before the first is in the ledger - two concurrent clicks, a crash
+    between the provider's answer and the ledger - gets the refund already made
+    back, not a second one. A repeat AFTER the first was recorded is a new refund
+    under the default key (what is recorded has changed); a caller that means
+    "the same refund" passes its own `:idempotency_key`, as the admin dialog does
+    (one per opening). Stripe keeps a key for 24 hours.
   - The ledger row is the refund's own id (`provider_transaction_id`), written under
     the invoice lock. A refund id already in the ledger is not booked again, and
     neither is a part the provider's refund webhook booked first (the webhook
