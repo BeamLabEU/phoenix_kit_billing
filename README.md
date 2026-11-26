@@ -190,8 +190,9 @@ id) counts once, through the invoice's `paid_amount`.
 
 A refund the provider reports later as `failed` or `canceled` (Stripe:
 `refund.failed` / `charge.refund.updated`) is put back on the invoice: a reversal
-row (`provider_data["source"] == "refund_failed"`) brings `paid_amount` back, the
-void that refund caused is undone (a void made by `void_invoice/3` never is), the
+row (`provider_data["source"] == "refund_failed"`) brings `paid_amount` back, a
+void a refund caused is undone (the invoice is `paid` again only when the ledger
+covers its total, else owed; a void made by `void_invoice/3` never is undone), the
 admin invoice page shows a warning, and an activity row
 (`billing.refund_failed_reversed`) is written. A linked order marked refunded stays
 so - the warning says it. The failure is found by the refund's id, or, for a
@@ -202,7 +203,9 @@ changes nothing.
 The admin refund dialog refunds through the provider when the chosen method is a
 provider with a payment on the invoice, and says so. "Already refunded at the
 provider - only record it" books the refund without calling the provider (for a
-refund made in the provider's dashboard).
+refund made in the provider's dashboard); when that provider reports refunds one
+at a time (PayPal, Razorpay), its report is matched to the booked row by method
+and amount instead of being booked again.
 
 The ledger keeps two decimal places. A currency with more (BHD, KWD, ... -
 `decimal_places` above 2 in the currency table) is refused for provider refunds

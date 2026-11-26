@@ -307,7 +307,8 @@ A refund that names no payment (recorded by hand) counts once, through
 reconciliation still counts it against the charge). A refund the provider fails
 later is put back by `reverse_failed_refund/2`: a reversal row (`"source" =>
 "refund_failed"`), `reversed_by_uuid` on the refund row, the void it caused undone
-(`metadata["voided_by_refund"]`), `metadata["refund_failures"]` for the admin page,
+(`metadata["voided_by_refund"]`, any of its refunds; the status follows the ledger),
+`metadata["refund_failures"]` for the admin page,
 an activity row written by the webhook processor (no LiveView is involved there).
 A currency with more than two decimal places is refused for provider refunds and
 new invoices (`:currency_too_precise`): the ledger columns are `numeric(15,2)`.

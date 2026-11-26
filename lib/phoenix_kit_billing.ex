@@ -6480,9 +6480,9 @@ defmodule PhoenixKitBilling do
     `paid_amount` goes back up by it;
   - marks the refund row (`"refund_status"`, `"failure_reason"`,
     `"reversed_by_uuid"`), so later refunds do not count it as given back;
-  - undoes the void this refund caused (`metadata["voided_by_refund"]`): the
-    invoice goes back to the status it had (`paid`, or `sent`/`overdue` for a part
-    payment). A void made by `void_invoice/3`, or one another refund caused, stays;
+  - undoes a void a refund caused (`metadata["voided_by_refund"]`) once money is
+    back on the invoice: `paid` when the ledger covers the total again, else
+    `sent`/`overdue`. A void made by `void_invoice/3` stays;
   - adds an entry to `metadata["refund_failures"]`, which the admin invoice page
     shows.
 
