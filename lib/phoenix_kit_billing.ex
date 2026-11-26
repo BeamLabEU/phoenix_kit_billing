@@ -7432,7 +7432,7 @@ defmodule PhoenixKitBilling do
 
   defp put_session_expiry(checkout, _session), do: checkout
 
-  defp close_orphan_session(provider, %{id: session_id}) when is_binary(session_id) do
+  defp close_orphan_session(provider, %{id: session_id}) do
     case Providers.expire_checkout_session(provider, session_id) do
       :ok ->
         :ok
@@ -7444,8 +7444,6 @@ defmodule PhoenixKitBilling do
         )
     end
   end
-
-  defp close_orphan_session(_provider, _session), do: :ok
 
   @doc false
   # Public for the tests only: the persistence half of create_checkout_session/3.
