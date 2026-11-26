@@ -83,6 +83,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
             |> assign(:checkout_loading, nil)
             |> assign(:show_payment_modal, false)
             |> assign(:show_refund_modal, false)
+            |> assign(:refund_record_only, false)
             |> assign(:show_void_modal, false)
             |> assign(:void_checkout_unreachable, false)
             |> assign(:show_send_modal, false)
@@ -92,6 +93,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
             |> assign(:show_trash_modal, false)
             |> assign(:show_restore_modal, false)
             |> assign(:payment_amount, Invoice.remaining_amount(invoice) |> Decimal.to_string())
+            |> assign(:refund_record_only, false)
             |> assign(:refund_amount, "")
             |> assign(:payment_description, "")
             |> assign(:refund_description, "")
@@ -320,6 +322,8 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
       socket
       |> assign(:refund_amount, params["amount"] || socket.assigns.refund_amount)
       |> assign(:refund_description, params["description"] || socket.assigns.refund_description)
+      # The whole form comes with every change: an unticked box is absent.
+      |> assign(:refund_record_only, params["record_only"] == "true")
 
     socket =
       if params["payment_method"] do

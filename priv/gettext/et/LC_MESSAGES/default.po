@@ -5724,3 +5724,8 @@ msgstr "Kliendi makse võib olla veel tasutav. Kas tühistada arve siiski?"
 #, elixir-autogen, elixir-format
 msgid "Void anyway"
 msgstr "Tühista siiski"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:979
+#, elixir-autogen, elixir-format
+msgid "Already refunded at the provider - only record it"
+msgstr "Juba tagastatud makseteenuse pakkuja juures - ainult salvesta"

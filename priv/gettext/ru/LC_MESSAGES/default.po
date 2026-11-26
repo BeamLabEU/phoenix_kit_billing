@@ -5738,3 +5738,8 @@ msgstr "Оплата клиента может быть ещё доступна.
 #, elixir-autogen, elixir-format
 msgid "Void anyway"
 msgstr "Всё равно аннулировать"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:979
+#, elixir-autogen, elixir-format
+msgid "Already refunded at the provider - only record it"
+msgstr "Уже возвращено у провайдера - только записать"

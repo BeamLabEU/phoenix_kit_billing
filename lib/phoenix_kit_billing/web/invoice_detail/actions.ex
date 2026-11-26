@@ -146,8 +146,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
       }
 
       # A provider with a payment on this invoice returns the money there; any
-      # other method only records a refund made outside billing.
-      if Helpers.provider_refundable(invoice, payment_method) do
+      # other method only records a refund made outside billing, and so does a
+      # provider refund the operator already made in the provider's dashboard
+      # ("Already refunded at the provider").
+      if Helpers.provider_refundable(invoice, payment_method) &&
+           socket.assigns[:refund_record_only] != true do
         attrs =
           attrs
           |> Map.put(:provider, payment_method)

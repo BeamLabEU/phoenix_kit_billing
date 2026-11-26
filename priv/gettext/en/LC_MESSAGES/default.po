@@ -5723,3 +5723,8 @@ msgstr "The customer's checkout may still be payable. Void the invoice anyway?"
 #, elixir-autogen, elixir-format
 msgid "Void anyway"
 msgstr "Void anyway"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:979
+#, elixir-autogen, elixir-format
+msgid "Already refunded at the provider - only record it"
+msgstr "Already refunded at the provider - only record it"

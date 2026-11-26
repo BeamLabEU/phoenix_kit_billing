@@ -176,4 +176,31 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     assert has_element?(view, "#invoice-refund-failures")
     assert render(view) =~ "10.00 EUR through Stripe was put back on this invoice"
   end
+
+  test "Already refunded at the provider only records the refund", %{conn: conn} do
+    invoice = paid_invoice()
+    {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+    view |> element("button[phx-click=open_refund_modal]") |> render_click()
+
+    params = %{
+      "amount" => "10.00",
+      "payment_method" => "stripe",
+      "description" => "refunded in the Stripe dashboard",
+      "record_only" => "true"
+    }
+
+    render_change(view, "update_refund_form", params)
+    refute has_element?(view, "#refund-at-provider-note")
+    render_hook(view, "record_refund", %{})
+
+    refute_received {:stripe_refund, _, _}
+    assert [row] = refund_rows(invoice)
+    assert Decimal.equal?(row.amount, Decimal.new("-10.00"))
+
+    # Unticked again (absent from the form), the next refund goes to Stripe.
+    view |> element("button[phx-click=open_refund_modal]") |> render_click()
+    render_change(view, "update_refund_form", Map.delete(params, "record_only"))
+    render_hook(view, "record_refund", %{})
+    assert_received {:stripe_refund, %{"amount" => "1000"}, _}
+  end
 end

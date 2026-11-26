@@ -956,11 +956,31 @@
               <% end %>
             </select>
             <%= if refundable = provider_refundable(@invoice, @selected_refund_payment_method) do %>
-              <p class="text-sm text-info mt-2" id="refund-at-provider-note">
+              <p
+                :if={not @refund_record_only}
+                class="text-sm text-info mt-2"
+                id="refund-at-provider-note"
+              >
                 {gettext("The refund is made at %{provider} and returns the money to the customer (up to %{amount}).",
                   provider: format_payment_method_name(@selected_refund_payment_method),
                   amount: "#{refundable} #{@invoice.currency}"
                 )}
+              </p>
+              <label class="label cursor-pointer justify-start gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  name="record_only"
+                  value="true"
+                  id="refund-record-only"
+                  class="checkbox checkbox-sm"
+                  checked={@refund_record_only}
+                />
+                <span class="text-sm">
+                  {gettext("Already refunded at the provider - only record it")}
+                </span>
+              </label>
+              <p :if={@refund_record_only} class="text-sm text-base-content/60 mt-1">
+                {gettext("The refund is only recorded here: return the money yourself.")}
               </p>
             <% else %>
               <p class="text-sm text-base-content/60 mt-2">
