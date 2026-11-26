@@ -49,6 +49,8 @@ defmodule PhoenixKitBilling.ProviderRefunds do
   (`transaction` is nil when the refund was already in the ledger), or:
 
   - `{:error, :invoice_trashed}` / `{:error, :invoice_not_found}`
+  - `{:error, :currency_too_precise}` - the invoice's currency has more than two
+    decimal places (BHD, KWD, ...), which the ledger's amounts cannot hold
   - `{:error, :no_provider_payments}` - nothing on the invoice was paid through a provider
   - `{:error, :already_refunded}` - the provider payments are refunded already
   - `{:error, :invalid_amount}` / `{:error, :exceeds_paid_amount}` /
@@ -79,6 +81,7 @@ defmodule PhoenixKitBilling.ProviderRefunds do
     attrs = normalize_attrs(attrs)
 
     with {:ok, invoice} <- fetch_refundable_invoice(uuid),
+         :ok <- Billing.check_ledger_currency(invoice.currency),
          {:ok, payments} <- refundable_payments(invoice, attrs),
          {:ok, plan} <- plan(invoice, payments, attrs.amount) do
       execute(invoice, plan, attrs, admin_user)

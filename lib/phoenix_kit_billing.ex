@@ -3668,7 +3668,37 @@ defmodule PhoenixKitBilling do
   # checked in the insert's transaction with the order row locked (see `ensure_order_takes_invoice/1`).
   defp insert_invoice(build, config, source, order_uuid) do
     guard = fn -> ensure_order_takes_invoice(order_uuid) end
+    draft = build.(nil)
 
+    with :ok <- draft |> Ecto.Changeset.get_field(:currency) |> check_ledger_currency() do
+      insert_numbered_invoice(build, config, source, guard)
+    else
+      {:error, :currency_too_precise} ->
+        {:error,
+         Ecto.Changeset.add_error(
+           %{draft | action: :insert},
+           :currency,
+           "has more than two decimal places, which billing's amounts cannot hold"
+         )}
+    end
+  end
+
+  @doc """
+  `:ok`, or `{:error, :currency_too_precise}` for a currency with more than two
+  decimal places in `phoenix_kit_currencies` (BHD, KWD, ...): the ledger's amounts
+  are `numeric(15,2)`, so such an amount would be rounded on the way in. A code
+  the currency table does not know is left to the rest of billing, as before.
+  """
+  def check_ledger_currency(code) when is_binary(code) do
+    case PhoenixKitBilling.Providers.MinorUnits.decimal_places(code) do
+      {:ok, places} when places > 2 -> {:error, :currency_too_precise}
+      _ -> :ok
+    end
+  end
+
+  def check_ledger_currency(_code), do: :ok
+
+  defp insert_numbered_invoice(build, config, source, guard) do
     case insert_numbered(build, "invoice", config.invoice_prefix, :invoice_number, source,
            other_numbers: [receipt_number: "receipt"],
            guard: guard

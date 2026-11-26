@@ -325,6 +325,25 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
     end
   end
 
+  describe "a currency with three decimal places" do
+    test "is refused for a provider refund and for a new invoice" do
+      invoice = paid_invoice()
+      stub_refunds()
+
+      # EUR as if it carried three decimals (BHD, KWD): the ledger keeps two.
+      eur = Billing.get_currency_by_code("EUR")
+      {:ok, _} = Billing.update_currency(eur, %{decimal_places: 3})
+
+      assert {:error, :currency_too_precise} =
+               Billing.refund_at_provider(invoice, %{amount: "5.000"})
+
+      refute_received {:stripe, _, _, _, _}
+
+      assert {:error, %Ecto.Changeset{errors: [currency: _]}} =
+               Billing.create_invoice(fixture_user(), %{total: Decimal.new("5"), currency: "EUR"})
+    end
+  end
+
   describe "idempotency" do
     test "a repeated request carries the same idempotency key, and books once" do
       invoice = paid_invoice()

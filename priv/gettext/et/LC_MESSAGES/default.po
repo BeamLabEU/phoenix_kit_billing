@@ -5689,3 +5689,8 @@ msgstr "Uus link"
 #, elixir-autogen, elixir-format
 msgid "The old payment link no longer works. Send the new one."
 msgstr "Vana makselink enam ei tööta. Saatke uus."
+
+#: lib/phoenix_kit_billing/errors.ex:155
+#, elixir-autogen, elixir-format
+msgid "This currency has more than two decimal places, which billing's amounts cannot hold."
+msgstr "Selle valuuta komakohti on rohkem kui kaks, mida arvelduse summad ei mahuta."

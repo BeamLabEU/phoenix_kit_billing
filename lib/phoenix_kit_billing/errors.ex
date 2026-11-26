@@ -40,6 +40,7 @@ defmodule PhoenixKitBilling.Errors do
           | :checkout_reopened
           | {:checkout_not_closed, term()}
           | :currency_in_use
+          | :currency_too_precise
           | :duplicate_event
           | :event_log_failed
           | :exceeds_paid_amount
@@ -147,6 +148,13 @@ defmodule PhoenixKitBilling.Errors do
     do: gettext("A new checkout was opened for this invoice meanwhile. Try again.")
 
   def message(:currency_in_use), do: gettext("This currency is in use and cannot be removed.")
+
+  def message(:currency_too_precise),
+    do:
+      gettext(
+        "This currency has more than two decimal places, which billing's amounts cannot hold."
+      )
+
   def message(:duplicate_event), do: gettext("This event has already been processed.")
   def message(:event_log_failed), do: gettext("Failed to record the billing event.")
   def message(:exceeds_paid_amount), do: gettext("The amount exceeds the amount paid.")
