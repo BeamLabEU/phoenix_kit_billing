@@ -5057,7 +5057,9 @@ defmodule PhoenixKitBilling do
     `close_checkout: false` voids anyway, as before this check existed.
 
   A session opened while the first was being closed is closed too (up to three
-  rounds; after that `{:error, :checkout_reopened}`).
+  rounds; after that `{:error, :checkout_reopened}`). Only one session is kept on
+  the invoice: recording a new one closes the open one it replaces
+  (`create_checkout_session/3`), so no older session is left for a void to miss.
 
   Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
   does; the `{:invoice_voided, invoice}` event carries the same),
@@ -7465,11 +7467,17 @@ defmodule PhoenixKitBilling do
                 }
                 |> put_session_expiry(session)
 
+              replaced = superseded_checkout(locked.metadata, session.id)
+
               locked
               |> Ecto.Changeset.change(%{
                 metadata: Map.put(locked.metadata || %{}, "checkout", checkout)
               })
               |> repo().update()
+              |> case do
+                {:ok, _invoice} -> {:ok, replaced}
+                error -> error
+              end
             else
               {:error, :invoice_not_payable}
             end
@@ -7477,9 +7485,46 @@ defmodule PhoenixKitBilling do
       end)
 
     case result do
-      {:ok, _invoice} -> :ok
-      {:error, %Ecto.Changeset{errors: errors}} -> {:error, errors}
-      {:error, reason} -> {:error, reason}
+      {:ok, replaced} ->
+        close_superseded_session(replaced)
+        :ok
+
+      {:error, %Ecto.Changeset{errors: errors}} ->
+        {:error, errors}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # The invoice keeps ONE session (`metadata["checkout"]`). A session it still
+  # held open when another was recorded - a second click, a second tab of the
+  # payment page, another provider - would no longer be found by
+  # `void_invoice/3`, and could still be paid after a void: it is closed at its
+  # provider once the new one is recorded (best effort, logged).
+  defp superseded_checkout(metadata, new_session_id) do
+    case open_checkout(metadata || %{}) do
+      %{"provider_session_id" => id} = checkout when id != new_session_id -> checkout
+      _ -> nil
+    end
+  end
+
+  defp close_superseded_session(nil), do: :ok
+
+  defp close_superseded_session(%{"provider" => provider, "provider_session_id" => id}) do
+    case Providers.expire_checkout_session(provider, id) do
+      :ok ->
+        :ok
+
+      # A provider whose sessions cannot be closed: as before, they expire.
+      {:error, reason} when reason in [:not_supported, :provider_not_available] ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "Checkout session #{id} replaced by a newer one could not be closed at " <>
+            "#{provider}: #{inspect(reason)}"
+        )
     end
   end
 

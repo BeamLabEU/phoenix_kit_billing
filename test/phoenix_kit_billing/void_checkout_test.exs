@@ -170,6 +170,20 @@ defmodule PhoenixKitBilling.VoidCheckoutTest do
     assert_received {:stripe, "POST", "/v1/checkout/sessions/cs_late/expire"}
   end
 
+  test "a second session recorded on the invoice closes the first, which a void could not find" do
+    invoice = sent_invoice() |> with_session("cs_tab1")
+    stub(fn "POST", _ -> {200, %{"status" => "expired"}} end)
+
+    invoice = with_session(invoice, "cs_tab2")
+
+    assert_received {:stripe, "POST", "/v1/checkout/sessions/cs_tab1/expire"}
+    assert invoice.metadata["checkout"]["provider_session_id"] == "cs_tab2"
+
+    # Recording the same session again closes nothing.
+    with_session(invoice, "cs_tab2")
+    refute_received {:stripe, "POST", "/v1/checkout/sessions/cs_tab2/expire"}
+  end
+
   test "checkout.session.expired marks the recorded session closed" do
     invoice = sent_invoice() |> with_session("cs_hook")
 
