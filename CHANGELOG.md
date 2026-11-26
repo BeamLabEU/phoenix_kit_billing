@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+The module works under a nonce-based Content-Security-Policy (`script-src 'self' 'nonce-…'`),
+issue #75. The core requirement is unchanged (`>= 3.5.0 and < 4.0.0`).
+
+**Upgrading.** The module now ships JavaScript. The Print button of the printable documents and
+the Copy buttons of the webhook URLs work only when the host loads `phoenix_kit_modules.js`,
+which PhoenixKit's `:phoenix_kit_js_sources` compiler builds and the installer adds to the root
+layout. A host that never set that up has to (`mix phoenix_kit.update`); nothing else changes.
+
+### Changed
+
+- **No inline event handlers.** The Print button (`onclick="window.print()"`) and the four
+  webhook-URL copy buttons of Settings → Billing → Providers now carry `data-pkb-print` and
+  `data-pkb-copy`, handled by one delegated click listener in the new
+  `priv/static/assets/phoenix_kit_billing.js` (`js_sources/0`, global `PhoenixKitBillingHooks`,
+  no hooks). The copy button no longer builds JavaScript from the URL.
+- **The five inline `<style>` tags of the printable documents carry the host's nonce**
+  (`PhoenixKitBilling.Web.CSP.nonce/1`, which reads core's `PhoenixKitWeb.CSP` when the installed
+  core has it and renders no attribute otherwise).
+
+### Added
+
+- `test/phoenix_kit_billing/web/csp_inline_tags_test.exs` fails on an inline `<script>`/`<style>`
+  without the nonce and on an inline event handler in `lib/` or the JS file. The JS file's own
+  tests (`test/js/`) run under `mix test`.
+
 ## 0.29.1 - 2026-11-24
 
 PR #73. German and French translations for the account menu's billing tabs ("My Orders", "Billing

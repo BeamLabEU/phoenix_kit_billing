@@ -43,7 +43,10 @@ endpoints, and Oban workers for renewals and dunning.
   `PhoenixKitBilling.Web.Authz`. Ownership guards (billing-profile ownership,
   order-user scoping) stay in the context regardless; those are invariants, not
   UI policy.
-- **No JavaScript.** No hooks, no `js_sources/0`, no inline `<script>`.
+- **No JavaScript beyond one small file.** No hooks, no inline `<script>`, no
+  inline event handlers. `priv/static/assets/phoenix_kit_billing.js`
+  (`js_sources/0`) is a delegated click listener for the print and copy
+  buttons; see "Content-Security-Policy".
 - **No provider credentials in `phoenix_kit_payment_provider_configs`.** That
   core-created table is adopted by this module's migration chain but no
   application code reads or writes it; credentials live in `phoenix_kit_settings`
@@ -106,8 +109,9 @@ alone.
   (`pot_drift_test.exs` fails on either). Without `--no-fuzzy`, the merge fills a
   new msgid with the translation of a similar one and marks it fuzzy.
 - **JS hooks: none.** If one is ever needed, prefer a core hook; ship your own
-  only through a prebuilt bundle declared by `js_sources/0` under a namespaced
-  global. Never register a hook from an inline `<script>` — morphdom does not
+  only in `priv/static/assets/phoenix_kit_billing.js` (declared by
+  `js_sources/0`, global `PhoenixKitBillingHooks`) under a namespaced name.
+  Never register a hook from an inline `<script>` — morphdom does not
   execute inserted script tags, so the hook vanishes on LiveView navigation.
 - **`css_sources/0` returns `[:phoenix_kit_billing]`.** Core's
   `:phoenix_kit_css_sources` compiler collects it from every discovered module and
@@ -180,6 +184,35 @@ alone.
   `PhoenixKitBilling.Plugs.CacheBodyReader` in the host's `Plug.Parsers`, every
   provider webhook returns `400` with `:no_raw_body` before processing — see
   Architecture below.
+
+## Content-Security-Policy
+
+The package has to work on a host whose policy allows inline code by nonce only
+(`script-src 'self' 'nonce-…'`; core's `guides/content-security-policy.md`), and
+on the published core, which has no `PhoenixKitWeb.CSP` and no `data-pk-*`
+listeners.
+
+- **Every inline `<style>` (and `<script>`, should one ever appear) carries
+  `nonce={PhoenixKitBilling.Web.CSP.nonce(:style)}`.** The helper feature-detects
+  core's `PhoenixKitWeb.CSP.nonce/1` and answers `nil` on an older core, which
+  renders no attribute. Do not call `PhoenixKitWeb.CSP` by name: it does not
+  compile against the core floor.
+- **No inline event handlers** (`onclick=`, `onsubmit=` …): no nonce covers an
+  attribute. Use a `phx-` binding where LiveView can do it. What needs the browser
+  goes into `priv/static/assets/phoenix_kit_billing.js`, one delegated click
+  listener keyed on this package's own attributes: `data-pkb-print` (prints the
+  page) and `data-pkb-copy="text"` (copies the text). Not core's `data-pk-*`:
+  the published core does not handle them. A new behaviour gets a new
+  `data-pkb-*` attribute there and a case in `test/js/billing_handlers_test.cjs`.
+- The file reaches the page through core's `:phoenix_kit_js_sources` compiler
+  (the host's `phoenix_kit_modules.js`). It is hand-written, has no build step,
+  and must survive being loaded twice.
+- `test/phoenix_kit_billing/web/csp_inline_tags_test.exs` fails on an inline tag
+  without the nonce and on an inline handler in `lib/` or the JS file;
+  `csp_markup_test.exs` pins the rendered attributes; `test/js_handlers_test.exs`
+  runs the JS tests under `mix test` (skipped without node).
+- Out of scope: inline `style="…"` attributes (a host keeps
+  `style-src-attr 'unsafe-inline'`), and e-mail bodies.
 
 ## Architecture
 

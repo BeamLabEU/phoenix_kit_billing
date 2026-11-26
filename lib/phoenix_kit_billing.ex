@@ -248,6 +248,22 @@ defmodule PhoenixKitBilling do
   @impl PhoenixKit.Module
   def css_sources, do: [:phoenix_kit_billing]
 
+  # The print button and the copy buttons of the provider settings: what an
+  # inline `onclick` used to do, which a nonce-based Content-Security-Policy
+  # blocks. Core's `:phoenix_kit_js_sources` compiler folds the file into the
+  # host's `phoenix_kit_modules.js`. It exports no hooks: one delegated click
+  # listener acts on `data-pkb-print` and `data-pkb-copy`.
+  @impl PhoenixKit.Module
+  def js_sources do
+    [
+      %{
+        app: :phoenix_kit_billing,
+        file: "static/assets/phoenix_kit_billing.js",
+        global: "PhoenixKitBillingHooks"
+      }
+    ]
+  end
+
   # Every billing worker runs here. Declared, not left to the install notes: Oban
   # never runs a queue the node does not list, so renewals, dunning and the
   # durable events would wait forever without a word.

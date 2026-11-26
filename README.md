@@ -432,6 +432,12 @@ Use `Scope.has_module_access?/2` to check permissions in your application.
 
 This module implements `css_sources/0` returning `[:phoenix_kit_billing]`, so PhoenixKit's installer automatically adds the correct `@source` directive to your `app.css` for Tailwind scanning. No manual configuration needed.
 
+### JavaScript and Content-Security-Policy
+
+The module ships one small script, `priv/static/assets/phoenix_kit_billing.js`, declared by `js_sources/0`: PhoenixKit's `:phoenix_kit_js_sources` compiler folds it into `phoenix_kit_modules.js`, which the installer already loads from your root layout. It makes the **Print** button of the printable documents and the **Copy** buttons of the webhook URLs work. If those buttons do nothing, check that the compiler is in your `mix.exs` `compilers:` and that the root layout loads `phoenix_kit_modules.js`.
+
+The module renders no inline event handlers, and its inline `<style>` tags (the printable documents) carry your Content-Security-Policy nonce when PhoenixKit core is one that supports it (`config :phoenix_kit, csp_nonce_assign_key:`); on an older core they render as before. Inline `style="…"` attributes are still used, so keep `style-src-attr 'unsafe-inline'`.
+
 ## Architecture
 
 ```

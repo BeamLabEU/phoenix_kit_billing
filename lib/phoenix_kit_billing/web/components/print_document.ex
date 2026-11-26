@@ -27,7 +27,7 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
   @doc "The rules the shared parts need, for the document's `<head>`."
   def styles(assigns) do
     ~H"""
-    <style>
+    <style nonce={PhoenixKitBilling.Web.CSP.nonce(:style)}>
       .document-brand {
         padding: 28px 40px 20px;
         display: flex;
@@ -124,7 +124,7 @@ defmodule PhoenixKitBilling.Web.Components.PrintDocument do
         </svg>
         {gettext("Back")}
       </.link>
-      <button id="print-button" onclick="window.print()" class="btn-print">
+      <button id="print-button" data-pkb-print class="btn-print">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
