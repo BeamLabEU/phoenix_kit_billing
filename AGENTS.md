@@ -312,7 +312,8 @@ later is put back by `reverse_failed_refund/2`: a reversal row (`"source" =>
 an activity row written by the webhook processor (no LiveView is involved there);
 a linked order stays refunded by design. On a running-total provider the processor
 then reads the payment's refunded total back (optional provider callback
-`refunded_total/1`: Stripe, EveryPay) and books what the ledger lacks.
+`refunded_total/1`: Stripe; EveryPay has it but reports no refund failures) and
+books what the ledger lacks; a failed read-back fails the event for a redelivery.
 A currency with more than two decimal places is refused for provider refunds and
 new invoices (`:currency_too_precise`): the ledger columns are `numeric(15,2)`.
 `metadata["void"]`, `["pay_link_generation"]`, `["voided_by_refund"]` and

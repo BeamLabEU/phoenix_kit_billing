@@ -196,9 +196,12 @@ covers its total, else owed; a void made by `void_invoice/3` never is undone), t
 admin invoice page shows a warning, and an activity row
 (`billing.refund_failed_reversed`) is written. A linked order marked refunded stays
 so, on purpose (`refunded` is final for an order) - the warning says it, for the
-operator to settle. On a provider with a running total (Stripe, EveryPay) billing
-then reads back what the provider has refunded on that payment and books whatever
-the ledger lacks, so a replacement refund reported before the failure is not lost. The failure is found by the refund's id, or, for a
+operator to settle. On a provider with a running total of refunds (Stripe;
+EveryPay implements the read-back too but reports no refund failures today)
+billing then reads back what the provider has refunded on that payment and books
+whatever the ledger lacks, so a replacement refund reported before the failure is
+not lost. When that read-back fails, the event is failed so the provider's
+redelivery tries it again (the money is put back only once). The failure is found by the refund's id, or, for a
 refund the webhook booked without one, by the charge and the amount when exactly
 one row fits; otherwise it is logged as unmatched. A failure delivered twice
 changes nothing.

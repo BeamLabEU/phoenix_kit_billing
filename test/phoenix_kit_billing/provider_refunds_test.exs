@@ -524,7 +524,7 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
 
     test "is put back on the invoice once, flagged, with the refund row marked" do
       invoice = paid_invoice()
-      stub_refunds()
+      stub_refunds_and_total(fn -> 0 end)
 
       {:ok, [%{refund: refund, transaction: tx}]} =
         Billing.refund_at_provider(invoice, %{amount: "10.00"})
@@ -705,6 +705,50 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
 
       assert_received :total_read
       # 30 paid, the failed 10 put back, the replacement 10 booked: 20 held.
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("20.00"))
+    end
+
+    test "a read-back that fails fails the event; the redelivery books the replacement" do
+      invoice = paid_invoice()
+      {:ok, reachable} = Agent.start_link(fn -> true end)
+      stub_refunds_and_total(fn -> 1000 end)
+      {:ok, [%{refund: first}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+      capture_log(fn -> deliver(charge_refunded(1000)) end)
+
+      # Stripe cannot be read once.
+      Agent.update(reachable, fn _ -> false end)
+      test_pid = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        if Agent.get(reachable, & &1) do
+          send(test_pid, :total_read)
+
+          Req.Test.json(conn, %{
+            "id" => "pi_123",
+            "latest_charge" => %{
+              "object" => "charge",
+              "amount_refunded" => 1000,
+              "currency" => "eur"
+            }
+          })
+        else
+          conn
+          |> Plug.Conn.put_status(500)
+          |> Req.Test.json(%{"error" => %{"message" => "boom", "type" => "api_error"}})
+        end
+      end)
+
+      payload = refund_failed(first.id, 1000)
+      capture_log(fn -> assert {:error, _} = deliver(payload) end)
+      assert length(reversals(invoice)) == 1
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("30.00"))
+
+      # The provider redelivers the same event; Stripe answers now.
+      Agent.update(reachable, fn _ -> true end)
+      capture_log(fn -> assert {:ok, :refund_failed} = deliver(payload) end)
+
+      assert_received :total_read
+      assert length(reversals(invoice)) == 1
       assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("20.00"))
     end
 

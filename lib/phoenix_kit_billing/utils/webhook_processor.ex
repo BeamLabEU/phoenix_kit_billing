@@ -483,9 +483,16 @@ defmodule PhoenixKitBilling.WebhookProcessor do
           do: {:ok, :refund_failed},
           else: unmatched_failure(data)
 
+      # A reconciliation that could not run fails the event, so that the provider's
+      # redelivery tries it again (the put-back itself is not repeated).
       rows ->
-        Enum.each(rows, &reverse_failed_refund(&1, data))
-        {:ok, :refund_failed}
+        rows
+        |> Enum.map(&reverse_failed_refund(&1, data))
+        |> Enum.find(:ok, &match?({:error, _}, &1))
+        |> case do
+          :ok -> {:ok, :refund_failed}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -510,27 +517,42 @@ defmodule PhoenixKitBilling.WebhookProcessor do
          {:ok, payment} <- find_payment_transaction(ids, data.provider),
          {:ok, %{amount_refunded_total: total, currency: currency}} <-
            Providers.refunded_total(data.provider, payment.provider_transaction_id) do
-      process_refund(%{
-        provider: data.provider,
-        charge_id: data[:charge_id] || (row.provider_data || %{})["charge_id"],
-        payment_intent_id:
-          data[:payment_intent_id] || (row.provider_data || %{})["payment_intent_id"],
-        refund_id: nil,
-        amount_refunded_total: total,
-        currency: currency,
-        description: "Reconciled with #{data.provider} after a failed refund"
-      })
+      reconcile_result(
+        process_refund(%{
+          provider: data.provider,
+          charge_id: data[:charge_id] || (row.provider_data || %{})["charge_id"],
+          payment_intent_id:
+            data[:payment_intent_id] || (row.provider_data || %{})["payment_intent_id"],
+          refund_id: nil,
+          amount_refunded_total: total,
+          currency: currency,
+          description: "Reconciled with #{data.provider} after a failed refund"
+        })
+      )
     else
+      # A provider with no running total; or no payment to read it for.
       {:error, :not_supported} ->
+        :ok
+
+      [] ->
+        :ok
+
+      {:error, :transaction_not_found} ->
         :ok
 
       other ->
         Logger.warning(
           "#{data.provider} refund #{data.refund_id} failed and was put back; the payment's " <>
-            "refunded total could not be read back to check the ledger: #{inspect(other)}"
+            "refunded total could not be read back to check the ledger (the event is failed " <>
+            "for a redelivery): #{inspect(other)}"
         )
+
+        {:error, :refunded_total_unavailable}
     end
   end
+
+  defp reconcile_result({:ok, _}), do: :ok
+  defp reconcile_result({:error, reason}), do: {:error, reason}
 
   defp failure_already_reversed?(data) do
     repo().exists?(
@@ -556,8 +578,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp reverse_failed_refund(row, data) do
     case Billing.reverse_failed_refund(row, data) do
+      # Delivered again: the reconciliation may be what failed the first time. It
+      # books only what the ledger lacks, so running it again is harmless.
       {:ok, :already_reversed} ->
-        :ok
+        reconcile_after_failure(row, data)
 
       {:ok, reversal} ->
         Logger.error(
@@ -586,6 +610,8 @@ defmodule PhoenixKitBilling.WebhookProcessor do
           "#{data.provider} refund #{data.refund_id} failed and could NOT be put back on " <>
             "its invoice: #{inspect(reason)}"
         )
+
+        {:error, reason}
     end
   end
 
