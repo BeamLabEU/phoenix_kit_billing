@@ -636,6 +636,8 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
 
     test "a failure matched by charge and amount, delivered again, is not reported unmatched" do
       invoice = paid_invoice()
+      # Stripe's total after the failure: the 10.00 is back on the charge.
+      stub_refunds_and_total(fn -> 0 end)
       capture_log(fn -> deliver(charge_refunded(1000)) end)
       capture_log(fn -> deliver(refund_failed("re_unknown", 1000)) end)
 
@@ -648,8 +650,79 @@ defmodule PhoenixKitBilling.ProviderRefundsTest do
       assert length(reversals(invoice)) == 1
     end
 
+    # Refunds as stub_refunds/0 answers them, and the charge's refunded total as
+    # Stripe reports it now (`refunded_cents`).
+    defp stub_refunds_and_total(refunded_cents) do
+      test_pid = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        case {conn.method, conn.request_path} do
+          {"GET", "/v1/payment_intents/pi_123"} ->
+            send(test_pid, :total_read)
+
+            Req.Test.json(conn, %{
+              "id" => "pi_123",
+              "object" => "payment_intent",
+              "latest_charge" => %{
+                "id" => "ch_1",
+                "object" => "charge",
+                "amount_refunded" => refunded_cents.(),
+                "currency" => "eur"
+              }
+            })
+
+          _ ->
+            {:ok, body, conn} = Plug.Conn.read_body(conn)
+            params = URI.decode_query(body)
+            key = conn |> Plug.Conn.get_req_header("idempotency-key") |> List.first()
+
+            Req.Test.json(conn, %{
+              "id" => "re_" <> Integer.to_string(:erlang.phash2(key)),
+              "object" => "refund",
+              "amount" => String.to_integer(params["amount"]),
+              "currency" => "eur",
+              "status" => "succeeded",
+              "charge" => "ch_1",
+              "payment_intent" => "pi_123"
+            })
+        end
+      end)
+    end
+
+    test "a replacement refund reported before the failure is booked from Stripe's total" do
+      invoice = paid_invoice()
+      stub_refunds_and_total(fn -> 1000 end)
+
+      {:ok, [%{refund: first}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+
+      # The first fails at Stripe, the operator refunds 10.00 again in the dashboard,
+      # and that refund's charge.refunded (total 10.00) lands BEFORE the failure:
+      # the ledger already holds 10.00 against the charge, so it books nothing.
+      capture_log(fn -> deliver(charge_refunded(1000)) end)
+      assert length(refunds(invoice)) == 1
+
+      capture_log(fn -> deliver(refund_failed(first.id, 1000)) end)
+
+      assert_received :total_read
+      # 30 paid, the failed 10 put back, the replacement 10 booked: 20 held.
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("20.00"))
+    end
+
+    test "with no replacement, Stripe's total books nothing more" do
+      invoice = paid_invoice()
+      stub_refunds_and_total(fn -> 0 end)
+
+      {:ok, [%{refund: first}]} = Billing.refund_at_provider(invoice, %{amount: "10.00"})
+      capture_log(fn -> deliver(refund_failed(first.id, 1000)) end)
+
+      assert_received :total_read
+      assert Decimal.equal?(Repo.get!(Invoice, invoice.uuid).paid_amount, Decimal.new("30.00"))
+    end
+
     test "a refund the webhook booked without its id is found by charge and amount" do
       invoice = paid_invoice()
+      # Stripe's total after the failure: the 10.00 is back on the charge.
+      stub_refunds_and_total(fn -> 0 end)
       capture_log(fn -> assert {:ok, %Transaction{}} = deliver(charge_refunded(1000)) end)
 
       capture_log(fn ->

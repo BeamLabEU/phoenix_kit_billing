@@ -283,5 +283,23 @@ defmodule PhoenixKitBilling.Providers.Provider do
   """
   @callback expire_checkout_session(session_id :: String.t()) :: :ok | {:error, term()}
 
-  @optional_callbacks detach_payment_method: 1, expire_checkout_session: 1
+  @doc """
+  What the provider has refunded on a payment so far: its own running total, read
+  back from the provider.
+
+  Called by the webhook processor after a refund failed and was put back on its
+  invoice, so the ledger matches the provider even when a replacement refund was
+  reported (and skipped as already booked) before the failure arrived.
+
+  `payment_id` is the id billing recorded the payment under (a charge or a
+  payment intent). Returns `{:ok, %{amount_refunded_total: minor_units, currency:
+  code}}` or `{:error, reason}`.
+
+  Optional: a provider that reports refunds one at a time has no running total.
+  """
+  @callback refunded_total(payment_id :: String.t()) ::
+              {:ok, %{amount_refunded_total: non_neg_integer(), currency: String.t()}}
+              | {:error, term()}
+
+  @optional_callbacks detach_payment_method: 1, expire_checkout_session: 1, refunded_total: 1
 end

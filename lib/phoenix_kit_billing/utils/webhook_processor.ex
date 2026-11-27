@@ -34,6 +34,7 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     Invoice,
     Notifications,
     PaymentMethod,
+    Providers,
     Transaction,
     WebhookEvent
   }
@@ -490,6 +491,46 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp process_refund_failure(_data), do: {:ok, :ignored}
 
+  # A provider with a running total (Stripe, EveryPay) is asked what it has refunded
+  # on the payment now, and the ledger is booked to match: a replacement refund
+  # reported before this failure was skipped then (the failed refund still counted),
+  # and no further event would book it. Whatever the ledger already holds is not
+  # booked again (the running-total rule of `process_refund/1`).
+  defp reconcile_after_failure(row, data) do
+    data_ids = [data[:charge_id], data[:payment_intent_id]]
+
+    row_ids = [
+      (row.provider_data || %{})["charge_id"],
+      (row.provider_data || %{})["payment_intent_id"]
+    ]
+
+    ids = (data_ids ++ row_ids) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    with [_ | _] <- ids,
+         {:ok, payment} <- find_payment_transaction(ids, data.provider),
+         {:ok, %{amount_refunded_total: total, currency: currency}} <-
+           Providers.refunded_total(data.provider, payment.provider_transaction_id) do
+      process_refund(%{
+        provider: data.provider,
+        charge_id: List.first(ids),
+        payment_intent_id: Enum.at(ids, 1),
+        refund_id: nil,
+        amount_refunded_total: total,
+        currency: currency,
+        description: "Reconciled with #{data.provider} after a failed refund"
+      })
+    else
+      {:error, :not_supported} ->
+        :ok
+
+      other ->
+        Logger.warning(
+          "#{data.provider} refund #{data.refund_id} failed and was put back; the payment's " <>
+            "refunded total could not be read back to check the ledger: #{inspect(other)}"
+        )
+    end
+  end
+
   defp failure_already_reversed?(data) do
     repo().exists?(
       from(t in Transaction,
@@ -536,6 +577,8 @@ defmodule PhoenixKitBilling.WebhookProcessor do
             "provider" => data.provider
           }
         )
+
+        reconcile_after_failure(row, data)
 
       {:error, reason} ->
         Logger.error(

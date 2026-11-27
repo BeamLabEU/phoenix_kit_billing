@@ -195,6 +195,40 @@ defmodule PhoenixKitBilling.Providers.Stripe do
   end
 
   @doc """
+  Stripe's running total of refunds on a payment: the charge's `amount_refunded`.
+  A payment recorded under its PaymentIntent (`pi_...`) is read through its
+  latest charge.
+  """
+  @impl true
+  def refunded_total(payment_id) when is_binary(payment_id) do
+    with {:ok, config} <- ensure_configured() do
+      id = URI.encode_www_form(payment_id)
+
+      request =
+        case payment_id do
+          "pi_" <> _ ->
+            stripe_request(:get, "/payment_intents/#{id}?expand[]=latest_charge", nil, config)
+
+          _ ->
+            stripe_request(:get, "/charges/#{id}", nil, config)
+        end
+
+      case request do
+        {:ok, %{"latest_charge" => %{} = charge}} -> charge_refunded_total(charge)
+        {:ok, %{"object" => "charge"} = charge} -> charge_refunded_total(charge)
+        {:ok, other} -> {:error, {:unexpected_response, other}}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp charge_refunded_total(%{"amount_refunded" => total, "currency" => currency})
+       when is_integer(total) and is_binary(currency),
+       do: {:ok, %{amount_refunded_total: total, currency: String.upcase(currency)}}
+
+  defp charge_refunded_total(charge), do: {:error, {:unexpected_response, charge}}
+
+  @doc """
   Creates a Stripe Setup Session to save a payment method.
 
   ## Options
