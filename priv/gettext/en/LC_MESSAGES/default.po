@@ -5728,3 +5728,13 @@ msgstr "Void anyway"
 #, elixir-autogen, elixir-format
 msgid "Already refunded at the provider - only record it"
 msgstr "Already refunded at the provider - only record it"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:984
+#, elixir-autogen, elixir-format
+msgid "Refund id at the provider (optional)"
+msgstr "Refund id at the provider (optional)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1002
+#, elixir-autogen, elixir-format
+msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+msgstr "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."

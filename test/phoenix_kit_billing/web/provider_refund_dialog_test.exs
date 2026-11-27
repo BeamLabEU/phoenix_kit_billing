@@ -206,4 +206,30 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     render_hook(view, "record_refund", %{})
     assert_received {:stripe_refund, %{"amount" => "1000"}, _}
   end
+
+  test "a record-only refund takes the provider's refund id, and warns without one", %{conn: conn} do
+    invoice = paid_invoice()
+    {:ok, view, _html} = live(conn, "/en/admin/billing/invoices/#{invoice.uuid}")
+    view |> element("button[phx-click=open_refund_modal]") |> render_click()
+
+    params = %{
+      "amount" => "10.00",
+      "payment_method" => "stripe",
+      "description" => "refunded in the Stripe dashboard",
+      "record_only" => "true",
+      "provider_refund_id" => ""
+    }
+
+    render_change(view, "update_refund_form", params)
+    assert has_element?(view, "#refund-provider-id-warning")
+
+    render_change(view, "update_refund_form", %{params | "provider_refund_id" => " re_dash_1 "})
+    refute has_element?(view, "#refund-provider-id-warning")
+    render_hook(view, "record_refund", %{})
+
+    refute_received {:stripe_refund, _, _}
+    assert [row] = refund_rows(invoice)
+    assert row.provider_transaction_id == "re_dash_1"
+    assert row.provider_data["refund_id"] == "re_dash_1"
+  end
 end

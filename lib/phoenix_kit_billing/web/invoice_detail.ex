@@ -84,6 +84,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
             |> assign(:show_payment_modal, false)
             |> assign(:show_refund_modal, false)
             |> assign(:refund_record_only, false)
+            |> assign(:refund_provider_id, "")
             |> assign(:show_void_modal, false)
             |> assign(:void_checkout_unreachable, false)
             |> assign(:show_send_modal, false)
@@ -191,6 +192,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
      |> assign(:refund_idempotency_key, "pkb-admin-refund:" <> Ecto.UUID.generate())
      # Each refund decides afresh whether it is only recorded.
      |> assign(:refund_record_only, false)
+     |> assign(:refund_provider_id, "")
      |> assign(:refund_amount, "")
      |> assign(:refund_description, "")}
   end
@@ -325,6 +327,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
       |> assign(:refund_description, params["description"] || socket.assigns.refund_description)
       # The whole form comes with every change: an unticked box is absent.
       |> assign(:refund_record_only, params["record_only"] == "true")
+      |> assign(:refund_provider_id, String.trim(params["provider_refund_id"] || ""))
 
     socket =
       if params["payment_method"] do

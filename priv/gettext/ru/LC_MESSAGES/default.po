@@ -5743,3 +5743,13 @@ msgstr "Всё равно аннулировать"
 #, elixir-autogen, elixir-format
 msgid "Already refunded at the provider - only record it"
 msgstr "Уже возвращено у провайдера - только записать"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:984
+#, elixir-autogen, elixir-format
+msgid "Refund id at the provider (optional)"
+msgstr "ID возврата у провайдера (необязательно)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1002
+#, elixir-autogen, elixir-format
+msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+msgstr "Без ID возврата у провайдера более поздний возврат по этому платежу у провайдера может не попасть в учёт."

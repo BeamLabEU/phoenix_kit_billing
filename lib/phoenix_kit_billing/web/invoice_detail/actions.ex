@@ -190,11 +190,23 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
   # with a mark, so that the provider's own report of it, when one arrives without
   # a running total (PayPal, Razorpay), is matched to this row instead of booked
   # again (`WebhookProcessor`).
+  # With the provider's refund id it is booked under it, as the provider's own
+  # webhook and a later failure of it name it.
   defp recorded_only_attrs(socket, invoice, attrs) do
     if socket.assigns[:refund_record_only] == true and
-         Helpers.provider_refundable(invoice, attrs.payment_method),
-       do: Map.put(attrs, :provider_data, %{"recorded_as_provider_refund" => true}),
-       else: attrs
+         Helpers.provider_refundable(invoice, attrs.payment_method) do
+      case socket.assigns[:refund_provider_id] do
+        id when is_binary(id) and id != "" ->
+          attrs
+          |> Map.put(:provider_transaction_id, id)
+          |> Map.put(:provider_data, %{"recorded_as_provider_refund" => true, "refund_id" => id})
+
+        _ ->
+          Map.put(attrs, :provider_data, %{"recorded_as_provider_refund" => true})
+      end
+    else
+      attrs
+    end
   end
 
   defp refund_at_provider(socket, invoice, attrs) do

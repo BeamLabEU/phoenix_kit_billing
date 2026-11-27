@@ -5729,3 +5729,13 @@ msgstr "Tühista siiski"
 #, elixir-autogen, elixir-format
 msgid "Already refunded at the provider - only record it"
 msgstr "Juba tagastatud makseteenuse pakkuja juures - ainult salvesta"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:984
+#, elixir-autogen, elixir-format
+msgid "Refund id at the provider (optional)"
+msgstr "Tagasimakse ID makseteenuse pakkuja juures (valikuline)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1002
+#, elixir-autogen, elixir-format
+msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+msgstr "Ilma pakkuja tagasimakse ID-ta ei pruugita selle makse hilisemat tagasimakset pakkuja juures kirjendada."

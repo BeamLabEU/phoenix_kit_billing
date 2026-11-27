@@ -979,9 +979,29 @@
                   {gettext("Already refunded at the provider - only record it")}
                 </span>
               </label>
-              <p :if={@refund_record_only} class="text-sm text-base-content/60 mt-1">
-                {gettext("The refund is only recorded here: return the money yourself.")}
-              </p>
+              <div :if={@refund_record_only} class="mt-2" id="refund-record-only-details">
+                <label class="label" for="refund-provider-id">
+                  <span class="text-sm">{gettext("Refund id at the provider (optional)")}</span>
+                </label>
+                <input
+                  type="text"
+                  name="provider_refund_id"
+                  id="refund-provider-id"
+                  value={@refund_provider_id}
+                  class="input input-sm w-full font-mono"
+                  autocomplete="off"
+                />
+                <p
+                  :if={
+                    @refund_provider_id == "" and
+                      @selected_refund_payment_method in ~w(stripe everypay)
+                  }
+                  class="text-sm text-warning mt-1"
+                  id="refund-provider-id-warning"
+                >
+                  {gettext("Without the provider's refund id, a later refund of this payment made at the provider may not be booked.")}
+                </p>
+              </div>
             <% else %>
               <p class="text-sm text-base-content/60 mt-2">
                 {gettext("The refund is only recorded here: return the money yourself.")}
