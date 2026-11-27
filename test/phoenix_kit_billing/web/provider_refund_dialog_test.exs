@@ -231,5 +231,13 @@ defmodule PhoenixKitBilling.Web.ProviderRefundDialogTest do
     assert [row] = refund_rows(invoice)
     assert row.provider_transaction_id == "re_dash_1"
     assert row.provider_data["refund_id"] == "re_dash_1"
+
+    # The same id again is refused: it would count the refund twice.
+    view |> element("button[phx-click=open_refund_modal]") |> render_click()
+    render_change(view, "update_refund_form", %{params | "provider_refund_id" => "re_dash_1"})
+    html = render_hook(view, "record_refund", %{})
+
+    assert html =~ "This refund id is already recorded on this invoice."
+    assert length(refund_rows(invoice)) == 1
   end
 end

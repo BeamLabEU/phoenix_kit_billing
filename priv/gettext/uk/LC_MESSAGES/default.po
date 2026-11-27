@@ -5610,3 +5610,8 @@ msgstr "ID повернення в провайдера (необов'язков
 #, elixir-autogen, elixir-format
 msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
 msgstr "Без ID повернення в провайдера пізніше повернення за цим платежем у провайдера може не потрапити в облік."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:173
+#, elixir-autogen, elixir-format
+msgid "This refund id is already recorded on this invoice."
+msgstr "Цей ID повернення вже записано за цим рахунком."

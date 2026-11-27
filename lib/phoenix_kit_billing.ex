@@ -6466,6 +6466,20 @@ defmodule PhoenixKitBilling do
     )
   end
 
+  @doc false
+  # Whether a refund row of `invoice` is booked under the provider's refund id.
+  def refund_id_recorded?(%Invoice{uuid: uuid}, refund_id)
+      when is_binary(refund_id) and refund_id != "" do
+    repo().exists?(
+      from(t in Transaction,
+        where:
+          t.invoice_uuid == ^uuid and t.amount < 0 and t.provider_transaction_id == ^refund_id
+      )
+    )
+  end
+
+  def refund_id_recorded?(_invoice, _refund_id), do: false
+
   @doc """
   Puts a refund that failed at the provider back on its invoice.
 

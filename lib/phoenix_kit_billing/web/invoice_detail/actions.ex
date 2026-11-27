@@ -161,12 +161,20 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
 
         refund_at_provider(socket, invoice, attrs)
       else
-        record_refund_only(
-          socket,
-          invoice,
-          recorded_only_attrs(socket, invoice, attrs),
-          current_scope
-        )
+        attrs = recorded_only_attrs(socket, invoice, attrs)
+
+        # A provider refund id is booked once: typed again, or the id of a refund
+        # billing already has, it would count the refund twice.
+        if Billing.refund_id_recorded?(invoice, attrs[:provider_transaction_id]) do
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("This refund id is already recorded on this invoice.")
+           )}
+        else
+          record_refund_only(socket, invoice, attrs, current_scope)
+        end
       end
     end
   end

@@ -5738,3 +5738,8 @@ msgstr "Refund id at the provider (optional)"
 #, elixir-autogen, elixir-format
 msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
 msgstr "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:173
+#, elixir-autogen, elixir-format
+msgid "This refund id is already recorded on this invoice."
+msgstr "This refund id is already recorded on this invoice."

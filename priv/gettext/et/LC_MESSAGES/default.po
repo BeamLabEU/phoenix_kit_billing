@@ -5739,3 +5739,8 @@ msgstr "Tagasimakse ID makseteenuse pakkuja juures (valikuline)"
 #, elixir-autogen, elixir-format
 msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
 msgstr "Ilma pakkuja tagasimakse ID-ta ei pruugita selle makse hilisemat tagasimakset pakkuja juures kirjendada."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:173
+#, elixir-autogen, elixir-format
+msgid "This refund id is already recorded on this invoice."
+msgstr "See tagasimakse ID on sellel arvel juba kirjendatud."
