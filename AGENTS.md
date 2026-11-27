@@ -247,7 +247,7 @@ lib/phoenix_kit_billing/
 ├── compat/                              # Legacy PhoenixKit.Modules.Billing delegates
 ├── mix_tasks/                           # phoenix_kit_billing.install
 ├── plugs/cache_body_reader.ex           # Raw-body cache for webhook signatures
-├── providers/                           # Provider behaviour (11 callbacks; `detach_payment_method/1` and `expire_checkout_session/1` optional), registry, 4 impls, types
+├── providers/                           # Provider behaviour (12 callbacks; `detach_payment_method/1`, `expire_checkout_session/1` and `refunded_total/1` optional), registry, 4 impls, types
 ├── schemas/                             # 11 Ecto schemas
 ├── utils/                               # IBAN data, webhook_processor.ex
 ├── workers/                             # Oban: subscription renewal, dunning, invoice and order events; subscription_charge.ex is what signup and the two subscription workers share
@@ -309,7 +309,10 @@ later is put back by `reverse_failed_refund/2`: a reversal row (`"source" =>
 "refund_failed"`), `reversed_by_uuid` on the refund row, the void it caused undone
 (`metadata["voided_by_refund"]`, any of its refunds; the status follows the ledger),
 `metadata["refund_failures"]` for the admin page,
-an activity row written by the webhook processor (no LiveView is involved there).
+an activity row written by the webhook processor (no LiveView is involved there);
+a linked order stays refunded by design. On a running-total provider the processor
+then reads the payment's refunded total back (optional provider callback
+`refunded_total/1`: Stripe, EveryPay) and books what the ledger lacks.
 A currency with more than two decimal places is refused for provider refunds and
 new invoices (`:currency_too_precise`): the ledger columns are `numeric(15,2)`.
 `metadata["void"]`, `["pay_link_generation"]`, `["voided_by_refund"]` and

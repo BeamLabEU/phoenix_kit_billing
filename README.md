@@ -195,7 +195,10 @@ void a refund caused is undone (the invoice is `paid` again only when the ledger
 covers its total, else owed; a void made by `void_invoice/3` never is undone), the
 admin invoice page shows a warning, and an activity row
 (`billing.refund_failed_reversed`) is written. A linked order marked refunded stays
-so - the warning says it. The failure is found by the refund's id, or, for a
+so, on purpose (`refunded` is final for an order) - the warning says it, for the
+operator to settle. On a provider with a running total (Stripe, EveryPay) billing
+then reads back what the provider has refunded on that payment and books whatever
+the ledger lacks, so a replacement refund reported before the failure is not lost. The failure is found by the refund's id, or, for a
 refund the webhook booked without one, by the charge and the amount when exactly
 one row fits; otherwise it is logged as unmatched. A failure delivered twice
 changes nothing.
@@ -203,13 +206,18 @@ changes nothing.
 The admin refund dialog refunds through the provider when the chosen method is a
 provider with a payment on the invoice, and says so. "Already refunded at the
 provider - only record it" books the refund without calling the provider (for a
-refund made in the provider's dashboard); when that provider reports refunds one
-at a time (PayPal, Razorpay), its report is matched to the booked row by method
-and amount instead of being booked again.
+refund made in the provider's dashboard). Give the provider's refund id when you
+have it: the row is booked under it, so the provider's webhook and a later failure
+of that refund find it. Without one, a provider that reports refunds one at a time
+(PayPal, Razorpay) is matched to the booked row by method and amount; on Stripe or
+EveryPay the dialog warns that a later refund of that payment made at the provider
+may not be booked.
 
 The ledger keeps two decimal places. A currency with more (BHD, KWD, ... -
 `decimal_places` above 2 in the currency table) is refused for provider refunds
 (`:currency_too_precise`) and for new invoices (a changeset error on `:currency`).
+That includes the renewal invoices of an existing subscription in such a currency:
+the renewal is then handled like a declined payment (dunning, then cancellation).
 
 ### Guest invoices and the payment link
 
