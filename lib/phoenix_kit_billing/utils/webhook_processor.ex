@@ -512,8 +512,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
            Providers.refunded_total(data.provider, payment.provider_transaction_id) do
       process_refund(%{
         provider: data.provider,
-        charge_id: List.first(ids),
-        payment_intent_id: Enum.at(ids, 1),
+        charge_id: data[:charge_id] || (row.provider_data || %{})["charge_id"],
+        payment_intent_id:
+          data[:payment_intent_id] || (row.provider_data || %{})["payment_intent_id"],
         refund_id: nil,
         amount_refunded_total: total,
         currency: currency,
