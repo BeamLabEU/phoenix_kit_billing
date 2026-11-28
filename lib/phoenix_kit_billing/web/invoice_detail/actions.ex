@@ -17,6 +17,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
   alias PhoenixKitBilling.Activity
   alias PhoenixKitBilling.Errors
   alias PhoenixKitBilling.Paths
+  alias PhoenixKitBilling.Web.InvoiceDetail.Helpers
 
   def record_payment(socket) do
     %{
@@ -144,48 +145,190 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
         description: desc
       }
 
-      case Billing.record_refund(invoice, attrs, current_scope) do
-        {:ok, transaction} ->
-          Activity.log("billing.refund_recorded",
-            actor_uuid: actor_uuid(socket),
-            actor_role: actor_role(socket),
-            resource_type: "transaction",
-            resource_uuid: transaction.uuid,
-            metadata: %{
-              "invoice_number" => invoice.invoice_number,
-              "amount" => to_string(amount),
-              "currency" => invoice.currency
-            }
+      # A provider with a payment on this invoice returns the money there; any
+      # other method only records a refund made outside billing, and so does a
+      # provider refund the operator already made in the provider's dashboard
+      # ("Already refunded at the provider").
+      if Helpers.provider_refundable(invoice, payment_method) &&
+           socket.assigns[:refund_record_only] != true do
+        attrs =
+          attrs
+          |> Map.put(:provider, payment_method)
+          |> Map.put(
+            :idempotency_key,
+            refund_key(socket.assigns[:refund_idempotency_key], amount)
           )
 
-          socket = reload_invoice(socket)
+        refund_at_provider(socket, invoice, attrs)
+      else
+        attrs = recorded_only_attrs(socket, invoice, attrs)
 
-          {:noreply,
-           socket
-           |> Phoenix.Component.assign(:show_refund_modal, false)
-           |> put_flash(:info, gettext("Refund recorded successfully"))}
-
-        {:error, :not_refundable} ->
-          {:noreply, put_flash(socket, :error, "Invoice has no payments to refund")}
-
-        {:error, :exceeds_paid_amount} ->
-          {:noreply, put_flash(socket, :error, "Refund amount exceeds paid amount")}
-
-        {:error, :invalid_amount} ->
-          {:noreply, put_flash(socket, :error, "Invalid refund amount")}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, "Failed to record refund")}
+        record_refund_only(socket, invoice, attrs, current_scope)
       end
     end
   end
 
+  # The provider idempotency key of the dialog: its opening's nonce and the
+  # amount, so a corrected amount is a new request and the same one is not.
+  # No dialog opened (a crafted event): the per-payment default key.
+  defp refund_key(nil, _amount), do: nil
+
+  defp refund_key(nonce, amount) do
+    amount =
+      case Decimal.parse(String.trim(to_string(amount || ""))) do
+        {decimal, ""} -> decimal |> Decimal.normalize() |> Decimal.to_string(:normal)
+        _ -> "all"
+      end
+
+    "#{nonce}:#{amount}"
+  end
+
+  # A provider refund the operator made in the provider's dashboard: booked here
+  # with a mark, so that the provider's own report of it, when one arrives without
+  # a running total (PayPal, Razorpay), is matched to this row instead of booked
+  # again (`WebhookProcessor`).
+  # With the provider's refund id it is booked under it, as the provider's own
+  # webhook and a later failure of it name it.
+  defp recorded_only_attrs(socket, invoice, attrs) do
+    if socket.assigns[:refund_record_only] == true and
+         Helpers.provider_refundable(invoice, attrs.payment_method) do
+      case socket.assigns[:refund_provider_id] do
+        id when is_binary(id) and id != "" ->
+          attrs
+          |> Map.put(:provider_transaction_id, id)
+          |> Map.put(:provider_data, %{"recorded_as_provider_refund" => true, "refund_id" => id})
+
+        _ ->
+          Map.put(attrs, :provider_data, %{"recorded_as_provider_refund" => true})
+      end
+    else
+      attrs
+    end
+  end
+
+  defp refund_at_provider(socket, invoice, attrs) do
+    current_scope = socket.assigns[:phoenix_kit_current_scope]
+
+    case Billing.refund_at_provider(invoice, attrs, current_scope) do
+      {:ok, results} ->
+        Enum.each(results, fn %{refund: refund, transaction: transaction} ->
+          Activity.log("billing.refund_recorded",
+            actor_uuid: actor_uuid(socket),
+            actor_role: actor_role(socket),
+            resource_type: "transaction",
+            resource_uuid: transaction && transaction.uuid,
+            metadata: %{
+              "invoice_number" => invoice.invoice_number,
+              "amount" => to_string(refund.amount),
+              "currency" => invoice.currency,
+              "provider" => attrs.provider,
+              "provider_refund_id" => refund.id
+            }
+          )
+        end)
+
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> Phoenix.Component.assign(:show_refund_modal, false)
+         |> put_flash(
+           :info,
+           gettext("Refund made at %{provider} and recorded",
+             provider: Helpers.format_payment_method_name(attrs.provider)
+           )
+         )}
+
+      {:error, {:partially_refunded, _results, reason}} ->
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> Phoenix.Component.assign(:show_refund_modal, false)
+         |> put_flash(
+           :error,
+           gettext("Only part of the refund was made: %{reason}", reason: Errors.message(reason))
+         )}
+
+      {:error, {:refunded_not_recorded, _refund, _reason}} ->
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> Phoenix.Component.assign(:show_refund_modal, false)
+         |> put_flash(
+           :error,
+           gettext(
+             "The refund was made at the provider but could not be recorded; the provider's webhook will record it."
+           )
+         )}
+
+      {:error, reason} ->
+        # The key stays for this opening: a retry of the same amount after a lost
+        # answer (a timeout) gets the refund Stripe may have made, and a corrected
+        # amount is another key (`refund_key/2`). A new opening is a new refund.
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           gettext("Refund failed: %{reason}", reason: Errors.message(reason))
+         )}
+    end
+  end
+
+  defp record_refund_only(socket, invoice, attrs, current_scope) do
+    case Billing.record_refund(invoice, attrs, current_scope) do
+      {:ok, transaction} ->
+        Activity.log("billing.refund_recorded",
+          actor_uuid: actor_uuid(socket),
+          actor_role: actor_role(socket),
+          resource_type: "transaction",
+          resource_uuid: transaction.uuid,
+          metadata: %{
+            "invoice_number" => invoice.invoice_number,
+            "amount" => to_string(attrs.amount),
+            "currency" => invoice.currency
+          }
+        )
+
+        socket = reload_invoice(socket)
+
+        {:noreply,
+         socket
+         |> Phoenix.Component.assign(:show_refund_modal, false)
+         |> put_flash(:info, gettext("Refund recorded successfully"))}
+
+      {:error, :already_recorded} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("This refund id is already recorded on this invoice."))}
+
+      {:error, :not_refundable} ->
+        {:noreply, put_flash(socket, :error, "Invoice has no payments to refund")}
+
+      {:error, :exceeds_paid_amount} ->
+        {:noreply, put_flash(socket, :error, "Refund amount exceeds paid amount")}
+
+      {:error, :invalid_amount} ->
+        {:noreply, put_flash(socket, :error, "Invalid refund amount")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to record refund")}
+    end
+  end
+
+  # A guest payer cannot open the admin print page: their email links to the
+  # public payment page instead. A user's email is unchanged.
+  @doc false
+  def invoice_url(%{user_uuid: nil} = invoice) do
+    if PhoenixKitBilling.InvoiceLinks.available?(),
+      do: PhoenixKitBilling.InvoiceLinks.pay_url(invoice),
+      else: Routes.base_url() <> Paths.invoice_print(invoice.uuid)
+  end
+
+  def invoice_url(invoice), do: Routes.base_url() <> Paths.invoice_print(invoice.uuid)
+
   def send_invoice(socket) do
     invoice = socket.assigns.invoice
     email = socket.assigns.send_email
-    invoice_url = Routes.base_url() <> Paths.invoice_print(invoice.uuid)
 
-    case Billing.send_invoice(invoice, invoice_url: invoice_url, to_email: email) do
+    case Billing.send_invoice(invoice, invoice_url: invoice_url(invoice), to_email: email) do
       {:ok, updated_invoice, email_result} ->
         Activity.log("billing.invoice_sent",
           actor_uuid: actor_uuid(socket),
@@ -348,10 +491,11 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
     end
   end
 
-  def void_invoice(socket, reason) do
+  def void_invoice(socket, reason, void_anyway? \\ false) do
     actor_uuid = actor_uuid(socket)
+    opts = [actor_uuid: actor_uuid, close_checkout: not void_anyway?]
 
-    case Billing.void_invoice(socket.assigns.invoice, reason, actor_uuid: actor_uuid) do
+    case Billing.void_invoice(socket.assigns.invoice, reason, opts) do
       {:ok, invoice} ->
         Activity.log("billing.invoice_voided",
           actor_uuid: actor_uuid,
@@ -359,14 +503,28 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
           resource_type: "invoice",
           resource_uuid: invoice.uuid,
           # Not the reason: it is free text, and it is kept on the invoice's void trail.
-          metadata: %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
+          metadata:
+            %{"invoice_number" => invoice.invoice_number, "status" => invoice.status}
+            |> then(&if(void_anyway?, do: Map.put(&1, "checkout_left_open", true), else: &1))
         )
 
         {:noreply,
          socket
          |> reload_invoice()
-         |> Phoenix.Component.assign(:show_void_modal, false)
+         |> Phoenix.Component.assign(show_void_modal: false, void_checkout_unreachable: false)
          |> put_flash(:info, gettext("Invoice voided"))}
+
+      # The provider could not be reached to close the customer's checkout: the
+      # dialog stays open and offers "Void anyway".
+      {:error, {:checkout_not_closed, _reason} = reason} ->
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> Phoenix.Component.assign(void_checkout_unreachable: true)
+         |> put_flash(
+           :error,
+           gettext("Failed to void invoice: %{reason}", reason: Errors.message(reason))
+         )}
 
       {:error, reason} ->
         # The page may be showing a status the invoice has since left (a
@@ -379,6 +537,29 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail.Actions do
            :error,
            gettext("Failed to void invoice: %{reason}", reason: Errors.message(reason))
          )}
+    end
+  end
+
+  def revoke_pay_link(socket) do
+    invoice = socket.assigns.invoice
+
+    case Billing.revoke_invoice_pay_links(invoice) do
+      {:ok, _invoice} ->
+        Activity.log("billing.pay_link_revoked",
+          actor_uuid: actor_uuid(socket),
+          actor_role: actor_role(socket),
+          resource_type: "invoice",
+          resource_uuid: invoice.uuid,
+          metadata: %{"invoice_number" => invoice.invoice_number}
+        )
+
+        {:noreply,
+         socket
+         |> reload_invoice()
+         |> put_flash(:info, gettext("The old payment link no longer works. Send the new one."))}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, Errors.message(reason))}
     end
   end
 

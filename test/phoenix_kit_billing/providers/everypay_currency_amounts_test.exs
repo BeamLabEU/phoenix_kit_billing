@@ -76,4 +76,36 @@ defmodule PhoenixKitBilling.Providers.EveryPayCurrencyAmountsTest do
                EveryPay.create_checkout_session(invoice, success_url: "https://example.com/ok")
     end
   end
+
+  describe "refunded_total/1" do
+    setup do
+      Application.put_env(:phoenix_kit_billing, :everypay_req_options,
+        plug: {Req.Test, __MODULE__}
+      )
+
+      on_exit(fn -> Application.delete_env(:phoenix_kit_billing, :everypay_req_options) end)
+    end
+
+    defp stub_payment(payment) do
+      Req.Test.stub(__MODULE__, fn conn -> Req.Test.json(conn, payment) end)
+    end
+
+    test "sums the payment's listed refunds in the currency's minor units" do
+      stub_payment(%{
+        "payment_reference" => "ref_1",
+        "currency" => "EUR",
+        "refunds" => [%{"amount" => "5.00"}, %{"amount" => "2.50"}]
+      })
+
+      assert {:ok, %{amount_refunded_total: 750, currency: "EUR"}} =
+               EveryPay.refunded_total("ref_1")
+    end
+
+    test "a payment with no refunds listed has refunded nothing" do
+      stub_payment(%{"payment_reference" => "ref_2", "currency" => "EUR"})
+
+      assert {:ok, %{amount_refunded_total: 0, currency: "EUR"}} =
+               EveryPay.refunded_total("ref_2")
+    end
+  end
 end

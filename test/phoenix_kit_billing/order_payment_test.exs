@@ -139,6 +139,23 @@ defmodule PhoenixKitBilling.OrderPaymentTest do
     assert length(Billing.list_invoices_for_order(order.uuid)) == 1
   end
 
+  test "a session closed meanwhile (expired at the provider) is not reused", %{
+    stripe: stripe,
+    counter: counter
+  } do
+    order = order!(stripe)
+    {:ok, first} = Billing.start_order_payment(order, @urls)
+    session_id = first.invoice.metadata["checkout"]["provider_session_id"]
+
+    :ok = Billing.mark_checkout_session_closed(first.invoice.uuid, session_id, "expired")
+
+    {:ok, second} = Billing.start_order_payment(order, @urls)
+
+    assert second.invoice.uuid == first.invoice.uuid
+    assert second.url != first.url
+    assert :counters.get(counter, 1) == 2
+  end
+
   test "an old session is replaced on the same invoice", %{stripe: stripe} do
     order = order!(stripe)
     {:ok, first} = Billing.start_order_payment(order, @urls)

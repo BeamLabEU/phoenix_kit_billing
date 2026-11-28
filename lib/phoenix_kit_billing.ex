@@ -65,6 +65,7 @@ defmodule PhoenixKitBilling do
   alias PhoenixKitBilling.OrderEvents
   alias PhoenixKitBilling.PaymentOption
   alias PhoenixKitBilling.Providers
+  alias PhoenixKitBilling.Providers.MinorUnits
   alias PhoenixKitBilling.Transaction
   alias PhoenixKitBilling.Workers.SubscriptionCharge
   alias PhoenixKitBilling.Workers.SubscriptionDunningWorker
@@ -269,6 +270,14 @@ defmodule PhoenixKitBilling do
   # durable events would wait forever without a word.
   @impl PhoenixKit.Module
   def oban_queues, do: [billing: 10]
+
+  # The daily renewal run, declared so `mix phoenix_kit.install` / `update` write it
+  # into the host's crontab instead of the host copying it from the worker's docs.
+  # A cron job carries no args, which is the worker's batch clause: it fans out one
+  # job per due subscription, and does nothing while billing is disabled. Dunning
+  # has no cron of its own: the renewal run schedules it per subscription.
+  @impl PhoenixKit.Module
+  def oban_crons, do: [{"0 6 * * *", PhoenixKitBilling.Workers.SubscriptionRenewalWorker}]
 
   # The four financial emails, with sample variables, for core's email
   # preview (`/admin/settings/email-sending/preview`).
@@ -3537,12 +3546,14 @@ defmodule PhoenixKitBilling do
         search ->
           search_term = "%#{search}%"
 
+          # A guest invoice has no user: its payer is the billing email.
           base_query
           |> join(:left, [i], u in assoc(i, :user))
           |> where(
             [i, u],
             ilike(i.invoice_number, ^search_term) or
-              ilike(u.email, ^search_term)
+              ilike(u.email, ^search_term) or
+              ilike(fragment("?->>'email'", i.billing_details), ^search_term)
           )
       end
 
@@ -3658,7 +3669,38 @@ defmodule PhoenixKitBilling do
   # checked in the insert's transaction with the order row locked (see `ensure_order_takes_invoice/1`).
   defp insert_invoice(build, config, source, order_uuid) do
     guard = fn -> ensure_order_takes_invoice(order_uuid) end
+    draft = build.(nil)
 
+    case draft |> Ecto.Changeset.get_field(:currency) |> check_ledger_currency() do
+      :ok ->
+        insert_numbered_invoice(build, config, source, guard)
+
+      {:error, :currency_too_precise} ->
+        {:error,
+         Ecto.Changeset.add_error(
+           %{draft | action: :insert},
+           :currency,
+           "has more than two decimal places, which billing's amounts cannot hold"
+         )}
+    end
+  end
+
+  @doc """
+  `:ok`, or `{:error, :currency_too_precise}` for a currency with more than two
+  decimal places in `phoenix_kit_currencies` (BHD, KWD, ...): the ledger's amounts
+  are `numeric(15,2)`, so such an amount would be rounded on the way in. A code
+  the currency table does not know is left to the rest of billing, as before.
+  """
+  def check_ledger_currency(code) when is_binary(code) do
+    case MinorUnits.decimal_places(code) do
+      {:ok, places} when places > 2 -> {:error, :currency_too_precise}
+      _ -> :ok
+    end
+  end
+
+  def check_ledger_currency(_code), do: :ok
+
+  defp insert_numbered_invoice(build, config, source, guard) do
     case insert_numbered(build, "invoice", config.invoice_prefix, :invoice_number, source,
            other_numbers: [receipt_number: "receipt"],
            guard: guard
@@ -3699,6 +3741,109 @@ defmodule PhoenixKitBilling do
     order_uuid = Map.get(attrs, :order_uuid) || Map.get(attrs, "order_uuid")
     insert_invoice(build, config, source, order_uuid)
   end
+
+  @doc """
+  Creates an invoice for a payer WITHOUT an account - a guest booking a class, a
+  customer paying by link - identified by an email.
+
+  `guest` holds the payer's details: `:email` (required, checked for shape) and
+  any of `:name`, `:first_name`, `:last_name`, `:phone`, `:company_name`,
+  `:address_line1`, `:city`, `:postal_code`, `:country` (string or atom keys).
+  They become the invoice's `billing_details` (with `"type" => "individual"` unless
+  given), which is what prints on the invoice, receives its emails and is shown to
+  admins as the payer ("Guest payer - no account"). The invoice has no
+  `user_uuid`; billing V5 allows that for a payer with a billing email.
+
+  `attrs` is what `create_invoice/2` takes (line items, totals, currency,
+  `metadata` - e.g. the booking it pays for, which a durable
+  `PhoenixKitBilling.InvoiceEvents` handler then reads back).
+
+  The invoice starts as a draft, like any other. To bill the guest:
+
+      {:ok, invoice} = Billing.create_guest_invoice(%{email: "ann@example.com", name: "Ann"}, attrs)
+      {:ok, invoice, _email} =
+        Billing.send_invoice(invoice, invoice_url: Billing.invoice_pay_url(invoice))
+
+  The link (`invoice_pay_url/1`) opens the public payment page, where the guest
+  pays through the providers' hosted checkout.
+
+  Returns `{:ok, invoice}`, `{:error, :invalid_email}` or what `create_invoice/2`
+  returns.
+  """
+  def create_guest_invoice(guest, attrs) when is_map(guest) and is_map(attrs) do
+    details = guest_details(guest)
+
+    if valid_guest_email?(details["email"]) do
+      key = if string_keyed?(attrs), do: "billing_details", else: :billing_details
+
+      existing =
+        Map.get(attrs, :billing_details) || Map.get(attrs, "billing_details") || %{}
+
+      attrs =
+        attrs
+        |> Map.drop([:billing_details, "billing_details", :user_uuid, "user_uuid"])
+        |> Map.put(key, Map.merge(stringify_keys(existing), details))
+
+      create_invoice(nil, attrs)
+    else
+      {:error, :invalid_email}
+    end
+  end
+
+  @guest_fields ~w(email name first_name last_name phone company_name company_vat_number
+                   address_line1 address_line2 city postal_code country type)
+
+  defp guest_details(guest) do
+    guest = stringify_keys(guest)
+
+    @guest_fields
+    |> Enum.reduce(%{}, fn field, acc ->
+      case guest[field] do
+        value when is_binary(value) ->
+          case String.trim(value) do
+            "" -> acc
+            trimmed -> Map.put(acc, field, trimmed)
+          end
+
+        _ ->
+          acc
+      end
+    end)
+    |> Map.put_new("type", "individual")
+  end
+
+  defp stringify_keys(map) when is_map(map),
+    do: Map.new(map, fn {key, value} -> {to_string(key), value} end)
+
+  defp stringify_keys(_), do: %{}
+
+  defp valid_guest_email?(email) when is_binary(email),
+    do: String.match?(email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+
+  defp valid_guest_email?(_), do: false
+
+  @doc """
+  The absolute URL of `invoice`'s public payment page, signed for it
+  (`PhoenixKitBilling.InvoiceLinks`). Send it only to the payer: it is the one
+  credential the page asks for.
+  """
+  defdelegate invoice_pay_url(invoice), to: PhoenixKitBilling.InvoiceLinks, as: :pay_url
+
+  @doc """
+  The invoice a payment-page token names, or nil (invalid, expired or revoked; a
+  draft not yet sent; in the trash).
+  """
+  defdelegate get_invoice_by_pay_token(token),
+    to: PhoenixKitBilling.InvoiceLinks,
+    as: :invoice_from_token
+
+  @doc """
+  Revokes every payment link issued for `invoice` so far (a link sent to the wrong
+  address): they open nothing any more, and the next `invoice_pay_url/1` is a new
+  link. Other invoices' links keep working. `{:ok, invoice}` or
+  `{:error, :invoice_not_found}`.
+  """
+  defdelegate revoke_invoice_pay_links(invoice), to: PhoenixKitBilling.InvoiceLinks, as: :revoke
 
   # The order an invoice is created for, moved onto or restored onto must not be
   # in the trash (and a restore also not cancelled, below). Checked in the transaction that writes the
@@ -4919,6 +5064,8 @@ defmodule PhoenixKitBilling do
   ## Options
 
   - `:actor_uuid` - the user who voids the invoice
+  - `:close_checkout` - `false` skips closing an open checkout session (below);
+    default `true`
 
   Takes a row lock on the invoice for the duration of the call and checks
   `Invoice.voidable?/1` against the stored row, not the struct's, so a payment
@@ -4930,18 +5077,41 @@ defmodule PhoenixKitBilling do
   a document nobody owes anything on, and a new invoice would bill the customer in
   full.
 
+  ## An open checkout is closed first
+
+  An invoice with a hosted checkout session recorded on it (`metadata["checkout"]`,
+  written by `create_checkout_session/3`) that has not expired or been closed has
+  that session closed at its provider BEFORE the void
+  (`Providers.expire_checkout_session/2`), so the customer cannot pay a void invoice
+  through a link they still hold. The provider call is made before the invoice row
+  is locked, never under the lock. Then:
+
+  - closed (or already expired at the provider): the invoice is voided, and the
+    session is marked closed on it (`"closed_at"`, `"closed_reason" => "voided"`);
+  - the customer has already paid through it: `{:error, :checkout_completed}` and
+    nothing changes - the payment is on its way to the ledger;
+  - a provider that cannot close sessions (no `expire_checkout_session/1`), or one
+    that is no longer configured here: voided as before (logged); a payment that
+    still lands is kept on the void trail for a refund;
+  - the provider could not be reached or refused: `{:error, {:checkout_not_closed,
+    reason}}` and nothing changes, since the link would still take money.
+    `close_checkout: false` voids anyway, as before this check existed.
+
+  A session opened while the first was being closed is closed too (up to three
+  rounds; after that `{:error, :checkout_reopened}`). Only one session is kept on
+  the invoice. Recording a new one requests closure of the previous session.
+  If the provider cannot close it, its hosted URL may work until expiry.
+
   Returns `{:ok, invoice}` with `:order` and `:user` loaded (as `send_invoice/2`
   does; the `{:invoice_voided, invoice}` event carries the same),
   `{:error, :invoice_not_voidable}`, `{:error, :invoice_has_payments}`,
+  `{:error, :checkout_completed}`, `{:error, {:checkout_not_closed, reason}}`,
   `{:error, :invoice_trashed}` for an invoice in the trash, `{:error, :invoice_not_found}` when the invoice is gone, or
   `{:error, changeset}`. Refusals are returned, not rolled
   back, so a transaction of the caller's stays usable.
   """
   def void_invoice(%Invoice{} = invoice, reason \\ nil, opts \\ []) do
-    # A transaction so the durable event commits with the void.
-    result = unwrap_transaction(fn -> void_locked_invoice(invoice, reason, opts) end)
-
-    case result do
+    case void_closing_checkout(invoice, reason, opts, 3) do
       {:ok, voided_invoice} ->
         voided_invoice = ensure_preloaded(voided_invoice, [:order, :user])
         Events.broadcast_invoice_voided(voided_invoice)
@@ -4952,7 +5122,89 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp void_locked_invoice(invoice, reason, opts) do
+  # Closes the open checkout session (outside any lock), then voids under the
+  # lock - provided no other session was opened in between, which goes round again.
+  defp void_closing_checkout(_invoice, _reason, _opts, 0), do: {:error, :checkout_reopened}
+
+  defp void_closing_checkout(invoice, reason, opts, rounds) do
+    with {:ok, handled} <- close_open_checkout(invoice, opts) do
+      # A transaction so the durable event commits with the void.
+      case unwrap_transaction(fn -> void_locked_invoice(invoice, reason, opts, handled) end) do
+        {:error, :checkout_reopened} -> void_closing_checkout(invoice, reason, opts, rounds - 1)
+        result -> result
+      end
+    end
+  end
+
+  # `{:ok, nil}` when there is nothing to close, `{:ok, {session_id, :closed |
+  # :left_open}}` for the session dealt with, or the refusal.
+  defp close_open_checkout(%Invoice{uuid: uuid}, opts) do
+    with true <- Keyword.get(opts, :close_checkout, true),
+         %Invoice{metadata: metadata} = stored <- repo().get(Invoice, uuid),
+         true <- Invoice.voidable?(stored),
+         # A part-paid invoice is refused under the lock below; its customer's
+         # checkout for the rest must not be closed by a void that cannot happen.
+         false <- Decimal.positive?(stored.paid_amount || Decimal.new(0)),
+         %{"provider" => provider, "provider_session_id" => session_id} <-
+           open_checkout(metadata) do
+      case Providers.expire_checkout_session(provider, session_id) do
+        :ok ->
+          {:ok, {session_id, :closed}}
+
+        {:error, :not_supported} ->
+          {:ok, {session_id, :left_open}}
+
+        # Billing has no way to reach that provider any more (switched off or
+        # its keys removed): voided as before, with the payment-after-void
+        # trail as the backstop, rather than an invoice nobody can void.
+        {:error, reason} when reason in [:provider_not_available, :provider_not_found] ->
+          Logger.warning(
+            "Invoice #{stored.invoice_number} voided with its #{provider} checkout session " <>
+              "left open: the provider is not available to close it"
+          )
+
+          {:ok, {session_id, :left_open}}
+
+        {:error, :checkout_completed} ->
+          {:error, :checkout_completed}
+
+        {:error, reason} ->
+          Logger.warning(
+            "Invoice #{stored.invoice_number} not voided: its #{provider} checkout session " <>
+              "could not be closed: #{inspect(reason)}"
+          )
+
+          {:error, {:checkout_not_closed, reason}}
+      end
+    else
+      _ -> {:ok, nil}
+    end
+  end
+
+  # The checkout session recorded on an invoice, while it can still be paid: not
+  # closed by billing and not past the expiry the provider gave it.
+  @doc false
+  def open_checkout(%{"checkout" => %{"provider_session_id" => id} = checkout})
+      when is_binary(id) do
+    cond do
+      checkout["closed_at"] -> nil
+      expired_checkout?(checkout["expires_at"]) -> nil
+      true -> checkout
+    end
+  end
+
+  def open_checkout(_metadata), do: nil
+
+  defp expired_checkout?(expires_at) when is_binary(expires_at) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, at, _} -> DateTime.compare(at, UtilsDate.utc_now()) != :gt
+      _ -> false
+    end
+  end
+
+  defp expired_checkout?(_), do: false
+
+  defp void_locked_invoice(invoice, reason, opts, handled) do
     # The caller's struct may be minutes old: a payment recorded since would
     # otherwise be overwritten by the void (status "paid" -> "void" with the
     # money still in the ledger).
@@ -4967,21 +5219,41 @@ defmodule PhoenixKitBilling do
         cond do
           not Invoice.voidable?(locked) -> {:error, :invoice_not_voidable}
           Decimal.positive?(locked.paid_amount) -> {:error, :invoice_has_payments}
-          true -> void_locked(locked, reason, opts)
+          checkout_reopened?(locked, handled, opts) -> {:error, :checkout_reopened}
+          true -> void_locked(locked, reason, opts, handled)
         end
     end
   end
 
-  defp void_locked(%Invoice{} = locked, reason, opts) do
+  # Another session was recorded after the one closed above was read.
+  defp checkout_reopened?(locked, handled, opts) do
+    case Keyword.get(opts, :close_checkout, true) && open_checkout(locked.metadata) do
+      %{"provider_session_id" => id} ->
+        case handled do
+          {^id, _} -> false
+          _ -> true
+        end
+
+      _ ->
+        false
+    end
+  end
+
+  defp void_locked(%Invoice{} = locked, reason, opts, handled) do
     trail = %{
       "reason" => normalize_reason(reason),
       "by_uuid" => opts[:actor_uuid],
       "at" => now_iso()
     }
 
+    metadata =
+      (locked.metadata || %{})
+      |> Map.put("void", trail)
+      |> mark_checkout_closed_in(handled)
+
     locked
     |> Invoice.status_changeset("void")
-    |> Ecto.Changeset.put_change(:metadata, Map.put(locked.metadata || %{}, "void", trail))
+    |> Ecto.Changeset.put_change(:metadata, metadata)
     |> repo().update()
     |> case do
       {:ok, voided} ->
@@ -4992,6 +5264,52 @@ defmodule PhoenixKitBilling do
         error
     end
   end
+
+  defp mark_checkout_closed_in(metadata, {session_id, :closed}),
+    do: close_checkout_entry(metadata, session_id, "voided")
+
+  defp mark_checkout_closed_in(metadata, _handled), do: metadata
+
+  defp close_checkout_entry(
+         %{"checkout" => %{"provider_session_id" => session_id} = checkout} = metadata,
+         session_id,
+         closed_reason
+       ) do
+    if checkout["closed_at"] do
+      metadata
+    else
+      checkout =
+        Map.merge(checkout, %{"closed_at" => now_iso(), "closed_reason" => closed_reason})
+
+      Map.put(metadata, "checkout", checkout)
+    end
+  end
+
+  defp close_checkout_entry(metadata, _session_id, _closed_reason), do: metadata
+
+  @doc false
+  # The provider reports a checkout session it closed on its own (expired): the
+  # invoice's recorded session, when it is that one, is marked closed so that
+  # nothing tries to close it or send a customer to it again. Returns `:ok` -
+  # an invoice that is gone, or holds another session, is left alone.
+  def mark_checkout_session_closed(invoice_uuid, session_id, closed_reason)
+      when is_binary(session_id) do
+    if is_binary(invoice_uuid) and UUIDUtils.valid?(invoice_uuid) do
+      unwrap_transaction(fn ->
+        with %Invoice{metadata: metadata} = locked <-
+               fetch_locked_invoice(%Invoice{uuid: invoice_uuid}),
+             stored = metadata || %{},
+             updated when updated != stored <-
+               close_checkout_entry(stored, session_id, closed_reason) do
+          locked |> Ecto.Changeset.change(metadata: updated) |> repo().update()
+        end
+      end)
+    end
+
+    :ok
+  end
+
+  def mark_checkout_session_closed(_invoice_uuid, _session_id, _closed_reason), do: :ok
 
   @doc """
   Keeps, on a void invoice, a provider charge that arrived after the void.
@@ -6074,6 +6392,9 @@ defmodule PhoenixKitBilling do
   Records a refund for an invoice.
 
   Creates a transaction with negative amount and updates invoice's paid_amount.
+  It moves no money: for a refund made some other way (a bank transfer). To
+  return a provider payment through its provider, use `refund_at_provider/3`,
+  which makes the refund there and records it.
 
   ## Parameters
 
@@ -6115,9 +6436,18 @@ defmodule PhoenixKitBilling do
         {:error, :exceeds_paid_amount}
 
       true ->
-        # Convert to negative for refund
-        negative_amount = Decimal.negate(amount)
-        do_record_transaction(invoice, negative_amount, attrs, admin_user)
+        refund_id = attrs[:provider_transaction_id] || attrs["provider_transaction_id"]
+
+        record_provider_refund(
+          invoice,
+          attrs,
+          fn locked ->
+            if refund_id_recorded?(locked, refund_id),
+              do: {:error, :already_recorded},
+              else: {:ok, amount}
+          end,
+          admin_user
+        )
     end
   end
 
@@ -6125,7 +6455,7 @@ defmodule PhoenixKitBilling do
   # invoice lock as the insert, so concurrent deliveries cannot both claim
   # the same unrecorded part of a cumulative refund.
   @doc false
-  def record_provider_refund(%Invoice{} = invoice, attrs, amount_fun)
+  def record_provider_refund(%Invoice{} = invoice, attrs, amount_fun, admin_user \\ nil)
       when is_function(amount_fun, 1) do
     do_record_transaction(
       invoice,
@@ -6141,9 +6471,242 @@ defmodule PhoenixKitBilling do
         end
       end,
       attrs,
-      nil
+      admin_user
     )
   end
+
+  @doc false
+  # Whether a refund row of `invoice` is booked under the provider's refund id.
+  def refund_id_recorded?(%Invoice{uuid: uuid}, refund_id)
+      when is_binary(refund_id) and refund_id != "" do
+    repo().exists?(
+      from(t in Transaction,
+        where:
+          t.invoice_uuid == ^uuid and t.amount < 0 and t.provider_transaction_id == ^refund_id
+      )
+    )
+  end
+
+  def refund_id_recorded?(_invoice, _refund_id), do: false
+
+  @doc """
+  Puts a refund that failed at the provider back on its invoice.
+
+  A provider can accept a refund and fail it later (a closed card, a refund the
+  bank returns): the customer never got the money, but the ledger had booked it.
+  The webhook processor calls this for the refund's ledger row (`refund`, a
+  negative transaction) with what the provider said (`failure`: `:provider`,
+  `:refund_id`, `:status`, `:failure_reason`). Under the invoice lock it:
+
+  - books a reversal: a positive row of the refunded amount, same method, with
+    `provider_data` `"source" => "refund_failed"` and `"reverses_refund_uuid"`;
+    `paid_amount` goes back up by it;
+  - marks the refund row (`"refund_status"`, `"failure_reason"`,
+    `"reversed_by_uuid"`), so later refunds do not count it as given back;
+  - undoes a void a refund caused (`metadata["voided_by_refund"]`) once money is
+    back on the invoice: `paid` when the ledger covers the total again, else
+    `sent`/`overdue`. A void made by `void_invoice/3` stays;
+  - adds an entry to `metadata["refund_failures"]`, which the admin invoice page
+    shows.
+
+  A linked order marked refunded stays refunded: the page says so, for the
+  operator to settle. Returns `{:ok, reversal}`, `{:ok, :already_reversed}` (the
+  failure arrived again: nothing changes) or `{:error, reason}`.
+  """
+  def reverse_failed_refund(%Transaction{} = refund, failure) when is_map(failure) do
+    result =
+      repo().transaction(fn ->
+        with %Invoice{} = locked <- fetch_locked_invoice(%Invoice{uuid: refund.invoice_uuid}),
+             %Transaction{} = stored <- repo().get(Transaction, refund.uuid),
+             true <- Decimal.negative?(stored.amount) || repo().rollback(:not_a_refund),
+             false <- refund_reversed?(stored) do
+          book_refund_reversal(locked, stored, failure)
+        else
+          true -> :already_reversed
+          nil -> repo().rollback(:not_found)
+        end
+      end)
+
+    case result do
+      {:ok, :already_reversed} ->
+        {:ok, :already_reversed}
+
+      {:ok, {reversal, broadcasts}} ->
+        Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
+        for {:broadcast_invoice_paid, paid} <- broadcasts, do: resume_paid_subscription(paid)
+        {:ok, reversal}
+
+      error ->
+        error
+    end
+  end
+
+  defp refund_reversed?(%Transaction{uuid: uuid, provider_data: data}) do
+    is_binary((data || %{})["reversed_by_uuid"]) or
+      repo().exists?(
+        from(t in Transaction,
+          where: t.amount > 0 and fragment("?->>'reverses_refund_uuid'", t.provider_data) == ^uuid
+        )
+      )
+  end
+
+  defp book_refund_reversal(locked, refund, failure) do
+    amount = Decimal.abs(refund.amount)
+    refund_id = failure[:refund_id] || refund.provider_transaction_id
+
+    attrs = %{
+      payment_method: refund.payment_method,
+      description: "Refund #{refund_id || refund.transaction_number} failed: put back",
+      provider_data: %{
+        "source" => "refund_failed",
+        "reverses_refund_uuid" => refund.uuid,
+        "refund_id" => refund_id,
+        "refund_status" => failure[:status],
+        "failure_reason" => failure[:failure_reason]
+      }
+    }
+
+    case insert_transaction(build_transaction_attrs(locked, amount, attrs, nil)) do
+      {:ok, reversal} ->
+        refund
+        |> Ecto.Changeset.change(
+          provider_transaction_id: refund_id,
+          provider_data:
+            Map.merge(refund.provider_data || %{}, %{
+              "refund_status" => failure[:status],
+              "failure_reason" => failure[:failure_reason],
+              "reversed_by_uuid" => reversal.uuid
+            })
+        )
+        |> repo().update!()
+
+        invoice = restore_after_failed_refund(locked, refund, reversal, failure)
+        update_receipt_status(invoice)
+
+        broadcasts =
+          [{:broadcast_transaction_created, reversal}] ++
+            if invoice.status == "paid" and locked.status == "void",
+              do: [{:broadcast_invoice_paid, invoice}],
+              else: []
+
+        {reversal, broadcasts}
+
+      {:exhausted, changeset} ->
+        repo().rollback(changeset)
+
+      {:error, changeset} ->
+        repo().rollback(changeset)
+    end
+  end
+
+  # "paid" only when the ledger covers the total again (another refund of it may have
+  # gone through); otherwise owed, and overdue past its due date.
+  defp restored_status(from, invoice, paid_amount) do
+    cond do
+      from == "paid" and Decimal.compare(paid_amount, invoice.total) != :lt -> "paid"
+      from == "overdue" -> "overdue"
+      invoice.due_date && Date.compare(invoice.due_date, Date.utc_today()) == :lt -> "overdue"
+      true -> "sent"
+    end
+  end
+
+  defp restore_after_failed_refund(locked, refund, reversal, failure) do
+    metadata = locked.metadata || %{}
+
+    entry = %{
+      "refund_transaction_uuid" => refund.uuid,
+      "reversal_transaction_uuid" => reversal.uuid,
+      "refund_id" => failure[:refund_id] || refund.provider_transaction_id,
+      "provider" => to_string(failure[:provider] || refund.payment_method),
+      "amount" => Decimal.to_string(Decimal.abs(refund.amount)),
+      "failure_reason" => failure[:failure_reason],
+      "at" => now_iso()
+    }
+
+    metadata =
+      Map.put(metadata, "refund_failures", (metadata["refund_failures"] || []) ++ [entry])
+
+    paid_amount = calculate_invoice_paid_amount(locked.uuid)
+    changes = %{paid_amount: paid_amount, metadata: metadata}
+
+    # A void a refund caused (paid_amount reached zero) is undone once money is back
+    # on the invoice - whichever of its refunds failed. A void made by
+    # `void_invoice/3` has no such marker and stays. status_changeset/2 allows no
+    # way out of "void", so the row is put back by hand, at the status its ledger
+    # now supports.
+    changes =
+      case metadata["voided_by_refund"] do
+        %{"from" => from} ->
+          if locked.status == "void" and Decimal.positive?(paid_amount) do
+            status = restored_status(from, locked, paid_amount)
+
+            Map.merge(changes, %{
+              status: status,
+              voided_at: nil,
+              paid_at: if(status == "paid", do: locked.paid_at),
+              metadata: Map.delete(metadata, "voided_by_refund")
+            })
+          else
+            changes
+          end
+
+        _ ->
+          changes
+      end
+
+    restored = locked |> Ecto.Changeset.change(changes) |> repo().update!()
+
+    # Handlers that undid their work on `:refunded` hear that it is paid again.
+    if restored.status == "paid" and locked.status == "void" do
+      InvoiceEvents.enqueue(:paid, restored)
+    end
+
+    restored
+  end
+
+  @doc """
+  Refunds an invoice's provider payments AT THE PROVIDER and records the refunds.
+
+  `record_refund/3` only books a refund in the ledger; this one returns the money:
+  it calls the provider that took each payment (`Providers.create_refund/4`, with
+  an idempotency key), then books the refund under its own id, with the payment it
+  reversed named in `provider_data`. The provider's refund webhook that follows
+  adds nothing (and books the refund itself if this call crashed in between).
+
+  ## Attributes
+
+  - `:amount` - what to refund; omitted or nil refunds everything refundable (a
+    full refund). An amount is taken from the newest payments first.
+  - `:description` - the ledger row's description (default "Refund via <provider>")
+  - `:reason` - passed to the provider (Stripe: `"duplicate"`, `"fraudulent"`,
+    `"requested_by_customer"`)
+  - `:provider` - refund only payments of this provider
+  - `:transaction_uuid` - refund only this payment
+  - `:idempotency_key` - your own key for the provider calls (one per payment is
+    derived from it)
+
+  `admin_user` (a user, a scope or nil) is who the ledger rows are attributed to.
+  Results and errors: `PhoenixKitBilling.ProviderRefunds`. A full refund voids
+  the invoice and refunds its order as `record_refund/3` always has; the durable
+  `:refunded` invoice event is enqueued with each row.
+
+  ## Examples
+
+      {:ok, [%{refund: refund, transaction: tx}]} =
+        Billing.refund_at_provider(invoice, %{amount: "10.00", description: "Late cancel"}, admin)
+
+      {:ok, _results} = Billing.refund_at_provider(invoice, %{}, nil)
+  """
+  def refund_at_provider(%Invoice{} = invoice, attrs \\ %{}, admin_user \\ nil),
+    do: PhoenixKitBilling.ProviderRefunds.refund(invoice, attrs, admin_user)
+
+  @doc """
+  What `refund_at_provider/3` could refund on `invoice` right now, through
+  `provider` or any provider (nil): its provider payments less the refunds
+  recorded against them, capped by `paid_amount`.
+  """
+  def provider_refundable_amount(%Invoice{} = invoice, provider \\ nil),
+    do: PhoenixKitBilling.ProviderRefunds.refundable_amount(invoice, provider)
 
   defp do_record_transaction(invoice, amount_or_fun, attrs, admin_user) do
     result =
@@ -6178,11 +6741,41 @@ defmodule PhoenixKitBilling do
         Enum.each(broadcasts, fn {fun, arg} -> apply(Events, fun, [arg]) end)
 
         for {:broadcast_invoice_paid, paid} <- broadcasts, do: resume_paid_subscription(paid)
+
+        for {:broadcast_transaction_refunded, refund} <- broadcasts,
+            do: close_checkout_of_refunded_void(refund.invoice_uuid)
+
         {:ok, transaction}
 
       error ->
         error
     end
+  end
+
+  # A refund that takes the invoice to zero voids it (`handle_refund_transaction/1`)
+  # without `void_invoice/3`: a checkout session still open for the rest of a
+  # part-paid invoice is closed here, after the commit, as a void would close it.
+  defp close_checkout_of_refunded_void(invoice_uuid) do
+    with %Invoice{status: "void", metadata: metadata} = invoice <-
+           repo().get(Invoice, invoice_uuid),
+         %{"provider" => provider, "provider_session_id" => session_id} <-
+           open_checkout(metadata || %{}) do
+      case Providers.expire_checkout_session(provider, session_id) do
+        :ok ->
+          mark_checkout_session_closed(invoice_uuid, session_id, "voided")
+
+        {:error, reason} when reason in [:not_supported, :provider_not_available] ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Invoice #{invoice.invoice_number} was voided by a full refund with its " <>
+              "#{provider} checkout session #{session_id} still open: #{inspect(reason)}"
+          )
+      end
+    end
+
+    :ok
   end
 
   defp transaction_amount(amount_fun, locked) when is_function(amount_fun, 1),
@@ -6199,7 +6792,7 @@ defmodule PhoenixKitBilling do
         # `change/2`, so against the caller's older struct it drops the
         # update whenever the ledger sum happens to equal the old value,
         # leaving the column out of step with the ledger.
-        invoice_broadcasts = apply_transaction_to_invoice(locked, amount)
+        invoice_broadcasts = apply_transaction_to_invoice(locked, amount, transaction)
 
         transaction_broadcast =
           if Decimal.negative?(amount),
@@ -6249,7 +6842,7 @@ defmodule PhoenixKitBilling do
 
   # Inside the transaction: brings the invoice in line with its ledger and
   # returns the broadcasts to send once it commits.
-  defp apply_transaction_to_invoice(invoice, amount) do
+  defp apply_transaction_to_invoice(invoice, amount, transaction) do
     new_paid_amount = calculate_invoice_paid_amount(invoice.uuid)
 
     invoice
@@ -6279,7 +6872,7 @@ defmodule PhoenixKitBilling do
       end
 
     if Decimal.negative?(amount) do
-      order_broadcasts = handle_refund_transaction(invoice.uuid)
+      order_broadcasts = handle_refund_transaction(invoice.uuid, transaction.uuid)
       InvoiceEvents.enqueue(:refunded, get_invoice!(invoice.uuid))
       became_paid ++ order_broadcasts
     else
@@ -7061,45 +7654,46 @@ defmodule PhoenixKitBilling do
     # A session for an invoice that is void (or paid) would send the customer
     # to pay for it. Checked on the stored row, before the provider call - not
     # under a lock, which must not be held across a network call.
-    if stored_payable?(invoice) do
-      case Providers.create_checkout_session(provider, invoice, provider_opts) do
-        {:ok, session} -> persist_checkout_session(invoice, provider, session)
-        {:error, reason} -> {:error, reason}
-      end
+    with %Invoice{} = stored <- get_invoice(invoice.uuid, preload: [:user]),
+         true <- Invoice.payable?(stored),
+         {:ok, session} <- Providers.create_checkout_session(provider, stored, provider_opts) do
+      persist_checkout_session(stored, provider, session)
     else
-      {:error, :invoice_not_payable}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invoice_not_payable}
     end
   end
 
-  defp stored_payable?(%Invoice{uuid: uuid}) do
-    case repo().get(Invoice, uuid) do
-      nil -> false
-      stored -> Invoice.payable?(stored)
-    end
-  end
-
-  # Record checkout session info on the invoice. The invoice schema has no
-  # dedicated checkout columns, so it is stashed under metadata["checkout"],
-  # merged into the LOCKED row. The invoice may have been voided while the
-  # provider call was in flight: then nothing is written and the customer is
-  # not sent to a session for a void invoice (the provider's session just
-  # expires). A failed update is only logged: it must not lose the live
-  # session URL we already owe the caller.
+  # Only hand out the URL once the locked invoice still matches the charge
+  # and holds the session ID that a subsequent void needs.
   defp persist_checkout_session(invoice, provider, session) do
     case record_checkout_session(invoice, provider, session) do
       :ok ->
         {:ok, session.url}
 
-      {:error, :invoice_not_payable} ->
-        {:error, :invoice_not_payable}
+      {:error, reason} ->
+        close_orphan_session(provider, session)
+        {:error, reason}
+    end
+  end
+
+  # When the provider says when the session ends, so that `void_invoice/3` does
+  # not try to close one that is long gone.
+  defp put_session_expiry(checkout, %{expires_at: %DateTime{} = expires_at}),
+    do: Map.put(checkout, "expires_at", DateTime.to_iso8601(expires_at))
+
+  defp put_session_expiry(checkout, _session), do: checkout
+
+  defp close_orphan_session(provider, %{id: session_id}) do
+    case Providers.expire_checkout_session(provider, session_id) do
+      :ok ->
+        :ok
 
       {:error, reason} ->
         Logger.warning(
-          "Checkout session created but failed to persist to invoice " <>
-            "#{invoice.invoice_number}: #{inspect(reason)}"
+          "Checkout session #{session_id} opened for an invoice that is no longer payable " <>
+            "could not be closed: #{inspect(reason)}"
         )
-
-        {:ok, session.url}
     end
   end
 
@@ -7113,31 +7707,89 @@ defmodule PhoenixKitBilling do
             {:error, :invoice_not_found}
 
           locked ->
-            if Invoice.payable?(locked) do
-              checkout = %{
-                "provider_session_id" => session.id,
-                "url" => session.url,
-                "provider" => to_string(provider),
-                "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
-              }
-
-              locked
-              |> Ecto.Changeset.change(%{
-                metadata: Map.put(locked.metadata || %{}, "checkout", checkout)
-              })
-              |> repo().update()
-            else
-              {:error, :invoice_not_payable}
-            end
+            if Invoice.payable?(locked) and locked.currency == invoice.currency and
+                 Decimal.equal?(
+                   Invoice.remaining_amount(locked),
+                   Invoice.remaining_amount(invoice)
+                 ),
+               do: put_checkout_session(locked, provider, session),
+               else: {:error, :invoice_not_payable}
         end
       end)
 
     case result do
-      {:ok, _invoice} -> :ok
-      {:error, %Ecto.Changeset{errors: errors}} -> {:error, errors}
-      {:error, reason} -> {:error, reason}
+      {:ok, replaced} ->
+        close_superseded_session(replaced)
+        :ok
+
+      {:error, %Ecto.Changeset{errors: errors}} ->
+        {:error, errors}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
+
+  # On the locked, payable row: `{:ok, replaced}` with the open session the new one
+  # replaces (or nil).
+  defp put_checkout_session(locked, provider, session) do
+    checkout =
+      %{
+        "provider_session_id" => session.id,
+        "url" => session.url,
+        "provider" => to_string(provider),
+        "created_at" => UtilsDate.utc_now() |> DateTime.to_iso8601()
+      }
+      |> put_session_expiry(session)
+
+    replaced = superseded_checkout(locked.metadata, session.id)
+
+    locked
+    |> Ecto.Changeset.change(%{metadata: Map.put(locked.metadata || %{}, "checkout", checkout)})
+    |> repo().update()
+    |> case do
+      {:ok, _invoice} -> {:ok, replaced}
+      error -> error
+    end
+  end
+
+  # The invoice keeps ONE session (`metadata["checkout"]`). A session it still
+  # held open when another was recorded - a second click, a second tab of the
+  # payment page, another provider - would no longer be found by
+  # `void_invoice/3`, and could still be paid after a void: it is closed at its
+  # provider once the new one is recorded (best effort, logged).
+  defp superseded_checkout(metadata, new_session_id) do
+    case open_checkout(metadata || %{}) do
+      %{"provider_session_id" => id} = checkout when id != new_session_id -> checkout
+      _ -> nil
+    end
+  end
+
+  defp close_superseded_session(nil), do: :ok
+
+  defp close_superseded_session(%{"provider" => provider, "provider_session_id" => id}) do
+    case Providers.expire_checkout_session(provider, id) do
+      :ok ->
+        :ok
+
+      # A provider whose sessions cannot be closed: as before, they expire.
+      {:error, reason} when reason in [:not_supported, :provider_not_available] ->
+        :ok
+
+      # Paid before it could be closed: the provider's webhook books it.
+      {:error, :checkout_completed} ->
+        Logger.info("Checkout session #{id} replaced by a newer one had already been paid")
+
+      {:error, reason} ->
+        Logger.warning(
+          "Checkout session #{id} replaced by a newer one could not be closed at " <>
+            "#{provider}: #{inspect(reason)}"
+        )
+    end
+  end
+
+  # A recorded session without a provider (metadata written by hand): nothing to call.
+  defp close_superseded_session(_checkout), do: :ok
 
   @doc """
   Starts the online payment of an order and returns where to send the buyer.
@@ -7297,20 +7949,39 @@ defmodule PhoenixKitBilling do
     end
   end
 
-  defp handle_refund_transaction(invoice_uuid) do
+  defp handle_refund_transaction(invoice_uuid, refund_uuid) do
     invoice = get_invoice!(invoice_uuid)
     update_receipt_status(invoice)
 
-    # If fully refunded (paid_amount = 0), mark invoice as void and order as refunded
-    if Decimal.eq?(invoice.paid_amount, Decimal.new(0)) do
-      invoice
-      |> Invoice.status_changeset("void")
-      |> repo().update!()
+    # If fully refunded (paid_amount = 0), mark invoice as void and order as refunded.
+    # The refund that voided it is noted, so that `reverse_failed_refund/2` can undo
+    # the void when that refund fails at the provider.
+    cond do
+      not Decimal.eq?(invoice.paid_amount, Decimal.new(0)) ->
+        []
 
-      maybe_mark_linked_order_refunded(invoice)
-    else
-      []
+      # Void already, holding money a failed refund put back: the last refund
+      # leaves it void (a void has no transition to void).
+      invoice.status == "void" ->
+        maybe_mark_linked_order_refunded(invoice)
+
+      true ->
+        void_by_refund(invoice, refund_uuid)
     end
+  end
+
+  defp void_by_refund(invoice, refund_uuid) do
+    marker = %{"refund_uuid" => refund_uuid, "from" => invoice.status, "at" => now_iso()}
+
+    invoice
+    |> Invoice.status_changeset("void")
+    |> Ecto.Changeset.put_change(
+      :metadata,
+      Map.put(invoice.metadata || %{}, "voided_by_refund", marker)
+    )
+    |> repo().update!()
+
+    maybe_mark_linked_order_refunded(invoice)
   end
 
   defp get_bank_details do

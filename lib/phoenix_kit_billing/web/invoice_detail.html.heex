@@ -198,6 +198,32 @@
       <% end %>
     <% end %>
 
+    <%!-- A refund the provider failed later was put back on the invoice (reverse_failed_refund/2). --%>
+    <%= if failures = (@invoice.metadata || %{})["refund_failures"] do %>
+      <div id="invoice-refund-failures" role="alert" class="alert alert-warning mb-6">
+        <.icon name="hero-exclamation-triangle" class="w-6 h-6" />
+        <div>
+          <h3 class="font-bold">
+            {gettext("A refund failed at the payment provider - the customer did not get the money back")}
+          </h3>
+          <ul class="text-sm">
+            <%= for failure <- failures do %>
+              <li>
+                {gettext("%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand.",
+                  amount: failure["amount"],
+                  currency: @invoice.currency,
+                  provider: format_payment_method_name(failure["provider"])
+                )}
+              </li>
+            <% end %>
+          </ul>
+          <p :if={match?(%{status: "refunded"}, @invoice.order)} class="text-sm">
+            {gettext("The order is still marked refunded.")}
+          </p>
+        </div>
+      </div>
+    <% end %>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <%!-- Main Content --%>
       <div class="lg:col-span-2 space-y-6">
@@ -576,6 +602,32 @@
                 <p class="text-base-content/50 mt-2">{gettext("No customer linked")}</p>
               <% end %>
             <% end %>
+            <%= if pay_link = pay_link(@invoice) do %>
+              <div class="mt-3" id="invoice-pay-link">
+                <div class="text-sm font-medium">{gettext("Payment link")}</div>
+                <input
+                  type="text"
+                  readonly
+                  value={pay_link}
+                  class="input input-sm w-full font-mono text-xs"
+                />
+                <div class="text-xs text-base-content/60 mt-1">
+                  {gettext("Anyone with this link can view and pay the invoice. Send it only to the payer.")}
+                </div>
+                <button
+                  :if={@can_manage_invoices}
+                  type="button"
+                  class="btn btn-ghost btn-xs mt-1"
+                  id="invoice-pay-link-revoke"
+                  phx-click="revoke_pay_link"
+                  data-confirm={
+                    gettext("The link sent so far will stop working. Make a new one?")
+                  }
+                >
+                  {gettext("New link")}
+                </button>
+              </div>
+            <% end %>
           </div>
         </div>
 
@@ -903,6 +955,58 @@
                 </option>
               <% end %>
             </select>
+            <%= if refundable = provider_refundable(@invoice, @selected_refund_payment_method) do %>
+              <p
+                :if={not @refund_record_only}
+                class="text-sm text-info mt-2"
+                id="refund-at-provider-note"
+              >
+                {gettext("The refund is made at %{provider} and returns the money to the customer (up to %{amount}).",
+                  provider: format_payment_method_name(@selected_refund_payment_method),
+                  amount: "#{refundable} #{@invoice.currency}"
+                )}
+              </p>
+              <label class="label cursor-pointer justify-start gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  name="record_only"
+                  value="true"
+                  id="refund-record-only"
+                  class="checkbox checkbox-sm"
+                  checked={@refund_record_only}
+                />
+                <span class="text-sm">
+                  {gettext("Already refunded at the provider - only record it")}
+                </span>
+              </label>
+              <div :if={@refund_record_only} class="mt-2" id="refund-record-only-details">
+                <label class="label" for="refund-provider-id">
+                  <span class="text-sm">{gettext("Refund id at the provider (optional)")}</span>
+                </label>
+                <input
+                  type="text"
+                  name="provider_refund_id"
+                  id="refund-provider-id"
+                  value={@refund_provider_id}
+                  class="input input-sm w-full font-mono"
+                  autocomplete="off"
+                />
+                <p
+                  :if={
+                    @refund_provider_id == "" and
+                      @selected_refund_payment_method in ~w(stripe everypay)
+                  }
+                  class="text-sm text-warning mt-1"
+                  id="refund-provider-id-warning"
+                >
+                  {gettext("Without the provider's refund id, a later refund of this payment made at the provider may not be booked.")}
+                </p>
+              </div>
+            <% else %>
+              <p class="text-sm text-base-content/60 mt-2">
+                {gettext("The refund is only recorded here: return the money yourself.")}
+              </p>
+            <% end %>
           </div>
 
           <div class="modal-action">
@@ -940,8 +1044,30 @@
             ></textarea>
           </div>
 
+          <div
+            :if={@void_checkout_unreachable}
+            id="void-checkout-unreachable"
+            role="alert"
+            class="alert alert-warning mt-4 text-sm"
+          >
+            {gettext("The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund.")}
+          </div>
+
           <div class="modal-action">
             <button type="button" phx-click="close_void_modal" class="btn">{gettext("Cancel")}</button>
+            <button
+              :if={@void_checkout_unreachable}
+              type="submit"
+              id="void-anyway-button"
+              name="void_anyway"
+              value="true"
+              class="btn btn-error btn-outline"
+              data-confirm={
+                gettext("The customer's checkout may still be payable. Void the invoice anyway?")
+              }
+            >
+              {gettext("Void anyway")}
+            </button>
             <button type="submit" class="btn btn-error">
               <.icon name="hero-x-mark" class="w-4 h-4" /> {gettext("Void")}
             </button>

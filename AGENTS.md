@@ -90,14 +90,17 @@ alone.
   `admin_tabs/0` entries. Detail, form and print routes are declared in
   `Web.Routes.admin_routes/0` and `admin_locale_routes/0` (same route list, `_locale`
   route-name suffix) — a path is registered by one mechanism or the other, never
-  both. Public webhook routes come from `Web.Routes.generate/1`, reached through
-  `route_module/0`. A host never hand-registers any of them.
+  both. Public webhook routes and the public payment page (`/billing/pay/:token`,
+  both URL shapes in one `live_session`) come from `Web.Routes.generate/1`, reached
+  through `route_module/0`. A host never hand-registers any of them.
 - **LiveViews use `use Phoenix.LiveView`** plus `use Gettext, backend:
   PhoenixKitBilling.Gettext` and explicit imports of the core components they
   need (`PhoenixKitWeb.Components.Core.*`). They do not use the `PhoenixKitWeb`
   macro and do not wrap templates in `LayoutWrapper` — admin chrome comes from
   core's route wiring. Assigns available in admin pages:
-  `@phoenix_kit_current_scope`, `@current_locale`, `@url_path`.
+  `@phoenix_kit_current_scope`, `@current_locale`, `@url_path`. The one exception
+  is the public payment page `Web.GuestInvoice`: it has no admin chrome, so it wraps
+  itself in `LayoutWrapper.app_layout`, as bookings' public pages do.
 - **Gettext:** own backend `PhoenixKitBilling.Gettext` over `priv/gettext`
   (`en`, `et`, `ru`, `uk`, `de`, `fr` — `de`/`fr` cover only the shared billing
   profile form so far). `billing_tab!/1` injects `gettext_backend:` and
@@ -153,7 +156,9 @@ alone.
   schema does `use PhoenixKit.SchemaPrefix`.
 - **Async billing work runs on Oban** (renewal, dunning and durable event workers),
   all on the `:billing` queue, which `oban_queues/0` declares: a worker on an
-  undeclared queue waits forever and nothing fails. Never spawn a
+  undeclared queue waits forever and nothing fails. The daily renewal run is
+  declared through `oban_crons/0`, and its batch clause does nothing while billing
+  is disabled (the cron entry stays in a host's config). Never spawn a
   bare `Task` for it.
 - **Config lives in PhoenixKit Settings**, not application env; read it through
   `PhoenixKitBilling.get_config/0` and friends. Provider registration is automatic
@@ -231,15 +236,18 @@ lib/phoenix_kit_billing/
 ├── events.ex                            # PubSub broadcasts
 ├── gettext.ex                           # Module gettext backend
 ├── invoice_events.ex                    # Durable paid/refunded/voided hook for other modules (Oban)
+├── invoice_event_handler.ex             # Optional behaviour for those handlers
+├── invoice_links.ex                     # Signed links to an invoice's public payment page
 ├── migrations.ex                        # Module-owned migration chain
 ├── notifications.ex                     # Audience resolution + copy for core notifications
 ├── order_events.ex                      # Durable paid/refunded/cancelled/reinstated hook for other modules (Oban)
 ├── paths.ex                             # Centralized URL helpers
+├── provider_refunds.ex                  # refund_at_provider/3: refund at the provider, then book it
 ├── supervisor.ex                        # Registers providers, logs the CoreCompat report
 ├── compat/                              # Legacy PhoenixKit.Modules.Billing delegates
 ├── mix_tasks/                           # phoenix_kit_billing.install
 ├── plugs/cache_body_reader.ex           # Raw-body cache for webhook signatures
-├── providers/                           # Provider behaviour (10 callbacks, `detach_payment_method/1` optional), registry, 4 impls, types
+├── providers/                           # Provider behaviour (12 callbacks; `detach_payment_method/1`, `expire_checkout_session/1` and `refunded_total/1` optional), registry, 4 impls, types
 ├── schemas/                             # 11 Ecto schemas
 ├── utils/                               # IBAN data, webhook_processor.ex
 ├── workers/                             # Oban: subscription renewal, dunning, invoice and order events; subscription_charge.ex is what signup and the two subscription workers share
@@ -251,6 +259,7 @@ lib/phoenix_kit_billing/
     ├── *_print.ex                       # Invoice, receipt, credit note, payment confirmation
     │                                    #   (shared parts: components/print_document.ex)
     ├── project_billing_live.ex          # "Customer billing" project-extension tab
+    ├── guest_invoice.ex                 # Public payment page /billing/pay/:token (no login)
     └── components/                      # CurrencyDisplay, status badges, settings tabs, subscription helpers, BillingProfileFields (shared billing profile form fields)
 ```
 
@@ -273,7 +282,51 @@ lib/phoenix_kit_billing/
 Invoice status workflow: `draft → sent → paid`, with `sent → overdue → paid` and
 `→ void` as the exits. An invoice holding money is not voided
 (`:invoice_has_payments`): it is refunded, and the refund that takes it to zero
-voids it.
+voids it. A void first closes an open checkout session recorded on the invoice
+(`metadata["checkout"]`, not `closed_at`, not past `expires_at`) through the
+provider's optional `expire_checkout_session/1`, outside the row lock: refused with
+`:checkout_completed` when the customer paid through it and with
+`{:checkout_not_closed, reason}` when the provider cannot be reached
+(`close_checkout: false` skips the step); a provider that cannot close sessions or
+is no longer configured voids as before, with a warning; a session recorded meanwhile goes round
+again (three rounds, then `:checkout_reopened`). Recording a new session closes the
+open one it replaces, and a refund that voids a part-paid invoice closes its open
+session after the commit.
+
+**Refunds that move money.** `record_refund/3` only books; `refund_at_provider/3`
+(`ProviderRefunds`) calls `Providers.create_refund/4` for the invoice's provider
+payments (newest first, each up to what it took less the refunds recorded against
+it) with an idempotency key, then books the refund under its own id with
+`refunded_transaction_uuid`, `charge_id` and `payment_intent_id` in
+`provider_data`, through `record_provider_refund/4` under the invoice lock. What
+the webhook's running total already booked is not booked again, and vice versa.
+The admin refund dialog takes this path for a provider method with a payment on
+the invoice, unless "Already refunded at the provider - only record it" is ticked.
+A refund that names no payment (recorded by hand) counts once, through
+`paid_amount`, not against each payment (the webhooks' running-total
+reconciliation still counts it against the charge). A refund the provider fails
+later is put back by `reverse_failed_refund/2`: a reversal row (`"source" =>
+"refund_failed"`), `reversed_by_uuid` on the refund row, the void it caused undone
+(`metadata["voided_by_refund"]`, any of its refunds; the status follows the ledger),
+`metadata["refund_failures"]` for the admin page,
+an activity row written by the webhook processor (no LiveView is involved there);
+a linked order stays refunded by design. On a running-total provider the processor
+then reads the payment's refunded total back (optional provider callback
+`refunded_total/1`: Stripe; EveryPay has it but reports no refund failures) and
+books what the ledger lacks; a failed read-back fails the event for a redelivery.
+A currency with more than two decimal places is refused for provider refunds and
+new invoices (`:currency_too_precise`): the ledger columns are `numeric(15,2)`.
+`metadata["void"]`, `["pay_link_generation"]`, `["voided_by_refund"]` and
+`["refund_failures"]` are billing's own: `Invoice.changeset/2` keeps them.
+
+**Guest invoices.** `create_guest_invoice/2` (no `user_uuid`, details in
+`billing_details`); `InvoiceLinks` signs `Phoenix.Token`s over the invoice uuid with
+the endpoint's `secret_key_base` (or `:invoice_link_secret`), 180 days by default
+(`:invoice_link_max_age`). The token is the page's only credential and carries
+the invoice's link generation (`metadata["pay_link_generation"]`), which
+`revoke_invoice_pay_links/1` moves on to stop that invoice's links; a token of a
+draft or of an invoice in the trash finds nothing. The page's `live_session` takes
+core's `PhoenixKitWeb.CSP` session and on_mount when core has the module.
 
 **Reinstating a cancelled order.** `reinstate_order/3` (`reason`, `actor_uuid:`;
 no actor when the system does it) takes a `cancelled` order back to
@@ -403,7 +456,9 @@ observe a stale entry.
 
 `phoenix_kit:billing:orders`, `:invoices`, `:profiles`, `:transactions`,
 `:credit_notes`, `:subscriptions`, `:currencies`. Every topic also supports a
-per-user form with a `:user:<user_uuid>` suffix.
+per-user form with a `:user:<user_uuid>` suffix (nothing is sent there for a record
+without a user). One invoice's events, and its transactions', also go to
+`phoenix_kit:billing:invoices:invoice:<uuid>` (`Events.subscribe_invoice/1`).
 
 Trashing announces `{:order_trashed, order}` / `{:order_restored, order}` and
 `{:invoice_trashed, invoice}` / `{:invoice_restored, invoice}` on the order and

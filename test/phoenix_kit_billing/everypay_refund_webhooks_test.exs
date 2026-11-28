@@ -55,7 +55,7 @@ defmodule PhoenixKitBilling.EveryPayRefundWebhooksTest do
   defp refund_amounts(invoice) do
     from(t in Transaction,
       where: t.invoice_uuid == ^invoice.uuid and t.amount < 0,
-      order_by: [asc: t.inserted_at],
+      order_by: [desc: t.amount],
       select: t.amount
     )
     |> Repo.all()
@@ -69,7 +69,40 @@ defmodule PhoenixKitBilling.EveryPayRefundWebhooksTest do
     assert {:ok, _} = deliver(refunded(reference, "partially_refunded", [30.0]))
     assert {:ok, _} = deliver(refunded(reference, "partially_refunded", [30.0, 20.0]))
 
-    assert refund_amounts(invoice) == ["30", "20"]
+    assert refund_amounts(invoice) == ["20", "30"]
+    assert Decimal.equal?(Billing.get_invoice!(invoice.uuid).paid_amount, "50.00")
+  end
+
+  test "provider-initiated partial refunds can share a payment reference", %{
+    invoice: invoice,
+    reference: reference
+  } do
+    settings = ~w(enabled api_username api_secret account_name)
+
+    for {field, value} <- Enum.zip(settings, ~w(true test secret EUR3D1)) do
+      PhoenixKit.Settings.update_setting("billing_everypay_" <> field, value)
+    end
+
+    Application.put_env(:phoenix_kit_billing, :everypay_req_options, plug: {Req.Test, __MODULE__})
+
+    on_exit(fn ->
+      Application.delete_env(:phoenix_kit_billing, :everypay_req_options)
+
+      for field <- settings,
+          do: PhoenixKit.Settings.update_setting("billing_everypay_" <> field, "")
+    end)
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      Req.Test.json(conn, refunded(reference, "partially_refunded", []))
+    end)
+
+    for amount <- ["30", "20"] do
+      assert {:ok, [%{transaction: %Transaction{}}]} =
+               Billing.refund_at_provider(invoice, %{amount: amount})
+    end
+
+    assert {:ok, :already_refunded} = deliver(refunded(reference, "partially_refunded", [30, 20]))
+    assert refund_amounts(invoice) == ["20", "30"]
     assert Decimal.equal?(Billing.get_invoice!(invoice.uuid).paid_amount, "50.00")
   end
 

@@ -12,11 +12,14 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
 
   ## Scheduling
 
-  The worker should be scheduled to run daily via Oban crontab:
+  The worker runs daily from Oban's crontab. Billing declares the entry itself
+  (`PhoenixKitBilling.oban_crons/0`, with the `billing` queue in `oban_queues/0`), and
+  `mix phoenix_kit.install` / `mix phoenix_kit.update` write both into the host's Oban
+  config, which then holds:
 
   ```elixir
   config :my_app, Oban,
-    queues: [default: 10, billing: 5],
+    queues: [default: 10, billing: 10],
     plugins: [
       {Oban.Plugins.Cron,
        crontab: [
@@ -24,6 +27,8 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
        ]}
     ]
   ```
+
+  The batch run does nothing while billing is disabled.
 
   ## Process Flow
 
@@ -74,6 +79,12 @@ defmodule PhoenixKitBilling.Workers.SubscriptionRenewalWorker do
   end
 
   def perform(%Oban.Job{args: _args}) do
+    # The cron entry (`PhoenixKitBilling.oban_crons/0`) is in a host's crontab
+    # whether or not billing is enabled; a disabled module renews nothing.
+    if PhoenixKitBilling.enabled?(), do: renew_all_due(), else: :ok
+  end
+
+  defp renew_all_due do
     # Process all due subscriptions (daily batch). Fan out into one job
     # per subscription so the per-subscription unique key + row lock
     # apply correctly and a single bad subscription cannot poison the

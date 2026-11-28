@@ -5558,3 +5558,188 @@ msgstr "The order goes back to the status it had before it was cancelled. If one
 #, elixir-autogen, elixir-format
 msgid "Why is this order being reinstated?"
 msgstr "Why is this order being reinstated?"
+
+#: lib/phoenix_kit_billing/errors.ex:144
+#, elixir-autogen, elixir-format
+msgid "A new checkout was opened for this invoice meanwhile. Try again."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:165
+#, elixir-autogen, elixir-format
+msgid "Amount due"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:589
+#, elixir-autogen, elixir-format
+msgid "Anyone with this link can view and pay the invoice. Send it only to the payer."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:131
+#, elixir-autogen, elixir-format
+msgid "Due date:"
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:219
+#, elixir-autogen, elixir-format
+msgid "Nothing on this invoice was paid through a payment provider."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:189
+#, elixir-autogen, elixir-format
+msgid "Online payment is not available. Please use the payment details on the invoice."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:197
+#, elixir-autogen, elixir-format
+msgid "Only part of the refund was made: %{reason}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:581
+#, elixir-autogen, elixir-format
+msgid "Payment link"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:217
+#, elixir-autogen, elixir-format
+msgid "Refund failed: %{reason}"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:185
+#, elixir-autogen, elixir-format
+msgid "Refund made at %{provider} and recorded"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:184
+#, elixir-autogen, elixir-format
+msgid "Thank you! Your payment is being confirmed; this page updates when it is."
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:150
+#, elixir-autogen, elixir-format
+msgid "The amount exceeds what the provider payments can give back."
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:141
+#, elixir-autogen, elixir-format
+msgid "The customer has already paid through the open checkout; the payment is on its way."
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:164
+#, elixir-autogen, elixir-format
+msgid "The email address is invalid."
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:299
+#, elixir-autogen, elixir-format
+msgid "The open checkout could not be closed at the payment provider, so the invoice was not voided."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:922
+#, elixir-autogen, elixir-format
+msgid "The refund is made at %{provider} and returns the money to the customer (up to %{amount})."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:929
+#, elixir-autogen, elixir-format
+msgid "The refund is only recorded here: return the money yourself."
+msgstr ""
+
+#: lib/phoenix_kit_billing/errors.ex:303
+#, elixir-autogen, elixir-format
+msgid "The refund was made at the provider but could not be recorded. Reconcile it by hand."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:207
+#, elixir-autogen, elixir-format
+msgid "The refund was made at the provider but could not be recorded; the provider's webhook will record it."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:176
+#, elixir-autogen, elixir-format
+msgid "This invoice is paid. Thank you!"
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:180
+#, elixir-autogen, elixir-format
+msgid "This invoice was cancelled and cannot be paid."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:116
+#, elixir-autogen, elixir-format
+msgid "This link is invalid or has expired."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/guest_invoice.ex:68
+#, elixir-autogen, elixir-format
+msgid "This payment method is not available."
+msgstr ""
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:598
+#, elixir-autogen, elixir-format
+msgid "The link sent so far will stop working. Make a new one?"
+msgstr "The link sent so far will stop working. Make a new one?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:601
+#, elixir-autogen, elixir-format
+msgid "New link"
+msgstr "New link"
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:485
+#, elixir-autogen, elixir-format
+msgid "The old payment link no longer works. Send the new one."
+msgstr "The old payment link no longer works. Send the new one."
+
+#: lib/phoenix_kit_billing/errors.ex:155
+#, elixir-autogen, elixir-format
+msgid "This currency has more than two decimal places, which billing's amounts cannot hold."
+msgstr "This currency has more than two decimal places, which billing's amounts cannot hold."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:207
+#, elixir-autogen, elixir-format
+msgid "A refund failed at the payment provider - the customer did not get the money back"
+msgstr "A refund failed at the payment provider - the customer did not get the money back"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:212
+#, elixir-autogen, elixir-format
+msgid "%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand."
+msgstr "%{amount} %{currency} through %{provider} was put back on this invoice. Refund it again or settle it by hand."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:221
+#, elixir-autogen, elixir-format
+msgid "The order is still marked refunded."
+msgstr "The order is still marked refunded."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1013
+#, elixir-autogen, elixir-format
+msgid "The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund."
+msgstr "The payment provider could not be reached to close the customer's open checkout. If you void anyway, the customer may still be able to pay through it; such a payment is kept on the void invoice for a refund."
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1026
+#, elixir-autogen, elixir-format
+msgid "The customer's checkout may still be payable. Void the invoice anyway?"
+msgstr "The customer's checkout may still be payable. Void the invoice anyway?"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1029
+#, elixir-autogen, elixir-format
+msgid "Void anyway"
+msgstr "Void anyway"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:979
+#, elixir-autogen, elixir-format
+msgid "Already refunded at the provider - only record it"
+msgstr "Already refunded at the provider - only record it"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:984
+#, elixir-autogen, elixir-format
+msgid "Refund id at the provider (optional)"
+msgstr "Refund id at the provider (optional)"
+
+#: lib/phoenix_kit_billing/web/invoice_detail.html.heex:1002
+#, elixir-autogen, elixir-format
+msgid "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+msgstr "Without the provider's refund id, a later refund of this payment made at the provider may not be booked."
+
+#: lib/phoenix_kit_billing/web/invoice_detail/actions.ex:173
+#, elixir-autogen, elixir-format
+msgid "This refund id is already recorded on this invoice."
+msgstr "This refund id is already recorded on this invoice."

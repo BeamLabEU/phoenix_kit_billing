@@ -83,7 +83,10 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
             |> assign(:checkout_loading, nil)
             |> assign(:show_payment_modal, false)
             |> assign(:show_refund_modal, false)
+            |> assign(:refund_record_only, false)
+            |> assign(:refund_provider_id, "")
             |> assign(:show_void_modal, false)
+            |> assign(:void_checkout_unreachable, false)
             |> assign(:show_send_modal, false)
             |> assign(:show_send_receipt_modal, false)
             |> assign(:show_send_credit_note_modal, false)
@@ -184,6 +187,12 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
     {:noreply,
      socket
      |> assign(:show_refund_modal, true)
+     # One provider idempotency key per opening of the dialog (with the amount):
+     # a submit that reaches the server twice gets the refund already made back.
+     |> assign(:refund_idempotency_key, "pkb-admin-refund:" <> Ecto.UUID.generate())
+     # Each refund decides afresh whether it is only recorded.
+     |> assign(:refund_record_only, false)
+     |> assign(:refund_provider_id, "")
      |> assign(:refund_amount, "")
      |> assign(:refund_description, "")}
   end
@@ -195,7 +204,7 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
 
   @impl true
   def handle_event("open_void_modal", _params, socket) do
-    {:noreply, assign(socket, :show_void_modal, true)}
+    {:noreply, assign(socket, show_void_modal: true, void_checkout_unreachable: false)}
   end
 
   @impl true
@@ -316,6 +325,9 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
       socket
       |> assign(:refund_amount, params["amount"] || socket.assigns.refund_amount)
       |> assign(:refund_description, params["description"] || socket.assigns.refund_description)
+      # The whole form comes with every change: an unticked box is absent.
+      |> assign(:refund_record_only, params["record_only"] == "true")
+      |> assign(:refund_provider_id, String.trim(params["provider_refund_id"] || ""))
 
     socket =
       if params["payment_method"] do
@@ -409,6 +421,13 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   end
 
   @impl true
+  def handle_event("revoke_pay_link", params, socket) do
+    Authz.authorize(socket, :manage_invoices, fn ->
+      gated_event("revoke_pay_link", params, socket)
+    end)
+  end
+
+  @impl true
   def handle_event("generate_receipt", params, socket) do
     Authz.authorize(socket, :manage_invoices, fn ->
       gated_event("generate_receipt", params, socket)
@@ -445,10 +464,19 @@ defmodule PhoenixKitBilling.Web.InvoiceDetail do
   defp gated_event("send_payment_confirmation", _params, socket),
     do: Actions.send_payment_confirmation(socket)
 
+  # "Void anyway" is offered, and honoured, only after the provider could not be
+  # reached to close the open checkout.
   defp gated_event("void_invoice", params, socket),
-    do: Actions.void_invoice(socket, params["reason"])
+    do:
+      Actions.void_invoice(
+        socket,
+        params["reason"],
+        params["void_anyway"] == "true" and socket.assigns[:void_checkout_unreachable] == true
+      )
 
   defp gated_event("generate_receipt", _params, socket), do: Actions.generate_receipt(socket)
+
+  defp gated_event("revoke_pay_link", _params, socket), do: Actions.revoke_pay_link(socket)
 
   defp gated_event("trash_invoice", _params, socket), do: Actions.trash_invoice(socket)
 

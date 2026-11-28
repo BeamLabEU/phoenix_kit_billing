@@ -335,6 +335,25 @@ defmodule PhoenixKitBilling.Providers.EveryPay do
     end
   end
 
+  @doc """
+  EveryPay's running total of refunds on a payment, from the payment record
+  (`fetch_payment/1`): the sum of its listed refunds, 0 when it lists none.
+  """
+  @impl true
+  def refunded_total(payment_reference) when is_binary(payment_reference) do
+    with {:ok, payment} <- fetch_payment(payment_reference),
+         currency when is_binary(currency) <- payment["currency"] do
+      total = amount_cents(listed_refunds(payment) || Decimal.new(0), currency)
+
+      if is_integer(total),
+        do: {:ok, %{amount_refunded_total: total, currency: currency}},
+        else: {:error, :unknown_currency}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :no_currency}
+    end
+  end
+
   # ===========================================
   # Private Helpers
   # ===========================================

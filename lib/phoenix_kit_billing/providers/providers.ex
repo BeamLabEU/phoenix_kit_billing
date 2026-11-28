@@ -317,6 +317,38 @@ defmodule PhoenixKitBilling.Providers do
   end
 
   @doc """
+  The provider's running total of refunds on a payment (`refunded_total/1`):
+  `{:ok, %{amount_refunded_total: minor_units, currency: code}}`,
+  `{:error, :not_supported}` for a provider without one, or another error.
+  """
+  @spec refunded_total(atom() | String.t(), String.t()) :: {:ok, map()} | {:error, term()}
+  def refunded_total(provider, payment_id) when is_binary(payment_id) do
+    with {:ok, module} <- get_available_provider(provider) do
+      if function_exported?(module, :refunded_total, 1),
+        do: module.refunded_total(payment_id),
+        else: {:error, :not_supported}
+    end
+  end
+
+  @doc """
+  Closes a hosted checkout session at its provider, so it can no longer be paid.
+
+  Returns `:ok`, `{:error, :checkout_completed}` when the customer already paid
+  through the session, `{:error, :not_supported}` when the provider cannot close
+  its sessions (`expire_checkout_session/1` is optional), or another
+  `{:error, reason}`. A provider that is not configured answers
+  `{:error, :provider_not_available}`.
+  """
+  @spec expire_checkout_session(atom() | String.t(), String.t()) :: :ok | {:error, term()}
+  def expire_checkout_session(provider, session_id) when is_binary(session_id) do
+    with {:ok, module} <- get_available_provider(provider) do
+      if function_exported?(module, :expire_checkout_session, 1),
+        do: module.expire_checkout_session(session_id),
+        else: {:error, :not_supported}
+    end
+  end
+
+  @doc """
   Returns display information for a provider.
 
   ## Examples

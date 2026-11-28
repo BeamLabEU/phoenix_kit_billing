@@ -124,6 +124,20 @@ defmodule PhoenixKitBilling.Test.Router do
     end
   end
 
+  # The public payment page (`Web.Routes.generate/1` in production), in both URL
+  # shapes, with no scope: a guest has no session.
+  for prefix <- ["/billing", "/en/billing"] do
+    scope prefix, PhoenixKitBilling.Web do
+      pipe_through(:browser)
+
+      live_session :"billing_public_test#{prefix}" do
+        live("/pay/:token", GuestInvoice, :show,
+          as: :"billing_invoice_pay#{String.replace(prefix, "/", "_")}"
+        )
+      end
+    end
+  end
+
   # Settings tabs live under `/admin/settings/billing` in production.
   scope "/en/admin/settings/billing", PhoenixKitBilling.Web do
     pipe_through(:browser)

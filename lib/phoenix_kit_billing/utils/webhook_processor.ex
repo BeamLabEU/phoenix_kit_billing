@@ -28,7 +28,17 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   alias PhoenixKit.RepoHelper
   alias PhoenixKitBilling, as: Billing
-  alias PhoenixKitBilling.{Invoice, Notifications, PaymentMethod, Transaction, WebhookEvent}
+
+  alias PhoenixKitBilling.{
+    Activity,
+    Invoice,
+    Notifications,
+    PaymentMethod,
+    Providers,
+    Transaction,
+    WebhookEvent
+  }
+
   alias PhoenixKitBilling.Providers.MinorUnits
 
   require Logger
@@ -110,7 +120,9 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   defp process_event(%{type: "checkout.expired", data: data}) do
     Logger.info("Checkout session expired: #{inspect(data[:session_id])}")
-    # Clear checkout session from order if needed
+    # The invoice's recorded session is marked closed, so a void does not try to
+    # close it and a customer is not sent to it again.
+    Billing.mark_checkout_session_closed(data[:invoice_uuid], data[:session_id], "expired")
     {:ok, :expired}
   end
 
@@ -145,6 +157,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     Logger.info("Processing refund.created: #{inspect(data)}")
     # Record refund transaction
     process_refund(Map.put(data, :provider, to_string(provider)))
+  end
+
+  defp process_event(%{type: "refund.failed", provider: provider, data: data}) do
+    process_refund_failure(Map.put(data, :provider, to_string(provider)))
   end
 
   defp process_event(%{type: "setup.completed", data: data}) do
@@ -363,8 +379,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
       result =
         Billing.record_provider_refund(invoice, refund_attrs, fn locked ->
-          with :ok <- ensure_refund_not_recorded(locked, data) do
-            refund_amount(data, locked, original_tx, payment_ids)
+          with :ok <- ensure_refund_not_recorded(locked, data),
+               {:ok, amount} <- refund_amount(data, locked, original_tx, payment_ids),
+               :ok <- claim_recorded_only_refund(locked, data, amount) do
+            {:ok, amount}
           end
         end)
 
@@ -382,6 +400,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
         {:error, reason} when reason in [:already_recorded, :already_refunded] ->
           {:ok, reason}
+
+        {:error, {:recorded_only, row_uuid}} ->
+          claim_row(row_uuid, refund_id(data), data)
+          {:ok, :already_recorded}
 
         {:error, reason} ->
           {:error, reason}
@@ -446,6 +468,195 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
     {:ok, :already_refunded}
   end
+
+  # The refund never reached the customer: its ledger row is put back on the
+  # invoice (`Billing.reverse_failed_refund/2`) - paid_amount up again, the void
+  # this refund caused undone, the invoice flagged for the admin. The row is found
+  # by the refund's id, else (a refund the webhook booked, without its id) by the
+  # charge and the amount when exactly one row fits. A redelivery changes nothing.
+  defp process_refund_failure(%{refund_id: refund_id} = data) when is_binary(refund_id) do
+    case failed_refund_rows(data) do
+      # Delivered again after it was put back through the charge and amount (the
+      # reversal carries the refund's id; the refund row does not).
+      [] ->
+        if failure_already_reversed?(data),
+          do: {:ok, :refund_failed},
+          else: unmatched_failure(data)
+
+      # A reconciliation that could not run fails the event, so that the provider's
+      # redelivery tries it again (the put-back itself is not repeated).
+      rows ->
+        rows
+        |> Enum.map(&reverse_failed_refund(&1, data))
+        |> Enum.find(:ok, &match?({:error, _}, &1))
+        |> case do
+          :ok -> {:ok, :refund_failed}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
+  defp process_refund_failure(_data), do: {:ok, :ignored}
+
+  # A provider with a running total (Stripe, EveryPay) is asked what it has refunded
+  # on the payment now, and the ledger is booked to match: a replacement refund
+  # reported before this failure was skipped then (the failed refund still counted),
+  # and no further event would book it. Whatever the ledger already holds is not
+  # booked again (the running-total rule of `process_refund/1`).
+  defp reconcile_after_failure(row, data) do
+    data_ids = [data[:charge_id], data[:payment_intent_id]]
+
+    row_ids = [
+      (row.provider_data || %{})["charge_id"],
+      (row.provider_data || %{})["payment_intent_id"]
+    ]
+
+    ids = (data_ids ++ row_ids) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    with [_ | _] <- ids,
+         {:ok, payment} <- find_payment_transaction(ids, data.provider),
+         {:ok, %{amount_refunded_total: total, currency: currency}} <-
+           Providers.refunded_total(data.provider, payment.provider_transaction_id) do
+      reconcile_result(
+        process_refund(%{
+          provider: data.provider,
+          charge_id: data[:charge_id] || (row.provider_data || %{})["charge_id"],
+          payment_intent_id:
+            data[:payment_intent_id] || (row.provider_data || %{})["payment_intent_id"],
+          refund_id: nil,
+          amount_refunded_total: total,
+          currency: currency,
+          description: "Reconciled with #{data.provider} after a failed refund"
+        })
+      )
+    else
+      # A provider with no running total; or no payment to read it for.
+      {:error, :not_supported} ->
+        :ok
+
+      [] ->
+        :ok
+
+      {:error, :transaction_not_found} ->
+        :ok
+
+      other ->
+        Logger.warning(
+          "#{data.provider} refund #{data.refund_id} failed and was put back; the payment's " <>
+            "refunded total could not be read back to check the ledger (the event is failed " <>
+            "for a redelivery): #{inspect(other)}"
+        )
+
+        {:error, :refunded_total_unavailable}
+    end
+  end
+
+  defp reconcile_result({:ok, _}), do: :ok
+  defp reconcile_result({:error, reason}), do: {:error, reason}
+
+  defp failure_already_reversed?(data) do
+    repo().exists?(
+      from(t in Transaction,
+        where:
+          t.amount > 0 and t.payment_method == ^data.provider and
+            fragment("?->>'source'", t.provider_data) == "refund_failed" and
+            fragment("?->>'refund_id'", t.provider_data) == ^data.refund_id
+      )
+    )
+  end
+
+  defp unmatched_failure(%{refund_id: refund_id} = data) do
+    Logger.error(
+      "#{data.provider} refund #{refund_id} #{data[:status]} " <>
+        "(#{inspect(data[:failure_reason])}): the customer did not get the money back, " <>
+        "and no ledger row matches it (by refund id, or by charge and amount). " <>
+        "Reconcile it by hand."
+    )
+
+    {:ok, :unmatched_refund}
+  end
+
+  defp reverse_failed_refund(row, data) do
+    case Billing.reverse_failed_refund(row, data) do
+      # Delivered again: the reconciliation may be what failed the first time. It
+      # books only what the ledger lacks, so running it again is harmless.
+      {:ok, :already_reversed} ->
+        reconcile_after_failure(row, data)
+
+      {:ok, reversal} ->
+        Logger.error(
+          "#{data.provider} refund #{data.refund_id} #{data[:status]} " <>
+            "(#{inspect(data[:failure_reason])}): the customer did not get the money back. " <>
+            "#{Decimal.to_string(reversal.amount)} #{reversal.currency} was put back on the invoice."
+        )
+
+        # No LiveView is involved: the provider reported it. The audit row has no actor.
+        Activity.log("billing.refund_failed_reversed",
+          actor_uuid: nil,
+          resource_type: "transaction",
+          resource_uuid: reversal.uuid,
+          metadata: %{
+            "refund_transaction_uuid" => row.uuid,
+            "amount" => Decimal.to_string(reversal.amount),
+            "currency" => reversal.currency,
+            "provider" => data.provider
+          }
+        )
+
+        reconcile_after_failure(row, data)
+
+      {:error, reason} ->
+        Logger.error(
+          "#{data.provider} refund #{data.refund_id} failed and could NOT be put back on " <>
+            "its invoice: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
+
+  defp failed_refund_rows(data) do
+    by_id =
+      from(t in Transaction,
+        where:
+          t.amount < 0 and t.payment_method == ^data.provider and
+            t.provider_transaction_id == ^data.refund_id
+      )
+      |> repo().all()
+
+    if by_id == [], do: failed_refund_by_charge(data), else: by_id
+  end
+
+  # Only one candidate, or none: two rows of the same amount on the same charge
+  # cannot be told apart, and putting back the wrong one is worse than asking.
+  defp failed_refund_by_charge(data) do
+    ids = [data[:charge_id], data[:payment_intent_id]] |> Enum.reject(&is_nil/1)
+
+    with [_ | _] <- ids,
+         {:ok, amount} <- failure_amount(data) do
+      from(t in Transaction,
+        where:
+          t.amount == ^Decimal.negate(amount) and t.payment_method == ^data.provider and
+            is_nil(t.provider_transaction_id) and
+            (fragment("?->>'charge_id'", t.provider_data) in ^ids or
+               fragment("?->>'payment_intent_id'", t.provider_data) in ^ids) and
+            is_nil(fragment("?->>'reversed_by_uuid'", t.provider_data))
+      )
+      |> repo().all()
+      |> case do
+        [row] -> [row]
+        _ -> []
+      end
+    else
+      _ -> []
+    end
+  end
+
+  defp failure_amount(%{amount: amount, currency: currency})
+       when is_integer(amount) and is_binary(currency),
+       do: MinorUnits.from_minor_units(amount, String.upcase(currency))
+
+  defp failure_amount(_data), do: :error
 
   defp process_setup_completed(data) do
     user_uuid = data[:user_uuid]
@@ -532,6 +743,63 @@ defmodule PhoenixKitBilling.WebhookProcessor do
 
   # A cumulative total can include earlier refunds missing from the ledger,
   # even when its latest refund id is already recorded. Reconcile the total.
+  # The admin's "Already refunded at the provider - only record it" books a refund
+  # without the provider's id (`"recorded_as_provider_refund"`). A provider that
+  # reports one refund at a time (PayPal, Razorpay) then sends that refund: the
+  # booked row, of the same method and amount and not claimed yet, is it. It takes
+  # the refund's id and nothing more is booked. (A running total - Stripe, EveryPay
+  # - already counts the row against the charge.)
+  defp claim_recorded_only_refund(_invoice, %{amount_refunded_total: total}, _amount)
+       when is_integer(total),
+       do: :ok
+
+  defp claim_recorded_only_refund(invoice, data, amount) do
+    case refund_id(data) do
+      nil ->
+        :ok
+
+      _refund_id ->
+        from(t in Transaction,
+          where:
+            t.invoice_uuid == ^invoice.uuid and t.amount == ^Decimal.negate(amount) and
+              t.payment_method == ^data.provider and is_nil(t.provider_transaction_id) and
+              fragment("(?->>'recorded_as_provider_refund')::boolean", t.provider_data) == true,
+          order_by: [asc: t.inserted_at, asc: t.uuid],
+          limit: 1
+        )
+        |> repo().one()
+        |> case do
+          nil ->
+            :ok
+
+          # The booking rolls back on any refusal, so the row takes the id after it
+          # (`claim_row/3`).
+          row ->
+            {:error, {:recorded_only, row.uuid}}
+        end
+    end
+  end
+
+  defp claim_row(row_uuid, refund_id, data) do
+    case repo().get(Transaction, row_uuid) do
+      %Transaction{provider_transaction_id: nil} = row ->
+        row
+        |> Ecto.Changeset.change(
+          provider_transaction_id: refund_id,
+          provider_data:
+            Map.merge(row.provider_data || %{}, %{
+              "refund_id" => refund_id,
+              "charge_id" => data[:charge_id],
+              "payment_intent_id" => data[:payment_intent_id]
+            })
+        )
+        |> repo().update()
+
+      _ ->
+        :ok
+    end
+  end
+
   defp ensure_refund_not_recorded(_invoice, %{amount_refunded_total: total})
        when is_integer(total),
        do: :ok
@@ -647,7 +915,10 @@ defmodule PhoenixKitBilling.WebhookProcessor do
     )
     |> repo().all()
     |> Enum.reject(fn {_amount, provider_data} ->
-      refund_of_other_payment?(provider_data, payment_ids)
+      # A refund the provider failed and billing put back is no longer in the
+      # charge's running total either.
+      refund_of_other_payment?(provider_data, payment_ids) or
+        is_binary((provider_data || %{})["reversed_by_uuid"])
     end)
     |> Enum.reduce(Decimal.new(0), fn {amount, _provider_data}, sum ->
       Decimal.add(sum, Decimal.abs(amount))

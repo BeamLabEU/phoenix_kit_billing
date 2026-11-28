@@ -317,7 +317,8 @@ defmodule PhoenixKitBilling.OrderPayment do
        when is_binary(url) do
     context = checkout_context(invoice, opts)
 
-    with true <- checkout["provider"] == to_string(provider),
+    with true <- is_nil(checkout["closed_at"]),
+         true <- checkout["provider"] == to_string(provider),
          true <- Map.take(checkout, Map.keys(context)) == context,
          {:ok, created_at, _} <- DateTime.from_iso8601(checkout["created_at"] || ""),
          age = DateTime.diff(DateTime.utc_now(), created_at),
